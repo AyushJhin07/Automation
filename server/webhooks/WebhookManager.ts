@@ -4,7 +4,11 @@
 import { getErrorMessage } from '../types/common';
 import { createHash } from 'crypto';
 import type { OrganizationRegion } from '../database/schema.js';
-import { TriggerPersistenceService, triggerPersistenceService } from '../services/TriggerPersistenceService';
+import {
+  TriggerPersistenceService,
+  triggerPersistenceService,
+  encodeVerificationFailure,
+} from '../services/TriggerPersistenceService';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
@@ -532,13 +536,23 @@ export class WebhookManager {
 
   private async recordVerificationFailure(event: TriggerEvent, result: WebhookVerificationResult): Promise<void> {
     const message = result.message ?? `Webhook signature verification failed (${result.failureReason ?? 'unknown'})`;
+    event.processed = false;
     const logId = await this.persistence.logWebhookEvent(event);
     if (logId) {
       event.id = logId;
     }
+    const errorPayload = encodeVerificationFailure({
+      status: 'failed',
+      reason: result.failureReason ?? 'UNKNOWN',
+      message,
+      provider: result.provider,
+      signatureHeader: result.signatureHeader ?? null,
+      providedSignature: result.providedSignature ?? null,
+      timestampSkewSeconds: result.timestampSkewSeconds ?? null,
+    });
     await this.persistence.markWebhookEventProcessed(logId, {
       success: false,
-      error: message,
+      error: errorPayload,
       region: event.region ?? this.workerRegion,
     });
   }
@@ -1305,6 +1319,7 @@ export class WebhookManager {
         triggerData: {
           appId: event.appId,
           triggerId: event.triggerId,
+          webhookId: event.webhookId,
           payload: event.payload,
           headers: event.headers,
           dedupeToken: event.dedupeToken,

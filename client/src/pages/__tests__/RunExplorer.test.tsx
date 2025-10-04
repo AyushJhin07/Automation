@@ -121,6 +121,15 @@ beforeEach(() => {
       );
     }
 
+    if (url.includes('/verification-failures')) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ success: true, failures: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+    }
+
     if (url.startsWith('/api/admin/executions')) {
       return Promise.resolve(
         new Response(JSON.stringify({ success: true, entries: [] }), {
@@ -164,6 +173,6 @@ test('RunExplorer renders runs, toggles facets, and links to run viewer telemetr
     assert.ok(logLink, 'log link should be visible for run');
   });
 
-  const dedupeMessage = await screen.findByText(/No duplicate webhook deliveries recorded/i);
-  assert.ok(dedupeMessage, 'dedupe panel should render message');
+  const verificationMessage = await screen.findByText(/No signature verification failures recorded/i);
+  assert.ok(verificationMessage, 'verification panel should render empty state message');
 });

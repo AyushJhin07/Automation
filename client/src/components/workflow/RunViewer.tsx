@@ -37,6 +37,11 @@ import {
   CloudLightning
 } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  VerificationFailurePanel,
+  type VerificationFailure,
+  type VerificationFilter,
+} from './VerificationFailurePanel';
 
 // Types matching server-side interfaces
 interface NodeExecution {
@@ -79,7 +84,10 @@ interface WorkflowExecution {
   endTime?: Date;
   duration?: number;
   triggerType?: string;
-  triggerData?: any;
+  triggerData?: {
+    webhookId?: string;
+    [key: string]: any;
+  } | null;
   totalNodes: number;
   completedNodes: number;
   failedNodes: number;
@@ -95,6 +103,7 @@ interface WorkflowExecution {
     cacheHitRate: number;
     averageNodeDuration: number;
     requestId?: string;
+    webhookId?: string;
   };
 }
 
@@ -138,6 +147,10 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [showJsonView, setShowJsonView] = useState(false);
   const [duplicateEvents, setDuplicateEvents] = useState<DuplicateEventSummary[]>([]);
+  const [verificationFailures, setVerificationFailures] = useState<VerificationFailure[]>([]);
+  const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>('all');
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [auditEvents, setAuditEvents] = useState<ExecutionAuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
@@ -170,6 +183,86 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     };
 
     loadDuplicateEvents();
+  }, [selectedExecution]);
+
+  useEffect(() => {
+    const loadVerificationFailures = async () => {
+      setVerificationFilter('all');
+
+      if (!selectedExecution) {
+        setVerificationFailures([]);
+        setVerificationError(null);
+        return;
+      }
+
+      const triggerData = selectedExecution.triggerData && typeof selectedExecution.triggerData === 'object'
+        ? (selectedExecution.triggerData as Record<string, any>)
+        : undefined;
+      const webhookId = triggerData?.webhookId ?? selectedExecution.metadata?.webhookId ?? null;
+
+      if (!webhookId) {
+        setVerificationFailures([]);
+        setVerificationError(null);
+        return;
+      }
+
+      setVerificationLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', '20');
+        if (selectedExecution.workflowId) {
+          params.set('workflowId', selectedExecution.workflowId);
+        }
+
+        const response = await fetch(
+          `/api/webhooks/${webhookId}/verification-failures?${params.toString()}`
+        );
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const entries = Array.isArray(data.failures)
+            ? (data.failures as any[]).map((entry) => ({
+                id: String(entry.id),
+                webhookId: String(entry.webhookId ?? webhookId),
+                workflowId: String(entry.workflowId ?? selectedExecution.workflowId ?? ''),
+                status: String(entry.status ?? 'failed'),
+                reason: (entry.reason ?? 'UNKNOWN') as VerificationFailure['reason'],
+                message: String(entry.message ?? 'Webhook signature verification failed'),
+                provider: typeof entry.provider === 'string' ? entry.provider : entry.provider ?? null,
+                timestamp:
+                  typeof entry.timestamp === 'string'
+                    ? entry.timestamp
+                    : entry.timestamp
+                    ? new Date(entry.timestamp).toISOString()
+                    : new Date().toISOString(),
+                metadata: {
+                  signatureHeader: entry.metadata?.signatureHeader ?? null,
+                  providedSignature: entry.metadata?.providedSignature ?? null,
+                  timestampSkewSeconds:
+                    typeof entry.metadata?.timestampSkewSeconds === 'number'
+                      ? entry.metadata.timestampSkewSeconds
+                      : entry.metadata?.timestampSkewSeconds !== undefined && entry.metadata?.timestampSkewSeconds !== null
+                      ? Number(entry.metadata.timestampSkewSeconds)
+                      : null,
+                },
+              }))
+            : [];
+          setVerificationFailures(entries as VerificationFailure[]);
+          setVerificationError(null);
+        } else {
+          setVerificationFailures([]);
+          setVerificationError(data.error ?? 'Failed to load verification failures');
+        }
+      } catch (error) {
+        console.error('Failed to load verification failures:', error);
+        setVerificationFailures([]);
+        setVerificationError('Failed to load verification failures');
+      } finally {
+        setVerificationLoading(false);
+      }
+    };
+
+    loadVerificationFailures();
   }, [selectedExecution]);
 
   const loadAuditEvents = useCallback(async () => {
@@ -593,6 +686,17 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                 </CardHeader>
               <CardContent>
                 <div className="space-y-3">
+                  {selectedExecution?.triggerType === 'webhook' && (
+                    <VerificationFailurePanel
+                      failures={verificationFailures}
+                      filter={verificationFilter}
+                      onFilterChange={setVerificationFilter}
+                      loading={verificationLoading}
+                      error={verificationError}
+                      showEmptyState
+                    />
+                  )}
+
                   {duplicateEvents.length > 0 && (
                     <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
                       <div className="font-medium">

@@ -10,7 +10,7 @@ const {
 
 setDatabaseAvailabilityForTests(false);
 
-const { TriggerPersistenceService } = await import('../TriggerPersistenceService.js');
+const { TriggerPersistenceService, encodeVerificationFailure } = await import('../TriggerPersistenceService.js');
 
 TriggerPersistenceService.resetForTests();
 
@@ -98,6 +98,31 @@ async function runTriggerPersistenceFallbackIntegration(): Promise<void> {
   const storedEvent = await memoryStore.getWebhookLog(eventId!);
   assert.ok(storedEvent?.processed, 'event should be marked processed');
   assert.equal(storedEvent?.executionId, 'exec-1');
+
+  const verificationLogId = await service.logWebhookEvent({
+    webhookId: 'wh-1',
+    workflowId: 'wf-1',
+    appId: 'github',
+    triggerId: 'issue.opened',
+    payload: { hello: 'world' },
+    headers: { 'x-test': '1' },
+    timestamp: new Date(),
+    processed: false,
+    source: 'webhook',
+  });
+
+  const encodedFailure = encodeVerificationFailure({
+    status: 'failed',
+    reason: 'SIGNATURE_MISMATCH',
+    message: 'Signature mismatch',
+    provider: 'github',
+  });
+
+  await service.markWebhookEventProcessed(verificationLogId, { success: false, error: encodedFailure });
+  const failures = await service.listVerificationFailures({ workflowId: 'wf-1' });
+  assert.equal(failures.length, 1, 'verification failure should be queryable');
+  assert.equal(failures[0]?.reason, 'SIGNATURE_MISMATCH');
+  assert.equal(failures[0]?.provider, 'github');
 
   await service.deactivateTrigger('poll-1');
   const remainingPolling = await service.loadPollingTriggers();
