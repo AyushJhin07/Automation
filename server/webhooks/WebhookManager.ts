@@ -9,6 +9,8 @@ import {
   triggerPersistenceService,
   encodeVerificationFailure,
 } from '../services/TriggerPersistenceService';
+import type { QueueRunRequest } from '../services/ExecutionQueueService';
+import { dispatchOutboxRecord } from './outbox/index.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
@@ -27,13 +29,7 @@ import {
 import { organizationService } from '../services/OrganizationService.js';
 
 type QueueService = {
-  enqueue: (request: {
-    workflowId: string;
-    userId?: string;
-    triggerType?: string;
-    triggerData?: Record<string, any> | null;
-    organizationId: string;
-  }) => Promise<{ executionId: string }>;
+  enqueue: (request: QueueRunRequest) => Promise<{ executionId: string }>;
 };
 
 type SignatureEnforcementConfig = {
@@ -1312,7 +1308,7 @@ export class WebhookManager {
       }
 
       const queueService = await this.getQueueService();
-      const queueResult = await queueService.enqueue({
+      const queueRequest: QueueRunRequest = {
         workflowId: event.workflowId,
         userId: event.userId,
         triggerType: event.source,
@@ -1327,16 +1323,45 @@ export class WebhookManager {
           source: event.source,
         },
         organizationId: event.organizationId,
+      };
+
+      const deterministicKeys = this.buildDeterministicKeysForEvent(event);
+      const outboxRecord = await this.persistence.createWebhookOutboxRecord({
+        event,
+        queueRequest,
+        logId,
+        deterministicKeys,
       });
+
+      if (!outboxRecord) {
+        const message = 'failed to persist webhook outbox record';
+        await this.persistence.markWebhookEventProcessed(logId, {
+          success: false,
+          error: message,
+          region: event.region ?? this.workerRegion,
+        });
+        return false;
+      }
+
+      const dispatchResult = await dispatchOutboxRecord({
+        record: outboxRecord,
+        queueService,
+        persistence: this.persistence,
+        logger: console,
+      });
+
+      if (!dispatchResult.success) {
+        return false;
+      }
 
       event.processed = true;
-      await this.persistence.markWebhookEventProcessed(logId, {
-        success: true,
-        executionId: queueResult.executionId,
-        region: event.region ?? this.workerRegion,
-      });
-
-      console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
+      if (dispatchResult.executionId) {
+        console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`, {
+          executionId: dispatchResult.executionId,
+        });
+      } else {
+        console.log(`✅ Processed webhook: ${event.webhookId} for ${event.appId}.${event.triggerId}`);
+      }
       return true;
     } catch (error) {
       const message = getErrorMessage(error);
@@ -1348,6 +1373,31 @@ export class WebhookManager {
       });
       return false;
     }
+  }
+
+  /**
+   * Build deterministic identifiers that follow the event through execution.
+   */
+  private buildDeterministicKeysForEvent(event: TriggerEvent): Record<string, any> | null {
+    const keys: Record<string, any> = {};
+
+    const dedupeToken = typeof event.dedupeToken === 'string' ? event.dedupeToken.trim() : '';
+    if (dedupeToken) {
+      keys.trigger = {
+        ...(keys.trigger ?? {}),
+        dedupeToken,
+      };
+    }
+
+    const eventHash = this.createEventHash(event);
+    if (eventHash) {
+      keys.request = {
+        ...(keys.request ?? {}),
+        eventHash,
+      };
+    }
+
+    return Object.keys(keys).length > 0 ? keys : null;
   }
 
   /**

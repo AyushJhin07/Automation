@@ -67,6 +67,7 @@ export interface ExecutionContext {
   initialData?: any;
   organizationId?: string;
   idempotencyKeys: Record<string, string>;
+  requestHashes: Record<string, string>;
 }
 
 export interface ExecutionResult {
@@ -78,6 +79,10 @@ export interface ExecutionResult {
   nodeOutputs: Record<string, any>;
   waitUntil?: string;
   timerId?: string | null;
+  deterministicKeys?: {
+    idempotency?: Record<string, string>;
+    request?: Record<string, string>;
+  };
 }
 
 interface ConnectorCredentialResolution {
@@ -125,7 +130,8 @@ export class WorkflowRuntime {
       executionId,
       initialData,
       organizationId: options.organizationId,
-      idempotencyKeys: {},
+      idempotencyKeys: resumeState?.idempotencyKeys ? { ...resumeState.idempotencyKeys } : {},
+      requestHashes: resumeState?.requestHashes ? { ...resumeState.requestHashes } : {},
     };
 
     const runtimeOptions = this.normalizeOptions(options);
@@ -160,15 +166,30 @@ export class WorkflowRuntime {
         const connectorId = this.resolveConnectorId(node);
         const configuredTimeout = this.resolveConfiguredTimeout(node.id, runtimeOptions);
 
+        const existingIdempotencyKey = context.idempotencyKeys[node.id];
+        const nodeIdempotencyKey = existingIdempotencyKey ?? this.generateIdempotencyKey(node, context);
+        context.idempotencyKeys[node.id] = nodeIdempotencyKey;
+
         // Start node execution tracking
-        await runExecutionManager.startNodeExecution(context.executionId, node, context.prevOutput, {
-          timeoutMs: configuredTimeout,
-          connectorId
-        });
+        const nodeExecutionStart = await runExecutionManager.startNodeExecution(
+          context.executionId,
+          node,
+          context.prevOutput,
+          {
+            timeoutMs: configuredTimeout,
+            connectorId,
+            idempotencyKey: nodeIdempotencyKey
+          }
+        );
+
+        if (
+          nodeExecutionStart?.metadata?.requestHash &&
+          !context.requestHashes[node.id]
+        ) {
+          context.requestHashes[node.id] = nodeExecutionStart.metadata.requestHash;
+        }
 
         const nodeAbortController = new AbortController();
-        const nodeIdempotencyKey = this.generateIdempotencyKey(node, context);
-        context.idempotencyKeys[node.id] = nodeIdempotencyKey;
         try {
           // Execute node with retry logic and idempotency
           const nodeResult = await retryManager.executeWithRetry(
@@ -196,6 +217,9 @@ export class WorkflowRuntime {
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
           const retryStatus = retryManager.getRetryStatus(context.executionId, node.id);
           const requestHash = retryManager.getRequestHash(context.executionId, node.id);
+          if (requestHash) {
+            context.requestHashes[node.id] = requestHash;
+          }
           await runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeOutput, {
             ...metadata,
             circuitState,
@@ -233,6 +257,10 @@ export class WorkflowRuntime {
                   nodeOutputs: context.outputs,
                   waitUntil: scheduleResult.resumeAt.toISOString(),
                   timerId: scheduleResult.timerId,
+                  deterministicKeys: {
+                    idempotency: { ...context.idempotencyKeys },
+                    request: { ...context.requestHashes },
+                  },
                 };
               }
             }
@@ -284,7 +312,11 @@ export class WorkflowRuntime {
         status: 'completed',
         data: context.prevOutput,
         executionTime,
-        nodeOutputs: context.outputs
+        nodeOutputs: context.outputs,
+        deterministicKeys: {
+          idempotency: { ...context.idempotencyKeys },
+          request: { ...context.requestHashes },
+        },
       };
     } catch (error) {
       const executionTime = Date.now() - startTime.getTime();
@@ -300,7 +332,11 @@ export class WorkflowRuntime {
         status: 'failed',
         error: errorMessage,
         executionTime,
-        nodeOutputs: context.outputs
+        nodeOutputs: context.outputs,
+        deterministicKeys: {
+          idempotency: { ...context.idempotencyKeys },
+          request: { ...context.requestHashes },
+        },
       };
     }
   }
@@ -939,6 +975,8 @@ export class WorkflowRuntime {
           remainingNodeIds: [...params.remainingNodeIds],
           nextNodeId: params.remainingNodeIds[0] ?? null,
           startedAt: params.context.startTime.toISOString(),
+          idempotencyKeys: { ...params.context.idempotencyKeys },
+          requestHashes: { ...params.context.requestHashes },
         },
         triggerType: 'timer',
         metadata: {

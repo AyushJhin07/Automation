@@ -3,11 +3,12 @@
  * Persists workflow executions to the database with secret redaction
  */
 
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
+import { and, asc, desc, eq, gte, gt, inArray, lt, lte, sql } from 'drizzle-orm';
 
 import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
 import type { WorkflowNodeMetadataSnapshot } from '../../shared/workflow/metadata';
-import { db, executionLogs, nodeLogs } from '../database/schema.js';
+import { db, executionLogs, nodeLogs, nodeExecutionResults } from '../database/schema.js';
 import { sanitizeLogPayload, appendTimelineEvent } from '../utils/executionLogRedaction';
 import { logAction } from '../utils/actionLog';
 import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
@@ -138,6 +139,8 @@ type NodeLogRow = typeof nodeLogs.$inferSelect;
 type ExecutionLogInsert = typeof executionLogs.$inferInsert;
 type NodeLogInsert = typeof nodeLogs.$inferInsert;
 
+const DEFAULT_NODE_RESULT_TTL_MS = 24 * 60 * 60 * 1000;
+
 interface ExecutionLogStore {
   startExecution(
     executionId: string,
@@ -180,6 +183,16 @@ interface ExecutionLogStore {
     popularWorkflows: Array<{ workflowId: string; count: number }>;
   }>;
   cleanup(maxAge?: number): Promise<void>;
+  getCachedNodeResult(
+    executionId: string,
+    nodeId: string,
+    idempotencyKey: string
+  ): Promise<{
+    output: any;
+    resultHash: string;
+    requestHash?: string | null;
+    idempotencyKey: string;
+  } | null>;
 }
 
 const mergeNodeMetadata = (
@@ -273,7 +286,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     executionId: string,
     node: GraphNode,
     input?: any,
-    options: { timeoutMs?: number; connectorId?: string } = {}
+    options: { timeoutMs?: number; connectorId?: string; idempotencyKey?: string } = {}
   ): Promise<NodeExecution> {
     const execution = this.executions.get(executionId);
     if (!execution) {
@@ -302,16 +315,34 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     };
 
     const retryStatus = retryManager.getRetryStatus(executionId, node.id);
+    const providedIdempotencyKey = options.idempotencyKey;
+    const retryIdempotencyKey = retryStatus?.idempotencyKey;
+
     if (retryStatus) {
       nodeExecution.attempt = retryStatus.attempts.length + 1;
       nodeExecution.maxAttempts = retryStatus.policy.maxAttempts;
-      nodeExecution.metadata.idempotencyKey = retryStatus.idempotencyKey;
+      if (retryIdempotencyKey) {
+        nodeExecution.metadata.idempotencyKey = retryIdempotencyKey;
+      }
       nodeExecution.retryHistory = retryStatus.attempts.map((attempt) => ({
         attempt: attempt.attempt,
         timestamp: attempt.timestamp,
         error: attempt.error,
         duration: 0,
       }));
+    }
+
+    const effectiveIdempotencyKey = providedIdempotencyKey ?? retryIdempotencyKey;
+    if (effectiveIdempotencyKey) {
+      nodeExecution.metadata.idempotencyKey = effectiveIdempotencyKey;
+      const cached = await this.getCachedNodeResult(executionId, node.id, effectiveIdempotencyKey);
+      if (cached) {
+        nodeExecution.metadata.cacheHit = true;
+        if (cached.requestHash) {
+          nodeExecution.metadata.requestHash = cached.requestHash;
+        }
+        nodeExecution.output = cached.output;
+      }
     }
 
     const nodeExecutions = this.nodeExecutions.get(executionId)!;
@@ -558,6 +589,14 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
         }
       }
     }
+  }
+
+  async getCachedNodeResult(
+    _executionId: string,
+    _nodeId: string,
+    _idempotencyKey: string
+  ): Promise<{ output: any; resultHash: string; requestHash?: string | null; idempotencyKey: string } | null> {
+    return null;
   }
 
   private findNodeExecution(executionId: string, nodeId: string): NodeExecution | undefined {
@@ -873,6 +912,15 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const endTime = new Date();
     const durationMs = existing.startTime ? endTime.getTime() - existing.startTime.getTime() : null;
 
+    const metadataIdempotencyKey =
+      (metadata?.idempotencyKey as string | undefined) ||
+      ((existing.metadata as any)?.idempotencyKey as string | undefined);
+    const metadataRequestHash =
+      (metadata?.requestHash as string | undefined) ||
+      ((existing.metadata as any)?.requestHash as string | undefined);
+    const metadataResultHash =
+      (metadata as any)?.resultHash || ((existing.metadata as any)?.resultHash as string | undefined);
+
     const mergedMetadata = sanitizeLogPayload(
       mergeMetadataForStorage(existing.metadata, metadata)
     );
@@ -884,18 +932,31 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       durationMs,
     });
 
+    const sanitizedOutput = sanitizeLogPayload(output);
+
     await database
       .update(nodeLogs)
       .set({
         status: 'succeeded',
         endTime,
         durationMs: durationMs ?? undefined,
-        output: sanitizeLogPayload(output),
+        output: sanitizedOutput,
         metadata: mergedMetadata,
         timeline,
         updatedAt: endTime,
       })
       .where(and(eq(nodeLogs.executionId, executionId), eq(nodeLogs.nodeId, nodeId)));
+
+    if (metadataIdempotencyKey) {
+      await this.persistNodeResult(database, {
+        executionId,
+        nodeId,
+        idempotencyKey: metadataIdempotencyKey,
+        output: sanitizedOutput,
+        requestHash: metadataRequestHash ?? null,
+        resultHash: typeof metadataResultHash === 'string' ? metadataResultHash : undefined,
+      });
+    }
 
     await this.updateExecutionAggregates(executionId);
   }
@@ -1253,6 +1314,47 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     await database.delete(executionLogs).where(lt(executionLogs.startTime, cutoff));
   }
 
+  async getCachedNodeResult(
+    executionId: string,
+    nodeId: string,
+    idempotencyKey: string
+  ): Promise<{ output: any; resultHash: string; requestHash?: string | null; idempotencyKey: string } | null> {
+    const database = this.getDb();
+    if (!database) {
+      return null;
+    }
+
+    const now = new Date();
+    const rows = await database
+      .select({
+        resultData: nodeExecutionResults.resultData,
+        resultHash: nodeExecutionResults.resultHash,
+        requestHash: nodeExecutionResults.requestHash,
+        idempotencyKey: nodeExecutionResults.idempotencyKey,
+      })
+      .from(nodeExecutionResults)
+      .where(
+        and(
+          eq(nodeExecutionResults.executionId, executionId),
+          eq(nodeExecutionResults.nodeId, nodeId),
+          eq(nodeExecutionResults.idempotencyKey, idempotencyKey),
+          gt(nodeExecutionResults.expiresAt, now)
+        )
+      )
+      .limit(1);
+
+    if (!rows[0]) {
+      return null;
+    }
+
+    return {
+      output: rows[0].resultData ?? null,
+      resultHash: rows[0].resultHash,
+      requestHash: rows[0].requestHash,
+      idempotencyKey: rows[0].idempotencyKey,
+    };
+  }
+
   private async updateExecutionAggregates(executionId: string): Promise<void> {
     const database = this.getDb();
     if (!database) return;
@@ -1473,6 +1575,62 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     };
   }
 
+  private computeResultHash(output: any): string {
+    const normalized = output === undefined ? null : output;
+    try {
+      return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    } catch (error) {
+      return createHash('sha256').update(String(normalized)).digest('hex');
+    }
+  }
+
+  private async persistNodeResult(
+    database: typeof db,
+    params: {
+      executionId: string;
+      nodeId: string;
+      idempotencyKey: string;
+      output: any;
+      requestHash?: string | null;
+      resultHash?: string;
+    }
+  ): Promise<void> {
+    try {
+      const expiresAt = new Date(Date.now() + DEFAULT_NODE_RESULT_TTL_MS);
+      const resultHash = params.resultHash ?? this.computeResultHash(params.output);
+
+      await database
+        .insert(nodeExecutionResults)
+        .values({
+          executionId: params.executionId,
+          nodeId: params.nodeId,
+          idempotencyKey: params.idempotencyKey,
+          resultHash,
+          resultData: params.output,
+          requestHash: params.requestHash ?? null,
+          expiresAt,
+        })
+        .onConflictDoUpdate({
+          target: [
+            nodeExecutionResults.executionId,
+            nodeExecutionResults.nodeId,
+            nodeExecutionResults.idempotencyKey,
+          ],
+          set: {
+            resultHash,
+            resultData: params.output,
+            requestHash: params.requestHash ?? null,
+            expiresAt,
+          },
+        });
+    } catch (error) {
+      console.warn(
+        `⚠️ Failed to persist durable node result for ${params.executionId}:${params.nodeId}`,
+        error
+      );
+    }
+  }
+
   private resolveConnectorId(node: GraphNode): string | undefined {
     const data = node.data || {};
     const metadata = node.metadata || {};
@@ -1585,6 +1743,19 @@ class RunExecutionManager {
 
   async cleanup(maxAge?: number): Promise<void> {
     await this.store.cleanup(maxAge);
+  }
+
+  async getCachedNodeResult(
+    executionId: string,
+    nodeId: string,
+    idempotencyKey: string
+  ): Promise<{
+    output: any;
+    resultHash: string;
+    requestHash?: string | null;
+    idempotencyKey: string;
+  } | null> {
+    return this.store.getCachedNodeResult(executionId, nodeId, idempotencyKey);
   }
 }
 

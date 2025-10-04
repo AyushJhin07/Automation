@@ -15,7 +15,15 @@ const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface NodeExecutionResultStore {
   find(params: { executionId: string; nodeId: string; idempotencyKey: string; now: Date }): Promise<NodeExecutionResultRow | undefined>;
-  upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void>;
+  upsert(record: {
+    executionId: string;
+    nodeId: string;
+    idempotencyKey: string;
+    resultHash: string;
+    resultData: any;
+    expiresAt: Date;
+    requestHash?: string | null;
+  }): Promise<void>;
   deleteExpired(now: Date): Promise<number>;
   countActive(now: Date): Promise<number>;
 }
@@ -43,7 +51,15 @@ class InMemoryNodeExecutionResultStore implements NodeExecutionResultStore {
     return { ...record };
   }
 
-  async upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void> {
+  async upsert(record: {
+    executionId: string;
+    nodeId: string;
+    idempotencyKey: string;
+    resultHash: string;
+    resultData: any;
+    expiresAt: Date;
+    requestHash?: string | null;
+  }): Promise<void> {
     const key = this.getKey(record.executionId, record.nodeId, record.idempotencyKey);
     const existing = this.store.get(key);
 
@@ -52,6 +68,7 @@ class InMemoryNodeExecutionResultStore implements NodeExecutionResultStore {
         ...existing,
         resultHash: record.resultHash,
         resultData: record.resultData,
+        requestHash: record.requestHash ?? existing.requestHash ?? null,
         expiresAt: record.expiresAt
       });
       return;
@@ -65,6 +82,7 @@ class InMemoryNodeExecutionResultStore implements NodeExecutionResultStore {
       idempotencyKey: record.idempotencyKey,
       resultHash: record.resultHash,
       resultData: record.resultData,
+      requestHash: record.requestHash ?? null,
       createdAt,
       expiresAt: record.expiresAt
     });
@@ -121,7 +139,15 @@ class DatabaseNodeExecutionResultStore implements NodeExecutionResultStore {
     return results[0];
   }
 
-  async upsert(record: { executionId: string; nodeId: string; idempotencyKey: string; resultHash: string; resultData: any; expiresAt: Date }): Promise<void> {
+  async upsert(record: {
+    executionId: string;
+    nodeId: string;
+    idempotencyKey: string;
+    resultHash: string;
+    resultData: any;
+    expiresAt: Date;
+    requestHash?: string | null;
+  }): Promise<void> {
     const database = this.getDb();
     if (!database) {
       return this.fallback.upsert(record);
@@ -135,6 +161,7 @@ class DatabaseNodeExecutionResultStore implements NodeExecutionResultStore {
         idempotencyKey: record.idempotencyKey,
         resultHash: record.resultHash,
         resultData: record.resultData,
+        requestHash: record.requestHash ?? null,
         expiresAt: record.expiresAt
       })
       .onConflictDoUpdate({
@@ -146,6 +173,7 @@ class DatabaseNodeExecutionResultStore implements NodeExecutionResultStore {
         set: {
           resultHash: record.resultHash,
           resultData: record.resultData,
+          requestHash: record.requestHash ?? null,
           expiresAt: record.expiresAt
         }
       });
@@ -543,7 +571,8 @@ class RetryManager {
           retryExecution.nodeId,
           retryExecution.executionId,
           result,
-          precomputed
+          precomputed,
+          retryExecution.requestHash
         );
       }
 
@@ -809,7 +838,8 @@ class RetryManager {
     nodeId: string,
     executionId: string,
     result: any,
-    precomputed?: { normalized: any; hash: string }
+    precomputed?: { normalized: any; hash: string },
+    requestHash?: string | null
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.idempotencyTtlMs);
 
@@ -821,7 +851,8 @@ class RetryManager {
         idempotencyKey: key,
         resultHash: hash,
         resultData: normalized,
-        expiresAt
+        expiresAt,
+        requestHash: requestHash ?? null
       });
 
       this.markCachedKeyEstimateStale();

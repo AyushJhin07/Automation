@@ -4,6 +4,8 @@ export interface WorkflowResumeState {
   remainingNodeIds?: string[];
   nextNodeId?: string | null;
   startedAt?: string;
+  idempotencyKeys?: Record<string, string>;
+  requestHashes?: Record<string, string>;
 }
 
 export interface WorkflowTimerMetadata {
