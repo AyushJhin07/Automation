@@ -91,9 +91,15 @@ export class OAuthManager {
         clientId: process.env.ADP_CLIENT_ID || '',
         clientSecret: process.env.ADP_CLIENT_SECRET || '',
         redirectUri: this.getRedirectUri('adp'),
-        scopes: ["read","write"],
-        authUrl: 'https://api.adp.com/oauth/authorize',
-        tokenUrl: 'https://api.adp.com/oauth/token',
+        scopes: [
+          'api',
+          'hr.worker.read',
+          'hr.worker.write',
+          'payroll.payroll_processing',
+          'payroll.payroll_reports.read',
+        ],
+        authUrl: 'https://accounts.adp.com/auth/oauth/v2/authorize',
+        tokenUrl: 'https://accounts.adp.com/auth/oauth/v2/token',
       },
     });
 
