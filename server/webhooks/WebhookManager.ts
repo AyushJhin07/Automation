@@ -471,9 +471,6 @@ export class WebhookManager {
     await this.persistence.markWebhookEventProcessed(logId, { success: false, error: message });
   }
 
-    return null;
-  }
-
   private resolveEventTimestamp(headers: Record<string, string>, payload: any): Date | null {
     const lowerCaseHeaders: Record<string, string | undefined> = {};
     for (const [key, value] of Object.entries(headers)) {
