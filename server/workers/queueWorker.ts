@@ -1,7 +1,8 @@
-import type { Job, Processor, Worker, WorkerOptions } from 'bullmq';
+import type { Job, Processor, Worker } from 'bullmq';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 
 import { createWorker, type JobPayloads, type QueueName } from '../queue/index.js';
+import type { RegionalWorkerOptions } from '../queue/types.js';
 import { tracer } from '../observability/index.js';
 
 type JobPayload<Name extends QueueName> = JobPayloads[Name];
@@ -49,7 +50,7 @@ export interface QueueWorkerHeartbeatContext<Name extends QueueName, ResultType 
 }
 
 export type RegisterQueueWorkerOptions<Name extends QueueName, ResultType = unknown> =
-  Omit<WorkerOptions<JobPayload<Name>, ResultType, Name>, 'group'> & {
+  Omit<RegionalWorkerOptions<Name, ResultType>, 'group'> & {
     tenantConcurrency?: number;
     resolveTenantId?: TenantResolver<Name, ResultType>;
     heartbeatIntervalMs?: number;
@@ -108,7 +109,7 @@ export function registerQueueWorker<Name extends QueueName, ResultType = unknown
       : Math.max(resolvedLockDuration * DEFAULT_HEARTBEAT_TIMEOUT_FACTOR, resolvedHeartbeatInterval * 2)
   );
 
-  const finalOptions: WorkerOptions<JobPayload<Name>, ResultType, Name> = {
+  const finalOptions: RegionalWorkerOptions<Name, ResultType> = {
     ...workerOptions,
     concurrency: baseConcurrency,
     lockDuration: resolvedLockDuration,

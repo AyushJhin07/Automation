@@ -17,6 +17,7 @@ import { ExportResultCode, hrTimeToMilliseconds, type ExportResult } from '@open
 
 import pkg from '../../package.json' assert { type: 'json' };
 import { env } from '../env';
+import type { OrganizationRegion } from '../database/schema.js';
 import type { QueueJobCounts, QueueName } from '../queue/index.js';
 
 type MetricAttributes = Record<string, string | number | boolean>;
@@ -147,6 +148,9 @@ const connectorRateResetGauge = meter.createObservableGauge('connector_rate_budg
   unit: 's',
 });
 const latestRateBudgets = new Map<string, RateBudgetSnapshot>();
+const crossRegionViolationCounter = meter.createCounter('cross_region_violation_total', {
+  description: 'Counts occurrences where a request was routed to the wrong region',
+});
 
 meter.addBatchObservableCallback((observableResult) => {
   for (const [queueName, counts] of latestQueueDepths.entries()) {
@@ -237,6 +241,26 @@ export function updateQueueDepthMetric<Name extends QueueName>(
 
   stateCounts.total = Object.values(stateCounts).reduce((sum, value) => sum + (value ?? 0), 0);
   latestQueueDepths.set(queueName, stateCounts);
+}
+
+export function recordCrossRegionViolation(context: {
+  subsystem: string;
+  expectedRegion: OrganizationRegion;
+  actualRegion: OrganizationRegion;
+  identifier?: string;
+}): void {
+  const { subsystem, expectedRegion, actualRegion, identifier } = context;
+  crossRegionViolationCounter.add(1, {
+    subsystem,
+    expected_region: expectedRegion,
+    actual_region: actualRegion,
+    identifier: identifier ?? 'unknown',
+  });
+
+  const details = identifier ? ` (identifier=${identifier})` : '';
+  console.error(
+    `🚨 Cross-region violation detected in ${subsystem}${details}: expected ${expectedRegion}, received ${actualRegion}`
+  );
 }
 
 export function updateConnectorRateBudgetMetric(snapshot: RateBudgetSnapshot): void {

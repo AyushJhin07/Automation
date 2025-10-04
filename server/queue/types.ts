@@ -66,3 +66,17 @@ export type {
   Worker,
   WorkerOptions,
 };
+
+export interface RegionalQueueOptions<Name extends QueueName, ResultType = unknown>
+  extends QueueOptions<JobPayload<Name>, ResultType, Name> {
+  region?: OrganizationRegion;
+}
+
+export interface RegionalWorkerOptions<Name extends QueueName, ResultType = unknown>
+  extends WorkerOptions<JobPayload<Name>, ResultType, Name> {
+  region?: OrganizationRegion;
+}
+
+export interface RegionalQueueEventsOptions extends QueueEventsOptions {
+  region?: OrganizationRegion;
+}
