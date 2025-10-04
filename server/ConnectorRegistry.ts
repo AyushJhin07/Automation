@@ -81,6 +81,12 @@ interface ConnectorReleaseMetadata {
   };
 }
 
+interface ConnectorLifecycleFlags {
+  alpha: boolean;
+  beta: boolean;
+  stable: boolean;
+}
+
 interface ConnectorDefinition {
   id: string;
   name: string;
@@ -1010,6 +1016,7 @@ export class ConnectorRegistry {
       availability: ConnectorAvailability;
       version?: string;
       release?: ConnectorReleaseMetadata;
+      lifecycle: ConnectorLifecycleFlags;
     }>;
     categories: Record<string, {
       name: string;
@@ -1035,6 +1042,8 @@ export class ConnectorRegistry {
         continue;
       }
       const def = entry.definition;
+      const lifecycle: ConnectorLifecycleFlags = this.resolveLifecycle(entry);
+
       connectors[appId] = {
         name: def.name,
         category: def.category,
@@ -1044,6 +1053,7 @@ export class ConnectorRegistry {
         availability: entry.availability,
         version: def.version ?? def.release?.semver,
         release: def.release,
+        lifecycle,
       };
 
       const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {
@@ -1082,6 +1092,23 @@ export class ConnectorRegistry {
     }
 
     return { connectors, categories };
+  }
+
+  private resolveLifecycle(entry: ConnectorRegistryEntry): ConnectorLifecycleFlags {
+    const release = entry.definition.release;
+    const status = release?.status;
+
+    const alpha = status === 'alpha';
+    const beta = status === 'beta' || release?.isBeta === true;
+
+    const stableFromRelease = status === 'stable';
+    const stableFromAvailability = !status && entry.availability === 'stable' && !beta && !alpha;
+
+    return {
+      alpha,
+      beta,
+      stable: Boolean(stableFromRelease || stableFromAvailability),
+    };
   }
 
   private resolveAvailability(
