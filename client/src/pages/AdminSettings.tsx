@@ -7,6 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Settings,
   Key,
@@ -17,11 +33,85 @@ import {
   AlertCircle,
   Activity,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 import ConnectionManager from '@/components/connections/ConnectionManager';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+
+type ConnectorLifecycleStatus = 'ga' | 'beta' | 'deprecated' | 'sunset';
+
+interface ConnectorLifecycleRow {
+  id: string;
+  slug: string;
+  name: string;
+  version: string;
+  semanticVersion: string;
+  lifecycleStatus: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartAt: string | null;
+  betaEndAt: string | null;
+  deprecationStartAt: string | null;
+  sunsetAt: string | null;
+  updating?: boolean;
+}
+
+const LIFECYCLE_OPTIONS: ConnectorLifecycleStatus[] = ['ga', 'beta', 'deprecated', 'sunset'];
+
+const LIFECYCLE_LABELS: Record<ConnectorLifecycleStatus, string> = {
+  ga: 'General Availability',
+  beta: 'Beta',
+  deprecated: 'Deprecated',
+  sunset: 'Sunset Scheduled',
+};
+
+const formatDateForInput = (value: string | null) => (value ? value.slice(0, 10) : '');
+
+const formatDateForBadge = (value: string | null) => {
+  if (!value) {
+    return '';
+  }
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return value;
+  }
+};
+
+const normalizeConnectorLifecycle = (item: any): ConnectorLifecycleRow => {
+  const coerceStatus = (status: any): ConnectorLifecycleStatus => {
+    const normalized = String(status ?? '').toLowerCase();
+    return LIFECYCLE_OPTIONS.includes(normalized as ConnectorLifecycleStatus)
+      ? (normalized as ConnectorLifecycleStatus)
+      : 'ga';
+  };
+
+  const status = coerceStatus(item.lifecycleStatus ?? (item.isBeta ? 'beta' : 'ga'));
+  const version = typeof item.version === 'string' && item.version ? item.version : '1.0.0';
+  const semanticVersion = typeof item.semanticVersion === 'string' && item.semanticVersion
+    ? item.semanticVersion
+    : version;
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    version,
+    semanticVersion,
+    lifecycleStatus: status,
+    isBeta: Boolean(item.isBeta ?? status === 'beta'),
+    betaStartAt: item.betaStartAt ?? null,
+    betaEndAt: item.betaEndAt ?? null,
+    deprecationStartAt: item.deprecationStartAt ?? null,
+    sunsetAt: item.sunsetAt ?? null,
+    updating: false,
+  };
+};
 
 export default function AdminSettings() {
   const [apiKeys, setApiKeys] = useState({
@@ -48,6 +138,8 @@ export default function AdminSettings() {
     concurrentExecutions: 0,
     executionsInCurrentWindow: 0
   });
+  const [connectorLifecycle, setConnectorLifecycle] = useState<ConnectorLifecycleRow[]>([]);
+  const [connectorLifecycleLoading, setConnectorLifecycleLoading] = useState(false);
 
   const { authFetch, activeOrganizationId } = useAuthStore((state) => ({
     authFetch: state.authFetch,
@@ -192,6 +284,85 @@ export default function AdminSettings() {
       ...prev,
       [provider]: !prev[provider]
     }));
+  };
+
+  const loadConnectorLifecycle = async () => {
+    setConnectorLifecycleLoading(true);
+    try {
+      const response = await authFetch('/api/admin/connectors/lifecycle');
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to load connector lifecycle');
+      }
+
+      const rows = Array.isArray(data.data)
+        ? data.data.map(normalizeConnectorLifecycle)
+        : [];
+      setConnectorLifecycle(rows);
+    } catch (error: any) {
+      console.error('Failed to load connector lifecycle:', error);
+      toast.error(error?.message || 'Failed to load connector lifecycle');
+    } finally {
+      setConnectorLifecycleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConnectorLifecycle();
+  }, [authFetch]);
+
+  const toIsoOrNull = (value: string): string | null => {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString();
+  };
+
+  const updateConnectorLifecycle = async (slug: string, updates: Partial<ConnectorLifecycleRow>) => {
+    if (!slug) {
+      return;
+    }
+
+    let previous: ConnectorLifecycleRow | undefined;
+    setConnectorLifecycle(prev => prev.map((connector) => {
+      if (connector.slug !== slug) {
+        return connector;
+      }
+      previous = { ...connector };
+      return { ...connector, ...updates, updating: true };
+    }));
+
+    try {
+      const response = await authFetch(`/api/admin/connectors/${slug}/lifecycle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || 'Failed to update connector lifecycle');
+      }
+
+      const normalized = normalizeConnectorLifecycle(data.data);
+      setConnectorLifecycle(prev => prev.map((connector) => (connector.slug === slug ? normalized : connector)));
+      toast.success(`Updated ${normalized.name}`);
+    } catch (error: any) {
+      console.error('Failed to update connector lifecycle:', error);
+      toast.error(error?.message || 'Failed to update connector lifecycle');
+      if (previous) {
+        setConnectorLifecycle(prev => prev.map((connector) => (
+          connector.slug === slug
+            ? { ...previous!, updating: false }
+            : connector
+        )));
+      } else {
+        loadConnectorLifecycle();
+      }
+    }
   };
 
   return (
@@ -502,6 +673,204 @@ export default function AdminSettings() {
                   💰 <strong>Cost Savings</strong>: Using Gemini Pro saves ~95% vs GPT-4 while maintaining quality
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  Connector Lifecycle Management
+                </CardTitle>
+                <Badge variant="outline" className="text-xs">
+                  {connectorLifecycle.length} connectors
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Mark beta rollouts, plan deprecations, and keep semantic versions aligned with connector releases.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {connectorLifecycleLoading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading connector metadata…
+                </div>
+              ) : connectorLifecycle.length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  No connectors found. Seed connector definitions to manage lifecycle.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[220px]">Connector</TableHead>
+                        <TableHead className="min-w-[140px]">Version</TableHead>
+                        <TableHead className="min-w-[160px]">Status</TableHead>
+                        <TableHead className="min-w-[260px]">Beta Program</TableHead>
+                        <TableHead className="min-w-[260px]">Deprecation &amp; Sunset</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {connectorLifecycle.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm text-gray-900">{row.name}</span>
+                                {row.updating && (
+                                  <Badge className="flex items-center gap-1 bg-blue-100 text-blue-700 border-blue-200 text-[10px] uppercase tracking-wide">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Saving
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span>{row.slug}</span>
+                                <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px]">
+                                  {LIFECYCLE_LABELS[row.lifecycleStatus]}
+                                </Badge>
+                                {row.lifecycleStatus === 'beta' && (
+                                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">Beta</Badge>
+                                )}
+                                {row.lifecycleStatus === 'deprecated' && (
+                                  <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">Deprecated</Badge>
+                                )}
+                                {row.lifecycleStatus === 'sunset' && row.sunsetAt && (
+                                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px]">
+                                    Sunsets {formatDateForBadge(row.sunsetAt)}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-700">
+                                v{row.semanticVersion}
+                              </Badge>
+                              {row.version && row.version !== row.semanticVersion && (
+                                <Badge variant="outline" className="text-[10px] px-2 py-0.5">
+                                  schema {row.version}
+                                </Badge>
+                              )}
+                              {row.sunsetAt && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  Sunset {formatDateForBadge(row.sunsetAt)}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={row.lifecycleStatus}
+                              onValueChange={(value) =>
+                                updateConnectorLifecycle(row.slug, {
+                                  lifecycleStatus: value as ConnectorLifecycleStatus,
+                                  isBeta: value === 'beta',
+                                })
+                              }
+                              disabled={row.updating}
+                            >
+                              <SelectTrigger className="w-[180px]" disabled={row.updating}>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {LIFECYCLE_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {LIFECYCLE_LABELS[option]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={row.isBeta}
+                                  onCheckedChange={(checked) =>
+                                    updateConnectorLifecycle(row.slug, {
+                                      isBeta: checked,
+                                      lifecycleStatus:
+                                        checked
+                                          ? 'beta'
+                                          : row.lifecycleStatus === 'beta'
+                                            ? 'ga'
+                                            : row.lifecycleStatus,
+                                    })
+                                  }
+                                  disabled={row.updating}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {row.isBeta ? 'Beta enabled' : 'Beta disabled'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  type="date"
+                                  value={formatDateForInput(row.betaStartAt)}
+                                  onChange={(event) =>
+                                    updateConnectorLifecycle(row.slug, {
+                                      betaStartAt: toIsoOrNull(event.target.value),
+                                    })
+                                  }
+                                  disabled={row.updating}
+                                />
+                                <Input
+                                  type="date"
+                                  value={formatDateForInput(row.betaEndAt)}
+                                  onChange={(event) =>
+                                    updateConnectorLifecycle(row.slug, {
+                                      betaEndAt: toIsoOrNull(event.target.value),
+                                    })
+                                  }
+                                  disabled={row.updating}
+                                />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">Define beta invite window</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                type="date"
+                                value={formatDateForInput(row.deprecationStartAt)}
+                                onChange={(event) =>
+                                  updateConnectorLifecycle(row.slug, {
+                                    deprecationStartAt: toIsoOrNull(event.target.value),
+                                  })
+                                }
+                                disabled={row.updating}
+                              />
+                              <Input
+                                type="date"
+                                value={formatDateForInput(row.sunsetAt)}
+                                onChange={(event) =>
+                                  updateConnectorLifecycle(row.slug, {
+                                    sunsetAt: toIsoOrNull(event.target.value),
+                                  })
+                                }
+                                disabled={row.updating}
+                              />
+                            </div>
+                            <div className="mt-1 space-y-1 text-[10px] text-muted-foreground">
+                              {row.deprecationStartAt && (
+                                <div>Deprecates {formatDateForBadge(row.deprecationStartAt)}</div>
+                              )}
+                              {row.sunsetAt && (
+                                <div>Sunsets {formatDateForBadge(row.sunsetAt)}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -54,7 +54,9 @@
             "description": "Host pattern to limit execution"
           }
         },
-        "required": ["job_template_id"],
+        "required": [
+          "job_template_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -71,7 +73,9 @@
             "description": "Job ID"
           }
         },
-        "required": ["job_id"],
+        "required": [
+          "job_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -96,7 +100,9 @@
             "description": "Organization ID"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -121,7 +127,10 @@
             "description": "Host variables"
           }
         },
-        "required": ["inventory_id", "name"],
+        "required": [
+          "inventory_id",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -150,7 +159,9 @@
             "description": "Job template ID"
           }
         },
-        "required": ["job_template_id"],
+        "required": [
+          "job_template_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -182,7 +193,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["successful", "failed", "error", "canceled"],
+            "enum": [
+              "successful",
+              "failed",
+              "error",
+              "canceled"
+            ],
             "description": "Filter by job status"
           }
         },
@@ -207,5 +223,20 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

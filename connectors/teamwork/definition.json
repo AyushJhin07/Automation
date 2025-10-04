@@ -66,13 +66,20 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "archived", "template"],
+            "enum": [
+              "active",
+              "archived",
+              "template"
+            ],
             "default": "active",
             "description": "Project status"
           },
           "privacy": {
             "type": "string",
-            "enum": ["open", "private"],
+            "enum": [
+              "open",
+              "private"
+            ],
             "default": "open",
             "description": "Project privacy setting"
           },
@@ -81,7 +88,9 @@
             "description": "Comma-separated list of tags"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -128,12 +137,19 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "archived", "template"],
+            "enum": [
+              "active",
+              "archived",
+              "template"
+            ],
             "description": "Project status"
           },
           "privacy": {
             "type": "string",
-            "enum": ["open", "private"],
+            "enum": [
+              "open",
+              "private"
+            ],
             "description": "Project privacy setting"
           },
           "tags": {
@@ -141,7 +157,9 @@
             "description": "Comma-separated list of tags"
           }
         },
-        "required": ["project_id"],
+        "required": [
+          "project_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,7 +175,9 @@
             "description": "Project ID"
           }
         },
-        "required": ["project_id"],
+        "required": [
+          "project_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -170,7 +190,12 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["active", "archived", "template", "all"],
+            "enum": [
+              "active",
+              "archived",
+              "template",
+              "all"
+            ],
             "default": "active",
             "description": "Filter by project status"
           },
@@ -244,7 +269,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "default": "medium",
             "description": "Task priority"
           },
@@ -272,7 +301,10 @@
             "description": "Whether the task is private"
           }
         },
-        "required": ["project_id", "content"],
+        "required": [
+          "project_id",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -301,7 +333,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "description": "Task priority"
           },
           "due_date": {
@@ -331,7 +367,9 @@
             "description": "Whether the task is completed"
           }
         },
-        "required": ["task_id"],
+        "required": [
+          "task_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -347,7 +385,9 @@
             "description": "Task ID"
           }
         },
-        "required": ["task_id"],
+        "required": [
+          "task_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -376,7 +416,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "description": "Filter by priority"
           },
           "due_date_from": {
@@ -467,7 +511,13 @@
             "description": "Comma-separated list of tags"
           }
         },
-        "required": ["project_id", "person_id", "description", "hours", "date"],
+        "required": [
+          "project_id",
+          "person_id",
+          "description",
+          "hours",
+          "date"
+        ],
         "additionalProperties": false
       }
     },
@@ -483,7 +533,9 @@
             "description": "Time entry ID"
           }
         },
-        "required": ["time_entry_id"],
+        "required": [
+          "time_entry_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -581,7 +633,10 @@
             "description": "Comma-separated list of tags"
           }
         },
-        "required": ["project_id", "title"],
+        "required": [
+          "project_id",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -615,7 +670,9 @@
             "description": "Filter milestones with deadline to (YYYY-MM-DD)"
           }
         },
-        "required": ["project_id"],
+        "required": [
+          "project_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -644,19 +701,45 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "project_id": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "company_id": {"type": "string"},
-          "category_id": {"type": "string"},
-          "start_date": {"type": "string"},
-          "end_date": {"type": "string"},
-          "status": {"type": "string"},
-          "privacy": {"type": "string"},
-          "created_at": {"type": "string"},
-          "created_by": {"type": "string"},
-          "budget": {"type": "number"},
-          "tags": {"type": "string"}
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "company_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "privacy": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "string"
+          }
         }
       }
     },
@@ -678,7 +761,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "description": "Filter by priority"
           }
         },
@@ -688,19 +775,45 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "task_id": {"type": "string"},
-          "project_id": {"type": "string"},
-          "content": {"type": "string"},
-          "description": {"type": "string"},
-          "responsible_party_id": {"type": "string"},
-          "task_list_id": {"type": "string"},
-          "priority": {"type": "string"},
-          "due_date": {"type": "string"},
-          "start_date": {"type": "string"},
-          "estimated_minutes": {"type": "number"},
-          "created_at": {"type": "string"},
-          "created_by": {"type": "string"},
-          "tags": {"type": "string"}
+          "task_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "responsible_party_id": {
+            "type": "string"
+          },
+          "task_list_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "estimated_minutes": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "string"
+          }
         }
       }
     },
@@ -722,7 +835,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"],
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
             "description": "Filter by priority"
           }
         },
@@ -732,14 +849,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "task_id": {"type": "string"},
-          "project_id": {"type": "string"},
-          "content": {"type": "string"},
-          "responsible_party_id": {"type": "string"},
-          "priority": {"type": "string"},
-          "due_date": {"type": "string"},
-          "completed_at": {"type": "string"},
-          "completed_by": {"type": "string"}
+          "task_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "responsible_party_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "completed_by": {
+            "type": "string"
+          }
         }
       }
     },
@@ -770,18 +903,42 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "time_entry_id": {"type": "string"},
-          "project_id": {"type": "string"},
-          "task_id": {"type": "string"},
-          "person_id": {"type": "string"},
-          "description": {"type": "string"},
-          "hours": {"type": "number"},
-          "minutes": {"type": "number"},
-          "date": {"type": "string"},
-          "time": {"type": "string"},
-          "is_billable": {"type": "boolean"},
-          "created_at": {"type": "string"},
-          "tags": {"type": "string"}
+          "time_entry_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "person_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "number"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "is_billable": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "string"
+          }
         }
       }
     }
@@ -789,5 +946,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/authenticate.json"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

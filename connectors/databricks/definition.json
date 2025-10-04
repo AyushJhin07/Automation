@@ -55,7 +55,9 @@
             "description": "Cluster ID"
           }
         },
-        "required": ["cluster_id"],
+        "required": [
+          "cluster_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -71,7 +73,9 @@
             "description": "Cluster ID to start"
           }
         },
-        "required": ["cluster_id"],
+        "required": [
+          "cluster_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -87,7 +91,9 @@
             "description": "Cluster ID to stop"
           }
         },
-        "required": ["cluster_id"],
+        "required": [
+          "cluster_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -105,9 +111,15 @@
           "new_cluster": {
             "type": "object",
             "properties": {
-              "spark_version": {"type": "string"},
-              "node_type_id": {"type": "string"},
-              "num_workers": {"type": "number"}
+              "spark_version": {
+                "type": "string"
+              },
+              "node_type_id": {
+                "type": "string"
+              },
+              "num_workers": {
+                "type": "number"
+              }
             },
             "description": "New cluster configuration"
           },
@@ -118,31 +130,54 @@
           "notebook_task": {
             "type": "object",
             "properties": {
-              "notebook_path": {"type": "string"},
-              "base_parameters": {"type": "object"}
+              "notebook_path": {
+                "type": "string"
+              },
+              "base_parameters": {
+                "type": "object"
+              }
             },
             "description": "Notebook task configuration"
           },
           "spark_jar_task": {
             "type": "object",
             "properties": {
-              "main_class_name": {"type": "string"},
-              "parameters": {"type": "array", "items": {"type": "string"}}
+              "main_class_name": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "description": "Spark JAR task configuration"
           },
           "spark_python_task": {
             "type": "object",
             "properties": {
-              "python_file": {"type": "string"},
-              "parameters": {"type": "array", "items": {"type": "string"}}
+              "python_file": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "description": "Spark Python task configuration"
           },
           "spark_submit_task": {
             "type": "object",
             "properties": {
-              "parameters": {"type": "array", "items": {"type": "string"}}
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "description": "Spark submit task configuration"
           },
@@ -175,7 +210,9 @@
             "description": "Include run history"
           }
         },
-        "required": ["run_id"],
+        "required": [
+          "run_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,7 +228,9 @@
             "description": "Run ID to cancel"
           }
         },
-        "required": ["run_id"],
+        "required": [
+          "run_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -251,15 +290,32 @@
           },
           "libraries": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Job libraries"
           },
           "email_notifications": {
             "type": "object",
             "properties": {
-              "on_start": {"type": "array", "items": {"type": "string"}},
-              "on_success": {"type": "array", "items": {"type": "string"}},
-              "on_failure": {"type": "array", "items": {"type": "string"}}
+              "on_start": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "on_success": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "on_failure": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "description": "Email notification settings"
           },
@@ -282,8 +338,12 @@
           "schedule": {
             "type": "object",
             "properties": {
-              "quartz_cron_expression": {"type": "string"},
-              "timezone_id": {"type": "string"}
+              "quartz_cron_expression": {
+                "type": "string"
+              },
+              "timezone_id": {
+                "type": "string"
+              }
             },
             "description": "Job schedule configuration"
           },
@@ -317,10 +377,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "run_id": {"type": "number"},
-          "job_id": {"type": "number"},
-          "run_name": {"type": "string"},
-          "state": {"type": "object"}
+          "run_id": {
+            "type": "number"
+          },
+          "job_id": {
+            "type": "number"
+          },
+          "run_name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "object"
+          }
         }
       }
     },
@@ -338,9 +406,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "cluster_id": {"type": "string"},
-          "cluster_name": {"type": "string"},
-          "state": {"type": "string"}
+          "cluster_id": {
+            "type": "string"
+          },
+          "cluster_name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
         }
       }
     }
@@ -348,5 +422,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/clusters/list"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

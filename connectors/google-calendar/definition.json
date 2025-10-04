@@ -64,18 +64,34 @@
           "start": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Start time (ISO 8601 format)"
           },
           "end": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "End time (ISO 8601 format)"
           },
@@ -84,29 +100,48 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"},
-                "optional": {"type": "boolean"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "optional": {
+                  "type": "boolean"
+                }
               }
             },
             "description": "Event attendees"
           },
           "recurrence": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Recurrence rules (RRULE format)"
           },
           "reminders": {
             "type": "object",
             "properties": {
-              "useDefault": {"type": "boolean"},
+              "useDefault": {
+                "type": "boolean"
+              },
               "overrides": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "method": {"type": "string", "enum": ["email", "popup"]},
-                    "minutes": {"type": "number"}
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "email",
+                        "popup"
+                      ]
+                    },
+                    "minutes": {
+                      "type": "number"
+                    }
                   }
                 }
               }
@@ -115,11 +150,20 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["default", "public", "private", "confidential"],
+            "enum": [
+              "default",
+              "public",
+              "private",
+              "confidential"
+            ],
             "description": "Event visibility"
           }
         },
-        "required": ["summary", "start", "end"],
+        "required": [
+          "summary",
+          "start",
+          "end"
+        ],
         "additionalProperties": false
       }
     },
@@ -156,18 +200,34 @@
           "start": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Start time"
           },
           "end": {
             "type": "object",
             "properties": {
-              "dateTime": {"type": "string", "format": "date-time"},
-              "date": {"type": "string", "format": "date"},
-              "timeZone": {"type": "string"}
+              "dateTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "End time"
           },
@@ -176,14 +236,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "displayName": {"type": "string"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "displayName": {
+                  "type": "string"
+                }
               }
             },
             "description": "Event attendees"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -206,7 +273,9 @@
             "description": "Event ID to retrieve"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -242,7 +311,10 @@
           },
           "orderBy": {
             "type": "string",
-            "enum": ["startTime", "updated"],
+            "enum": [
+              "startTime",
+              "updated"
+            ],
             "description": "Sort order"
           },
           "q": {
@@ -279,12 +351,18 @@
           },
           "sendUpdates": {
             "type": "string",
-            "enum": ["all", "externalOnly", "none"],
+            "enum": [
+              "all",
+              "externalOnly",
+              "none"
+            ],
             "default": "none",
             "description": "Send updates to attendees"
           }
         },
-        "required": ["eventId"],
+        "required": [
+          "eventId"
+        ],
         "additionalProperties": false
       }
     },
@@ -334,7 +412,9 @@
             "description": "Calendar time zone"
           }
         },
-        "required": ["summary"],
+        "required": [
+          "summary"
+        ],
         "additionalProperties": false
       }
     },
@@ -362,7 +442,9 @@
             "description": "Calendar time zone"
           }
         },
-        "required": ["calendarId"],
+        "required": [
+          "calendarId"
+        ],
         "additionalProperties": false
       }
     },
@@ -390,13 +472,19 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"}
+                "id": {
+                  "type": "string"
+                }
               }
             },
             "description": "Calendars to query"
           }
         },
-        "required": ["timeMin", "timeMax", "items"],
+        "required": [
+          "timeMin",
+          "timeMax",
+          "items"
+        ],
         "additionalProperties": false
       }
     },
@@ -420,12 +508,18 @@
           },
           "sendUpdates": {
             "type": "string",
-            "enum": ["all", "externalOnly", "none"],
+            "enum": [
+              "all",
+              "externalOnly",
+              "none"
+            ],
             "default": "none",
             "description": "Send updates to attendees"
           }
         },
-        "required": ["text"],
+        "required": [
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -457,7 +551,9 @@
             "description": "Webhook callback URL"
           }
         },
-        "required": ["address"],
+        "required": [
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -479,7 +575,10 @@
             "description": "Watched resource identifier"
           }
         },
-        "required": ["id", "resourceId"],
+        "required": [
+          "id",
+          "resourceId"
+        ],
         "additionalProperties": false
       }
     }
@@ -504,15 +603,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "description": {"type": "string"},
-          "location": {"type": "string"},
-          "start": {"type": "object"},
-          "end": {"type": "object"},
-          "attendees": {"type": "array"},
-          "creator": {"type": "object"},
-          "organizer": {"type": "object"}
+          "eventId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "start": {
+            "type": "object"
+          },
+          "end": {
+            "type": "object"
+          },
+          "attendees": {
+            "type": "array"
+          },
+          "creator": {
+            "type": "object"
+          },
+          "organizer": {
+            "type": "object"
+          }
         }
       }
     },
@@ -535,10 +652,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "updated": {"type": "string"},
-          "sequence": {"type": "number"}
+          "eventId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "updated": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          }
         }
       }
     },
@@ -566,11 +691,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventId": {"type": "string"},
-          "summary": {"type": "string"},
-          "start": {"type": "object"},
-          "location": {"type": "string"},
-          "attendees": {"type": "array"}
+          "eventId": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "start": {
+            "type": "object"
+          },
+          "location": {
+            "type": "string"
+          },
+          "attendees": {
+            "type": "array"
+          }
         }
       }
     }
@@ -578,6 +713,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me/calendarList"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }
-

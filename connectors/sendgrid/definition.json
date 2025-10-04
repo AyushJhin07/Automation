@@ -44,10 +44,17 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "email": {"type": "string", "format": "email"},
-                      "name": {"type": "string"}
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
                     },
-                    "required": ["email"],
+                    "required": [
+                      "email"
+                    ],
                     "additionalProperties": false
                   }
                 },
@@ -56,8 +63,13 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "email": {"type": "string", "format": "email"},
-                      "name": {"type": "string"}
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
                     },
                     "additionalProperties": false
                   }
@@ -67,37 +79,68 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "email": {"type": "string", "format": "email"},
-                      "name": {"type": "string"}
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
                     },
                     "additionalProperties": false
                   }
                 },
-                "subject": {"type": "string"},
-                "headers": {"type": "object"},
-                "substitutions": {"type": "object"},
-                "dynamic_template_data": {"type": "object"},
-                "custom_args": {"type": "object"},
-                "send_at": {"type": "number"}
+                "subject": {
+                  "type": "string"
+                },
+                "headers": {
+                  "type": "object"
+                },
+                "substitutions": {
+                  "type": "object"
+                },
+                "dynamic_template_data": {
+                  "type": "object"
+                },
+                "custom_args": {
+                  "type": "object"
+                },
+                "send_at": {
+                  "type": "number"
+                }
               },
-              "required": ["to"],
+              "required": [
+                "to"
+              ],
               "additionalProperties": false
             }
           },
           "from": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "name": {"type": "string"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
             },
-            "required": ["email"],
+            "required": [
+              "email"
+            ],
             "additionalProperties": false
           },
           "reply_to": {
             "type": "object",
             "properties": {
-              "email": {"type": "string", "format": "email"},
-              "name": {"type": "string"}
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
@@ -106,8 +149,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "name": {"type": "string"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "name": {
+                  "type": "string"
+                }
               },
               "additionalProperties": false
             }
@@ -121,10 +169,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "type": {"type": "string", "enum": ["text/plain", "text/html"]},
-                "value": {"type": "string"}
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text/plain",
+                    "text/html"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
               },
-              "required": ["type", "value"],
+              "required": [
+                "type",
+                "value"
+              ],
               "additionalProperties": false
             }
           },
@@ -133,13 +192,30 @@
             "items": {
               "type": "object",
               "properties": {
-                "content": {"type": "string"},
-                "filename": {"type": "string"},
-                "type": {"type": "string"},
-                "disposition": {"type": "string", "enum": ["inline", "attachment"]},
-                "content_id": {"type": "string"}
+                "content": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "disposition": {
+                  "type": "string",
+                  "enum": [
+                    "inline",
+                    "attachment"
+                  ]
+                },
+                "content_id": {
+                  "type": "string"
+                }
               },
-              "required": ["content", "filename"],
+              "required": [
+                "content",
+                "filename"
+              ],
               "additionalProperties": false
             }
           },
@@ -153,7 +229,9 @@
           },
           "categories": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Categories for analytics"
           },
           "custom_args": {
@@ -171,8 +249,15 @@
           "asm": {
             "type": "object",
             "properties": {
-              "group_id": {"type": "number"},
-              "groups_to_display": {"type": "array", "items": {"type": "number"}}
+              "group_id": {
+                "type": "number"
+              },
+              "groups_to_display": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
             },
             "additionalProperties": false
           },
@@ -186,23 +271,33 @@
               "bypass_list_management": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"}
+                  "enable": {
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               },
               "footer": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"},
-                  "text": {"type": "string"},
-                  "html": {"type": "string"}
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "html": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "sandbox_mode": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"}
+                  "enable": {
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -215,38 +310,66 @@
               "click_tracking": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"},
-                  "enable_text": {"type": "boolean"}
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "enable_text": {
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               },
               "open_tracking": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"},
-                  "substitution_tag": {"type": "string"}
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "substitution_tag": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "subscription_tracking": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"},
-                  "text": {"type": "string"},
-                  "html": {"type": "string"},
-                  "substitution_tag": {"type": "string"}
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "html": {
+                    "type": "string"
+                  },
+                  "substitution_tag": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               },
               "ganalytics": {
                 "type": "object",
                 "properties": {
-                  "enable": {"type": "boolean"},
-                  "utm_source": {"type": "string"},
-                  "utm_medium": {"type": "string"},
-                  "utm_term": {"type": "string"},
-                  "utm_content": {"type": "string"},
-                  "utm_campaign": {"type": "string"}
+                  "enable": {
+                    "type": "boolean"
+                  },
+                  "utm_source": {
+                    "type": "string"
+                  },
+                  "utm_medium": {
+                    "type": "string"
+                  },
+                  "utm_term": {
+                    "type": "string"
+                  },
+                  "utm_content": {
+                    "type": "string"
+                  },
+                  "utm_campaign": {
+                    "type": "string"
+                  }
                 },
                 "additionalProperties": false
               }
@@ -254,7 +377,10 @@
             "additionalProperties": false
           }
         },
-        "required": ["personalizations", "from"],
+        "required": [
+          "personalizations",
+          "from"
+        ],
         "additionalProperties": false
       }
     },
@@ -277,7 +403,11 @@
           },
           "aggregated_by": {
             "type": "string",
-            "enum": ["day", "week", "month"],
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ],
             "description": "Aggregation period"
           },
           "limit": {
@@ -292,7 +422,9 @@
             "description": "Number of results to skip"
           }
         },
-        "required": ["start_date"],
+        "required": [
+          "start_date"
+        ],
         "additionalProperties": false
       }
     },
@@ -305,7 +437,9 @@
         "properties": {
           "list_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List IDs to add contact to"
           },
           "contacts": {
@@ -313,24 +447,51 @@
             "items": {
               "type": "object",
               "properties": {
-                "email": {"type": "string", "format": "email"},
-                "first_name": {"type": "string"},
-                "last_name": {"type": "string"},
-                "phone_number": {"type": "string"},
-                "address_line_1": {"type": "string"},
-                "address_line_2": {"type": "string"},
-                "city": {"type": "string"},
-                "state_province_region": {"type": "string"},
-                "postal_code": {"type": "string"},
-                "country": {"type": "string"},
-                "custom_fields": {"type": "object"}
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "phone_number": {
+                  "type": "string"
+                },
+                "address_line_1": {
+                  "type": "string"
+                },
+                "address_line_2": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state_province_region": {
+                  "type": "string"
+                },
+                "postal_code": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "custom_fields": {
+                  "type": "object"
+                }
               },
-              "required": ["email"],
+              "required": [
+                "email"
+              ],
               "additionalProperties": false
             }
           }
         },
-        "required": ["contacts"],
+        "required": [
+          "contacts"
+        ],
         "additionalProperties": false
       }
     },
@@ -368,7 +529,9 @@
             "description": "List name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -389,7 +552,10 @@
           },
           "emails": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Email addresses to send test to"
           },
           "sender_id": {
@@ -397,7 +563,10 @@
             "description": "Sender ID"
           }
         },
-        "required": ["template_id", "emails"],
+        "required": [
+          "template_id",
+          "emails"
+        ],
         "additionalProperties": false
       }
     }
@@ -422,19 +591,45 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "smtp-id": {"type": "string"},
-          "event": {"type": "string"},
-          "category": {"type": "array"},
-          "sg_event_id": {"type": "string"},
-          "sg_message_id": {"type": "string"},
-          "response": {"type": "string"},
-          "attempt": {"type": "string"},
-          "useragent": {"type": "string"},
-          "ip": {"type": "string"},
-          "url": {"type": "string"},
-          "asm_group_id": {"type": "number"}
+          "email": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "smtp-id": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "category": {
+            "type": "array"
+          },
+          "sg_event_id": {
+            "type": "string"
+          },
+          "sg_message_id": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string"
+          },
+          "attempt": {
+            "type": "string"
+          },
+          "useragent": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "asm_group_id": {
+            "type": "number"
+          }
         }
       }
     },
@@ -457,14 +652,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "event": {"type": "string"},
-          "category": {"type": "array"},
-          "sg_event_id": {"type": "string"},
-          "sg_message_id": {"type": "string"},
-          "useragent": {"type": "string"},
-          "ip": {"type": "string"}
+          "email": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event": {
+            "type": "string"
+          },
+          "category": {
+            "type": "array"
+          },
+          "sg_event_id": {
+            "type": "string"
+          },
+          "sg_message_id": {
+            "type": "string"
+          },
+          "useragent": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          }
         }
       }
     },
@@ -487,15 +698,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "email": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "event": {"type": "string"},
-          "category": {"type": "array"},
-          "sg_event_id": {"type": "string"},
-          "sg_message_id": {"type": "string"},
-          "useragent": {"type": "string"},
-          "ip": {"type": "string"},
-          "url": {"type": "string"}
+          "email": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "event": {
+            "type": "string"
+          },
+          "category": {
+            "type": "array"
+          },
+          "sg_event_id": {
+            "type": "string"
+          },
+          "sg_message_id": {
+            "type": "string"
+          },
+          "useragent": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
         }
       }
     }
@@ -503,5 +732,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user/account"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

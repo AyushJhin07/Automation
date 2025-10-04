@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/forms", "https://www.googleapis.com/auth/forms.responses.readonly"]
+      "scopes": [
+        "https://www.googleapis.com/auth/forms",
+        "https://www.googleapis.com/auth/forms.responses.readonly"
+      ]
     }
   },
   "baseUrl": "https://forms.googleapis.com/v1",
@@ -37,9 +40,15 @@
           "info": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "description": {"type": "string"},
-              "documentTitle": {"type": "string"}
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "documentTitle": {
+                "type": "string"
+              }
             },
             "description": "Form information"
           }
@@ -60,7 +69,9 @@
             "description": "Form ID"
           }
         },
-        "required": ["formId"],
+        "required": [
+          "formId"
+        ],
         "additionalProperties": false
       }
     },
@@ -77,7 +88,9 @@
           },
           "requests": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of batch update requests"
           },
           "includeFormInResponse": {
@@ -88,13 +101,20 @@
           "writeControl": {
             "type": "object",
             "properties": {
-              "requiredRevisionId": {"type": "string"},
-              "targetRevisionId": {"type": "string"}
+              "requiredRevisionId": {
+                "type": "string"
+              },
+              "targetRevisionId": {
+                "type": "string"
+              }
             },
             "description": "Write control settings"
           }
         },
-        "required": ["formId", "requests"],
+        "required": [
+          "formId",
+          "requests"
+        ],
         "additionalProperties": false
       }
     },
@@ -112,19 +132,33 @@
           "item": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "description": {"type": "string"},
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
               "questionItem": {
                 "type": "object",
                 "properties": {
                   "question": {
                     "type": "object",
                     "properties": {
-                      "questionId": {"type": "string"},
-                      "required": {"type": "boolean"},
-                      "choiceQuestion": {"type": "object"},
-                      "textQuestion": {"type": "object"},
-                      "scaleQuestion": {"type": "object"}
+                      "questionId": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "type": "boolean"
+                      },
+                      "choiceQuestion": {
+                        "type": "object"
+                      },
+                      "textQuestion": {
+                        "type": "object"
+                      },
+                      "scaleQuestion": {
+                        "type": "object"
+                      }
                     }
                   }
                 }
@@ -135,12 +169,17 @@
           "location": {
             "type": "object",
             "properties": {
-              "index": {"type": "number"}
+              "index": {
+                "type": "number"
+              }
             },
             "description": "Location to insert question"
           }
         },
-        "required": ["formId", "item"],
+        "required": [
+          "formId",
+          "item"
+        ],
         "additionalProperties": false
       }
     },
@@ -158,9 +197,15 @@
           "info": {
             "type": "object",
             "properties": {
-              "title": {"type": "string"},
-              "description": {"type": "string"},
-              "documentTitle": {"type": "string"}
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "documentTitle": {
+                "type": "string"
+              }
             },
             "description": "Updated form information"
           },
@@ -169,7 +214,10 @@
             "description": "Fields to update"
           }
         },
-        "required": ["formId", "info"],
+        "required": [
+          "formId",
+          "info"
+        ],
         "additionalProperties": false
       }
     },
@@ -187,12 +235,17 @@
           "location": {
             "type": "object",
             "properties": {
-              "index": {"type": "number"}
+              "index": {
+                "type": "number"
+              }
             },
             "description": "Location of item to delete"
           }
         },
-        "required": ["formId", "location"],
+        "required": [
+          "formId",
+          "location"
+        ],
         "additionalProperties": false
       }
     },
@@ -223,7 +276,9 @@
             "description": "Page token for pagination"
           }
         },
-        "required": ["formId"],
+        "required": [
+          "formId"
+        ],
         "additionalProperties": false
       }
     },
@@ -243,7 +298,10 @@
             "description": "Response ID"
           }
         },
-        "required": ["formId", "responseId"],
+        "required": [
+          "formId",
+          "responseId"
+        ],
         "additionalProperties": false
       }
     },
@@ -261,8 +319,12 @@
           "settings": {
             "type": "object",
             "properties": {
-              "quizSettings": {"type": "object"},
-              "submitSettings": {"type": "object"}
+              "quizSettings": {
+                "type": "object"
+              },
+              "submitSettings": {
+                "type": "object"
+              }
             },
             "description": "Form settings"
           },
@@ -271,7 +333,10 @@
             "description": "Fields to update"
           }
         },
-        "required": ["formId", "settings"],
+        "required": [
+          "formId",
+          "settings"
+        ],
         "additionalProperties": false
       }
     }
@@ -296,11 +361,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "formId": {"type": "string"},
-          "responseId": {"type": "string"},
-          "answers": {"type": "object"},
-          "createTime": {"type": "string"},
-          "lastSubmittedTime": {"type": "string"}
+          "formId": {
+            "type": "string"
+          },
+          "responseId": {
+            "type": "string"
+          },
+          "answers": {
+            "type": "object"
+          },
+          "createTime": {
+            "type": "string"
+          },
+          "lastSubmittedTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -318,9 +393,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "formId": {"type": "string"},
-          "info": {"type": "object"},
-          "revisionId": {"type": "string"}
+          "formId": {
+            "type": "string"
+          },
+          "info": {
+            "type": "object"
+          },
+          "revisionId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -328,5 +409,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/forms"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

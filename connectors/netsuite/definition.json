@@ -11,14 +11,17 @@
     "config": {
       "authUrl": "https://system.netsuite.com/app/login/oauth2/authorize.nl",
       "tokenUrl": "https://system.netsuite.com/app/login/oauth2/token.nl",
-      "scopes": ["restlets", "rest_webservices"]
+      "scopes": [
+        "restlets",
+        "rest_webservices"
+      ]
     }
   },
   "baseUrl": "https://{account}.suitetalk.api.netsuite.com/services/rest",
   "actions": [
     {
       "id": "test_connection",
-      "name": "Test Connection", 
+      "name": "Test Connection",
       "description": "Test the connection to NetSuite",
       "parameters": {
         "type": "object",
@@ -79,19 +82,25 @@
           "subsidiary": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "description": "Subsidiary reference"
           },
           "currency": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "description": "Currency reference"
           }
         },
-        "required": ["companyName"],
+        "required": [
+          "companyName"
+        ],
         "additionalProperties": false
       }
     },
@@ -134,7 +143,9 @@
           "entity": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"}
+              "id": {
+                "type": "string"
+              }
             },
             "description": "Customer reference"
           },
@@ -151,17 +162,25 @@
                 "item": {
                   "type": "object",
                   "properties": {
-                    "id": {"type": "string"}
+                    "id": {
+                      "type": "string"
+                    }
                   }
                 },
-                "quantity": {"type": "number"},
-                "rate": {"type": "number"}
+                "quantity": {
+                  "type": "number"
+                },
+                "rate": {
+                  "type": "number"
+                }
               }
             },
             "description": "Line items"
           }
         },
-        "required": ["entity"],
+        "required": [
+          "entity"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,9 +229,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "companyName": {"type": "string"},
-          "email": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
         }
       }
     }
@@ -220,5 +245,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/record/v1/customer"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

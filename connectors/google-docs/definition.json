@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/documents"]
+      "scopes": [
+        "https://www.googleapis.com/auth/documents"
+      ]
     }
   },
   "baseUrl": "https://docs.googleapis.com/v1",
@@ -60,7 +62,9 @@
             "description": "Include tabs content"
           }
         },
-        "required": ["documentId"],
+        "required": [
+          "documentId"
+        ],
         "additionalProperties": false
       }
     },
@@ -77,19 +81,28 @@
           },
           "requests": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Array of batch update requests"
           },
           "writeControl": {
             "type": "object",
             "properties": {
-              "requiredRevisionId": {"type": "string"},
-              "targetRevisionId": {"type": "string"}
+              "requiredRevisionId": {
+                "type": "string"
+              },
+              "targetRevisionId": {
+                "type": "string"
+              }
             },
             "description": "Write control settings"
           }
         },
-        "required": ["documentId", "requests"],
+        "required": [
+          "documentId",
+          "requests"
+        ],
         "additionalProperties": false
       }
     },
@@ -118,7 +131,10 @@
             "description": "Segment ID for tab-specific insertion"
           }
         },
-        "required": ["documentId", "text"],
+        "required": [
+          "documentId",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,8 +156,13 @@
           "containsText": {
             "type": "object",
             "properties": {
-              "text": {"type": "string"},
-              "matchCase": {"type": "boolean", "default": false}
+              "text": {
+                "type": "string"
+              },
+              "matchCase": {
+                "type": "boolean",
+                "default": false
+              }
             },
             "description": "Text to find and replace"
           },
@@ -150,7 +171,11 @@
             "description": "Tab ID for tab-specific replacement"
           }
         },
-        "required": ["documentId", "replaceText", "containsText"],
+        "required": [
+          "documentId",
+          "replaceText",
+          "containsText"
+        ],
         "additionalProperties": false
       }
     },
@@ -168,14 +193,23 @@
           "range": {
             "type": "object",
             "properties": {
-              "startIndex": {"type": "number"},
-              "endIndex": {"type": "number"},
-              "segmentId": {"type": "string"}
+              "startIndex": {
+                "type": "number"
+              },
+              "endIndex": {
+                "type": "number"
+              },
+              "segmentId": {
+                "type": "string"
+              }
             },
             "description": "Range to delete"
           }
         },
-        "required": ["documentId", "range"],
+        "required": [
+          "documentId",
+          "range"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,7 +244,11 @@
             "description": "Segment ID for tab-specific insertion"
           }
         },
-        "required": ["documentId", "rows", "columns"],
+        "required": [
+          "documentId",
+          "rows",
+          "columns"
+        ],
         "additionalProperties": false
       }
     },
@@ -244,7 +282,10 @@
             "description": "Segment ID for tab-specific insertion"
           }
         },
-        "required": ["documentId", "uri"],
+        "required": [
+          "documentId",
+          "uri"
+        ],
         "additionalProperties": false
       }
     },
@@ -262,22 +303,42 @@
           "range": {
             "type": "object",
             "properties": {
-              "startIndex": {"type": "number"},
-              "endIndex": {"type": "number"},
-              "segmentId": {"type": "string"}
+              "startIndex": {
+                "type": "number"
+              },
+              "endIndex": {
+                "type": "number"
+              },
+              "segmentId": {
+                "type": "string"
+              }
             },
             "description": "Range to style"
           },
           "textStyle": {
             "type": "object",
             "properties": {
-              "bold": {"type": "boolean"},
-              "italic": {"type": "boolean"},
-              "underline": {"type": "boolean"},
-              "strikethrough": {"type": "boolean"},
-              "fontSize": {"type": "object"},
-              "foregroundColor": {"type": "object"},
-              "backgroundColor": {"type": "object"}
+              "bold": {
+                "type": "boolean"
+              },
+              "italic": {
+                "type": "boolean"
+              },
+              "underline": {
+                "type": "boolean"
+              },
+              "strikethrough": {
+                "type": "boolean"
+              },
+              "fontSize": {
+                "type": "object"
+              },
+              "foregroundColor": {
+                "type": "object"
+              },
+              "backgroundColor": {
+                "type": "object"
+              }
             },
             "description": "Text style properties"
           },
@@ -286,7 +347,11 @@
             "description": "Fields to update"
           }
         },
-        "required": ["documentId", "range", "textStyle"],
+        "required": [
+          "documentId",
+          "range",
+          "textStyle"
+        ],
         "additionalProperties": false
       }
     }
@@ -306,10 +371,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "documentId": {"type": "string"},
-          "title": {"type": "string"},
-          "body": {"type": "object"},
-          "revisionId": {"type": "string"}
+          "documentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "object"
+          },
+          "revisionId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -332,10 +405,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "documentId": {"type": "string"},
-          "title": {"type": "string"},
-          "body": {"type": "object"},
-          "revisionId": {"type": "string"}
+          "documentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "object"
+          },
+          "revisionId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -343,5 +424,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/documents/test"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

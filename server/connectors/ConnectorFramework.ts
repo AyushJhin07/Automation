@@ -3,6 +3,17 @@ import { connectorDefinitions, db } from '../database/schema';
 import type { BaseAPIClient } from '../integrations/BaseAPIClient';
 import type { RateLimitRules } from '../integrations/RateLimiter';
 
+export type ConnectorLifecycleStatus = 'ga' | 'beta' | 'deprecated' | 'sunset';
+
+export interface ConnectorLifecycleMetadata {
+  status: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  betaStartDate?: string | null;
+  betaEndDate?: string | null;
+  deprecationStartDate?: string | null;
+  sunsetDate?: string | null;
+}
+
 export interface ConnectorDefinition {
   id: string;
   name: string;
@@ -12,6 +23,9 @@ export interface ConnectorDefinition {
   iconUrl: string;
   websiteUrl: string;
   documentationUrl: string;
+  version: string;
+  semanticVersion: string;
+  lifecycle: ConnectorLifecycleMetadata;
   
   // Technical configuration
   apiBaseUrl: string;
@@ -477,6 +491,10 @@ export class ConnectorFramework {
    */
   public async registerConnector(definition: Omit<ConnectorDefinition, 'id'>): Promise<string> {
     try {
+      const toDate = (value?: string | null) => (value ? new Date(value) : undefined);
+      const lifecycleStatus = definition.lifecycle?.status ?? (definition.lifecycle?.isBeta ? 'beta' : 'ga');
+      const isBeta = definition.lifecycle?.isBeta ?? lifecycleStatus === 'beta';
+
       const [connector] = await this.db.insert(connectorDefinitions).values({
         name: definition.name,
         slug: definition.slug,
@@ -491,6 +509,14 @@ export class ConnectorFramework {
         triggers: definition.triggers,
         actions: definition.actions,
         rateLimits: definition.rateLimits,
+        version: definition.version,
+        semanticVersion: definition.semanticVersion,
+        lifecycleStatus,
+        isBeta,
+        betaStartAt: toDate(definition.lifecycle?.betaStartDate),
+        betaEndAt: toDate(definition.lifecycle?.betaEndDate),
+        deprecationStartAt: toDate(definition.lifecycle?.deprecationStartDate),
+        sunsetAt: toDate(definition.lifecycle?.sunsetDate),
         isActive: definition.isActive,
         isVerified: false, // New connectors need verification
         popularity: 0
@@ -522,6 +548,16 @@ export class ConnectorFramework {
       iconUrl: raw.iconUrl,
       websiteUrl: raw.websiteUrl,
       documentationUrl: raw.documentationUrl,
+      version: raw.version ?? '1.0.0',
+      semanticVersion: raw.semanticVersion ?? raw.version ?? '1.0.0',
+      lifecycle: {
+        status: raw.lifecycleStatus ?? (raw.isBeta ? 'beta' : 'ga'),
+        isBeta: raw.isBeta ?? (raw.lifecycleStatus === 'beta'),
+        betaStartDate: this.normalizeDate(raw.betaStartAt),
+        betaEndDate: this.normalizeDate(raw.betaEndAt),
+        deprecationStartDate: this.normalizeDate(raw.deprecationStartAt),
+        sunsetDate: this.normalizeDate(raw.sunsetAt),
+      },
       apiBaseUrl: raw.apiBaseUrl,
       authType: raw.authType,
       authConfig: raw.authConfig || {},
@@ -571,7 +607,7 @@ export class ConnectorFramework {
 
   private addAuthenticationCode(code: string, connector: ConnectorDefinition, parameters: Record<string, any>): string {
     const authPlaceholder = '// {{AUTH_CODE}}';
-    
+
     if (!code.includes(authPlaceholder)) {
       return code;
     }
@@ -626,6 +662,25 @@ export class ConnectorFramework {
     }
 
     return code.replace(authPlaceholder, authCode);
+  }
+
+  private normalizeDate(value: any): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    }
+
+    return null;
   }
 
   private addErrorHandling(code: string, connector: ConnectorDefinition, action: ConnectorAction): string {
@@ -781,6 +836,16 @@ export class ConnectorFramework {
         iconUrl: 'https://developers.google.com/gmail/images/gmail-icon.png',
         websiteUrl: 'https://gmail.com',
         documentationUrl: 'https://developers.google.com/gmail/api',
+        version: '1.0.0',
+        semanticVersion: '1.0.0',
+        lifecycle: {
+          status: 'ga',
+          isBeta: false,
+          betaStartDate: null,
+          betaEndDate: null,
+          deprecationStartDate: null,
+          sunsetDate: null,
+        },
         apiBaseUrl: 'https://gmail.googleapis.com/gmail/v1',
         authType: 'oauth2',
         authConfig: {

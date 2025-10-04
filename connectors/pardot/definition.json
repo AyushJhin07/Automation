@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.salesforce.com/services/oauth2/authorize",
       "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
-      "scopes": ["pardot_api"]
+      "scopes": [
+        "pardot_api"
+      ]
     }
   },
   "baseUrl": "https://pi.pardot.com/api",
@@ -69,12 +71,20 @@
           },
           "sort_by": {
             "type": "string",
-            "enum": ["created_at", "id", "probability", "value"],
+            "enum": [
+              "created_at",
+              "id",
+              "probability",
+              "value"
+            ],
             "description": "Sort field"
           },
           "sort_order": {
             "type": "string",
-            "enum": ["ascending", "descending"],
+            "enum": [
+              "ascending",
+              "descending"
+            ],
             "description": "Sort order"
           }
         },
@@ -195,7 +205,9 @@
             "description": "Do not call flag"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -240,7 +252,9 @@
             "description": "Prospect score"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -310,7 +324,10 @@
             "description": "Prospect ID"
           }
         },
-        "required": ["list_id", "prospect_id"],
+        "required": [
+          "list_id",
+          "prospect_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -330,12 +347,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "email": {"type": "string"},
-          "first_name": {"type": "string"},
-          "last_name": {"type": "string"},
-          "company": {"type": "string"},
-          "created_at": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -343,5 +372,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/prospect/version/4/do/query"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

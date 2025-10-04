@@ -63,7 +63,9 @@
             "description": "Service desk ID"
           }
         },
-        "required": ["serviceDeskId"],
+        "required": [
+          "serviceDeskId"
+        ],
         "additionalProperties": false
       }
     },
@@ -96,7 +98,9 @@
             "description": "Search query to filter request types"
           }
         },
-        "required": ["serviceDeskId"],
+        "required": [
+          "serviceDeskId"
+        ],
         "additionalProperties": false
       }
     },
@@ -125,17 +129,27 @@
           },
           "requestParticipants": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "List of participant email addresses"
           },
           "channel": {
             "type": "string",
-            "enum": ["email", "portal", "api"],
+            "enum": [
+              "email",
+              "portal",
+              "api"
+            ],
             "default": "api",
             "description": "Channel through which request was created"
           }
         },
-        "required": ["serviceDeskId", "requestTypeId", "requestFieldValues"],
+        "required": [
+          "serviceDeskId",
+          "requestTypeId",
+          "requestFieldValues"
+        ],
         "additionalProperties": false
       }
     },
@@ -154,12 +168,23 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["participant", "status", "sla", "requestType", "serviceDesk", "attachment", "action", "comment"]
+              "enum": [
+                "participant",
+                "status",
+                "sla",
+                "requestType",
+                "serviceDesk",
+                "attachment",
+                "action",
+                "comment"
+              ]
             },
             "description": "Additional data to include"
           }
         },
-        "required": ["issueIdOrKey"],
+        "required": [
+          "issueIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -176,7 +201,12 @@
           },
           "requestStatus": {
             "type": "string",
-            "enum": ["OPEN", "WAITING_FOR_SUPPORT", "WAITING_FOR_CUSTOMER", "CLOSED"],
+            "enum": [
+              "OPEN",
+              "WAITING_FOR_SUPPORT",
+              "WAITING_FOR_CUSTOMER",
+              "CLOSED"
+            ],
             "description": "Request status filter"
           },
           "requestTypeId": {
@@ -185,7 +215,10 @@
           },
           "requestOwnership": {
             "type": "string",
-            "enum": ["OWNED", "PARTICIPATED"],
+            "enum": [
+              "OWNED",
+              "PARTICIPATED"
+            ],
             "description": "Request ownership filter"
           },
           "searchTerm": {
@@ -207,7 +240,9 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Additional data to include"
           }
         },
@@ -237,13 +272,20 @@
           "additionalComment": {
             "type": "object",
             "properties": {
-              "body": {"type": "string"},
-              "public": {"type": "boolean"}
+              "body": {
+                "type": "string"
+              },
+              "public": {
+                "type": "boolean"
+              }
             },
             "description": "Additional comment details"
           }
         },
-        "required": ["issueIdOrKey", "id"],
+        "required": [
+          "issueIdOrKey",
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -268,7 +310,10 @@
             "description": "Whether comment is public"
           }
         },
-        "required": ["issueIdOrKey", "body"],
+        "required": [
+          "issueIdOrKey",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -305,7 +350,9 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["issueIdOrKey"],
+        "required": [
+          "issueIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -342,7 +389,12 @@
             "description": "Comment for the attachment"
           }
         },
-        "required": ["issueIdOrKey", "serviceDeskId", "fileName", "fileContent"],
+        "required": [
+          "issueIdOrKey",
+          "serviceDeskId",
+          "fileName",
+          "fileContent"
+        ],
         "additionalProperties": false
       }
     },
@@ -371,7 +423,9 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["issueIdOrKey"],
+        "required": [
+          "issueIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -421,7 +475,10 @@
             "description": "Customer display name"
           }
         },
-        "required": ["email", "displayName"],
+        "required": [
+          "email",
+          "displayName"
+        ],
         "additionalProperties": false
       }
     },
@@ -454,7 +511,10 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["serviceDeskId", "queueId"],
+        "required": [
+          "serviceDeskId",
+          "queueId"
+        ],
         "additionalProperties": false
       }
     }
@@ -483,14 +543,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "issueKey": {"type": "string"},
-          "requestTypeId": {"type": "string"},
-          "serviceDeskId": {"type": "string"},
-          "createdDate": {"type": "string"},
-          "reporter": {"type": "object"},
-          "requestFieldValues": {"type": "object"},
-          "currentStatus": {"type": "object"}
+          "issueId": {
+            "type": "string"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "requestTypeId": {
+            "type": "string"
+          },
+          "serviceDeskId": {
+            "type": "string"
+          },
+          "createdDate": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object"
+          },
+          "requestFieldValues": {
+            "type": "object"
+          },
+          "currentStatus": {
+            "type": "object"
+          }
         }
       }
     },
@@ -508,7 +584,12 @@
           },
           "statusCategory": {
             "type": "string",
-            "enum": ["OPEN", "WAITING_FOR_SUPPORT", "WAITING_FOR_CUSTOMER", "CLOSED"],
+            "enum": [
+              "OPEN",
+              "WAITING_FOR_SUPPORT",
+              "WAITING_FOR_CUSTOMER",
+              "CLOSED"
+            ],
             "description": "Filter by status category"
           }
         },
@@ -518,12 +599,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "issueKey": {"type": "string"},
-          "currentStatus": {"type": "object"},
-          "previousStatus": {"type": "object"},
-          "transitionDate": {"type": "string"},
-          "serviceDeskId": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "currentStatus": {
+            "type": "object"
+          },
+          "previousStatus": {
+            "type": "object"
+          },
+          "transitionDate": {
+            "type": "string"
+          },
+          "serviceDeskId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -550,14 +643,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "issueKey": {"type": "string"},
-          "commentId": {"type": "string"},
-          "commentBody": {"type": "string"},
-          "isPublic": {"type": "boolean"},
-          "author": {"type": "object"},
-          "created": {"type": "string"},
-          "serviceDeskId": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "commentId": {
+            "type": "string"
+          },
+          "commentBody": {
+            "type": "string"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "author": {
+            "type": "object"
+          },
+          "created": {
+            "type": "string"
+          },
+          "serviceDeskId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -584,13 +693,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "issueKey": {"type": "string"},
-          "slaId": {"type": "string"},
-          "slaName": {"type": "string"},
-          "breachTime": {"type": "string"},
-          "remainingTime": {"type": "object"},
-          "serviceDeskId": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "slaId": {
+            "type": "string"
+          },
+          "slaName": {
+            "type": "string"
+          },
+          "breachTime": {
+            "type": "string"
+          },
+          "remainingTime": {
+            "type": "object"
+          },
+          "serviceDeskId": {
+            "type": "string"
+          }
         }
       }
     }
@@ -598,5 +721,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/info"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

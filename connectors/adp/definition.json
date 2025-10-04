@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.adp.com/auth/oauth/v2/authorize",
       "tokenUrl": "https://accounts.adp.com/auth/oauth/v2/token",
-      "scopes": ["api"]
+      "scopes": [
+        "api"
+      ]
     }
   },
   "baseUrl": "https://api.adp.com",
@@ -39,7 +41,9 @@
             "description": "Worker ID"
           }
         },
-        "required": ["worker_id"],
+        "required": [
+          "worker_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -57,8 +61,14 @@
           "workerDates": {
             "type": "object",
             "properties": {
-              "originalHireDate": {"type": "string", "format": "date"},
-              "rehireDate": {"type": "string", "format": "date"}
+              "originalHireDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "rehireDate": {
+                "type": "string",
+                "format": "date"
+              }
             },
             "description": "Worker dates"
           },
@@ -68,16 +78,26 @@
               "legalName": {
                 "type": "object",
                 "properties": {
-                  "givenName": {"type": "string"},
-                  "familyName1": {"type": "string"},
-                  "middleName": {"type": "string"}
+                  "givenName": {
+                    "type": "string"
+                  },
+                  "familyName1": {
+                    "type": "string"
+                  },
+                  "middleName": {
+                    "type": "string"
+                  }
                 }
               },
               "communication": {
                 "type": "object",
                 "properties": {
-                  "emails": {"type": "array"},
-                  "phones": {"type": "array"}
+                  "emails": {
+                    "type": "array"
+                  },
+                  "phones": {
+                    "type": "array"
+                  }
                 }
               }
             },
@@ -85,11 +105,15 @@
           },
           "workAssignments": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Work assignments"
           }
         },
-        "required": ["person"],
+        "required": [
+          "person"
+        ],
         "additionalProperties": false
       }
     },
@@ -109,7 +133,9 @@
             "description": "Updated person information"
           }
         },
-        "required": ["worker_id"],
+        "required": [
+          "worker_id"
+        ],
         "additionalProperties": false
       }
     }
@@ -129,8 +155,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "eventType": {"type": "string"},
-          "worker": {"type": "object"}
+          "eventType": {
+            "type": "string"
+          },
+          "worker": {
+            "type": "object"
+          }
         }
       }
     }
@@ -138,5 +168,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/hr/v2/workers"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/admin.directory.user", "https://www.googleapis.com/auth/admin.directory.group"]
+      "scopes": [
+        "https://www.googleapis.com/auth/admin.directory.user",
+        "https://www.googleapis.com/auth/admin.directory.group"
+      ]
     }
   },
   "baseUrl": "https://admin.googleapis.com/admin/directory/v1",
@@ -42,8 +45,12 @@
           "name": {
             "type": "object",
             "properties": {
-              "givenName": {"type": "string"},
-              "familyName": {"type": "string"}
+              "givenName": {
+                "type": "string"
+              },
+              "familyName": {
+                "type": "string"
+              }
             },
             "description": "User's name"
           },
@@ -76,7 +83,11 @@
             "description": "Recovery phone number"
           }
         },
-        "required": ["primaryEmail", "name", "password"],
+        "required": [
+          "primaryEmail",
+          "name",
+          "password"
+        ],
         "additionalProperties": false
       }
     },
@@ -93,7 +104,11 @@
           },
           "projection": {
             "type": "string",
-            "enum": ["basic", "custom", "full"],
+            "enum": [
+              "basic",
+              "custom",
+              "full"
+            ],
             "default": "full",
             "description": "Fields to include"
           },
@@ -103,12 +118,17 @@
           },
           "viewType": {
             "type": "string",
-            "enum": ["admin_view", "domain_public"],
+            "enum": [
+              "admin_view",
+              "domain_public"
+            ],
             "default": "admin_view",
             "description": "View type"
           }
         },
-        "required": ["userKey"],
+        "required": [
+          "userKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -126,8 +146,12 @@
           "name": {
             "type": "object",
             "properties": {
-              "givenName": {"type": "string"},
-              "familyName": {"type": "string"}
+              "givenName": {
+                "type": "string"
+              },
+              "familyName": {
+                "type": "string"
+              }
             },
             "description": "Updated name"
           },
@@ -148,7 +172,9 @@
             "description": "Force password change"
           }
         },
-        "required": ["userKey"],
+        "required": [
+          "userKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -164,7 +190,9 @@
             "description": "User email or ID"
           }
         },
-        "required": ["userKey"],
+        "required": [
+          "userKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -193,12 +221,19 @@
           },
           "orderBy": {
             "type": "string",
-            "enum": ["email", "familyName", "givenName"],
+            "enum": [
+              "email",
+              "familyName",
+              "givenName"
+            ],
             "description": "Sort field"
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["ASCENDING", "DESCENDING"],
+            "enum": [
+              "ASCENDING",
+              "DESCENDING"
+            ],
             "description": "Sort order"
           },
           "query": {
@@ -207,7 +242,11 @@
           },
           "projection": {
             "type": "string",
-            "enum": ["basic", "custom", "full"],
+            "enum": [
+              "basic",
+              "custom",
+              "full"
+            ],
             "default": "full",
             "description": "Fields to include"
           },
@@ -242,7 +281,10 @@
             "description": "Group description"
           }
         },
-        "required": ["email", "name"],
+        "required": [
+          "email",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,18 +306,30 @@
           },
           "role": {
             "type": "string",
-            "enum": ["MEMBER", "MANAGER", "OWNER"],
+            "enum": [
+              "MEMBER",
+              "MANAGER",
+              "OWNER"
+            ],
             "default": "MEMBER",
             "description": "Member role"
           },
           "type": {
             "type": "string",
-            "enum": ["CUSTOMER", "EXTERNAL", "GROUP", "USER"],
+            "enum": [
+              "CUSTOMER",
+              "EXTERNAL",
+              "GROUP",
+              "USER"
+            ],
             "default": "USER",
             "description": "Member type"
           }
         },
-        "required": ["groupKey", "email"],
+        "required": [
+          "groupKey",
+          "email"
+        ],
         "additionalProperties": false
       }
     },
@@ -295,7 +349,10 @@
             "description": "Member email or ID"
           }
         },
-        "required": ["groupKey", "memberKey"],
+        "required": [
+          "groupKey",
+          "memberKey"
+        ],
         "additionalProperties": false
       }
     }
@@ -320,10 +377,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "primaryEmail": {"type": "string"},
-          "name": {"type": "object"},
-          "orgUnitPath": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "primaryEmail": {
+            "type": "string"
+          },
+          "name": {
+            "type": "object"
+          },
+          "orgUnitPath": {
+            "type": "string"
+          }
         }
       }
     },
@@ -341,9 +406,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "primaryEmail": {"type": "string"},
-          "suspended": {"type": "boolean"}
+          "id": {
+            "type": "string"
+          },
+          "primaryEmail": {
+            "type": "string"
+          },
+          "suspended": {
+            "type": "boolean"
+          }
         }
       }
     }
@@ -351,5 +422,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users?customer=my_customer&maxResults=1"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -54,7 +54,11 @@
           },
           "source_provider": {
             "type": "string",
-            "enum": ["GitHub", "CodeCommit", "S3"],
+            "enum": [
+              "GitHub",
+              "CodeCommit",
+              "S3"
+            ],
             "description": "Source provider"
           },
           "repository": {
@@ -67,7 +71,12 @@
             "description": "Branch to monitor"
           }
         },
-        "required": ["name", "role_arn", "source_provider", "repository"],
+        "required": [
+          "name",
+          "role_arn",
+          "source_provider",
+          "repository"
+        ],
         "additionalProperties": false
       }
     },
@@ -84,7 +93,9 @@
             "description": "Pipeline name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -101,7 +112,9 @@
             "description": "Pipeline name"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -122,7 +135,10 @@
             "description": "Pipeline execution ID"
           }
         },
-        "required": ["name", "execution_id"],
+        "required": [
+          "name",
+          "execution_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,5 +207,20 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }

@@ -100,6 +100,28 @@ export interface ConnectorSimulatorSmokePlan {
   notes?: string;
 }
 
+export interface ConnectorContractDefinitionInput {
+  appId: string;
+  actions?: Array<{ id: string } | string>;
+  triggers?: Array<{ id: string } | string>;
+}
+
+export interface ConnectorContractScenarioResult {
+  id: string;
+  type: 'action' | 'trigger';
+  passed: boolean;
+  errors: string[];
+  warnings: string[];
+  hasFixture: boolean;
+}
+
+export interface ConnectorContractTestResult {
+  appId: string;
+  passed: boolean;
+  scenarios: ConnectorContractScenarioResult[];
+  missingFixtures: string[];
+}
+
 const DEFAULT_FIXTURES_DIR = path.resolve(process.cwd(), 'server', 'testing', 'fixtures');
 
 export class ConnectorSimulator {
@@ -204,6 +226,127 @@ export class ConnectorSimulator {
       actions: this.dedupeScenarios(entry.actions),
       triggers: entry.triggers.length ? this.dedupeScenarios(entry.triggers) : undefined,
       notes: notes.length ? notes.join(' '): undefined
+    };
+  }
+
+  public async runContractSuite(
+    definitions: ConnectorContractDefinitionInput[],
+    options: { requireFixtures?: boolean } = {}
+  ): Promise<ConnectorContractTestResult[]> {
+    const results: ConnectorContractTestResult[] = [];
+    for (const definition of definitions) {
+      results.push(await this.runContractTests(definition, options));
+    }
+    return results;
+  }
+
+  public async runContractTests(
+    definition: ConnectorContractDefinitionInput,
+    options: { requireFixtures?: boolean } = {}
+  ): Promise<ConnectorContractTestResult> {
+    if (!this.enabled) {
+      return {
+        appId: definition.appId.toLowerCase(),
+        passed: true,
+        scenarios: [],
+        missingFixtures: [],
+      };
+    }
+
+    await this.ensureFixturesLoaded();
+
+    const appId = definition.appId.toLowerCase();
+    const scenarios: ConnectorContractScenarioResult[] = [];
+    const missingFixtures: string[] = [];
+
+    const collect = (idValue: { id: string } | string | undefined | null, type: 'action' | 'trigger') => {
+      if (!idValue) {
+        return;
+      }
+
+      const id = typeof idValue === 'string' ? idValue : idValue.id;
+      if (!id) {
+        return;
+      }
+
+      const result = this.evaluateContractScenario(appId, id, type, options);
+      scenarios.push(result);
+      if (!result.hasFixture) {
+        missingFixtures.push(`${type}:${id}`);
+      }
+    };
+
+    (definition.actions || []).forEach(action => collect(action, 'action'));
+    (definition.triggers || []).forEach(trigger => collect(trigger, 'trigger'));
+
+    const requireFixtures = options.requireFixtures !== false;
+    const passed = scenarios.length === 0
+      ? true
+      : scenarios.every(result => result.passed || (!requireFixtures && !result.hasFixture));
+
+    return {
+      appId,
+      passed,
+      scenarios,
+      missingFixtures,
+    };
+  }
+
+  private evaluateContractScenario(
+    appId: string,
+    scenarioId: string,
+    type: 'action' | 'trigger',
+    options: { requireFixtures?: boolean }
+  ): ConnectorContractScenarioResult {
+    const cacheKey = this.getCacheKey(appId, scenarioId);
+    const fixture = this.fixtureCache.get(cacheKey);
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!fixture) {
+      if (options.requireFixtures !== false) {
+        errors.push(`Missing simulator fixture for ${appId}.${scenarioId}`);
+      }
+
+      return {
+        id: scenarioId,
+        type,
+        passed: errors.length === 0,
+        errors,
+        warnings,
+        hasFixture: false,
+      };
+    }
+
+    const declaredType = fixture.type ?? fixture.metadata?.kind;
+    if (declaredType && declaredType !== type) {
+      errors.push(`Fixture type mismatch: expected ${type} but received ${declaredType}`);
+    }
+
+    if (fixture.result && typeof fixture.result.success !== 'boolean') {
+      warnings.push('Fixture result.success should be a boolean');
+    }
+
+    if (type === 'action') {
+      if (!fixture.request && !fixture.response && !fixture.result) {
+        warnings.push('Action fixture is missing request/response/result payloads');
+      }
+      if (fixture.request && !fixture.request.method) {
+        warnings.push('Action fixture request is missing HTTP method');
+      }
+    } else {
+      if (!fixture.triggerParams && !fixture.parameters && !fixture.result) {
+        warnings.push('Trigger fixture is missing trigger parameters or result payload');
+      }
+    }
+
+    return {
+      id: scenarioId,
+      type,
+      passed: errors.length === 0,
+      errors,
+      warnings,
+      hasFixture: true,
     };
   }
 

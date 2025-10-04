@@ -49,17 +49,27 @@
           },
           "ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Specific board IDs to retrieve"
           },
           "board_kind": {
             "type": "string",
-            "enum": ["public", "private", "share"],
+            "enum": [
+              "public",
+              "private",
+              "share"
+            ],
             "description": "Filter by board kind"
           },
           "state": {
             "type": "string",
-            "enum": ["active", "archived", "deleted"],
+            "enum": [
+              "active",
+              "archived",
+              "deleted"
+            ],
             "default": "active",
             "description": "Filter by board state"
           }
@@ -81,7 +91,11 @@
           },
           "board_kind": {
             "type": "string",
-            "enum": ["public", "private", "share"],
+            "enum": [
+              "public",
+              "private",
+              "share"
+            ],
             "default": "public",
             "description": "Board visibility"
           },
@@ -102,7 +116,9 @@
             "description": "Template ID to create board from"
           }
         },
-        "required": ["board_name"],
+        "required": [
+          "board_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,7 +148,9 @@
           },
           "ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Specific item IDs to retrieve"
           },
           "newest_first": {
@@ -141,7 +159,9 @@
             "description": "Sort by newest first"
           }
         },
-        "required": ["board_id"],
+        "required": [
+          "board_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -174,7 +194,10 @@
             "description": "Create status labels if they don't exist"
           }
         },
-        "required": ["board_id", "item_name"],
+        "required": [
+          "board_id",
+          "item_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -203,7 +226,11 @@
             "description": "Create status labels if they don't exist"
           }
         },
-        "required": ["board_id", "item_id", "column_values"],
+        "required": [
+          "board_id",
+          "item_id",
+          "column_values"
+        ],
         "additionalProperties": false
       }
     },
@@ -219,7 +246,9 @@
             "description": "Item ID"
           }
         },
-        "required": ["item_id"],
+        "required": [
+          "item_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -239,7 +268,10 @@
             "description": "Update content"
           }
         },
-        "required": ["item_id", "body"],
+        "required": [
+          "item_id",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -265,12 +297,19 @@
           },
           "ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Specific user IDs to retrieve"
           },
           "kind": {
             "type": "string",
-            "enum": ["all", "non_guests", "guests", "non_pending"],
+            "enum": [
+              "all",
+              "non_guests",
+              "guests",
+              "non_pending"
+            ],
             "default": "all",
             "description": "Filter by user kind"
           },
@@ -306,18 +345,27 @@
           },
           "ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "Specific workspace IDs to retrieve"
           },
           "state": {
             "type": "string",
-            "enum": ["active", "archived", "deleted"],
+            "enum": [
+              "active",
+              "archived",
+              "deleted"
+            ],
             "default": "active",
             "description": "Filter by workspace state"
           },
           "kind": {
             "type": "string",
-            "enum": ["open", "closed"],
+            "enum": [
+              "open",
+              "closed"
+            ],
             "description": "Filter by workspace kind"
           }
         },
@@ -343,7 +391,14 @@
           },
           "event": {
             "type": "string",
-            "enum": ["create_item", "change_column_value", "change_status_column_value", "change_name", "create_update", "edit_update"],
+            "enum": [
+              "create_item",
+              "change_column_value",
+              "change_status_column_value",
+              "change_name",
+              "create_update",
+              "edit_update"
+            ],
             "description": "Event to subscribe to"
           },
           "config": {
@@ -351,7 +406,11 @@
             "description": "JSON configuration string"
           }
         },
-        "required": ["board_id", "url", "event"],
+        "required": [
+          "board_id",
+          "url",
+          "event"
+        ],
         "additionalProperties": false
       }
     },
@@ -371,7 +430,9 @@
             "description": "GraphQL variables"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     }
@@ -396,13 +457,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "name": {"type": "string"},
-          "board": {"type": "object"},
-          "group": {"type": "object"},
-          "column_values": {"type": "array"},
-          "created_at": {"type": "string"},
-          "creator": {"type": "object"}
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "board": {
+            "type": "object"
+          },
+          "group": {
+            "type": "object"
+          },
+          "column_values": {
+            "type": "array"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "creator": {
+            "type": "object"
+          }
         }
       }
     },
@@ -429,13 +504,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "item_id": {"type": "number"},
-          "item_name": {"type": "string"},
-          "column_id": {"type": "string"},
-          "column_title": {"type": "string"},
-          "previous_value": {"type": "object"},
-          "value": {"type": "object"},
-          "changed_at": {"type": "string"}
+          "item_id": {
+            "type": "number"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "column_id": {
+            "type": "string"
+          },
+          "column_title": {
+            "type": "string"
+          },
+          "previous_value": {
+            "type": "object"
+          },
+          "value": {
+            "type": "object"
+          },
+          "changed_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -446,5 +535,19 @@
     "body": {
       "query": "query { me { id name email } }"
     }
+  },
+  "semanticVersion": "2.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

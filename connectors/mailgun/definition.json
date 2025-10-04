@@ -44,17 +44,23 @@
           },
           "to": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Email address(es) of the recipient(s)"
           },
           "cc": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Same as To but for CC"
           },
           "bcc": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Same as To but for BCC"
           },
           "subject": {
@@ -71,17 +77,23 @@
           },
           "attachment": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File attachment URLs"
           },
           "inline": {
-            "type": "array", 
-            "items": {"type": "string"},
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "description": "Attachment with inline disposition"
           },
           "tag": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Tag string for tracking purposes"
           },
           "dkim": {
@@ -108,7 +120,7 @@
             "description": "Toggles clicks tracking on a per-message basis"
           },
           "tracking-opens": {
-            "type": "boolean", 
+            "type": "boolean",
             "description": "Toggles opens tracking on a per-message basis"
           },
           "require-tls": {
@@ -122,7 +134,11 @@
             "description": "Skip recipient verification"
           }
         },
-        "required": ["domain", "from", "to"],
+        "required": [
+          "domain",
+          "from",
+          "to"
+        ],
         "additionalProperties": false
       }
     },
@@ -138,7 +154,9 @@
             "description": "Domain name"
           }
         },
-        "required": ["domain"],
+        "required": [
+          "domain"
+        ],
         "additionalProperties": false
       }
     },
@@ -179,7 +197,9 @@
             "description": "Domain name to verify"
           }
         },
-        "required": ["domain"],
+        "required": [
+          "domain"
+        ],
         "additionalProperties": false
       }
     },
@@ -205,12 +225,18 @@
           },
           "access_level": {
             "type": "string",
-            "enum": ["readonly", "members", "everyone"],
+            "enum": [
+              "readonly",
+              "members",
+              "everyone"
+            ],
             "default": "readonly",
             "description": "List access level"
           }
         },
-        "required": ["address"],
+        "required": [
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -227,7 +253,9 @@
             "description": "Mailing list address"
           }
         },
-        "required": ["address"],
+        "required": [
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -292,7 +320,10 @@
             "description": "Update member if it already exists"
           }
         },
-        "required": ["listAddress", "address"],
+        "required": [
+          "listAddress",
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -314,7 +345,10 @@
             "description": "Member's email address"
           }
         },
-        "required": ["listAddress", "memberAddress"],
+        "required": [
+          "listAddress",
+          "memberAddress"
+        ],
         "additionalProperties": false
       }
     },
@@ -336,7 +370,9 @@
             "description": "Enable mailbox verification"
           }
         },
-        "required": ["address"],
+        "required": [
+          "address"
+        ],
         "additionalProperties": false
       }
     },
@@ -355,7 +391,16 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["accepted", "delivered", "failed", "opened", "clicked", "unsubscribed", "complained", "stored"]
+              "enum": [
+                "accepted",
+                "delivered",
+                "failed",
+                "opened",
+                "clicked",
+                "unsubscribed",
+                "complained",
+                "stored"
+              ]
             },
             "description": "Name of the event to receive the stats for"
           },
@@ -371,7 +416,11 @@
           },
           "resolution": {
             "type": "string",
-            "enum": ["hour", "day", "month"],
+            "enum": [
+              "hour",
+              "day",
+              "month"
+            ],
             "default": "day",
             "description": "Time resolution"
           },
@@ -380,7 +429,9 @@
             "description": "Duration like '1d', '1w', '1m'"
           }
         },
-        "required": ["domain"],
+        "required": [
+          "domain"
+        ],
         "additionalProperties": false
       }
     },
@@ -407,7 +458,10 @@
           },
           "ascending": {
             "type": "string",
-            "enum": ["yes", "no"],
+            "enum": [
+              "yes",
+              "no"
+            ],
             "default": "yes",
             "description": "Sort order"
           },
@@ -422,12 +476,24 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["accepted", "rejected", "delivered", "failed", "opened", "clicked", "unsubscribed", "complained", "stored"]
+              "enum": [
+                "accepted",
+                "rejected",
+                "delivered",
+                "failed",
+                "opened",
+                "clicked",
+                "unsubscribed",
+                "complained",
+                "stored"
+              ]
             },
             "description": "Event types to filter by"
           }
         },
-        "required": ["domain"],
+        "required": [
+          "domain"
+        ],
         "additionalProperties": false
       }
     }
@@ -452,13 +518,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"},
-          "message-headers": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "message-headers": {
+            "type": "string"
+          }
         }
       }
     },
@@ -481,17 +561,39 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"},
-          "ip": {"type": "string"},
-          "country": {"type": "string"},
-          "region": {"type": "string"},
-          "city": {"type": "string"},
-          "user-agent": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "user-agent": {
+            "type": "string"
+          }
         }
       }
     },
@@ -514,18 +616,42 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"},
-          "url": {"type": "string"},
-          "ip": {"type": "string"},
-          "country": {"type": "string"},
-          "region": {"type": "string"},
-          "city": {"type": "string"},
-          "user-agent": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "user-agent": {
+            "type": "string"
+          }
         }
       }
     },
@@ -548,15 +674,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"},
-          "code": {"type": "string"},
-          "error": {"type": "string"},
-          "notification": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "notification": {
+            "type": "string"
+          }
         }
       }
     },
@@ -579,12 +723,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
         }
       }
     },
@@ -607,13 +763,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "event": {"type": "string"},
-          "recipient": {"type": "string"},
-          "domain": {"type": "string"},
-          "timestamp": {"type": "number"},
-          "token": {"type": "string"},
-          "signature": {"type": "string"},
-          "tag": {"type": "string"}
+          "event": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "token": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
         }
       }
     }
@@ -621,5 +791,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/domains"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

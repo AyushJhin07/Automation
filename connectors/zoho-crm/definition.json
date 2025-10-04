@@ -11,7 +11,12 @@
     "config": {
       "authUrl": "https://accounts.zoho.com/oauth/v2/auth",
       "tokenUrl": "https://accounts.zoho.com/oauth/v2/token",
-      "scopes": ["ZohoCRM.modules.ALL", "ZohoCRM.settings.ALL", "ZohoCRM.bulk.ALL", "ZohoCRM.notifications.ALL"]
+      "scopes": [
+        "ZohoCRM.modules.ALL",
+        "ZohoCRM.settings.ALL",
+        "ZohoCRM.bulk.ALL",
+        "ZohoCRM.notifications.ALL"
+      ]
     }
   },
   "baseUrl": "https://www.zohoapis.com/crm/v3",
@@ -36,7 +41,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "data": {
@@ -45,21 +66,30 @@
           },
           "duplicate_check_fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to check for duplicates"
           },
           "apply_feature_execution": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Features to apply"
           },
           "trigger": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Triggers to execute"
           }
         },
-        "required": ["module", "data"],
+        "required": [
+          "module",
+          "data"
+        ],
         "additionalProperties": false
       }
     },
@@ -72,7 +102,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "record_id": {
@@ -84,7 +130,10 @@
             "description": "Comma-separated list of fields to retrieve"
           }
         },
-        "required": ["module", "record_id"],
+        "required": [
+          "module",
+          "record_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -97,7 +146,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "record_id": {
@@ -110,16 +175,24 @@
           },
           "apply_feature_execution": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Features to apply"
           },
           "trigger": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Triggers to execute"
           }
         },
-        "required": ["module", "record_id", "data"],
+        "required": [
+          "module",
+          "record_id",
+          "data"
+        ],
         "additionalProperties": false
       }
     },
@@ -132,7 +205,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "record_id": {
@@ -144,7 +233,10 @@
             "description": "Whether to trigger workflow"
           }
         },
-        "required": ["module", "record_id"],
+        "required": [
+          "module",
+          "record_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,7 +249,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "criteria": {
@@ -178,12 +286,20 @@
           },
           "converted": {
             "type": "string",
-            "enum": ["true", "false", "both"],
+            "enum": [
+              "true",
+              "false",
+              "both"
+            ],
             "description": "Filter by conversion status"
           },
           "approved": {
             "type": "string",
-            "enum": ["true", "false", "both"],
+            "enum": [
+              "true",
+              "false",
+              "both"
+            ],
             "description": "Filter by approval status"
           },
           "page": {
@@ -205,7 +321,10 @@
           },
           "sort_order": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "sort_by": {
@@ -213,7 +332,9 @@
             "description": "Field to sort by"
           }
         },
-        "required": ["module"],
+        "required": [
+          "module"
+        ],
         "additionalProperties": false
       }
     },
@@ -226,7 +347,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "fields": {
@@ -235,7 +372,10 @@
           },
           "sort_order": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "sort_by": {
@@ -244,12 +384,20 @@
           },
           "converted": {
             "type": "string",
-            "enum": ["true", "false", "both"],
+            "enum": [
+              "true",
+              "false",
+              "both"
+            ],
             "description": "Filter by conversion status"
           },
           "approved": {
             "type": "string",
-            "enum": ["true", "false", "both"],
+            "enum": [
+              "true",
+              "false",
+              "both"
+            ],
             "description": "Filter by approval status"
           },
           "page": {
@@ -278,7 +426,9 @@
             "description": "Whether to include child records"
           }
         },
-        "required": ["module"],
+        "required": [
+          "module"
+        ],
         "additionalProperties": false
       }
     },
@@ -296,12 +446,24 @@
           "data": {
             "type": "object",
             "properties": {
-              "overwrite": {"type": "boolean"},
-              "notify_lead_owner": {"type": "boolean"},
-              "notify_new_entity_owner": {"type": "boolean"},
-              "Accounts": {"type": "object"},
-              "Contacts": {"type": "object"},
-              "Deals": {"type": "object"}
+              "overwrite": {
+                "type": "boolean"
+              },
+              "notify_lead_owner": {
+                "type": "boolean"
+              },
+              "notify_new_entity_owner": {
+                "type": "boolean"
+              },
+              "Accounts": {
+                "type": "object"
+              },
+              "Contacts": {
+                "type": "object"
+              },
+              "Deals": {
+                "type": "object"
+              }
             },
             "description": "Conversion data"
           },
@@ -310,7 +472,10 @@
             "description": "User ID to assign converted records to"
           }
         },
-        "required": ["lead_id", "data"],
+        "required": [
+          "lead_id",
+          "data"
+        ],
         "additionalProperties": false
       }
     },
@@ -323,7 +488,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "record_id": {
@@ -339,7 +520,12 @@
             "description": "File name"
           }
         },
-        "required": ["module", "record_id", "file", "file_name"],
+        "required": [
+          "module",
+          "record_id",
+          "file",
+          "file_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -352,7 +538,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module name"
           },
           "record_id": {
@@ -368,7 +570,12 @@
             "description": "Note content"
           }
         },
-        "required": ["module", "record_id", "note_title", "note_content"],
+        "required": [
+          "module",
+          "record_id",
+          "note_title",
+          "note_content"
+        ],
         "additionalProperties": false
       }
     }
@@ -384,7 +591,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module to monitor"
           }
         },
@@ -394,13 +617,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "module": {"type": "string"},
-          "operation": {"type": "string"},
-          "resource_uri": {"type": "string"},
-          "token": {"type": "string"},
-          "affected_fields": {"type": "array"},
-          "ids": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "resource_uri": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "affected_fields": {
+            "type": "array"
+          },
+          "ids": {
+            "type": "array"
+          }
         }
       }
     },
@@ -414,7 +651,23 @@
         "properties": {
           "module": {
             "type": "string",
-            "enum": ["Leads", "Contacts", "Accounts", "Deals", "Tasks", "Events", "Calls", "Solutions", "Products", "Quotes", "Sales_Orders", "Purchase_Orders", "Invoices", "Campaigns", "Vendors"],
+            "enum": [
+              "Leads",
+              "Contacts",
+              "Accounts",
+              "Deals",
+              "Tasks",
+              "Events",
+              "Calls",
+              "Solutions",
+              "Products",
+              "Quotes",
+              "Sales_Orders",
+              "Purchase_Orders",
+              "Invoices",
+              "Campaigns",
+              "Vendors"
+            ],
             "description": "Module to monitor"
           }
         },
@@ -424,13 +677,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "module": {"type": "string"},
-          "operation": {"type": "string"},
-          "resource_uri": {"type": "string"},
-          "token": {"type": "string"},
-          "affected_fields": {"type": "array"},
-          "ids": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "resource_uri": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "affected_fields": {
+            "type": "array"
+          },
+          "ids": {
+            "type": "array"
+          }
         }
       }
     },
@@ -448,10 +715,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "module": {"type": "string"},
-          "operation": {"type": "string"},
-          "converted_detail": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "converted_detail": {
+            "type": "object"
+          }
         }
       }
     }
@@ -459,5 +734,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/org"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

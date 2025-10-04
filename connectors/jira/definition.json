@@ -63,12 +63,24 @@
           },
           "issueType": {
             "type": "string",
-            "enum": ["Bug", "Task", "Story", "Epic", "Subtask"],
+            "enum": [
+              "Bug",
+              "Task",
+              "Story",
+              "Epic",
+              "Subtask"
+            ],
             "description": "Type of issue to create"
           },
           "priority": {
             "type": "string",
-            "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+            "enum": [
+              "Highest",
+              "High",
+              "Medium",
+              "Low",
+              "Lowest"
+            ],
             "default": "Medium",
             "description": "Issue priority"
           },
@@ -82,17 +94,23 @@
           },
           "labels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Issue labels"
           },
           "components": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Component IDs or names"
           },
           "fixVersions": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fix version IDs or names"
           },
           "customFields": {
@@ -100,7 +118,11 @@
             "description": "Custom field values as key-value pairs"
           }
         },
-        "required": ["projectKey", "summary", "issueType"],
+        "required": [
+          "projectKey",
+          "summary",
+          "issueType"
+        ],
         "additionalProperties": false
       }
     },
@@ -131,7 +153,13 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["Highest", "High", "Medium", "Low", "Lowest"],
+            "enum": [
+              "Highest",
+              "High",
+              "Medium",
+              "Low",
+              "Lowest"
+            ],
             "description": "Issue priority"
           },
           "status": {
@@ -140,7 +168,9 @@
           },
           "labels": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Issue labels"
           },
           "customFields": {
@@ -148,7 +178,9 @@
             "description": "Custom field values as key-value pairs"
           }
         },
-        "required": ["issueIdOrKey"],
+        "required": [
+          "issueIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -174,7 +206,9 @@
             "description": "Comma-separated list of parameters to expand"
           }
         },
-        "required": ["issueIdOrKey"],
+        "required": [
+          "issueIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -193,12 +227,16 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to return for each issue"
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Parameters to expand"
           },
           "maxResults": {
@@ -213,7 +251,9 @@
             "description": "Index of the first result to return"
           }
         },
-        "required": ["jql"],
+        "required": [
+          "jql"
+        ],
         "additionalProperties": false
       }
     },
@@ -237,13 +277,24 @@
           "visibility": {
             "type": "object",
             "properties": {
-              "type": {"type": "string", "enum": ["group", "role"]},
-              "value": {"type": "string"}
+              "type": {
+                "type": "string",
+                "enum": [
+                  "group",
+                  "role"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
             },
             "description": "Comment visibility restrictions"
           }
         },
-        "required": ["issueIdOrKey", "body"],
+        "required": [
+          "issueIdOrKey",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -273,7 +324,10 @@
             "description": "Field values to set during transition"
           }
         },
-        "required": ["issueIdOrKey", "transitionId"],
+        "required": [
+          "issueIdOrKey",
+          "transitionId"
+        ],
         "additionalProperties": false
       }
     },
@@ -295,7 +349,10 @@
             "description": "Account ID of the user to assign"
           }
         },
-        "required": ["issueIdOrKey", "accountId"],
+        "required": [
+          "issueIdOrKey",
+          "accountId"
+        ],
         "additionalProperties": false
       }
     },
@@ -318,7 +375,11 @@
           },
           "projectTypeKey": {
             "type": "string",
-            "enum": ["software", "service_desk", "business"],
+            "enum": [
+              "software",
+              "service_desk",
+              "business"
+            ],
             "description": "Type of project to create"
           },
           "projectTemplateKey": {
@@ -334,7 +395,11 @@
             "description": "Account ID of the project lead"
           }
         },
-        "required": ["key", "name", "projectTypeKey"],
+        "required": [
+          "key",
+          "name",
+          "projectTypeKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -356,7 +421,9 @@
             "description": "Comma-separated list of parameters to expand"
           }
         },
-        "required": ["projectIdOrKey"],
+        "required": [
+          "projectIdOrKey"
+        ],
         "additionalProperties": false
       }
     },
@@ -379,7 +446,9 @@
           },
           "properties": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Project properties to filter by"
           }
         },
@@ -424,7 +493,10 @@
             "description": "Release date (YYYY-MM-DD)"
           }
         },
-        "required": ["name", "projectId"],
+        "required": [
+          "name",
+          "projectId"
+        ],
         "additionalProperties": false
       }
     }
@@ -457,17 +529,39 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "key": {"type": "string"},
-          "summary": {"type": "string"},
-          "description": {"type": "string"},
-          "issueType": {"type": "string"},
-          "priority": {"type": "string"},
-          "status": {"type": "string"},
-          "assignee": {"type": "string"},
-          "reporter": {"type": "string"},
-          "created": {"type": "string"},
-          "projectKey": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "issueType": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          }
         }
       }
     },
@@ -485,7 +579,9 @@
           },
           "fieldsToWatch": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Specific fields to watch for changes"
           }
         },
@@ -495,11 +591,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "key": {"type": "string"},
-          "changelog": {"type": "object"},
-          "updated": {"type": "string"},
-          "user": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "changelog": {
+            "type": "object"
+          },
+          "updated": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
         }
       }
     },
@@ -530,12 +636,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "key": {"type": "string"},
-          "fromStatus": {"type": "string"},
-          "toStatus": {"type": "string"},
-          "transitionDate": {"type": "string"},
-          "user": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "fromStatus": {
+            "type": "string"
+          },
+          "toStatus": {
+            "type": "string"
+          },
+          "transitionDate": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
         }
       }
     },
@@ -562,12 +680,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "issueId": {"type": "string"},
-          "key": {"type": "string"},
-          "commentId": {"type": "string"},
-          "commentBody": {"type": "string"},
-          "author": {"type": "string"},
-          "created": {"type": "string"}
+          "issueId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "commentId": {
+            "type": "string"
+          },
+          "commentBody": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          }
         }
       }
     }
@@ -575,5 +705,20 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/rest/api/3/myself"
+  },
+  "version": "1.0.0",
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

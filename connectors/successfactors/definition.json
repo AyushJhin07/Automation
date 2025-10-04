@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://{datacenter}.successfactors.com/oauth/authorize",
       "tokenUrl": "https://{datacenter}.successfactors.com/oauth/token",
-      "scopes": ["read", "write"]
+      "scopes": [
+        "read",
+        "write"
+      ]
     }
   },
   "baseUrl": "https://{datacenter}.successfactors.com/odata/v2",
@@ -39,7 +42,9 @@
             "description": "Employee user ID"
           }
         },
-        "required": ["user_id"],
+        "required": [
+          "user_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -85,7 +90,11 @@
             "description": "Manager user ID"
           }
         },
-        "required": ["user_id", "first_name", "last_name"],
+        "required": [
+          "user_id",
+          "first_name",
+          "last_name"
+        ],
         "additionalProperties": false
       }
     },
@@ -126,7 +135,9 @@
             "description": "Manager user ID"
           }
         },
-        "required": ["user_id"],
+        "required": [
+          "user_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -184,14 +195,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "user_id": {"type": "string"},
-          "first_name": {"type": "string"},
-          "last_name": {"type": "string"},
-          "email": {"type": "string"},
-          "hire_date": {"type": "string"},
-          "job_title": {"type": "string"},
-          "department": {"type": "string"},
-          "manager_id": {"type": "string"}
+          "user_id": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "hire_date": {
+            "type": "string"
+          },
+          "job_title": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "string"
+          }
         }
       }
     },
@@ -214,9 +241,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "user_id": {"type": "string"},
-          "updated_fields": {"type": "array"},
-          "updated_at": {"type": "string"}
+          "user_id": {
+            "type": "string"
+          },
+          "updated_fields": {
+            "type": "array"
+          },
+          "updated_at": {
+            "type": "string"
+          }
         }
       }
     }
@@ -224,5 +257,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/User"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

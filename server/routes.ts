@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { eq } from "drizzle-orm";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
 // import { registerAIWorkflowRoutes } from "./aiModels"; // REMOVED: Conflicts with new AI routes
 import { workflowBuildRouter } from "./routes/workflow.build";
@@ -56,6 +57,7 @@ import type { OrganizationLimits } from './database/schema.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
+import { db, connectorDefinitions } from "./database/schema.js";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -109,6 +111,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: org.limits,
     usage: org.usage,
   });
+
+  const toIsoString = (value: any): string | null => {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString();
+  };
+
+  const normalizeLifecycleRow = (row: any) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    version: row.version ?? '1.0.0',
+    semanticVersion: row.semanticVersion ?? row.version ?? '1.0.0',
+    lifecycleStatus: row.lifecycleStatus ?? (row.isBeta ? 'beta' : 'ga'),
+    isBeta: Boolean(row.isBeta),
+    betaStartAt: toIsoString(row.betaStartAt),
+    betaEndAt: toIsoString(row.betaEndAt),
+    deprecationStartAt: toIsoString(row.deprecationStartAt),
+    sunsetAt: toIsoString(row.sunsetAt),
+  });
+
+  const LIFECYCLE_STATUSES = ['ga', 'beta', 'deprecated', 'sunset'] as const;
+  type LifecycleStatus = typeof LIFECYCLE_STATUSES[number];
 
   // Apply global security middleware
   app.use(securityService.securityHeaders());
@@ -2195,7 +2230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/clear-connectors', authenticateToken, adminOnly, async (req, res) => {
     try {
       const deletedCount = await connectorSeeder.clearAllConnectors();
-      
+
       res.json({
         success: true,
         data: { deletedCount },
@@ -2206,6 +2241,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: getErrorMessage(error)
       });
+    }
+  });
+
+  app.get('/api/admin/connectors/lifecycle', authenticateToken, adminOnly, async (req, res) => {
+    if (!db) {
+      return res.status(503).json({ success: false, error: 'Database unavailable' });
+    }
+
+    try {
+      const records = await db
+        .select({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStatus: connectorDefinitions.lifecycleStatus,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartAt: connectorDefinitions.betaStartAt,
+          betaEndAt: connectorDefinitions.betaEndAt,
+          deprecationStartAt: connectorDefinitions.deprecationStartAt,
+          sunsetAt: connectorDefinitions.sunsetAt,
+        })
+        .from(connectorDefinitions)
+        .orderBy(connectorDefinitions.name);
+
+      res.json({
+        success: true,
+        data: records.map(normalizeLifecycleRow),
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.patch('/api/admin/connectors/:slug/lifecycle', authenticateToken, adminOnly, async (req, res) => {
+    if (!db) {
+      return res.status(503).json({ success: false, error: 'Database unavailable' });
+    }
+
+    const { slug } = req.params;
+    const payload = req.body ?? {};
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    const semverRegex = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+
+    if (payload.semanticVersion !== undefined) {
+      if (typeof payload.semanticVersion !== 'string') {
+        return res.status(400).json({ success: false, error: 'semanticVersion must be a string' });
+      }
+      const trimmed = payload.semanticVersion.trim();
+      if (!trimmed || !semverRegex.test(trimmed)) {
+        return res.status(400).json({ success: false, error: 'semanticVersion must be a valid semantic version (e.g. 1.2.3)' });
+      }
+      updates.semanticVersion = trimmed;
+    }
+
+    if (payload.version !== undefined) {
+      if (typeof payload.version !== 'string') {
+        return res.status(400).json({ success: false, error: 'version must be a string' });
+      }
+      const trimmed = payload.version.trim();
+      if (!trimmed || !semverRegex.test(trimmed)) {
+        return res.status(400).json({ success: false, error: 'version must be a valid semantic version (e.g. 1.2.3)' });
+      }
+      updates.version = trimmed;
+    }
+
+    if (payload.lifecycleStatus !== undefined) {
+      const normalized = String(payload.lifecycleStatus).toLowerCase() as LifecycleStatus;
+      if (!LIFECYCLE_STATUSES.includes(normalized)) {
+        return res.status(400).json({ success: false, error: 'Invalid lifecycleStatus value' });
+      }
+      updates.lifecycleStatus = normalized;
+    }
+
+    if (payload.isBeta !== undefined) {
+      updates.isBeta = Boolean(payload.isBeta);
+      if (payload.lifecycleStatus === undefined && updates.lifecycleStatus === undefined) {
+        updates.lifecycleStatus = updates.isBeta ? 'beta' : 'ga';
+      }
+    } else if (updates.lifecycleStatus !== undefined && updates.isBeta === undefined) {
+      updates.isBeta = updates.lifecycleStatus === 'beta';
+    }
+
+    const parseDateInput = (value: any, fieldName: string): Date | null | undefined => {
+      if (value === undefined) {
+        return undefined;
+      }
+      if (value === null || value === '') {
+        return null;
+      }
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error(`Invalid ${fieldName}`);
+      }
+      return parsed;
+    };
+
+    try {
+      const betaStart = parseDateInput(payload.betaStartAt, 'betaStartAt');
+      if (betaStart !== undefined) {
+        updates.betaStartAt = betaStart;
+      }
+      const betaEnd = parseDateInput(payload.betaEndAt, 'betaEndAt');
+      if (betaEnd !== undefined) {
+        updates.betaEndAt = betaEnd;
+      }
+      const deprecationStart = parseDateInput(payload.deprecationStartAt, 'deprecationStartAt');
+      if (deprecationStart !== undefined) {
+        updates.deprecationStartAt = deprecationStart;
+      }
+      const sunsetAt = parseDateInput(payload.sunsetAt, 'sunsetAt');
+      if (sunsetAt !== undefined) {
+        updates.sunsetAt = sunsetAt;
+      }
+    } catch (error: any) {
+      return res.status(400).json({ success: false, error: error?.message ?? 'Invalid date value' });
+    }
+
+    const updateKeys = Object.keys(updates).filter((key) => key !== 'updatedAt');
+    if (updateKeys.length === 0) {
+      return res.status(400).json({ success: false, error: 'No lifecycle fields provided' });
+    }
+
+    try {
+      const [updated] = await db
+        .update(connectorDefinitions)
+        .set(updates)
+        .where(eq(connectorDefinitions.slug, slug))
+        .returning({
+          id: connectorDefinitions.id,
+          slug: connectorDefinitions.slug,
+          name: connectorDefinitions.name,
+          version: connectorDefinitions.version,
+          semanticVersion: connectorDefinitions.semanticVersion,
+          lifecycleStatus: connectorDefinitions.lifecycleStatus,
+          isBeta: connectorDefinitions.isBeta,
+          betaStartAt: connectorDefinitions.betaStartAt,
+          betaEndAt: connectorDefinitions.betaEndAt,
+          deprecationStartAt: connectorDefinitions.deprecationStartAt,
+          sunsetAt: connectorDefinitions.sunsetAt,
+        });
+
+      if (!updated) {
+        return res.status(404).json({ success: false, error: `Connector '${slug}' not found` });
+      }
+
+      res.json({ success: true, data: normalizeLifecycleRow(updated) });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 

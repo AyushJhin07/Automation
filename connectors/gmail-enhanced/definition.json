@@ -42,17 +42,26 @@
         "properties": {
           "to": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Recipient email addresses"
           },
           "cc": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "CC email addresses"
           },
           "bcc": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "BCC email addresses"
           },
           "subject": {
@@ -68,9 +77,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "filename": {"type": "string"},
-                "data": {"type": "string"},
-                "mimeType": {"type": "string"}
+                "filename": {
+                  "type": "string"
+                },
+                "data": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                }
               }
             },
             "description": "Email attachments"
@@ -86,7 +101,11 @@
             "description": "Email body is HTML"
           }
         },
-        "required": ["to", "subject", "body"],
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -108,17 +127,26 @@
           },
           "format": {
             "type": "string",
-            "enum": ["minimal", "full", "raw", "metadata"],
+            "enum": [
+              "minimal",
+              "full",
+              "raw",
+              "metadata"
+            ],
             "default": "full",
             "description": "Message format"
           },
           "metadataHeaders": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Headers to include when format is metadata"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,7 +168,9 @@
           },
           "labelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Label IDs to filter by"
           },
           "includeSpamTrash": {
@@ -182,16 +212,22 @@
           },
           "addLabelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Label IDs to add"
           },
           "removeLabelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Label IDs to remove"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -212,7 +248,9 @@
             "description": "Message ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -230,7 +268,10 @@
           },
           "to": {
             "type": "array",
-            "items": {"type": "string", "format": "email"},
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
             "description": "Recipient email addresses"
           },
           "subject": {
@@ -242,7 +283,11 @@
             "description": "Email body"
           }
         },
-        "required": ["to", "subject", "body"],
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -281,32 +326,48 @@
           },
           "messageListVisibility": {
             "type": "string",
-            "enum": ["show", "hide"],
+            "enum": [
+              "show",
+              "hide"
+            ],
             "default": "show",
             "description": "Message list visibility"
           },
           "labelListVisibility": {
             "type": "string",
-            "enum": ["labelShow", "labelShowIfUnread", "labelHide"],
+            "enum": [
+              "labelShow",
+              "labelShowIfUnread",
+              "labelHide"
+            ],
             "default": "labelShow",
             "description": "Label list visibility"
           },
           "type": {
             "type": "string",
-            "enum": ["system", "user"],
+            "enum": [
+              "system",
+              "user"
+            ],
             "default": "user",
             "description": "Label type"
           },
           "color": {
             "type": "object",
             "properties": {
-              "textColor": {"type": "string"},
-              "backgroundColor": {"type": "string"}
+              "textColor": {
+                "type": "string"
+              },
+              "backgroundColor": {
+                "type": "string"
+              }
             },
             "description": "Label color"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -380,7 +441,9 @@
         "properties": {
           "labelIds": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by labels"
           },
           "query": {
@@ -394,10 +457,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "threadId": {"type": "string"},
-          "snippet": {"type": "string"},
-          "payload": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
         }
       }
     },
@@ -415,8 +486,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "labelIds": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array"
+          }
         }
       }
     }
@@ -424,5 +499,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me/profile"
+  },
+  "semanticVersion": "2.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

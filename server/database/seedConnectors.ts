@@ -12,6 +12,7 @@ interface ConnectorJSON {
   category: string;
   description: string;
   version: string;
+  semanticVersion?: string;
   authentication: {
     type: string;
     config: Record<string, any>;
@@ -41,7 +42,37 @@ interface ConnectorJSON {
     tier: string;
     costPerExecution?: number;
   };
+  lifecycle?: {
+    status?: 'ga' | 'beta' | 'deprecated' | 'sunset';
+    beta?: {
+      enabled?: boolean;
+      startDate?: string | null;
+      endDate?: string | null;
+    };
+    deprecation?: {
+      startDate?: string | null;
+      endDate?: string | null;
+    };
+    sunsetDate?: string | null;
+  };
+  isBeta?: boolean;
+  betaStartDate?: string | null;
+  betaEndDate?: string | null;
+  deprecationStartDate?: string | null;
+  sunsetDate?: string | null;
 }
+
+const parseDate = (value?: string | null): Date | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+  return date;
+};
 
 export class ConnectorSeeder {
   private connectorsPath: string;
@@ -127,7 +158,12 @@ export class ConnectorSeeder {
     const directoryName = normalizedPath.split('/')[0] ?? normalizedPath;
     const slug = directoryName.toLowerCase();
 
-    // Prepare connector definition for database
+    const lifecycle = connectorData.lifecycle ?? {};
+    const betaConfig = lifecycle.beta ?? {};
+    const deprecationConfig = lifecycle.deprecation ?? {};
+    const isBeta = betaConfig.enabled ?? connectorData.isBeta ?? lifecycle.status === 'beta';
+    const lifecycleStatus = lifecycle.status ?? (isBeta ? 'beta' : 'ga');
+
     const connectorDef = {
       slug,
       name: connectorData.name,
@@ -146,6 +182,33 @@ export class ConnectorSeeder {
           source: 'json_seed'
         }
       },
+      version: connectorData.version || '1.0.0',
+      semanticVersion: connectorData.semanticVersion ?? connectorData.version ?? '1.0.0',
+      lifecycleStatus,
+      isBeta,
+      betaStartAt: parseDate(
+        betaConfig.startDate
+          ?? connectorData.betaStartDate
+          ?? (betaConfig as any).since
+          ?? (lifecycle as any).betaStartDate
+      ),
+      betaEndAt: parseDate(
+        betaConfig.endDate
+          ?? connectorData.betaEndDate
+          ?? (betaConfig as any).until
+          ?? (lifecycle as any).betaEndDate
+      ),
+      deprecationStartAt: parseDate(
+        deprecationConfig.startDate
+          ?? connectorData.deprecationStartDate
+          ?? (deprecationConfig as any).since
+      ),
+      sunsetAt: parseDate(
+        deprecationConfig.endDate
+          ?? connectorData.sunsetDate
+          ?? lifecycle.sunsetDate
+          ?? (deprecationConfig as any).until
+      ),
       isActive: true,
       isVerified: false, // Mark as unverified until tested
       supportedRegions: ['global'],
@@ -169,6 +232,14 @@ export class ConnectorSeeder {
           category: connectorDef.category,
           description: connectorDef.description,
           config: connectorDef.config,
+          version: connectorDef.version,
+          semanticVersion: connectorDef.semanticVersion,
+          lifecycleStatus: connectorDef.lifecycleStatus,
+          isBeta: connectorDef.isBeta,
+          betaStartAt: connectorDef.betaStartAt,
+          betaEndAt: connectorDef.betaEndAt,
+          deprecationStartAt: connectorDef.deprecationStartAt,
+          sunsetAt: connectorDef.sunsetAt,
           tags: connectorDef.tags,
           complianceFlags: connectorDef.complianceFlags,
           updatedAt: new Date()

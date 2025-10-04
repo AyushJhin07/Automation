@@ -56,7 +56,9 @@
             "description": "Event properties"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -74,8 +76,12 @@
           "user_alias": {
             "type": "object",
             "properties": {
-              "alias_name": {"type": "string"},
-              "alias_label": {"type": "string"}
+              "alias_name": {
+                "type": "string"
+              },
+              "alias_label": {
+                "type": "string"
+              }
             },
             "description": "User alias"
           },
@@ -156,9 +162,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "external_user_id": {"type": "string"},
-                "user_alias": {"type": "object"},
-                "trigger_properties": {"type": "object"}
+                "external_user_id": {
+                  "type": "string"
+                },
+                "user_alias": {
+                  "type": "object"
+                },
+                "trigger_properties": {
+                  "type": "object"
+                }
               }
             },
             "description": "Specific recipients"
@@ -193,11 +205,16 @@
           },
           "tags": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Campaign tags"
           }
         },
-        "required": ["name", "messages"],
+        "required": [
+          "name",
+          "messages"
+        ],
         "additionalProperties": false
       }
     },
@@ -210,27 +227,37 @@
         "properties": {
           "external_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "User external IDs to export"
           },
           "user_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "User IDs to export"
           },
           "email_address": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Email addresses to export"
           },
           "phone": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Phone numbers to export"
           },
           "fields_to_export": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include in export"
           }
         },
@@ -259,10 +286,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "type": {"type": "string"},
-          "tags": {"type": "array"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          }
         }
       }
     },
@@ -285,10 +320,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "user_id": {"type": "string"},
-          "external_user_id": {"type": "string"},
-          "event_name": {"type": "string"},
-          "properties": {"type": "object"}
+          "user_id": {
+            "type": "string"
+          },
+          "external_user_id": {
+            "type": "string"
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object"
+          }
         }
       }
     }
@@ -296,5 +339,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/canvas/data_series"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://api.ariba.com/v2/oauth/authorize",
       "tokenUrl": "https://api.ariba.com/v2/oauth/token",
-      "scopes": ["FullAccess"]
+      "scopes": [
+        "FullAccess"
+      ]
     }
   },
   "baseUrl": "https://openapi.ariba.com",
@@ -41,21 +43,35 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "vendorId": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "vendorId": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -72,7 +88,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -93,11 +111,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "supplierId"],
+        "required": [
+          "realm",
+          "supplierId"
+        ],
         "additionalProperties": false
       }
     },
@@ -115,23 +138,41 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "poNumber": {"type": "string"},
-              "supplierId": {"type": "string"},
-              "buyerId": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "poNumber": {
+                "type": "string"
+              },
+              "supplierId": {
+                "type": "string"
+              },
+              "buyerId": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -148,7 +189,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -169,11 +212,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "purchaseOrderId"],
+        "required": [
+          "realm",
+          "purchaseOrderId"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,23 +239,41 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "invoiceNumber": {"type": "string"},
-              "supplierId": {"type": "string"},
-              "poNumber": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "invoiceNumber": {
+                "type": "string"
+              },
+              "supplierId": {
+                "type": "string"
+              },
+              "poNumber": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -224,7 +290,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -245,11 +313,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "invoiceId"],
+        "required": [
+          "realm",
+          "invoiceId"
+        ],
         "additionalProperties": false
       }
     },
@@ -267,23 +340,41 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "contractId": {"type": "string"},
-              "supplierId": {"type": "string"},
-              "projectId": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "contractId": {
+                "type": "string"
+              },
+              "supplierId": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -300,7 +391,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -321,11 +414,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "contractId"],
+        "required": [
+          "realm",
+          "contractId"
+        ],
         "additionalProperties": false
       }
     },
@@ -343,22 +441,38 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "projectId": {"type": "string"},
-              "projectType": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "projectType": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -375,7 +489,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -396,11 +512,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "projectId"],
+        "required": [
+          "realm",
+          "projectId"
+        ],
         "additionalProperties": false
       }
     },
@@ -418,22 +539,38 @@
           "filters": {
             "type": "object",
             "properties": {
-              "updatedDateFrom": {"type": "string", "format": "date"},
-              "updatedDateTo": {"type": "string", "format": "date"},
-              "status": {"type": "string"},
-              "requisitionId": {"type": "string"},
-              "requesterId": {"type": "string"}
+              "updatedDateFrom": {
+                "type": "string",
+                "format": "date"
+              },
+              "updatedDateTo": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              },
+              "requisitionId": {
+                "type": "string"
+              },
+              "requesterId": {
+                "type": "string"
+              }
             },
             "description": "Filter criteria"
           },
           "orderBy": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort fields"
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -450,7 +587,9 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm"],
+        "required": [
+          "realm"
+        ],
         "additionalProperties": false
       }
     },
@@ -471,11 +610,16 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           }
         },
-        "required": ["realm", "requisitionId"],
+        "required": [
+          "realm",
+          "requisitionId"
+        ],
         "additionalProperties": false
       }
     },
@@ -500,7 +644,9 @@
           },
           "select": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to select"
           },
           "$top": {
@@ -517,7 +663,10 @@
             "description": "Number of records to skip"
           }
         },
-        "required": ["realm", "viewTemplateName"],
+        "required": [
+          "realm",
+          "viewTemplateName"
+        ],
         "additionalProperties": false
       }
     }
@@ -546,14 +695,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "poNumber": {"type": "string"},
-          "supplierId": {"type": "string"},
-          "supplierName": {"type": "string"},
-          "totalAmount": {"type": "number"},
-          "currency": {"type": "string"},
-          "status": {"type": "string"},
-          "createdDate": {"type": "string"},
-          "buyerId": {"type": "string"}
+          "poNumber": {
+            "type": "string"
+          },
+          "supplierId": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdDate": {
+            "type": "string"
+          },
+          "buyerId": {
+            "type": "string"
+          }
         }
       }
     },
@@ -580,14 +745,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "invoiceNumber": {"type": "string"},
-          "supplierId": {"type": "string"},
-          "supplierName": {"type": "string"},
-          "invoiceAmount": {"type": "number"},
-          "currency": {"type": "string"},
-          "status": {"type": "string"},
-          "receivedDate": {"type": "string"},
-          "poNumber": {"type": "string"}
+          "invoiceNumber": {
+            "type": "string"
+          },
+          "supplierId": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          },
+          "invoiceAmount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "receivedDate": {
+            "type": "string"
+          },
+          "poNumber": {
+            "type": "string"
+          }
         }
       }
     },
@@ -614,15 +795,33 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "contractId": {"type": "string"},
-          "contractTitle": {"type": "string"},
-          "supplierId": {"type": "string"},
-          "supplierName": {"type": "string"},
-          "contractValue": {"type": "number"},
-          "currency": {"type": "string"},
-          "approvedDate": {"type": "string"},
-          "effectiveDate": {"type": "string"},
-          "expirationDate": {"type": "string"}
+          "contractId": {
+            "type": "string"
+          },
+          "contractTitle": {
+            "type": "string"
+          },
+          "supplierId": {
+            "type": "string"
+          },
+          "supplierName": {
+            "type": "string"
+          },
+          "contractValue": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "approvedDate": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "expirationDate": {
+            "type": "string"
+          }
         }
       }
     }
@@ -630,5 +829,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/api/analytics/v2/reporting"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

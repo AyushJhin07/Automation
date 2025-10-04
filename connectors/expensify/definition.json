@@ -86,7 +86,12 @@
             "description": "Receipt data (base64 encoded)"
           }
         },
-        "required": ["partnerUserSecret", "amount", "merchant", "created"],
+        "required": [
+          "partnerUserSecret",
+          "amount",
+          "merchant",
+          "created"
+        ],
         "additionalProperties": false
       }
     },
@@ -113,7 +118,13 @@
           },
           "reportState": {
             "type": "string",
-            "enum": ["OPEN", "PROCESSING", "APPROVED", "REIMBURSED", "ARCHIVED"],
+            "enum": [
+              "OPEN",
+              "PROCESSING",
+              "APPROVED",
+              "REIMBURSED",
+              "ARCHIVED"
+            ],
             "description": "Filter by report state"
           },
           "policyID": {
@@ -128,7 +139,9 @@
             "description": "Maximum reports to return"
           }
         },
-        "required": ["partnerUserSecret"],
+        "required": [
+          "partnerUserSecret"
+        ],
         "additionalProperties": false
       }
     },
@@ -153,7 +166,10 @@
             "description": "Return random filename for export"
           }
         },
-        "required": ["partnerUserSecret", "reportID"],
+        "required": [
+          "partnerUserSecret",
+          "reportID"
+        ],
         "additionalProperties": false
       }
     },
@@ -178,17 +194,26 @@
           },
           "fileExtension": {
             "type": "string",
-            "enum": ["csv", "pdf"],
+            "enum": [
+              "csv",
+              "pdf"
+            ],
             "default": "csv",
             "description": "Export file format"
           },
           "onReceive": {
             "type": "string",
-            "enum": ["returnRandomFileName", "markAsExported"],
+            "enum": [
+              "returnRandomFileName",
+              "markAsExported"
+            ],
             "description": "Action on export"
           }
         },
-        "required": ["partnerUserSecret", "reportIDList"],
+        "required": [
+          "partnerUserSecret",
+          "reportIDList"
+        ],
         "additionalProperties": false
       }
     },
@@ -204,7 +229,9 @@
             "description": "Partner user secret"
           }
         },
-        "required": ["partnerUserSecret"],
+        "required": [
+          "partnerUserSecret"
+        ],
         "additionalProperties": false
       }
     },
@@ -228,7 +255,11 @@
             "description": "Comma-separated tag names"
           }
         },
-        "required": ["partnerUserSecret", "policyID", "tags"],
+        "required": [
+          "partnerUserSecret",
+          "policyID",
+          "tags"
+        ],
         "additionalProperties": false
       }
     },
@@ -256,7 +287,11 @@
             "description": "Transaction ID to attach receipt to"
           }
         },
-        "required": ["partnerUserSecret", "filename", "receiptData"],
+        "required": [
+          "partnerUserSecret",
+          "filename",
+          "receiptData"
+        ],
         "additionalProperties": false
       }
     }
@@ -281,10 +316,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "reportID": {"type": "string"},
-          "reportName": {"type": "string"},
-          "total": {"type": "number"},
-          "state": {"type": "string"}
+          "reportID": {
+            "type": "string"
+          },
+          "reportName": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "state": {
+            "type": "string"
+          }
         }
       }
     },
@@ -302,9 +345,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "reportID": {"type": "string"},
-          "approver": {"type": "string"},
-          "approvedDate": {"type": "string"}
+          "reportID": {
+            "type": "string"
+          },
+          "approver": {
+            "type": "string"
+          },
+          "approvedDate": {
+            "type": "string"
+          }
         }
       }
     },
@@ -322,10 +371,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "transactionID": {"type": "string"},
-          "amount": {"type": "number"},
-          "merchant": {"type": "string"},
-          "created": {"type": "string"}
+          "transactionID": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "merchant": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          }
         }
       }
     }
@@ -333,5 +390,19 @@
   "testConnection": {
     "method": "POST",
     "endpoint": "/"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

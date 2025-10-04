@@ -843,6 +843,8 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
     params?: any;
   };
 
+  type ConnectorLifecycleStatus = 'ga' | 'beta' | 'deprecated' | 'sunset';
+
   type AppGroup = {
     appId: string;                         // "gmail"
     appName: string;                       // "Gmail"
@@ -850,11 +852,31 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
     icon?: any;                            // lucide fallback
     actions: NodeTpl[];
     triggers: NodeTpl[];
+    semanticVersion?: string;
+    lifecycleStatus?: ConnectorLifecycleStatus;
+    isBeta?: boolean;
+    deprecationStartDate?: string | null;
+    sunsetDate?: string | null;
   };
 
   const [apps, setApps] = useState<Record<string, AppGroup>>({});
   const [categories, setCategories] = useState<string[]>([]);
   const isLoading = Boolean(catalogLoading);
+
+  const formatLifecycleBadgeDate = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+    try {
+      return new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return value;
+    }
+  };
 
   // Persist user preferences
   useEffect(() => {
@@ -925,6 +947,11 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
           params: { atHour: 9 },
         },
       ],
+      semanticVersion: '1.0.0',
+      lifecycleStatus: 'ga',
+      isBeta: false,
+      deprecationStartDate: null,
+      sunsetDate: null,
     };
     catSet.add('Built-in');
 
@@ -938,6 +965,13 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
         catSet.add(category);
 
         const Icon = appIconsMap[appId] || appIconsMap.default;
+
+        const semanticVersion = def.semanticVersion || def.version || '1.0.0';
+        const lifecycle = def.lifecycle || {};
+        const lifecycleStatus = (lifecycle.status || (def.isBeta ? 'beta' : 'ga')) as ConnectorLifecycleStatus;
+        const isBeta = lifecycle.isBeta ?? def.isBeta ?? lifecycleStatus === 'beta';
+        const deprecationStartDate = lifecycle.deprecation?.startDate ?? null;
+        const sunsetDate = lifecycle.sunsetDate ?? lifecycle.deprecation?.endDate ?? def.sunsetDate ?? null;
 
         const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
           id: `action-${appId}-${a.id}`,
@@ -964,6 +998,11 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
           icon: Icon,
           actions,
           triggers,
+          semanticVersion,
+          lifecycleStatus,
+          isBeta,
+          deprecationStartDate,
+          sunsetDate,
         };
       }
     }
@@ -1096,9 +1135,37 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
                     <BrandIcon appId={app.appId} appName={app.appName} appIcons={appIconsMap} />
                     <div className="flex flex-col text-left">
                       <span className="text-gray-900 font-medium">{app.appName}</span>
-                      <span className="text-xs text-gray-500">{app.category}</span>
+                      <span className="text-xs text-gray-500">
+                        {app.category}
+                        {app.semanticVersion ? ` • v${app.semanticVersion}` : ''}
+                      </span>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
+                      {app.semanticVersion && (
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5">
+                          v{app.semanticVersion}
+                        </Badge>
+                      )}
+                      {app.lifecycleStatus === 'beta' && (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+                          Beta
+                        </Badge>
+                      )}
+                      {app.lifecycleStatus === 'deprecated' && (
+                        <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">
+                          Deprecated
+                        </Badge>
+                      )}
+                      {app.lifecycleStatus === 'sunset' && app.sunsetDate && (
+                        <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px]">
+                          Sunsets {formatLifecycleBadgeDate(app.sunsetDate)}
+                        </Badge>
+                      )}
+                      {app.lifecycleStatus === 'deprecated' && app.deprecationStartDate && (
+                        <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px]">
+                          Deprecates {formatLifecycleBadgeDate(app.deprecationStartDate)}
+                        </Badge>
+                      )}
                       {app.triggers.length > 0 && (
                         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0.5">
                           {app.triggers.length} trigger{app.triggers.length !== 1 ? 's' : ''}

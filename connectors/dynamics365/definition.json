@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://dynamics.microsoft.com/user_impersonation"]
+      "scopes": [
+        "https://dynamics.microsoft.com/user_impersonation"
+      ]
     }
   },
   "baseUrl": "https://{organization}.dynamics.com/api/data/v9.2",
@@ -93,7 +95,9 @@
             "description": "Account description"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -117,7 +121,9 @@
             "description": "Related entities to expand"
           }
         },
-        "required": ["accountid"],
+        "required": [
+          "accountid"
+        ],
         "additionalProperties": false
       }
     },
@@ -163,7 +169,9 @@
             "description": "Account description"
           }
         },
-        "required": ["accountid"],
+        "required": [
+          "accountid"
+        ],
         "additionalProperties": false
       }
     },
@@ -267,7 +275,9 @@
             "description": "Contact description"
           }
         },
-        "required": ["lastname"],
+        "required": [
+          "lastname"
+        ],
         "additionalProperties": false
       }
     },
@@ -336,7 +346,10 @@
             "description": "Lead description"
           }
         },
-        "required": ["lastname", "subject"],
+        "required": [
+          "lastname",
+          "subject"
+        ],
         "additionalProperties": false
       }
     },
@@ -387,7 +400,9 @@
             "description": "Opportunity description"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     }
@@ -412,9 +427,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "accountid": {"type": "string"},
-          "name": {"type": "string"},
-          "createdon": {"type": "string"}
+          "accountid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdon": {
+            "type": "string"
+          }
         }
       }
     },
@@ -432,9 +453,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "leadid": {"type": "string"},
-          "subject": {"type": "string"},
-          "fullname": {"type": "string"}
+          "leadid": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "fullname": {
+            "type": "string"
+          }
         }
       }
     },
@@ -452,9 +479,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "opportunityid": {"type": "string"},
-          "name": {"type": "string"},
-          "actualvalue": {"type": "number"}
+          "opportunityid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "actualvalue": {
+            "type": "number"
+          }
         }
       }
     }
@@ -462,5 +495,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/accounts?$top=1"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

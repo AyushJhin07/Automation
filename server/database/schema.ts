@@ -900,6 +900,13 @@ export const connectorDefinitions = pgTable(
     
     // Metadata for ALL application connectors
     version: text('version').default('1.0.0').notNull(),
+    semanticVersion: text('semantic_version').default('1.0.0').notNull(),
+    lifecycleStatus: text('lifecycle_status').default('ga').notNull(),
+    isBeta: boolean('is_beta').default(false).notNull(),
+    betaStartAt: timestamp('beta_start_at'),
+    betaEndAt: timestamp('beta_end_at'),
+    deprecationStartAt: timestamp('deprecation_start_at'),
+    sunsetAt: timestamp('sunset_at'),
     isActive: boolean('is_active').default(true).notNull(),
     popularity: integer('popularity').default(0).notNull(),
     
@@ -917,6 +924,9 @@ export const connectorDefinitions = pgTable(
     categoryIdx: index('connectors_category_idx').on(table.category),
     activeIdx: index('connectors_active_idx').on(table.isActive),
     popularityIdx: index('connectors_popularity_idx').on(table.popularity),
+    lifecycleStatusIdx: index('connectors_lifecycle_status_idx').on(table.lifecycleStatus),
+    betaIdx: index('connectors_beta_idx').on(table.isBeta),
+    sunsetIdx: index('connectors_sunset_idx').on(table.sunsetAt),
     
     // Security and compliance indexes for ALL applications
     piiIdx: index('connectors_pii_idx').on(table.handlesPersonalData),

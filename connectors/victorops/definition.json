@@ -38,7 +38,12 @@
         "properties": {
           "messageType": {
             "type": "string",
-            "enum": ["CRITICAL", "WARNING", "INFO", "RECOVERY"],
+            "enum": [
+              "CRITICAL",
+              "WARNING",
+              "INFO",
+              "RECOVERY"
+            ],
             "description": "Message type"
           },
           "entityId": {
@@ -66,7 +71,10 @@
             "description": "Routing key"
           }
         },
-        "required": ["messageType", "entityId"],
+        "required": [
+          "messageType",
+          "entityId"
+        ],
         "additionalProperties": false
       }
     },
@@ -125,7 +133,9 @@
             "description": "Incident number"
           }
         },
-        "required": ["incidentNumber"],
+        "required": [
+          "incidentNumber"
+        ],
         "additionalProperties": false
       }
     },
@@ -149,7 +159,10 @@
             "description": "Acknowledgment message"
           }
         },
-        "required": ["incidentNumber", "userName"],
+        "required": [
+          "incidentNumber",
+          "userName"
+        ],
         "additionalProperties": false
       }
     },
@@ -173,7 +186,10 @@
             "description": "Resolution message"
           }
         },
-        "required": ["incidentNumber", "userName"],
+        "required": [
+          "incidentNumber",
+          "userName"
+        ],
         "additionalProperties": false
       }
     },
@@ -200,7 +216,9 @@
             "description": "Team slug"
           }
         },
-        "required": ["team"],
+        "required": [
+          "team"
+        ],
         "additionalProperties": false
       }
     },
@@ -225,7 +243,9 @@
             "description": "Time to check on-call status"
           }
         },
-        "required": ["team"],
+        "required": [
+          "team"
+        ],
         "additionalProperties": false
       }
     },
@@ -252,11 +272,17 @@
           },
           "routingKeys": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Routing keys to include"
           }
         },
-        "required": ["name", "startTime", "endTime"],
+        "required": [
+          "name",
+          "startTime",
+          "endTime"
+        ],
         "additionalProperties": false
       }
     },
@@ -283,7 +309,9 @@
             "description": "Username"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "additionalProperties": false
       }
     }
@@ -312,13 +340,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "incidentNumber": {"type": "string"},
-          "entityId": {"type": "string"},
-          "entityDisplayName": {"type": "string"},
-          "messageType": {"type": "string"},
-          "stateMessage": {"type": "string"},
-          "startTime": {"type": "string"},
-          "currentPhase": {"type": "string"}
+          "incidentNumber": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "entityDisplayName": {
+            "type": "string"
+          },
+          "messageType": {
+            "type": "string"
+          },
+          "stateMessage": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "currentPhase": {
+            "type": "string"
+          }
         }
       }
     },
@@ -341,11 +383,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "incidentNumber": {"type": "string"},
-          "entityId": {"type": "string"},
-          "ackUserId": {"type": "string"},
-          "ackTime": {"type": "string"},
-          "message": {"type": "string"}
+          "incidentNumber": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "ackUserId": {
+            "type": "string"
+          },
+          "ackTime": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
         }
       }
     },
@@ -368,11 +420,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "incidentNumber": {"type": "string"},
-          "entityId": {"type": "string"},
-          "resolveUserId": {"type": "string"},
-          "resolveTime": {"type": "string"},
-          "message": {"type": "string"}
+          "incidentNumber": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "resolveUserId": {
+            "type": "string"
+          },
+          "resolveTime": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
         }
       }
     }
@@ -380,5 +442,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

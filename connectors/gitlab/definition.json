@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://gitlab.com/oauth/authorize",
       "tokenUrl": "https://gitlab.com/oauth/token",
-      "scopes": ["api", "read_user", "read_repository"]
+      "scopes": [
+        "api",
+        "read_user",
+        "read_repository"
+      ]
     }
   },
   "baseUrl": "https://gitlab.com/api/v4",
@@ -48,7 +52,9 @@
           },
           "assignee_ids": {
             "type": "array",
-            "items": {"type": "number"},
+            "items": {
+              "type": "number"
+            },
             "description": "User IDs to assign"
           },
           "milestone_id": {
@@ -69,7 +75,10 @@
             "description": "Issue weight"
           }
         },
-        "required": ["id", "title"],
+        "required": [
+          "id",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -123,7 +132,12 @@
             "description": "Squash commits when merging"
           }
         },
-        "required": ["id", "source_branch", "target_branch", "title"],
+        "required": [
+          "id",
+          "source_branch",
+          "target_branch",
+          "title"
+        ],
         "additionalProperties": false
       }
     },
@@ -148,7 +162,11 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["private", "internal", "public"],
+            "enum": [
+              "private",
+              "internal",
+              "public"
+            ],
             "default": "private",
             "description": "Project visibility"
           },
@@ -177,7 +195,9 @@
             "description": "Namespace ID"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -194,17 +214,31 @@
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "internal", "private"],
+            "enum": [
+              "public",
+              "internal",
+              "private"
+            ],
             "description": "Filter by visibility"
           },
           "order_by": {
             "type": "string",
-            "enum": ["id", "name", "path", "created_at", "updated_at", "last_activity_at"],
+            "enum": [
+              "id",
+              "name",
+              "path",
+              "created_at",
+              "updated_at",
+              "last_activity_at"
+            ],
             "description": "Order by field"
           },
           "sort": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "search": {
@@ -244,15 +278,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "object_kind": {"type": "string"},
-          "project": {"type": "object"},
-          "commits": {"type": "array"}
+          "object_kind": {
+            "type": "string"
+          },
+          "project": {
+            "type": "object"
+          },
+          "commits": {
+            "type": "array"
+          }
         }
       }
     },
     {
       "id": "merge_request_events",
-      "name": "Merge Request Events", 
+      "name": "Merge Request Events",
       "description": "Triggered on merge request events",
       "type": "webhook",
       "parameters": {
@@ -264,9 +304,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "object_kind": {"type": "string"},
-          "object_attributes": {"type": "object"},
-          "project": {"type": "object"}
+          "object_kind": {
+            "type": "string"
+          },
+          "object_attributes": {
+            "type": "object"
+          },
+          "project": {
+            "type": "object"
+          }
         }
       }
     }
@@ -274,5 +320,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

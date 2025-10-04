@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://account.box.com/api/oauth2/authorize",
       "tokenUrl": "https://api.box.com/oauth2/token",
-      "scopes": ["root_readwrite", "root_readonly"]
+      "scopes": [
+        "root_readwrite",
+        "root_readonly"
+      ]
     }
   },
   "baseUrl": "https://api.box.com/2.0",
@@ -58,7 +61,10 @@
             "description": "Content modification date"
           }
         },
-        "required": ["file_name", "file_content"],
+        "required": [
+          "file_name",
+          "file_content"
+        ],
         "additionalProperties": false
       }
     },
@@ -78,7 +84,9 @@
             "description": "File version"
           }
         },
-        "required": ["file_id"],
+        "required": [
+          "file_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -99,7 +107,9 @@
             "description": "Parent folder ID"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -119,7 +129,9 @@
             "description": "Comma-separated list of fields"
           }
         },
-        "required": ["file_id"],
+        "required": [
+          "file_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -168,17 +180,24 @@
           },
           "file_extensions": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "File extensions to filter"
           },
           "type": {
             "type": "string",
-            "enum": ["file", "folder"],
+            "enum": [
+              "file",
+              "folder"
+            ],
             "description": "Item type filter"
           },
           "content_types": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Content types to filter"
           },
           "limit": {
@@ -189,7 +208,9 @@
             "description": "Number of results"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -206,12 +227,19 @@
           },
           "item_type": {
             "type": "string",
-            "enum": ["file", "folder"],
+            "enum": [
+              "file",
+              "folder"
+            ],
             "description": "Item type"
           },
           "access": {
             "type": "string",
-            "enum": ["open", "company", "collaborators"],
+            "enum": [
+              "open",
+              "company",
+              "collaborators"
+            ],
             "description": "Access level"
           },
           "password": {
@@ -232,7 +260,10 @@
             "description": "Allow previews"
           }
         },
-        "required": ["item_id", "item_type"],
+        "required": [
+          "item_id",
+          "item_type"
+        ],
         "additionalProperties": false
       }
     }
@@ -257,10 +288,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "created_by": {"type": "object"}
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "object"
+          }
         }
       }
     },
@@ -278,9 +317,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "type": {"type": "string"},
-          "id": {"type": "string"},
-          "name": {"type": "string"}
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
         }
       }
     }
@@ -288,5 +333,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/users/me"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

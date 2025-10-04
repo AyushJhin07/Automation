@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://login.salesforce.com/services/oauth2/authorize",
       "tokenUrl": "https://login.salesforce.com/services/oauth2/token",
-      "scopes": ["full", "refresh_token"]
+      "scopes": [
+        "full",
+        "refresh_token"
+      ]
     }
   },
   "baseUrl": "https://your-instance.salesforce.com/services/data/v58.0",
@@ -43,7 +46,10 @@
             "description": "Record fields"
           }
         },
-        "required": ["sobjectType", "fields"],
+        "required": [
+          "sobjectType",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -67,7 +73,11 @@
             "description": "Fields to update"
           }
         },
-        "required": ["sobjectType", "recordId", "fields"],
+        "required": [
+          "sobjectType",
+          "recordId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -87,7 +97,10 @@
             "description": "Record ID"
           }
         },
-        "required": ["sobjectType", "recordId"],
+        "required": [
+          "sobjectType",
+          "recordId"
+        ],
         "additionalProperties": false
       }
     },
@@ -103,7 +116,9 @@
             "description": "SOQL query string"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     }
@@ -128,8 +143,12 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "Id": {"type": "string"},
-          "sobjectType": {"type": "string"}
+          "Id": {
+            "type": "string"
+          },
+          "sobjectType": {
+            "type": "string"
+          }
         }
       }
     }
@@ -137,5 +156,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/limits"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -40,7 +40,15 @@
           },
           "resultFormat": {
             "type": "string",
-            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg"],
+            "enum": [
+              "json",
+              "csv",
+              "txt",
+              "html",
+              "xlsx",
+              "png",
+              "jpg"
+            ],
             "default": "json",
             "description": "Format for results"
           },
@@ -61,7 +69,9 @@
             "description": "Perform table calculations on server"
           }
         },
-        "required": ["lookId"],
+        "required": [
+          "lookId"
+        ],
         "additionalProperties": false
       }
     },
@@ -78,7 +88,16 @@
           },
           "resultFormat": {
             "type": "string",
-            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg", "pdf"],
+            "enum": [
+              "json",
+              "csv",
+              "txt",
+              "html",
+              "xlsx",
+              "png",
+              "jpg",
+              "pdf"
+            ],
             "default": "json",
             "description": "Format for results"
           },
@@ -95,7 +114,9 @@
             "description": "Height for image/PDF output"
           }
         },
-        "required": ["dashboardId"],
+        "required": [
+          "dashboardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -116,12 +137,16 @@
           },
           "dimensions": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Dimensions to include"
           },
           "measures": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Measures to include"
           },
           "filters": {
@@ -130,7 +155,9 @@
           },
           "sorts": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort order"
           },
           "limit": {
@@ -147,12 +174,21 @@
           },
           "resultFormat": {
             "type": "string",
-            "enum": ["json", "csv", "txt", "html", "xlsx"],
+            "enum": [
+              "json",
+              "csv",
+              "txt",
+              "html",
+              "xlsx"
+            ],
             "default": "json",
             "description": "Format for results"
           }
         },
-        "required": ["model", "explore"],
+        "required": [
+          "model",
+          "explore"
+        ],
         "additionalProperties": false
       }
     },
@@ -173,12 +209,16 @@
           },
           "dimensions": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Dimensions to include"
           },
           "measures": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Measures to include"
           },
           "filters": {
@@ -187,7 +227,9 @@
           },
           "sorts": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Sort order"
           },
           "limit": {
@@ -203,7 +245,10 @@
             "description": "Column limit for results"
           }
         },
-        "required": ["model", "explore"],
+        "required": [
+          "model",
+          "explore"
+        ],
         "additionalProperties": false
       }
     },
@@ -219,7 +264,9 @@
             "description": "Look ID"
           }
         },
-        "required": ["lookId"],
+        "required": [
+          "lookId"
+        ],
         "additionalProperties": false
       }
     },
@@ -264,7 +311,9 @@
             "description": "Dashboard ID"
           }
         },
-        "required": ["dashboardId"],
+        "required": [
+          "dashboardId"
+        ],
         "additionalProperties": false
       }
     },
@@ -309,7 +358,9 @@
             "description": "User ID"
           }
         },
-        "required": ["userId"],
+        "required": [
+          "userId"
+        ],
         "additionalProperties": false
       }
     },
@@ -376,17 +427,31 @@
           },
           "destinationAddresses": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Email addresses for delivery"
           },
           "format": {
             "type": "string",
-            "enum": ["json", "csv", "txt", "html", "xlsx", "png", "jpg", "pdf"],
+            "enum": [
+              "json",
+              "csv",
+              "txt",
+              "html",
+              "xlsx",
+              "png",
+              "jpg",
+              "pdf"
+            ],
             "default": "pdf",
             "description": "Format for delivery"
           }
         },
-        "required": ["name", "crontab"],
+        "required": [
+          "name",
+          "crontab"
+        ],
         "additionalProperties": false
       }
     },
@@ -439,7 +504,10 @@
             "description": "Comma-separated list of fields to return"
           }
         },
-        "required": ["model", "explore"],
+        "required": [
+          "model",
+          "explore"
+        ],
         "additionalProperties": false
       }
     }
@@ -464,11 +532,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "planId": {"type": "string"},
-          "planName": {"type": "string"},
-          "runAt": {"type": "string"},
-          "status": {"type": "string"},
-          "resultUrl": {"type": "string"}
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "runAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "resultUrl": {
+            "type": "string"
+          }
         }
       }
     },
@@ -491,12 +569,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "alertId": {"type": "string"},
-          "alertName": {"type": "string"},
-          "triggeredAt": {"type": "string"},
-          "value": {"type": "number"},
-          "threshold": {"type": "number"},
-          "condition": {"type": "string"}
+          "alertId": {
+            "type": "string"
+          },
+          "alertName": {
+            "type": "string"
+          },
+          "triggeredAt": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "condition": {
+            "type": "string"
+          }
         }
       }
     }
@@ -504,5 +594,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/user"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

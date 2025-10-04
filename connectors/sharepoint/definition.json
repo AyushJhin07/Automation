@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["Sites.ReadWrite.All", "Files.ReadWrite.All"]
+      "scopes": [
+        "Sites.ReadWrite.All",
+        "Files.ReadWrite.All"
+      ]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0",
@@ -56,12 +59,20 @@
           },
           "conflictBehavior": {
             "type": "string",
-            "enum": ["fail", "replace", "rename"],
+            "enum": [
+              "fail",
+              "replace",
+              "rename"
+            ],
             "default": "fail",
             "description": "What to do if file already exists"
           }
         },
-        "required": ["siteId", "fileName", "content"],
+        "required": [
+          "siteId",
+          "fileName",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,7 +105,9 @@
             "description": "Include file content in response"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -122,7 +135,11 @@
             "description": "New file content"
           }
         },
-        "required": ["siteId", "fileId", "content"],
+        "required": [
+          "siteId",
+          "fileId",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +163,10 @@
             "description": "File ID to delete"
           }
         },
-        "required": ["siteId", "fileId"],
+        "required": [
+          "siteId",
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -188,7 +208,9 @@
             "description": "Number of items to return"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -217,12 +239,19 @@
           },
           "conflictBehavior": {
             "type": "string",
-            "enum": ["fail", "replace", "rename"],
+            "enum": [
+              "fail",
+              "replace",
+              "rename"
+            ],
             "default": "fail",
             "description": "What to do if folder already exists"
           }
         },
-        "required": ["siteId", "folderName"],
+        "required": [
+          "siteId",
+          "folderName"
+        ],
         "additionalProperties": false
       }
     },
@@ -246,7 +275,11 @@
             "description": "Field values for the new item"
           }
         },
-        "required": ["siteId", "listId", "fields"],
+        "required": [
+          "siteId",
+          "listId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -274,7 +307,12 @@
             "description": "Field values to update"
           }
         },
-        "required": ["siteId", "listId", "itemId", "fields"],
+        "required": [
+          "siteId",
+          "listId",
+          "itemId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -316,7 +354,10 @@
             "description": "Number of items to return"
           }
         },
-        "required": ["siteId", "listId"],
+        "required": [
+          "siteId",
+          "listId"
+        ],
         "additionalProperties": false
       }
     },
@@ -341,13 +382,21 @@
           },
           "type": {
             "type": "string",
-            "enum": ["view", "edit", "embed"],
+            "enum": [
+              "view",
+              "edit",
+              "embed"
+            ],
             "default": "view",
             "description": "Type of sharing link"
           },
           "scope": {
             "type": "string",
-            "enum": ["anonymous", "organization", "users"],
+            "enum": [
+              "anonymous",
+              "organization",
+              "users"
+            ],
             "default": "anonymous",
             "description": "Who can access the link"
           },
@@ -361,7 +410,10 @@
             "description": "Link expiration date"
           }
         },
-        "required": ["siteId", "itemId"],
+        "required": [
+          "siteId",
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -411,7 +463,9 @@
             "description": "Fields to select"
           }
         },
-        "required": ["siteId"],
+        "required": [
+          "siteId"
+        ],
         "additionalProperties": false
       }
     },
@@ -432,7 +486,15 @@
           },
           "entityTypes": {
             "type": "array",
-            "items": {"type": "string", "enum": ["driveItem", "list", "listItem", "site"]},
+            "items": {
+              "type": "string",
+              "enum": [
+                "driveItem",
+                "list",
+                "listItem",
+                "site"
+              ]
+            },
             "description": "Types of entities to search"
           },
           "top": {
@@ -442,7 +504,9 @@
             "description": "Number of results to return"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     }
@@ -475,14 +539,30 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "webUrl": {"type": "string"},
-          "createdDateTime": {"type": "string"},
-          "lastModifiedDateTime": {"type": "string"},
-          "size": {"type": "number"},
-          "createdBy": {"type": "object"},
-          "lastModifiedBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": "string"
+          },
+          "createdDateTime": {
+            "type": "string"
+          },
+          "lastModifiedDateTime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "createdBy": {
+            "type": "object"
+          },
+          "lastModifiedBy": {
+            "type": "object"
+          }
         }
       }
     },
@@ -513,12 +593,24 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "webUrl": {"type": "string"},
-          "lastModifiedDateTime": {"type": "string"},
-          "size": {"type": "number"},
-          "lastModifiedBy": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": "string"
+          },
+          "lastModifiedDateTime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "lastModifiedBy": {
+            "type": "object"
+          }
         }
       }
     },
@@ -545,13 +637,27 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "webUrl": {"type": "string"},
-          "createdDateTime": {"type": "string"},
-          "lastModifiedDateTime": {"type": "string"},
-          "createdBy": {"type": "object"},
-          "lastModifiedBy": {"type": "object"},
-          "fields": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": "string"
+          },
+          "createdDateTime": {
+            "type": "string"
+          },
+          "lastModifiedDateTime": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "object"
+          },
+          "lastModifiedBy": {
+            "type": "object"
+          },
+          "fields": {
+            "type": "object"
+          }
         }
       }
     },
@@ -578,11 +684,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "webUrl": {"type": "string"},
-          "lastModifiedDateTime": {"type": "string"},
-          "lastModifiedBy": {"type": "object"},
-          "fields": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": "string"
+          },
+          "lastModifiedDateTime": {
+            "type": "string"
+          },
+          "lastModifiedBy": {
+            "type": "object"
+          },
+          "fields": {
+            "type": "object"
+          }
         }
       }
     }
@@ -590,5 +706,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

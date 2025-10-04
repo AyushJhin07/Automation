@@ -85,7 +85,10 @@
             "description": "Set of key-value pairs for storing additional information"
           }
         },
-        "required": ["amount", "currency"],
+        "required": [
+          "amount",
+          "currency"
+        ],
         "additionalProperties": false
       }
     },
@@ -105,10 +108,17 @@
             "items": {
               "type": "object",
               "properties": {
-                "price": {"type": "string"},
-                "quantity": {"type": "number", "minimum": 1}
+                "price": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "number",
+                  "minimum": 1
+                }
               },
-              "required": ["price"],
+              "required": [
+                "price"
+              ],
               "additionalProperties": false
             },
             "description": "Subscription items"
@@ -118,7 +128,10 @@
             "description": "Set of key-value pairs for storing additional information"
           }
         },
-        "required": ["customer", "items"],
+        "required": [
+          "customer",
+          "items"
+        ],
         "additionalProperties": false
       }
     },
@@ -142,7 +155,9 @@
             "description": "Set of key-value pairs for storing additional information"
           }
         },
-        "required": ["customer"],
+        "required": [
+          "customer"
+        ],
         "additionalProperties": false
       }
     }
@@ -162,11 +177,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "email": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "created": {"type": "number"}
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created": {
+            "type": "number"
+          }
         }
       }
     },
@@ -189,11 +214,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "amount": {"type": "number"},
-          "currency": {"type": "string"},
-          "customer": {"type": "string"},
-          "status": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     }
@@ -201,5 +236,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/account"
+  },
+  "semanticVersion": "2.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

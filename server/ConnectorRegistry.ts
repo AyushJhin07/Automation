@@ -21,6 +21,36 @@ interface ConnectorStatusFlags {
   featured: boolean;
 }
 
+type ConnectorLifecycleStatus = 'ga' | 'beta' | 'deprecated' | 'sunset';
+
+interface ConnectorLifecycleConfig {
+  status?: ConnectorLifecycleStatus;
+  beta?: {
+    enabled?: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
+  };
+  deprecation?: {
+    startDate?: string | null;
+    endDate?: string | null;
+  };
+  sunsetDate?: string | null;
+}
+
+interface NormalizedConnectorLifecycle {
+  status: ConnectorLifecycleStatus;
+  isBeta: boolean;
+  beta: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+  deprecation: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+  sunsetDate: string | null;
+}
+
 interface ConnectorManifestMetadata {
   id: string;
   description?: string;
@@ -83,6 +113,14 @@ interface ConnectorDefinition {
   };
   actions: ConnectorFunction[];
   triggers: ConnectorFunction[];
+  version?: string;
+  semanticVersion?: string;
+  lifecycle?: ConnectorLifecycleConfig;
+  isBeta?: boolean;
+  betaStartDate?: string | null;
+  betaEndDate?: string | null;
+  deprecationStartDate?: string | null;
+  sunsetDate?: string | null;
 }
 
 interface APIClientConstructor {
@@ -453,6 +491,18 @@ export class ConnectorRegistry {
           id: appId,
           availability,
           description: manifestMetadata.description ?? def.description,
+          version: def.version ?? '1.0.0',
+          semanticVersion: def.semanticVersion ?? def.version ?? '1.0.0',
+          lifecycle: def.lifecycle ?? {},
+          isBeta: def.lifecycle?.beta?.enabled ?? def.isBeta ?? def.lifecycle?.status === 'beta',
+          betaStartDate: def.lifecycle?.beta?.startDate ?? def.betaStartDate ?? null,
+          betaEndDate: def.lifecycle?.beta?.endDate ?? def.betaEndDate ?? null,
+          deprecationStartDate: def.lifecycle?.deprecation?.startDate ?? def.deprecationStartDate ?? null,
+          sunsetDate:
+            def.lifecycle?.deprecation?.endDate
+              ?? def.lifecycle?.sunsetDate
+              ?? def.sunsetDate
+              ?? null,
         };
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
@@ -960,13 +1010,19 @@ export class ConnectorRegistry {
         continue;
       }
       const def = entry.definition;
+      const lifecycle = this.normalizeLifecycleMetadata(def);
       connectors[appId] = {
         name: def.name,
         category: def.category,
         actions: def.actions || [],
         triggers: def.triggers || [],
         hasImplementation: entry.hasImplementation === true,
-        availability: entry.availability
+        availability: entry.availability,
+        version: def.version ?? '1.0.0',
+        semanticVersion: def.semanticVersion ?? def.version ?? '1.0.0',
+        lifecycle,
+        isBeta: lifecycle.isBeta,
+        sunsetDate: lifecycle.sunsetDate,
       };
 
       const pushNode = (type: 'action' | 'trigger', fn: ConnectorFunction) => {
@@ -1005,6 +1061,66 @@ export class ConnectorRegistry {
     }
 
     return { connectors, categories };
+  }
+
+  private normalizeLifecycleMetadata(def: ConnectorDefinition): NormalizedConnectorLifecycle {
+    const lifecycle = def.lifecycle ?? {};
+    const allowedStatuses: ConnectorLifecycleStatus[] = ['ga', 'beta', 'deprecated', 'sunset'];
+    const declaredStatus = lifecycle.status;
+    const status = allowedStatuses.includes(declaredStatus as ConnectorLifecycleStatus)
+      ? (declaredStatus as ConnectorLifecycleStatus)
+      : (def.isBeta ? 'beta' : 'ga');
+
+    const betaStart = this.normalizeDateValue(
+      lifecycle.beta?.startDate ?? def.betaStartDate ?? null
+    );
+    const betaEnd = this.normalizeDateValue(
+      lifecycle.beta?.endDate ?? def.betaEndDate ?? null
+    );
+    const deprecationStart = this.normalizeDateValue(
+      lifecycle.deprecation?.startDate ?? def.deprecationStartDate ?? null
+    );
+    const deprecationEnd = this.normalizeDateValue(
+      lifecycle.deprecation?.endDate ?? def.sunsetDate ?? lifecycle.sunsetDate ?? null
+    );
+    const sunsetDate = this.normalizeDateValue(
+      lifecycle.sunsetDate ?? def.sunsetDate ?? deprecationEnd ?? null
+    );
+
+    const isBeta = lifecycle.beta?.enabled ?? def.isBeta ?? status === 'beta';
+
+    return {
+      status,
+      isBeta: Boolean(isBeta),
+      beta: {
+        startDate: betaStart,
+        endDate: betaEnd,
+      },
+      deprecation: {
+        startDate: deprecationStart,
+        endDate: deprecationEnd ?? sunsetDate,
+      },
+      sunsetDate: sunsetDate ?? deprecationEnd ?? null,
+    };
+  }
+
+  private normalizeDateValue(value: unknown): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    }
+
+    return null;
   }
 
   private resolveAvailability(

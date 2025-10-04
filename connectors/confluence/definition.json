@@ -11,7 +11,11 @@
     "config": {
       "authUrl": "https://auth.atlassian.com/authorize",
       "tokenUrl": "https://auth.atlassian.com/oauth/token",
-      "scopes": ["read:confluence-content.all", "write:confluence-content", "read:confluence-space.summary"]
+      "scopes": [
+        "read:confluence-content.all",
+        "write:confluence-content",
+        "read:confluence-space.summary"
+      ]
     }
   },
   "baseUrl": "https://api.atlassian.com/ex/confluence",
@@ -40,7 +44,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["page", "blogpost"],
+            "enum": [
+              "page",
+              "blogpost"
+            ],
             "default": "page",
             "description": "Content type"
           },
@@ -51,7 +58,9 @@
           "space": {
             "type": "object",
             "properties": {
-              "key": {"type": "string"}
+              "key": {
+                "type": "string"
+              }
             },
             "description": "Space information"
           },
@@ -61,8 +70,17 @@
               "storage": {
                 "type": "object",
                 "properties": {
-                  "value": {"type": "string"},
-                  "representation": {"type": "string", "enum": ["storage", "view", "wiki"]}
+                  "value": {
+                    "type": "string"
+                  },
+                  "representation": {
+                    "type": "string",
+                    "enum": [
+                      "storage",
+                      "view",
+                      "wiki"
+                    ]
+                  }
                 }
               }
             },
@@ -73,7 +91,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string"}
+                "id": {
+                  "type": "string"
+                }
               }
             },
             "description": "Parent pages"
@@ -83,7 +103,12 @@
             "description": "Page metadata"
           }
         },
-        "required": ["cloudid", "title", "space", "body"],
+        "required": [
+          "cloudid",
+          "title",
+          "space",
+          "body"
+        ],
         "additionalProperties": false
       }
     },
@@ -104,7 +129,10 @@
           },
           "type": {
             "type": "string",
-            "enum": ["page", "blogpost"],
+            "enum": [
+              "page",
+              "blogpost"
+            ],
             "description": "Content type"
           },
           "title": {
@@ -117,8 +145,12 @@
               "storage": {
                 "type": "object",
                 "properties": {
-                  "value": {"type": "string"},
-                  "representation": {"type": "string"}
+                  "value": {
+                    "type": "string"
+                  },
+                  "representation": {
+                    "type": "string"
+                  }
                 }
               }
             },
@@ -127,12 +159,18 @@
           "version": {
             "type": "object",
             "properties": {
-              "number": {"type": "number"}
+              "number": {
+                "type": "number"
+              }
             },
             "description": "Version information"
           }
         },
-        "required": ["cloudid", "id", "version"],
+        "required": [
+          "cloudid",
+          "id",
+          "version"
+        ],
         "additionalProperties": false
       }
     },
@@ -153,12 +191,18 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to expand"
           },
           "status": {
             "type": "string",
-            "enum": ["current", "trashed", "draft"],
+            "enum": [
+              "current",
+              "trashed",
+              "draft"
+            ],
             "description": "Page status filter"
           },
           "version": {
@@ -166,7 +210,10 @@
             "description": "Specific version number"
           }
         },
-        "required": ["cloudid", "id"],
+        "required": [
+          "cloudid",
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -191,7 +238,9 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to expand"
           },
           "start": {
@@ -210,7 +259,10 @@
             "description": "Include archived spaces"
           }
         },
-        "required": ["cloudid", "cql"],
+        "required": [
+          "cloudid",
+          "cql"
+        ],
         "additionalProperties": false
       }
     },
@@ -227,22 +279,32 @@
           },
           "spaceKey": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by space keys"
           },
           "type": {
             "type": "string",
-            "enum": ["global", "personal"],
+            "enum": [
+              "global",
+              "personal"
+            ],
             "description": "Space type filter"
           },
           "status": {
             "type": "string",
-            "enum": ["current", "archived"],
+            "enum": [
+              "current",
+              "archived"
+            ],
             "description": "Space status filter"
           },
           "label": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Filter by labels"
           },
           "favourite": {
@@ -251,7 +313,9 @@
           },
           "expand": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Properties to expand"
           },
           "start": {
@@ -266,7 +330,9 @@
             "description": "Number of spaces to return"
           }
         },
-        "required": ["cloudid"],
+        "required": [
+          "cloudid"
+        ],
         "additionalProperties": false
       }
     },
@@ -287,11 +353,17 @@
           },
           "status": {
             "type": "string",
-            "enum": ["current", "trashed"],
+            "enum": [
+              "current",
+              "trashed"
+            ],
             "description": "Current page status"
           }
         },
-        "required": ["cloudid", "id"],
+        "required": [
+          "cloudid",
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -309,8 +381,12 @@
           "container": {
             "type": "object",
             "properties": {
-              "id": {"type": "string"},
-              "type": {"type": "string"}
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
             },
             "description": "Container (page) information"
           },
@@ -320,8 +396,12 @@
               "storage": {
                 "type": "object",
                 "properties": {
-                  "value": {"type": "string"},
-                  "representation": {"type": "string"}
+                  "value": {
+                    "type": "string"
+                  },
+                  "representation": {
+                    "type": "string"
+                  }
                 }
               }
             },
@@ -329,12 +409,18 @@
           },
           "type": {
             "type": "string",
-            "enum": ["comment"],
+            "enum": [
+              "comment"
+            ],
             "default": "comment",
             "description": "Content type"
           }
         },
-        "required": ["cloudid", "container", "body"],
+        "required": [
+          "cloudid",
+          "container",
+          "body"
+        ],
         "additionalProperties": false
       }
     }
@@ -359,10 +445,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string"},
-          "title": {"type": "string"},
-          "space": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "space": {
+            "type": "object"
+          }
         }
       }
     },
@@ -385,9 +479,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "title": {"type": "string"},
-          "version": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "object"
+          }
         }
       }
     }
@@ -395,5 +495,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/{cloudid}/wiki/rest/api/space"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

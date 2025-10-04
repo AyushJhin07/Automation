@@ -73,42 +73,78 @@
           "displaycontact": {
             "type": "object",
             "properties": {
-              "contactname": {"type": "string"},
-              "companyname": {"type": "string"},
+              "contactname": {
+                "type": "string"
+              },
+              "companyname": {
+                "type": "string"
+              },
               "mailaddress": {
                 "type": "object",
                 "properties": {
-                  "address1": {"type": "string"},
-                  "address2": {"type": "string"},
-                  "city": {"type": "string"},
-                  "state": {"type": "string"},
-                  "zip": {"type": "string"},
-                  "country": {"type": "string"}
+                  "address1": {
+                    "type": "string"
+                  },
+                  "address2": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "zip": {
+                    "type": "string"
+                  },
+                  "country": {
+                    "type": "string"
+                  }
                 }
               },
-              "phone1": {"type": "string"},
-              "email1": {"type": "string", "format": "email"}
+              "phone1": {
+                "type": "string"
+              },
+              "email1": {
+                "type": "string",
+                "format": "email"
+              }
             },
             "description": "Display contact information"
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"],
+            "enum": [
+              "active",
+              "inactive"
+            ],
             "default": "active",
             "description": "Customer status"
           },
           "billto": {
             "type": "object",
             "properties": {
-              "contactname": {"type": "string"},
-              "companyname": {"type": "string"},
+              "contactname": {
+                "type": "string"
+              },
+              "companyname": {
+                "type": "string"
+              },
               "mailaddress": {
                 "type": "object",
                 "properties": {
-                  "address1": {"type": "string"},
-                  "city": {"type": "string"},
-                  "state": {"type": "string"},
-                  "zip": {"type": "string"}
+                  "address1": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "zip": {
+                    "type": "string"
+                  }
                 }
               }
             },
@@ -117,22 +153,37 @@
           "shipto": {
             "type": "object",
             "properties": {
-              "contactname": {"type": "string"},
-              "companyname": {"type": "string"},
+              "contactname": {
+                "type": "string"
+              },
+              "companyname": {
+                "type": "string"
+              },
               "mailaddress": {
                 "type": "object",
                 "properties": {
-                  "address1": {"type": "string"},
-                  "city": {"type": "string"},
-                  "state": {"type": "string"},
-                  "zip": {"type": "string"}
+                  "address1": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "zip": {
+                    "type": "string"
+                  }
                 }
               }
             },
             "description": "Ship to contact information"
           }
         },
-        "required": ["customerid", "name"],
+        "required": [
+          "customerid",
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -186,13 +237,26 @@
             "items": {
               "type": "object",
               "properties": {
-                "glaccountno": {"type": "string"},
-                "amount": {"type": "number"},
-                "memo": {"type": "string"},
-                "locationid": {"type": "string"},
-                "departmentid": {"type": "string"}
+                "glaccountno": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "memo": {
+                  "type": "string"
+                },
+                "locationid": {
+                  "type": "string"
+                },
+                "departmentid": {
+                  "type": "string"
+                }
               },
-              "required": ["glaccountno", "amount"]
+              "required": [
+                "glaccountno",
+                "amount"
+              ]
             },
             "description": "Invoice line items"
           },
@@ -205,7 +269,11 @@
             "description": "External ID"
           }
         },
-        "required": ["customerid", "datecreated", "invoiceitems"],
+        "required": [
+          "customerid",
+          "datecreated",
+          "invoiceitems"
+        ],
         "additionalProperties": false
       }
     },
@@ -263,13 +331,26 @@
             "items": {
               "type": "object",
               "properties": {
-                "glaccountno": {"type": "string"},
-                "amount": {"type": "number"},
-                "memo": {"type": "string"},
-                "locationid": {"type": "string"},
-                "departmentid": {"type": "string"}
+                "glaccountno": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "memo": {
+                  "type": "string"
+                },
+                "locationid": {
+                  "type": "string"
+                },
+                "departmentid": {
+                  "type": "string"
+                }
               },
-              "required": ["glaccountno", "amount"]
+              "required": [
+                "glaccountno",
+                "amount"
+              ]
             },
             "description": "Bill line items"
           },
@@ -278,7 +359,11 @@
             "description": "Bill description"
           }
         },
-        "required": ["vendorid", "datecreated", "billitems"],
+        "required": [
+          "vendorid",
+          "datecreated",
+          "billitems"
+        ],
         "additionalProperties": false
       }
     },
@@ -328,11 +413,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "recordno": {"type": "string"},
-          "customerid": {"type": "string"},
-          "customername": {"type": "string"},
-          "totalentered": {"type": "number"},
-          "datecreated": {"type": "string"}
+          "recordno": {
+            "type": "string"
+          },
+          "customerid": {
+            "type": "string"
+          },
+          "customername": {
+            "type": "string"
+          },
+          "totalentered": {
+            "type": "number"
+          },
+          "datecreated": {
+            "type": "string"
+          }
         }
       }
     }
@@ -344,5 +439,19 @@
       "function": "get_list",
       "object": "customer"
     }
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

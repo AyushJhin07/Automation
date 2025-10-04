@@ -53,7 +53,11 @@
             "description": "Automatically format data"
           }
         },
-        "required": ["baseId", "tableId", "fields"],
+        "required": [
+          "baseId",
+          "tableId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -86,7 +90,12 @@
             "description": "Automatically format data"
           }
         },
-        "required": ["baseId", "tableId", "recordId", "fields"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId",
+          "fields"
+        ],
         "additionalProperties": false
       }
     },
@@ -110,7 +119,11 @@
             "description": "Record ID"
           }
         },
-        "required": ["baseId", "tableId", "recordId"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId"
+        ],
         "additionalProperties": false
       }
     },
@@ -131,7 +144,9 @@
           },
           "fields": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Fields to include"
           },
           "filterByFormula": {
@@ -153,8 +168,16 @@
             "items": {
               "type": "object",
               "properties": {
-                "field": {"type": "string"},
-                "direction": {"type": "string", "enum": ["asc", "desc"]}
+                "field": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ]
+                }
               }
             },
             "description": "Sort configuration"
@@ -164,7 +187,10 @@
             "description": "View name"
           }
         },
-        "required": ["baseId", "tableId"],
+        "required": [
+          "baseId",
+          "tableId"
+        ],
         "additionalProperties": false
       }
     },
@@ -188,7 +214,11 @@
             "description": "Record ID"
           }
         },
-        "required": ["baseId", "tableId", "recordId"],
+        "required": [
+          "baseId",
+          "tableId",
+          "recordId"
+        ],
         "additionalProperties": false
       }
     }
@@ -217,9 +247,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "fields": {"type": "object"},
-          "createdTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object"
+          },
+          "createdTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -246,9 +282,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "fields": {"type": "object"},
-          "createdTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object"
+          },
+          "createdTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -256,5 +298,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/meta/bases"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

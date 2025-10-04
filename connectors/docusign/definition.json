@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://account.docusign.com/oauth/auth",
       "tokenUrl": "https://account.docusign.com/oauth/token",
-      "scopes": ["signature", "impersonation"]
+      "scopes": [
+        "signature",
+        "impersonation"
+      ]
     }
   },
   "baseUrl": "https://na3.docusign.net/restapi/v2.1",
@@ -44,7 +47,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["sent", "created", "draft"],
+            "enum": [
+              "sent",
+              "created",
+              "draft"
+            ],
             "default": "sent",
             "description": "Envelope status"
           },
@@ -53,12 +60,24 @@
             "items": {
               "type": "object",
               "properties": {
-                "documentBase64": {"type": "string"},
-                "name": {"type": "string"},
-                "fileExtension": {"type": "string"},
-                "documentId": {"type": "string"}
+                "documentBase64": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "fileExtension": {
+                  "type": "string"
+                },
+                "documentId": {
+                  "type": "string"
+                }
               },
-              "required": ["documentBase64", "name", "documentId"]
+              "required": [
+                "documentBase64",
+                "name",
+                "documentId"
+              ]
             },
             "description": "Documents to be signed"
           },
@@ -70,13 +89,28 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "email": {"type": "string", "format": "email"},
-                    "name": {"type": "string"},
-                    "recipientId": {"type": "string"},
-                    "routingOrder": {"type": "string"},
-                    "tabs": {"type": "object"}
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "recipientId": {
+                      "type": "string"
+                    },
+                    "routingOrder": {
+                      "type": "string"
+                    },
+                    "tabs": {
+                      "type": "object"
+                    }
                   },
-                  "required": ["email", "name", "recipientId"]
+                  "required": [
+                    "email",
+                    "name",
+                    "recipientId"
+                  ]
                 }
               },
               "carbonCopies": {
@@ -84,9 +118,16 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "email": {"type": "string", "format": "email"},
-                    "name": {"type": "string"},
-                    "recipientId": {"type": "string"}
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "recipientId": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -96,16 +137,38 @@
           "eventNotification": {
             "type": "object",
             "properties": {
-              "url": {"type": "string", "format": "uri"},
-              "loggingEnabled": {"type": "boolean"},
-              "requireAcknowledgment": {"type": "boolean"},
-              "envelopeEvents": {"type": "array", "items": {"type": "object"}},
-              "recipientEvents": {"type": "array", "items": {"type": "object"}}
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "loggingEnabled": {
+                "type": "boolean"
+              },
+              "requireAcknowledgment": {
+                "type": "boolean"
+              },
+              "envelopeEvents": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "recipientEvents": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
             },
             "description": "Event notification settings"
           }
         },
-        "required": ["accountId", "emailSubject", "documents", "recipients"],
+        "required": [
+          "accountId",
+          "emailSubject",
+          "documents",
+          "recipients"
+        ],
         "additionalProperties": false
       }
     },
@@ -129,7 +192,10 @@
             "description": "Additional data to include"
           }
         },
-        "required": ["accountId", "envelopeId"],
+        "required": [
+          "accountId",
+          "envelopeId"
+        ],
         "additionalProperties": false
       }
     },
@@ -146,7 +212,15 @@
           },
           "status": {
             "type": "string",
-            "enum": ["sent", "delivered", "completed", "declined", "voided", "created", "deleted"],
+            "enum": [
+              "sent",
+              "delivered",
+              "completed",
+              "declined",
+              "voided",
+              "created",
+              "deleted"
+            ],
             "description": "Filter by envelope status"
           },
           "from_date": {
@@ -176,16 +250,26 @@
           },
           "order": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           },
           "order_by": {
             "type": "string",
-            "enum": ["status", "created", "sent", "subject"],
+            "enum": [
+              "status",
+              "created",
+              "sent",
+              "subject"
+            ],
             "description": "Sort field"
           }
         },
-        "required": ["accountId"],
+        "required": [
+          "accountId"
+        ],
         "additionalProperties": false
       }
     },
@@ -205,7 +289,10 @@
             "description": "Envelope ID"
           }
         },
-        "required": ["accountId", "envelopeId"],
+        "required": [
+          "accountId",
+          "envelopeId"
+        ],
         "additionalProperties": false
       }
     },
@@ -233,7 +320,10 @@
             "description": "Include extended recipient info"
           }
         },
-        "required": ["accountId", "envelopeId"],
+        "required": [
+          "accountId",
+          "envelopeId"
+        ],
         "additionalProperties": false
       }
     },
@@ -262,11 +352,17 @@
           },
           "encoding": {
             "type": "string",
-            "enum": ["base64"],
+            "enum": [
+              "base64"
+            ],
             "description": "Document encoding"
           }
         },
-        "required": ["accountId", "envelopeId", "documentId"],
+        "required": [
+          "accountId",
+          "envelopeId",
+          "documentId"
+        ],
         "additionalProperties": false
       }
     },
@@ -290,7 +386,11 @@
             "description": "Reason for voiding"
           }
         },
-        "required": ["accountId", "envelopeId", "voidedReason"],
+        "required": [
+          "accountId",
+          "envelopeId",
+          "voidedReason"
+        ],
         "additionalProperties": false
       }
     }
@@ -315,9 +415,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "envelopeId": {"type": "string"},
-          "status": {"type": "string"},
-          "completedDateTime": {"type": "string"}
+          "envelopeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "completedDateTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -335,9 +441,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "envelopeId": {"type": "string"},
-          "status": {"type": "string"},
-          "sentDateTime": {"type": "string"}
+          "envelopeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sentDateTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -355,9 +467,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "envelopeId": {"type": "string"},
-          "recipientId": {"type": "string"},
-          "status": {"type": "string"}
+          "envelopeId": {
+            "type": "string"
+          },
+          "recipientId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       }
     }
@@ -365,5 +483,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/accounts"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

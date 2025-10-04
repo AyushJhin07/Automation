@@ -43,7 +43,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["accepted", "pending", "cancelled", "rejected"],
+            "enum": [
+              "accepted",
+              "pending",
+              "cancelled",
+              "rejected"
+            ],
             "description": "Filter by booking status"
           },
           "take": {
@@ -59,12 +64,19 @@
           },
           "orderBy": {
             "type": "string",
-            "enum": ["createdAt", "startTime", "endTime"],
+            "enum": [
+              "createdAt",
+              "startTime",
+              "endTime"
+            ],
             "description": "Order by field"
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "description": "Sort order"
           }
         },
@@ -84,7 +96,9 @@
             "description": "Booking ID"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -112,9 +126,16 @@
           "attendee": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "email": {"type": "string", "format": "email"},
-              "timeZone": {"type": "string"}
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "timeZone": {
+                "type": "string"
+              }
             },
             "description": "Attendee information"
           },
@@ -140,7 +161,12 @@
             "description": "Custom field values"
           }
         },
-        "required": ["eventTypeId", "start", "end", "attendee"],
+        "required": [
+          "eventTypeId",
+          "start",
+          "end",
+          "attendee"
+        ],
         "additionalProperties": false
       }
     },
@@ -175,11 +201,18 @@
           },
           "status": {
             "type": "string",
-            "enum": ["accepted", "pending", "cancelled", "rejected"],
+            "enum": [
+              "accepted",
+              "pending",
+              "cancelled",
+              "rejected"
+            ],
             "description": "Booking status"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -199,7 +232,9 @@
             "description": "Cancellation reason"
           }
         },
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "additionalProperties": false
       }
     },
@@ -260,7 +295,12 @@
             "description": "Timezone"
           }
         },
-        "required": ["userId", "eventTypeId", "dateFrom", "dateTo"],
+        "required": [
+          "userId",
+          "eventTypeId",
+          "dateFrom",
+          "dateTo"
+        ],
         "additionalProperties": false
       }
     }
@@ -285,10 +325,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "title": {"type": "string"},
-          "startTime": {"type": "string"},
-          "endTime": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -306,9 +354,15 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "number"},
-          "reason": {"type": "string"},
-          "cancelledAt": {"type": "string"}
+          "id": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string"
+          }
         }
       }
     }
@@ -316,5 +370,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/me"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

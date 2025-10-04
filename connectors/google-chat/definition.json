@@ -11,7 +11,10 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/chat.messages", "https://www.googleapis.com/auth/chat.spaces"]
+      "scopes": [
+        "https://www.googleapis.com/auth/chat.messages",
+        "https://www.googleapis.com/auth/chat.spaces"
+      ]
     }
   },
   "baseUrl": "https://chat.googleapis.com/v1",
@@ -45,30 +48,43 @@
           "thread": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"}
+              "name": {
+                "type": "string"
+              }
             },
             "description": "Thread to reply to"
           },
           "cards": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Card attachments"
           },
           "cardsV2": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Card v2 attachments"
           },
           "actionResponse": {
             "type": "object",
             "properties": {
-              "type": {"type": "string"},
-              "url": {"type": "string"}
+              "type": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
             },
             "description": "Action response configuration"
           }
         },
-        "required": ["space", "text"],
+        "required": [
+          "space",
+          "text"
+        ],
         "additionalProperties": false
       }
     },
@@ -85,7 +101,11 @@
           },
           "spaceType": {
             "type": "string",
-            "enum": ["SPACE", "GROUP_CHAT", "DIRECT_MESSAGE"],
+            "enum": [
+              "SPACE",
+              "GROUP_CHAT",
+              "DIRECT_MESSAGE"
+            ],
             "default": "SPACE",
             "description": "Type of space"
           },
@@ -101,12 +121,17 @@
           },
           "spaceHistoryState": {
             "type": "string",
-            "enum": ["HISTORY_OFF", "HISTORY_ON"],
+            "enum": [
+              "HISTORY_OFF",
+              "HISTORY_ON"
+            ],
             "default": "HISTORY_ON",
             "description": "Chat history setting"
           }
         },
-        "required": ["displayName"],
+        "required": [
+          "displayName"
+        ],
         "additionalProperties": false
       }
     },
@@ -149,7 +174,9 @@
             "description": "Space name (spaces/AAABBBCCC)"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -185,7 +212,9 @@
             "description": "Include group memberships"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -203,20 +232,36 @@
           "member": {
             "type": "object",
             "properties": {
-              "name": {"type": "string"},
-              "displayName": {"type": "string"},
-              "type": {"type": "string", "enum": ["HUMAN", "BOT"]}
+              "name": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "HUMAN",
+                  "BOT"
+                ]
+              }
             },
             "description": "Member to add"
           },
           "role": {
             "type": "string",
-            "enum": ["ROLE_MEMBER", "ROLE_MANAGER"],
+            "enum": [
+              "ROLE_MEMBER",
+              "ROLE_MANAGER"
+            ],
             "default": "ROLE_MEMBER",
             "description": "Member role"
           }
         },
-        "required": ["parent", "member"],
+        "required": [
+          "parent",
+          "member"
+        ],
         "additionalProperties": false
       }
     },
@@ -256,7 +301,9 @@
             "description": "Include deleted messages"
           }
         },
-        "required": ["parent"],
+        "required": [
+          "parent"
+        ],
         "additionalProperties": false
       }
     },
@@ -272,7 +319,9 @@
             "description": "Message name (spaces/AAABBB/messages/CCCDDD)"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -293,7 +342,9 @@
           },
           "cards": {
             "type": "array",
-            "items": {"type": "object"},
+            "items": {
+              "type": "object"
+            },
             "description": "Updated card attachments"
           },
           "updateMask": {
@@ -301,7 +352,9 @@
             "description": "Fields to update"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -322,7 +375,9 @@
             "description": "Force delete even if message has reactions"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     }
@@ -347,11 +402,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "sender": {"type": "object"},
-          "text": {"type": "string"},
-          "space": {"type": "object"},
-          "thread": {"type": "object"}
+          "name": {
+            "type": "string"
+          },
+          "sender": {
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          },
+          "space": {
+            "type": "object"
+          },
+          "thread": {
+            "type": "object"
+          }
         }
       }
     },
@@ -369,10 +434,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "displayName": {"type": "string"},
-          "spaceType": {"type": "string"},
-          "createTime": {"type": "string"}
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "spaceType": {
+            "type": "string"
+          },
+          "createTime": {
+            "type": "string"
+          }
         }
       }
     },
@@ -395,10 +468,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
-          "member": {"type": "object"},
-          "space": {"type": "object"},
-          "role": {"type": "string"}
+          "name": {
+            "type": "string"
+          },
+          "member": {
+            "type": "object"
+          },
+          "space": {
+            "type": "object"
+          },
+          "role": {
+            "type": "string"
+          }
         }
       }
     }
@@ -406,5 +487,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/spaces?pageSize=1"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

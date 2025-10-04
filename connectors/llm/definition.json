@@ -29,7 +29,13 @@
           },
           "model": {
             "type": "string",
-            "enum": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-opus", "claude-3-sonnet"],
+            "enum": [
+              "gpt-4",
+              "gpt-4-turbo",
+              "gpt-3.5-turbo",
+              "claude-3-opus",
+              "claude-3-sonnet"
+            ],
             "default": "gpt-3.5-turbo",
             "description": "Language model to use"
           },
@@ -70,7 +76,9 @@
           },
           "stop_sequences": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+              "type": "string"
+            },
             "description": "Stop sequences to end generation"
           },
           "system_message": {
@@ -78,7 +86,9 @@
             "description": "System message to set behavior"
           }
         },
-        "required": ["prompt"],
+        "required": [
+          "prompt"
+        ],
         "additionalProperties": false
       }
     },
@@ -94,16 +104,34 @@
             "items": {
               "type": "object",
               "properties": {
-                "role": {"type": "string", "enum": ["system", "user", "assistant"]},
-                "content": {"type": "string"}
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "system",
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                }
               },
-              "required": ["role", "content"]
+              "required": [
+                "role",
+                "content"
+              ]
             },
             "description": "Conversation messages"
           },
           "model": {
             "type": "string",
-            "enum": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-opus", "claude-3-sonnet"],
+            "enum": [
+              "gpt-4",
+              "gpt-4-turbo",
+              "gpt-3.5-turbo",
+              "claude-3-opus",
+              "claude-3-sonnet"
+            ],
             "default": "gpt-3.5-turbo",
             "description": "Language model to use"
           },
@@ -127,7 +155,9 @@
             "description": "Stream the response"
           }
         },
-        "required": ["messages"],
+        "required": [
+          "messages"
+        ],
         "additionalProperties": false
       }
     }
@@ -152,11 +182,21 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "model": {"type": "string"},
-          "generated_text": {"type": "string"},
-          "usage": {"type": "object"},
-          "created": {"type": "number"}
+          "id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "generated_text": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object"
+          },
+          "created": {
+            "type": "number"
+          }
         }
       }
     }
@@ -164,5 +204,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/models"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

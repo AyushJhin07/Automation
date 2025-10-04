@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
       "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-      "scopes": ["https://graph.microsoft.com/Files.ReadWrite"]
+      "scopes": [
+        "https://graph.microsoft.com/Files.ReadWrite"
+      ]
     }
   },
   "baseUrl": "https://graph.microsoft.com/v1.0/me/drive",
@@ -83,12 +85,19 @@
           },
           "conflictBehavior": {
             "type": "string",
-            "enum": ["rename", "replace", "fail"],
+            "enum": [
+              "rename",
+              "replace",
+              "fail"
+            ],
             "default": "rename",
             "description": "Behavior when file exists"
           }
         },
-        "required": ["fileName", "content"],
+        "required": [
+          "fileName",
+          "content"
+        ],
         "additionalProperties": false
       }
     },
@@ -104,7 +113,9 @@
             "description": "File ID"
           }
         },
-        "required": ["fileId"],
+        "required": [
+          "fileId"
+        ],
         "additionalProperties": false
       }
     },
@@ -124,7 +135,9 @@
             "description": "Parent folder ID"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -140,7 +153,9 @@
             "description": "File or folder ID"
           }
         },
-        "required": ["itemId"],
+        "required": [
+          "itemId"
+        ],
         "additionalProperties": false
       }
     },
@@ -157,18 +172,26 @@
           },
           "type": {
             "type": "string",
-            "enum": ["view", "edit"],
+            "enum": [
+              "view",
+              "edit"
+            ],
             "default": "view",
             "description": "Permission type"
           },
           "scope": {
             "type": "string",
-            "enum": ["anonymous", "organization"],
+            "enum": [
+              "anonymous",
+              "organization"
+            ],
             "default": "anonymous",
             "description": "Link scope"
           }
         },
-        "required": ["itemId"],
+        "required": [
+          "itemId"
+        ],
         "additionalProperties": false
       }
     }
@@ -193,10 +216,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "size": {"type": "number"},
-          "createdDateTime": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "createdDateTime": {
+            "type": "string"
+          }
         }
       }
     }
@@ -204,5 +235,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

@@ -11,7 +11,9 @@
     "config": {
       "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
       "tokenUrl": "https://oauth2.googleapis.com/token",
-      "scopes": ["https://www.googleapis.com/auth/contacts"]
+      "scopes": [
+        "https://www.googleapis.com/auth/contacts"
+      ]
     }
   },
   "baseUrl": "https://people.googleapis.com/v1",
@@ -39,9 +41,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "givenName": {"type": "string"},
-                "familyName": {"type": "string"},
-                "displayName": {"type": "string"}
+                "givenName": {
+                  "type": "string"
+                },
+                "familyName": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                }
               }
             },
             "description": "Contact names"
@@ -51,8 +59,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string", "format": "email"},
-                "type": {"type": "string"}
+                "value": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "type": {
+                  "type": "string"
+                }
               }
             },
             "description": "Email addresses"
@@ -62,8 +75,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"},
-                "type": {"type": "string"}
+                "value": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
               }
             },
             "description": "Phone numbers"
@@ -73,13 +90,27 @@
             "items": {
               "type": "object",
               "properties": {
-                "formattedValue": {"type": "string"},
-                "type": {"type": "string"},
-                "streetAddress": {"type": "string"},
-                "city": {"type": "string"},
-                "region": {"type": "string"},
-                "postalCode": {"type": "string"},
-                "country": {"type": "string"}
+                "formattedValue": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "streetAddress": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "region": {
+                  "type": "string"
+                },
+                "postalCode": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                }
               }
             },
             "description": "Addresses"
@@ -89,9 +120,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "title": {"type": "string"},
-                "department": {"type": "string"}
+                "name": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "department": {
+                  "type": "string"
+                }
               }
             },
             "description": "Organizations"
@@ -101,7 +138,9 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"}
+                "value": {
+                  "type": "string"
+                }
               }
             },
             "description": "Biography"
@@ -128,7 +167,9 @@
             "description": "Fields to include"
           }
         },
-        "required": ["resourceName"],
+        "required": [
+          "resourceName"
+        ],
         "additionalProperties": false
       }
     },
@@ -152,9 +193,15 @@
             "items": {
               "type": "object",
               "properties": {
-                "givenName": {"type": "string"},
-                "familyName": {"type": "string"},
-                "displayName": {"type": "string"}
+                "givenName": {
+                  "type": "string"
+                },
+                "familyName": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                }
               }
             },
             "description": "Updated names"
@@ -164,8 +211,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string", "format": "email"},
-                "type": {"type": "string"}
+                "value": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "type": {
+                  "type": "string"
+                }
               }
             },
             "description": "Updated email addresses"
@@ -175,14 +227,20 @@
             "items": {
               "type": "object",
               "properties": {
-                "value": {"type": "string"},
-                "type": {"type": "string"}
+                "value": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
               }
             },
             "description": "Updated phone numbers"
           }
         },
-        "required": ["resourceName"],
+        "required": [
+          "resourceName"
+        ],
         "additionalProperties": false
       }
     },
@@ -198,7 +256,9 @@
             "description": "Contact resource name"
           }
         },
-        "required": ["resourceName"],
+        "required": [
+          "resourceName"
+        ],
         "additionalProperties": false
       }
     },
@@ -227,7 +287,12 @@
           },
           "sortOrder": {
             "type": "string",
-            "enum": ["LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", "LAST_NAME_ASCENDING"],
+            "enum": [
+              "LAST_MODIFIED_ASCENDING",
+              "LAST_MODIFIED_DESCENDING",
+              "FIRST_NAME_ASCENDING",
+              "LAST_NAME_ASCENDING"
+            ],
             "description": "Sort order"
           }
         },
@@ -259,7 +324,9 @@
             "description": "Fields to include"
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "additionalProperties": false
       }
     },
@@ -280,7 +347,9 @@
             "description": "Fields to return"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -332,10 +401,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "resourceName": {"type": "string"},
-          "names": {"type": "array"},
-          "emailAddresses": {"type": "array"},
-          "phoneNumbers": {"type": "array"}
+          "resourceName": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array"
+          },
+          "emailAddresses": {
+            "type": "array"
+          },
+          "phoneNumbers": {
+            "type": "array"
+          }
         }
       }
     },
@@ -353,10 +430,18 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "resourceName": {"type": "string"},
-          "names": {"type": "array"},
-          "emailAddresses": {"type": "array"},
-          "phoneNumbers": {"type": "array"}
+          "resourceName": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array"
+          },
+          "emailAddresses": {
+            "type": "array"
+          },
+          "phoneNumbers": {
+            "type": "array"
+          }
         }
       }
     }
@@ -364,5 +449,19 @@
   "testConnection": {
     "method": "GET",
     "endpoint": "/people/me?personFields=names"
+  },
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
   }
 }

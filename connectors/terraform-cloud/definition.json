@@ -55,7 +55,9 @@
             "description": "Auto-apply successful plans"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -81,7 +83,9 @@
             "description": "Whether this is a destroy run"
           }
         },
-        "required": ["workspace_id"],
+        "required": [
+          "workspace_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -98,7 +102,9 @@
             "description": "Run ID"
           }
         },
-        "required": ["run_id"],
+        "required": [
+          "run_id"
+        ],
         "additionalProperties": false
       }
     },
@@ -119,16 +125,32 @@
             "items": {
               "type": "object",
               "properties": {
-                "key": {"type": "string"},
-                "value": {"type": "string"},
-                "category": {"type": "string", "enum": ["terraform", "env"]},
-                "sensitive": {"type": "boolean", "default": false}
+                "key": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "terraform",
+                    "env"
+                  ]
+                },
+                "sensitive": {
+                  "type": "boolean",
+                  "default": false
+                }
               }
             },
             "description": "Variables to set"
           }
         },
-        "required": ["workspace_id", "variables"],
+        "required": [
+          "workspace_id",
+          "variables"
+        ],
         "additionalProperties": false
       }
     },
@@ -160,7 +182,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["applied", "planned", "errored", "canceled"],
+            "enum": [
+              "applied",
+              "planned",
+              "errored",
+              "canceled"
+            ],
             "description": "Filter by run status"
           }
         },
@@ -180,5 +207,20 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "semanticVersion": "1.0.0",
+  "lifecycle": {
+    "status": "ga",
+    "beta": {
+      "enabled": false,
+      "startDate": null,
+      "endDate": null
+    },
+    "deprecation": {
+      "startDate": null,
+      "endDate": null
+    },
+    "sunsetDate": null
+  }
 }
