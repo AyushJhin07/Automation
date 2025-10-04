@@ -833,7 +833,30 @@ export const connectorDefinitions = pgTable(
       rateLimits?: {
         requestsPerSecond?: number;
         requestsPerMinute?: number;
+        requestsPerHour?: number;
+        requestsPerDay?: number;
         dailyLimit?: number;
+        burstLimit?: number;
+        concurrency?: {
+          maxConcurrentRequests?: number;
+          scope?: 'connection' | 'connector' | 'organization';
+        };
+        headers?: {
+          limit?: string[];
+          remaining?: string[];
+          reset?: string[];
+          retryAfter?: string[];
+        };
+      };
+      concurrency?: {
+        maxConcurrentRequests?: number;
+        scope?: 'connection' | 'connector' | 'organization';
+      };
+      rateLimitHeaders?: {
+        limit?: string[];
+        remaining?: string[];
+        reset?: string[];
+        retryAfter?: string[];
       };
     }>().notNull(),
     

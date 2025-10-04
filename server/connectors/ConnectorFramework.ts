@@ -1,5 +1,7 @@
 import { eq, like, and } from 'drizzle-orm';
 import { connectorDefinitions, db } from '../database/schema';
+import type { BaseAPIClient } from '../integrations/BaseAPIClient';
+import type { RateLimitRules } from '../integrations/RateLimiter';
 
 export interface ConnectorDefinition {
   id: string;
@@ -41,10 +43,29 @@ export interface ConnectorDefinition {
   
   // Rate limiting and constraints
   rateLimits: {
+    requestsPerSecond?: number;
     requestsPerMinute: number;
     requestsPerHour: number;
     requestsPerDay: number;
     burstLimit?: number;
+    headers?: {
+      limit?: string[];
+      remaining?: string[];
+      reset?: string[];
+      retryAfter?: string[];
+    };
+  };
+
+  concurrency?: {
+    maxConcurrentRequests?: number;
+    scope?: 'connection' | 'connector' | 'organization';
+  };
+
+  rateLimitHeaders?: {
+    limit?: string[];
+    remaining?: string[];
+    reset?: string[];
+    retryAfter?: string[];
   };
   
   // Metadata
@@ -224,6 +245,74 @@ export class ConnectorFramework {
       console.error(`❌ Failed to get connector ${slug}:`, error);
       return null;
     }
+  }
+
+  public buildRateLimitRules(connector: ConnectorDefinition): RateLimitRules | null {
+    const rules: RateLimitRules = {};
+    const secondCandidates: number[] = [];
+
+    if (connector.rateLimits) {
+      const { requestsPerSecond, requestsPerMinute, requestsPerHour, requestsPerDay, burstLimit } =
+        connector.rateLimits;
+
+      if (typeof requestsPerSecond === 'number' && requestsPerSecond > 0) {
+        secondCandidates.push(requestsPerSecond);
+      }
+      if (typeof requestsPerMinute === 'number' && requestsPerMinute > 0) {
+        secondCandidates.push(requestsPerMinute / 60);
+        rules.requestsPerMinute = requestsPerMinute;
+      }
+      if (typeof requestsPerHour === 'number' && requestsPerHour > 0) {
+        secondCandidates.push(requestsPerHour / 3600);
+      }
+      if (typeof requestsPerDay === 'number' && requestsPerDay > 0) {
+        secondCandidates.push(requestsPerDay / 86_400);
+      }
+      if (typeof burstLimit === 'number' && burstLimit > 0) {
+        rules.burst = burstLimit;
+      }
+      const headerSource = connector.rateLimitHeaders ?? connector.rateLimits.headers;
+      if (headerSource) {
+        const hasHeaders = [
+          headerSource.limit,
+          headerSource.remaining,
+          headerSource.reset,
+          headerSource.retryAfter,
+        ].some(value => Array.isArray(value) ? value.length > 0 : Boolean(value));
+        if (hasHeaders) {
+          rules.rateHeaders = {
+            limit: headerSource.limit,
+            remaining: headerSource.remaining,
+            reset: headerSource.reset,
+            retryAfter: headerSource.retryAfter,
+          };
+        }
+      }
+    }
+
+    if (connector.concurrency?.maxConcurrentRequests) {
+      rules.concurrency = {
+        maxConcurrent: connector.concurrency.maxConcurrentRequests,
+        scope: connector.concurrency.scope ?? 'connection',
+      };
+    }
+
+    const filteredSeconds = secondCandidates.filter(value => Number.isFinite(value) && value > 0);
+    if (filteredSeconds.length > 0) {
+      rules.requestsPerSecond = Math.min(...filteredSeconds);
+    }
+
+    return Object.keys(rules).length > 0 ? rules : null;
+  }
+
+  public hydrateClient<T extends BaseAPIClient>(
+    client: T,
+    connector: ConnectorDefinition,
+    options: { connectionId?: string | null } = {}
+  ): T {
+    const rules = this.buildRateLimitRules(connector);
+    client.setConnectorContext(connector.slug, options.connectionId ?? undefined, rules);
+    return client;
   }
 
   /**
@@ -420,6 +509,10 @@ export class ConnectorFramework {
    * Private helper methods
    */
   private parseConnectorDefinition(raw: any): ConnectorDefinition {
+    const rateLimitsRaw = raw.rateLimits || {};
+    const headerOverrides = raw.rateLimitHeaders || rateLimitsRaw.headers || undefined;
+    const concurrencyRaw = raw.concurrency || rateLimitsRaw.concurrency || undefined;
+
     return {
       id: raw.id,
       name: raw.name,
@@ -434,11 +527,16 @@ export class ConnectorFramework {
       authConfig: raw.authConfig || {},
       triggers: raw.triggers || [],
       actions: raw.actions || [],
-      rateLimits: raw.rateLimits || {
-        requestsPerMinute: 60,
-        requestsPerHour: 1000,
-        requestsPerDay: 10000
+      rateLimits: {
+        requestsPerSecond: rateLimitsRaw.requestsPerSecond ?? undefined,
+        requestsPerMinute: rateLimitsRaw.requestsPerMinute ?? 60,
+        requestsPerHour: rateLimitsRaw.requestsPerHour ?? 1000,
+        requestsPerDay: rateLimitsRaw.requestsPerDay ?? 10000,
+        burstLimit: rateLimitsRaw.burstLimit ?? rateLimitsRaw.burst ?? undefined,
+        headers: headerOverrides,
       },
+      concurrency: concurrencyRaw ?? undefined,
+      rateLimitHeaders: headerOverrides ?? undefined,
       isActive: raw.isActive,
       isVerified: raw.isVerified,
       popularity: raw.popularity || 0,

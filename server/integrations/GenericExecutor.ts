@@ -107,7 +107,8 @@ export class GenericExecutor {
       return undefined;
     };
 
-    const merged: RateLimitRules = {};
+    const merged: RateLimitRules = { ...(connector ?? {}), ...(operation ?? {}) };
+
     const rps = selectMin(connector?.requestsPerSecond, operation?.requestsPerSecond);
     if (rps !== undefined) {
       merged.requestsPerSecond = rps;
@@ -121,11 +122,32 @@ export class GenericExecutor {
       merged.burst = burst;
     }
 
-    if (Object.keys(merged).length === 0) {
-      return operation ?? connector ?? null;
+    if (connector?.concurrency || operation?.concurrency) {
+      const maxConcurrent = selectMin(
+        connector?.concurrency?.maxConcurrent,
+        operation?.concurrency?.maxConcurrent
+      );
+      merged.concurrency = {
+        maxConcurrent:
+          maxConcurrent ?? operation?.concurrency?.maxConcurrent ?? connector?.concurrency?.maxConcurrent,
+        scope: operation?.concurrency?.scope ?? connector?.concurrency?.scope,
+      };
     }
 
-    return merged;
+    if (connector?.rateHeaders || operation?.rateHeaders) {
+      const headers = {
+        ...(connector?.rateHeaders ?? {}),
+        ...(operation?.rateHeaders ?? {}),
+      };
+      const hasHeader = Object.values(headers).some(value =>
+        Array.isArray(value) ? value.length > 0 : Boolean(value)
+      );
+      if (hasHeader) {
+        merged.rateHeaders = headers;
+      }
+    }
+
+    return Object.keys(merged).length > 0 ? merged : null;
   }
   public async testConnection(appId: string, credentials: APICredentials): Promise<APIResponse<any>> {
     const def = connectorRegistry.getConnectorDefinition(appId);
@@ -266,24 +288,29 @@ export class GenericExecutor {
           const limiterResult = await rateLimiter.acquire({
             connectorId: appId,
             connectionId,
+            organizationId: credentials.__organizationId,
             rules: effectiveRateLimits,
           });
-          if (limiterResult.waitMs > 0 || limiterResult.enforced) {
-            backoffEvents.push({
-              type: 'rate_limiter',
-              waitMs: limiterResult.waitMs,
-              attempt,
-              reason: 'token_bucket',
-              limiterAttempts: limiterResult.attempts,
-            });
+          try {
+            if (limiterResult.waitMs > 0 || limiterResult.enforced) {
+              backoffEvents.push({
+                type: 'rate_limiter',
+                waitMs: limiterResult.waitMs,
+                attempt,
+                reason: 'token_bucket',
+                limiterAttempts: limiterResult.attempts,
+              });
+            }
+            totalRateLimiterWaitMs += limiterResult.waitMs;
+            totalRateLimiterAttempts += limiterResult.attempts;
+            resp = await fetch(finalUrl, {
+              method,
+              headers: reqHeaders,
+              body: reqBody
+            } as any);
+          } finally {
+            limiterResult.release?.();
           }
-          totalRateLimiterWaitMs += limiterResult.waitMs;
-          totalRateLimiterAttempts += limiterResult.attempts;
-          resp = await fetch(finalUrl, {
-            method,
-            headers: reqHeaders,
-            body: reqBody
-          } as any);
           if (resp.status === 429 || (resp.status >= 500 && resp.status <= 599)) {
             // Backoff then retry
             const wait = Math.min(1000 * Math.pow(2, attempt), 4000);

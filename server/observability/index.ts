@@ -19,6 +19,15 @@ type QueueDepthByState = Partial<Record<'waiting' | 'active' | 'completed' | 'fa
   total?: number;
 };
 
+type RateBudgetSnapshot = {
+  connectorId: string;
+  connectionId: string | null;
+  organizationId: string | null;
+  remaining?: number;
+  limit?: number;
+  resetMs?: number;
+};
+
 const OBSERVABILITY_ENABLED = env.OBSERVABILITY_ENABLED;
 
 export const tracer = trace.getTracer('automation.platform');
@@ -44,6 +53,19 @@ const queueDepthGauge = meter.createObservableGauge('workflow_queue_depth', {
 });
 
 const latestQueueDepths = new Map<string, QueueDepthByState>();
+const connectorRateRemainingGauge = meter.createObservableGauge('connector_rate_budget_remaining', {
+  description: 'Remaining request budget per connector/connection',
+  unit: '{request}',
+});
+const connectorRateLimitGauge = meter.createObservableGauge('connector_rate_budget_limit', {
+  description: 'Configured request budget ceiling per connector/connection',
+  unit: '{request}',
+});
+const connectorRateResetGauge = meter.createObservableGauge('connector_rate_budget_reset_seconds', {
+  description: 'Seconds until the current rate limit window resets',
+  unit: 's',
+});
+const latestRateBudgets = new Map<string, RateBudgetSnapshot>();
 
 meter.addBatchObservableCallback((observableResult) => {
   for (const [queueName, counts] of latestQueueDepths.entries()) {
@@ -60,7 +82,27 @@ meter.addBatchObservableCallback((observableResult) => {
       });
     }
   }
-}, [queueDepthGauge]);
+  for (const snapshot of latestRateBudgets.values()) {
+    const attributes = sanitizeAttributes({
+      connector_id: snapshot.connectorId,
+      connection_id: snapshot.connectionId ?? 'global',
+      organization_id: snapshot.organizationId ?? 'global',
+    });
+
+    if (typeof snapshot.remaining === 'number') {
+      observableResult.observe(connectorRateRemainingGauge, snapshot.remaining, attributes);
+    }
+
+    if (typeof snapshot.limit === 'number') {
+      observableResult.observe(connectorRateLimitGauge, snapshot.limit, attributes);
+    }
+
+    if (typeof snapshot.resetMs === 'number') {
+      const seconds = Math.max(0, Math.round((snapshot.resetMs - Date.now()) / 1000));
+      observableResult.observe(connectorRateResetGauge, seconds, attributes);
+    }
+  }
+}, [queueDepthGauge, connectorRateRemainingGauge, connectorRateLimitGauge, connectorRateResetGauge]);
 
 function sanitizeAttributes(attributes: Record<string, unknown>): MetricAttributes {
   const sanitized: MetricAttributes = {};
@@ -106,6 +148,36 @@ export function updateQueueDepthMetric<Name extends QueueName>(
 
   stateCounts.total = Object.values(stateCounts).reduce((sum, value) => sum + (value ?? 0), 0);
   latestQueueDepths.set(queueName, stateCounts);
+}
+
+export function updateConnectorRateBudgetMetric(snapshot: RateBudgetSnapshot): void {
+  const connectorId = snapshot.connectorId || 'unknown';
+  const connectionId = snapshot.connectionId ?? 'global';
+  const organizationId = snapshot.organizationId ?? 'global';
+  const key = `${connectorId}::${connectionId}::${organizationId}`;
+
+  const hasValues =
+    typeof snapshot.remaining === 'number' ||
+    typeof snapshot.limit === 'number' ||
+    typeof snapshot.resetMs === 'number';
+
+  if (!hasValues) {
+    latestRateBudgets.delete(key);
+    return;
+  }
+
+  latestRateBudgets.set(key, {
+    connectorId,
+    connectionId,
+    organizationId,
+    remaining: snapshot.remaining,
+    limit: snapshot.limit,
+    resetMs: snapshot.resetMs,
+  });
+}
+
+export function getConnectorRateBudgetSnapshot(): ReadonlyMap<string, RateBudgetSnapshot> {
+  return new Map(latestRateBudgets);
 }
 
 function createResource(): Resource {

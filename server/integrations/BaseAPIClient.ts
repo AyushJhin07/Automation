@@ -5,6 +5,7 @@ import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import { isIP } from 'node:net';
 import type { ConnectionService, OrganizationNetworkAllowlist } from '../services/ConnectionService';
+import { updateConnectorRateBudgetMetric } from '../observability/index.js';
 import { rateLimiter, type RateLimitRules } from './RateLimiter';
 
 let cachedConnectionService: ConnectionService | null | undefined;
@@ -63,6 +64,38 @@ export interface RateLimitInfo {
   resetTime: number;
 }
 
+const DEFAULT_RATE_LIMIT_HEADERS = {
+  limit: ['x-ratelimit-limit', 'x-rate-limit-limit', 'ratelimit-limit'],
+  remaining: ['x-ratelimit-remaining', 'x-rate-limit-remaining', 'ratelimit-remaining'],
+  reset: ['x-ratelimit-reset', 'x-rate-limit-reset', 'ratelimit-reset'],
+  retryAfter: ['retry-after'],
+} as const;
+
+type RateLimitMetadata = {
+  limit?: number;
+  remaining?: number;
+  resetMs?: number;
+  retryAfterMs?: number;
+};
+
+type ResponseMiddlewareContext = {
+  response: Response;
+  request: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body?: any;
+    init: RequestInit;
+  };
+  connectorId?: string;
+  connectionId?: string | null;
+  organizationId?: string | null;
+  rateLimits?: RateLimitRules | null;
+  rateLimitMetadata?: RateLimitMetadata | null;
+};
+
+type ResponseMiddleware = (context: ResponseMiddlewareContext) => Promise<void> | void;
+
 export interface DynamicOptionValue {
   value: string;
   label: string;
@@ -109,6 +142,8 @@ export abstract class BaseAPIClient {
   private connectorRateLimits?: RateLimitRules | null;
   private lastRateLimitWaitMs = 0;
   private lastRateLimitAttempts = 0;
+  private rateLimitBackoffLevel = 0;
+  private readonly responseMiddleware: ResponseMiddleware[];
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
   private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
 
@@ -143,6 +178,12 @@ export abstract class BaseAPIClient {
     }
 
     this.connectorRateLimits = options?.rateLimits ?? null;
+    this.responseMiddleware = [];
+    this.registerResponseMiddleware(context => {
+      const metadata = this.updateRateLimitInfo(context.response.headers);
+      context.rateLimitMetadata = metadata;
+      this.handleRateLimitEffects(context.response, metadata);
+    });
   }
 
   public setConnectorContext(
@@ -164,6 +205,22 @@ export abstract class BaseAPIClient {
 
   protected getLastRateLimiterMetrics(): { waitMs: number; attempts: number } {
     return { waitMs: this.lastRateLimitWaitMs, attempts: this.lastRateLimitAttempts };
+  }
+
+  protected registerResponseMiddleware(middleware: ResponseMiddleware): void {
+    if (typeof middleware === 'function') {
+      this.responseMiddleware.push(middleware);
+    }
+  }
+
+  private async runResponseMiddleware(context: ResponseMiddlewareContext): Promise<void> {
+    for (const middleware of this.responseMiddleware) {
+      try {
+        await middleware(context);
+      } catch (error) {
+        console.warn('[BaseAPIClient] Response middleware failed:', error);
+      }
+    }
   }
 
   protected async applyTokenRefresh(update: TokenRefreshPayload): Promise<void> {
@@ -229,64 +286,83 @@ export abstract class BaseAPIClient {
       const limiterResult = await rateLimiter.acquire({
         connectorId: this.connectorId ?? this.deriveConnectorId() ?? 'unknown',
         connectionId: this.credentials.__connectionId,
+        organizationId: this.credentials.__organizationId,
         rules: this.connectorRateLimits,
       });
 
       this.lastRateLimitWaitMs = limiterResult.waitMs;
       this.lastRateLimitAttempts = limiterResult.attempts;
 
-      // Add authentication headers
-      const authHeaders = this.getAuthHeaders();
-      const requestHeaders = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ScriptSpark-Automation/1.0',
-        ...authHeaders,
-        ...headers
-      };
-
-      // Check rate limits before making request
-      if (this.rateLimitInfo && this.isRateLimited()) {
-        const waitTime = this.rateLimitInfo.resetTime - Date.now();
-        if (waitTime > 0) {
-          await this.sleep(waitTime);
-        }
-      }
-
-      const requestOptions: RequestInit = {
-        method,
-        headers: requestHeaders,
-        body: data ? JSON.stringify(data) : undefined
-      };
-
-      const response = await fetch(url, requestOptions);
-      
-      // Update rate limit info from response headers
-      this.updateRateLimitInfo(response.headers);
-
-      const responseText = await response.text();
-      let responseData: T;
+      const releaseLimiter = limiterResult.release;
 
       try {
-        responseData = responseText ? JSON.parse(responseText) : null;
-      } catch (parseError) {
-        responseData = responseText as any;
-      }
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${response.statusText}`,
-          statusCode: response.status,
-          data: responseData
+        // Add authentication headers
+        const authHeaders = this.getAuthHeaders();
+        const requestHeaders = {
+          'Content-Type': 'application/json',
+          'User-Agent': 'ScriptSpark-Automation/1.0',
+          ...authHeaders,
+          ...headers
         };
-      }
 
-      return {
-        success: true,
-        data: responseData,
-        statusCode: response.status,
-        headers: Object.fromEntries(response.headers.entries())
-      };
+        // Check rate limits before making request
+        if (this.rateLimitInfo && this.isRateLimited()) {
+          const waitTime = this.rateLimitInfo.resetTime - Date.now();
+          if (waitTime > 0) {
+            await this.sleep(waitTime);
+          }
+        }
+
+        const requestOptions: RequestInit = {
+          method,
+          headers: requestHeaders,
+          body: data ? JSON.stringify(data) : undefined
+        };
+
+        const response = await fetch(url, requestOptions);
+
+        await this.runResponseMiddleware({
+          response,
+          request: {
+            method,
+            url,
+            headers: requestHeaders,
+            body: data,
+            init: requestOptions,
+          },
+          connectorId: this.connectorId,
+          connectionId: this.credentials.__connectionId ?? null,
+          organizationId: this.credentials.__organizationId ?? null,
+          rateLimits: this.connectorRateLimits ?? null,
+        });
+
+        const responseText = await response.text();
+        let responseData: T;
+
+        try {
+          responseData = responseText ? JSON.parse(responseText) : null;
+        } catch (parseError) {
+          responseData = responseText as any;
+        }
+
+        if (!response.ok) {
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${response.statusText}`,
+            statusCode: response.status,
+            data: responseData
+          };
+        }
+
+        return {
+          success: true,
+          data: responseData,
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries())
+        };
+      } finally {
+        releaseLimiter?.();
+      }
 
     } catch (error) {
       return {
@@ -735,18 +811,23 @@ export abstract class BaseAPIClient {
   /**
    * Update rate limit info from response headers
    */
-  protected updateRateLimitInfo(headers: Headers): void {
-    const limit = headers.get('x-ratelimit-limit') || headers.get('x-rate-limit-limit');
-    const remaining = headers.get('x-ratelimit-remaining') || headers.get('x-rate-limit-remaining');
-    const reset = headers.get('x-ratelimit-reset') || headers.get('x-rate-limit-reset');
+  protected updateRateLimitInfo(headers: Headers): RateLimitMetadata | null {
+    const metadata = this.extractRateLimitMetadata(headers);
 
-    if (limit && remaining && reset) {
+    if (
+      metadata &&
+      metadata.limit !== undefined &&
+      metadata.remaining !== undefined &&
+      metadata.resetMs !== undefined
+    ) {
       this.rateLimitInfo = {
-        limit: parseInt(limit),
-        remaining: parseInt(remaining),
-        resetTime: parseInt(reset) * 1000 // Convert to milliseconds
+        limit: metadata.limit,
+        remaining: metadata.remaining,
+        resetTime: metadata.resetMs,
       };
     }
+
+    return metadata;
   }
 
   /**
@@ -754,6 +835,183 @@ export abstract class BaseAPIClient {
    */
   protected sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private extractRateLimitMetadata(headers: Headers): RateLimitMetadata | null {
+    const limit = this.parseIntegerHeader(this.readRateLimitHeader(headers, 'limit'));
+    const remaining = this.parseIntegerHeader(this.readRateLimitHeader(headers, 'remaining'));
+    const reset = this.parseResetHeader(this.readRateLimitHeader(headers, 'reset'));
+    const retryAfter = this.parseRetryAfterHeader(this.readRateLimitHeader(headers, 'retryAfter'));
+
+    const metadata: RateLimitMetadata = {};
+    if (limit !== undefined) metadata.limit = limit;
+    if (remaining !== undefined) metadata.remaining = remaining;
+    if (reset !== undefined) metadata.resetMs = reset;
+    if (retryAfter?.delayMs !== undefined) metadata.retryAfterMs = retryAfter.delayMs;
+    if (metadata.resetMs === undefined && retryAfter?.resetMs !== undefined) {
+      metadata.resetMs = retryAfter.resetMs;
+    }
+
+    const hasValue =
+      metadata.limit !== undefined ||
+      metadata.remaining !== undefined ||
+      metadata.resetMs !== undefined ||
+      metadata.retryAfterMs !== undefined;
+
+    return hasValue ? metadata : null;
+  }
+
+  private readRateLimitHeader(headers: Headers, kind: keyof typeof DEFAULT_RATE_LIMIT_HEADERS): string | null {
+    const candidates = this.getRateLimitHeaderCandidates(kind);
+    for (const name of candidates) {
+      const value = headers.get(name);
+      if (value !== null && value !== undefined && value !== '') {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private getRateLimitHeaderCandidates(kind: keyof typeof DEFAULT_RATE_LIMIT_HEADERS): string[] {
+    const overrides = this.connectorRateLimits?.rateHeaders?.[kind] ?? [];
+    const defaults = DEFAULT_RATE_LIMIT_HEADERS[kind];
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+
+    for (const name of [...overrides, ...defaults]) {
+      if (!name) continue;
+      const normalized = name.toLowerCase();
+      if (seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      ordered.push(normalized);
+    }
+
+    return ordered;
+  }
+
+  private parseIntegerHeader(value: string | null): number | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    const numeric = Number(value.trim());
+    return Number.isFinite(numeric) ? Math.round(numeric) : undefined;
+  }
+
+  private parseResetHeader(value: string | null): number | undefined {
+    if (!value) {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      if (numeric > 1_000_000_000_000) {
+        return Math.round(numeric);
+      }
+      if (numeric > 1_000_000_000) {
+        return Math.round(numeric * 1000);
+      }
+      if (numeric >= 1_000_000) {
+        return Date.now() + Math.round(numeric);
+      }
+      if (numeric >= 0) {
+        return Date.now() + Math.round(numeric * 1000);
+      }
+    }
+
+    const parsed = Date.parse(trimmed);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private parseRetryAfterHeader(value: string | null): { delayMs?: number; resetMs?: number } | null {
+    if (!value) {
+      return null;
+    }
+    const trimmed = value.trim();
+    const numeric = Number(trimmed);
+
+    if (Number.isFinite(numeric)) {
+      const delayMs = Math.max(0, Math.round(numeric * 1000));
+      return { delayMs, resetMs: Date.now() + delayMs };
+    }
+
+    const parsed = Date.parse(trimmed);
+    if (!Number.isNaN(parsed)) {
+      return { delayMs: Math.max(0, parsed - Date.now()), resetMs: parsed };
+    }
+
+    return null;
+  }
+
+  private computeRateLimitBackoffDelay(level = this.rateLimitBackoffLevel): number {
+    const exponent = Math.max(0, level - 1);
+    const baseDelay = 1000;
+    return Math.min(60000, Math.round(baseDelay * Math.pow(2, exponent)));
+  }
+
+  private applyJitter(waitMs: number): number {
+    if (!Number.isFinite(waitMs) || waitMs <= 0) {
+      return 0;
+    }
+
+    const jitter = 0.25;
+    const minFactor = 1 - jitter;
+    const factor = minFactor + Math.random() * (jitter * 2);
+    return Math.max(0, Math.round(waitMs * factor));
+  }
+
+  private handleRateLimitEffects(response: Response, metadata: RateLimitMetadata | null): void {
+    const connectorId = this.connectorId ?? this.deriveConnectorId() ?? 'unknown';
+    const connectionId = this.credentials.__connectionId ?? null;
+    const organizationId = this.credentials.__organizationId ?? null;
+
+    if (metadata) {
+      updateConnectorRateBudgetMetric({
+        connectorId,
+        connectionId,
+        organizationId,
+        remaining: metadata.remaining,
+        limit: metadata.limit,
+        resetMs: metadata.resetMs,
+      });
+    } else {
+      updateConnectorRateBudgetMetric({ connectorId, connectionId, organizationId });
+    }
+
+    const shouldPenalize =
+      response.status === 429 || Boolean(metadata?.retryAfterMs && metadata.retryAfterMs > 0);
+
+    if (!shouldPenalize) {
+      this.rateLimitBackoffLevel = 0;
+      return;
+    }
+
+    let effectiveLevel = this.rateLimitBackoffLevel;
+    if (response.status === 429) {
+      this.rateLimitBackoffLevel = Math.min(this.rateLimitBackoffLevel + 1, 6);
+      effectiveLevel = this.rateLimitBackoffLevel;
+    } else {
+      effectiveLevel = Math.max(effectiveLevel, 1);
+    }
+
+    const baseDelay =
+      metadata?.retryAfterMs && metadata.retryAfterMs > 0
+        ? metadata.retryAfterMs
+        : this.computeRateLimitBackoffDelay(effectiveLevel);
+
+    const waitMs = this.applyJitter(baseDelay);
+    if (waitMs <= 0) {
+      return;
+    }
+
+    rateLimiter.schedulePenalty({
+      connectorId,
+      connectionId,
+      organizationId,
+      waitMs,
+      scope: this.connectorRateLimits?.concurrency?.scope ?? undefined,
+    });
   }
 
   /**
