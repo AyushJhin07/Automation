@@ -353,7 +353,10 @@ export class WorkflowRuntime {
       currentNodeId: node.id,
       workflowId: context.workflowId,
       userId: context.userId,
-      executionId: context.executionId
+      executionId: context.executionId,
+      trigger: this.resolveTriggerOutput(context, node.id),
+      steps: context.outputs,
+      variables: this.extractRuntimeVariables(context),
     };
 
     const resolvedParams = await resolveAllParams(node.data, paramContext);
@@ -1622,6 +1625,40 @@ export class WorkflowRuntime {
     }
 
     return Array.from(secrets);
+  }
+
+  private resolveTriggerOutput(context: ExecutionContext, currentNodeId: string): any {
+    const outputs = context.outputs ?? {};
+    if (outputs.trigger !== undefined) {
+      return outputs.trigger;
+    }
+
+    const normalizedId = currentNodeId.toLowerCase();
+    if (normalizedId.startsWith('trigger') && outputs[currentNodeId] !== undefined) {
+      return outputs[currentNodeId];
+    }
+
+    for (const [nodeId, value] of Object.entries(outputs)) {
+      if (nodeId.toLowerCase().startsWith('trigger')) {
+        return value;
+      }
+    }
+
+    return context.prevOutput ?? null;
+  }
+
+  private extractRuntimeVariables(context: ExecutionContext): Record<string, any> | undefined {
+    const initial = context.initialData;
+    if (!initial || typeof initial !== 'object') {
+      return undefined;
+    }
+
+    const variables = (initial as Record<string, any>).variables;
+    if (variables && typeof variables === 'object') {
+      return variables as Record<string, any>;
+    }
+
+    return undefined;
   }
 }
 

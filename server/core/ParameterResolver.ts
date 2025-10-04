@@ -73,7 +73,7 @@ export async function resolveParamValue(
       return await resolveLLMValue(evalValue, context);
 
     case 'expr':
-      return resolveExpressionValue(evalValue, context);
+      return await resolveExpressionValue(evalValue, context);
     
     default:
       // Fallback: treat as static object
@@ -324,19 +324,31 @@ export function isEvaluatedValue(value: any): value is EvaluatedValue {
          ['static', 'ref', 'llm', 'expr'].includes(value.mode);
 }
 
-function resolveExpressionValue(
+async function resolveExpressionValue(
   expressionValue: Extract<EvaluatedValue, { mode: 'expr' }>,
   context: ParameterContext
-): any {
+): Promise<any> {
   try {
-    return expressionEvaluator.evaluate(expressionValue.expression, {
+    const evaluation = expressionEvaluator.evaluateDetailed(expressionValue.expression, {
       nodeOutputs: context.nodeOutputs,
       currentNodeId: context.currentNodeId,
       workflowId: context.workflowId,
       executionId: context.executionId,
       userId: context.userId,
+      trigger: context.trigger,
+      steps: context.steps,
+      variables: context.variables,
       vars: expressionValue.vars,
     });
+
+    if (!evaluation.valid && evaluation.diagnostics.length > 0) {
+      const details = evaluation.diagnostics
+        .map(diag => `${diag.path || '/'} ${diag.message}`.trim())
+        .join('; ');
+      console.warn(`Expression validation diagnostics: ${details}`);
+    }
+
+    return evaluation.value;
   } catch (error) {
     if (Object.prototype.hasOwnProperty.call(expressionValue, 'fallback')) {
       return expressionValue.fallback;
