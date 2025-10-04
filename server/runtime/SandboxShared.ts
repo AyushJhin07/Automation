@@ -72,6 +72,121 @@ export type SandboxPolicyEvent =
       limit: number;
     };
 
+export type SandboxScope = 'tenant' | 'execution';
+
+export interface SandboxTenancyMetadata {
+  scope: SandboxScope;
+  organizationId?: string;
+  executionId?: string;
+  workflowId?: string;
+  nodeId?: string;
+  policyVersion?: string | null;
+  dependencyAllowlist: string[];
+  secretScopes: string[];
+}
+
+export interface SandboxTenancyOverrides {
+  dependencyAllowlist?: string[];
+  secretScopes?: string[];
+  resourceLimits?: SandboxResourceLimits;
+  policyVersion?: string | null;
+}
+
+export type SandboxWatchdogAction = 'none' | 'recycle' | 'quarantine';
+
+export interface SandboxIsolationSnapshot {
+  policyViolations: number;
+  heartbeatTimeouts: number;
+  quarantined: boolean;
+  lastViolation: SandboxPolicyEvent | null;
+}
+
+export interface SandboxIsolationWatchdogResult {
+  action: SandboxWatchdogAction;
+  snapshot: SandboxIsolationSnapshot;
+}
+
+export interface SandboxIsolationWatchdog {
+  recordPolicyViolation(event: SandboxPolicyEvent): SandboxIsolationWatchdogResult;
+  recordHeartbeatTimeout(): SandboxIsolationWatchdogResult;
+  reset(): void;
+  liftQuarantine(): void;
+  snapshot(): SandboxIsolationSnapshot;
+}
+
+export interface SandboxIsolationOptions {
+  recycleAfter?: number;
+  quarantineAfter?: number;
+  quarantineOnResourceLimit?: boolean;
+}
+
+export function createSandboxIsolationWatchdog(
+  options: SandboxIsolationOptions = {}
+): SandboxIsolationWatchdog {
+  let policyViolations = 0;
+  let heartbeatTimeouts = 0;
+  let quarantined = false;
+  let lastViolation: SandboxPolicyEvent | null = null;
+
+  const recycleAfter = Math.max(1, options.recycleAfter ?? 1);
+  const quarantineAfter = Math.max(recycleAfter, options.quarantineAfter ?? 3);
+  const quarantineOnResourceLimit = options.quarantineOnResourceLimit ?? true;
+
+  const snapshot = (): SandboxIsolationSnapshot => ({
+    policyViolations,
+    heartbeatTimeouts,
+    quarantined,
+    lastViolation,
+  });
+
+  const buildResult = (action: SandboxWatchdogAction): SandboxIsolationWatchdogResult => ({
+    action,
+    snapshot: snapshot(),
+  });
+
+  return {
+    recordPolicyViolation(event: SandboxPolicyEvent): SandboxIsolationWatchdogResult {
+      policyViolations += 1;
+      lastViolation = event;
+
+      if (quarantineOnResourceLimit && event.type === 'resource-limit') {
+        quarantined = true;
+        return buildResult('quarantine');
+      }
+
+      if (policyViolations >= quarantineAfter) {
+        quarantined = true;
+        return buildResult('quarantine');
+      }
+
+      if (policyViolations >= recycleAfter) {
+        return buildResult('recycle');
+      }
+
+      return buildResult('none');
+    },
+
+    recordHeartbeatTimeout(): SandboxIsolationWatchdogResult {
+      heartbeatTimeouts += 1;
+      return buildResult('recycle');
+    },
+
+    reset(): void {
+      policyViolations = 0;
+      heartbeatTimeouts = 0;
+      lastViolation = null;
+    },
+
+    liftQuarantine(): void {
+      quarantined = false;
+    },
+
+    snapshot(): SandboxIsolationSnapshot {
+      return snapshot();
+    },
+  };
+}
+
 export interface SandboxExecutor {
   run(options: SandboxExecutorRunOptions): Promise<SandboxExecutionResult>;
 }

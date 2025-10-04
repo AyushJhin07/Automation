@@ -19,6 +19,7 @@ import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
 import type { DynamicOptionHandlerContext, DynamicOptionResult } from '../integrations/BaseAPIClient';
 import { normalizeDynamicOptionPath } from '../../common/connectorDynamicOptions.js';
+import type { SandboxResourceLimits } from '../runtime/SandboxShared.js';
 
 type OAuthTokenRefresher = {
   refreshToken(userId: string, organizationId: string, providerId: string): Promise<OAuthTokens>;
@@ -95,6 +96,15 @@ export type OrganizationNetworkDenylist = OrganizationNetworkList;
 export interface OrganizationNetworkPolicy {
   allowlist: OrganizationNetworkAllowlist;
   denylist: OrganizationNetworkDenylist;
+}
+
+export interface SandboxTenancyConfiguration {
+  organizationId?: string;
+  dependencyAllowlist: string[];
+  secretScopes: string[];
+  networkPolicy: OrganizationNetworkPolicy;
+  resourceLimits?: SandboxResourceLimits;
+  policyVersion?: string | null;
 }
 
 interface NetworkAccessAuditEntry {
@@ -494,6 +504,64 @@ export class ConnectionService {
     return Array.from(new Set(normalized));
   }
 
+  private sanitizeSecretScopes(values: unknown): string[] {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    const normalized = new Set<string>();
+    for (const value of values) {
+      if (typeof value !== 'string') {
+        continue;
+      }
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        normalized.add(trimmed);
+      }
+    }
+    return Array.from(normalized);
+  }
+
+  private normalizeSandboxResourceLimits(input: unknown): SandboxResourceLimits | null {
+    if (!input || typeof input !== 'object') {
+      return null;
+    }
+
+    const source = input as Record<string, unknown>;
+    const limits: SandboxResourceLimits = {};
+    let hasValue = false;
+
+    if (typeof source.maxCpuMs === 'number' || typeof source.maxCpuMs === 'string') {
+      const value = Number(source.maxCpuMs);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.maxCpuMs = value;
+        hasValue = true;
+      }
+    }
+
+    if (typeof source.maxMemoryBytes === 'number' || typeof source.maxMemoryBytes === 'string') {
+      const value = Number(source.maxMemoryBytes);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.maxMemoryBytes = value;
+        hasValue = true;
+      }
+    }
+
+    if (typeof source.cpuQuotaMs === 'number' || typeof source.cpuQuotaMs === 'string') {
+      const value = Number(source.cpuQuotaMs);
+      if (Number.isFinite(value) && value >= 0) {
+        limits.cpuQuotaMs = value;
+        hasValue = true;
+      }
+    }
+
+    if (typeof source.cgroupRoot === 'string' && source.cgroupRoot.trim().length > 0) {
+      limits.cgroupRoot = source.cgroupRoot.trim();
+      hasValue = true;
+    }
+
+    return hasValue ? limits : null;
+  }
+
   private supportsScopedTokens(metadata: Record<string, any> | undefined | null): boolean {
     if (!metadata || typeof metadata !== 'object') {
       return false;
@@ -613,6 +681,37 @@ export class ConnectionService {
   ): Promise<OrganizationNetworkAllowlist | null> {
     const policy = await this.getOrganizationNetworkPolicy(organizationId);
     return this.cloneNetworkList(policy.allowlist);
+  }
+
+  public async getSandboxTenancyConfiguration(
+    organizationId: string | undefined
+  ): Promise<SandboxTenancyConfiguration> {
+    const networkPolicy = await this.getOrganizationNetworkPolicy(organizationId);
+    const settings = organizationId
+      ? await this.getOrganizationSecuritySettings(organizationId)
+      : null;
+
+    const sandboxConfig = settings && typeof (settings as any).sandbox === 'object'
+      ? ((settings as any).sandbox as Record<string, unknown>)
+      : null;
+
+    const dependencyAllowlist = this.sanitizeAllowlist(
+      sandboxConfig?.dependencyAllowlist ?? sandboxConfig?.dependencies
+    );
+    const secretScopes = this.sanitizeSecretScopes(sandboxConfig?.secretScopes);
+    const resourceLimits = this.normalizeSandboxResourceLimits(sandboxConfig?.resourceLimits);
+    const policyVersion = typeof sandboxConfig?.policyVersion === 'string'
+      ? sandboxConfig?.policyVersion
+      : null;
+
+    return {
+      organizationId: organizationId ?? undefined,
+      dependencyAllowlist,
+      secretScopes,
+      networkPolicy,
+      resourceLimits: resourceLimits ?? undefined,
+      policyVersion,
+    };
   }
 
   public invalidateOrganizationSecurityCache(organizationId: string): void {

@@ -19,6 +19,7 @@ import pkg from '../../package.json' assert { type: 'json' };
 import { env } from '../env';
 import type { OrganizationRegion } from '../database/schema.js';
 import type { QueueJobCounts, QueueName } from '../queue/index.js';
+import type { SandboxPolicyEvent } from '../runtime/SandboxShared.js';
 
 type MetricAttributes = Record<string, string | number | boolean>;
 
@@ -117,6 +118,26 @@ const nodeLatencyHistogram = meter.createHistogram('workflow_node_latency_ms', {
   unit: 'ms',
 });
 
+const sandboxLifecycleCounter = meter.createCounter('sandbox_lifecycle_events_total', {
+  description: 'Lifecycle transitions for provisioned sandboxes',
+});
+
+const sandboxPolicyViolationCounter = meter.createCounter('sandbox_policy_violations_total', {
+  description: 'Policy violations raised inside sandboxes',
+});
+
+const sandboxHeartbeatTimeoutCounter = meter.createCounter('sandbox_heartbeat_timeouts_total', {
+  description: 'Heartbeats missed by sandboxed executions',
+});
+
+const sandboxActiveGauge = meter.createObservableGauge('sandbox_active', {
+  description: 'Currently provisioned sandboxes by tenancy scope',
+});
+
+const sandboxQuarantinedGauge = meter.createObservableGauge('sandbox_quarantined', {
+  description: 'Sandboxes quarantined due to repeated policy violations',
+});
+
 const webhookDedupeCounter = meter.createCounter('webhook_dedupe_events_total', {
   description: 'Counts webhook deduplication hits and misses',
 });
@@ -166,6 +187,18 @@ const connectorConcurrencyGauge = meter.createObservableGauge('connector_concurr
 });
 const latestConnectorConcurrency = new Map<string, ConnectorConcurrencySnapshot>();
 
+type SandboxStateRecord = {
+  key: string;
+  scope: 'tenant' | 'execution';
+  organizationId?: string;
+  executionId?: string;
+  workflowId?: string;
+  nodeId?: string;
+  state: 'active' | 'quarantined';
+};
+
+const sandboxStates = new Map<string, SandboxStateRecord>();
+
 meter.addBatchObservableCallback((observableResult) => {
   for (const [queueName, counts] of latestQueueDepths.entries()) {
     const { total = 0, ...states } = counts;
@@ -207,7 +240,33 @@ meter.addBatchObservableCallback((observableResult) => {
       organization_id: snapshot.organizationId ?? 'global',
       scope: snapshot.scope,
     });
+
     observableResult.observe(connectorConcurrencyGauge, snapshot.active, attributes);
+
+    if (typeof snapshot.limit === 'number') {
+      observableResult.observe(connectorConcurrencyGauge, snapshot.limit, {
+        ...attributes,
+        limit: true,
+      });
+    }
+  }
+
+  for (const record of sandboxStates.values()) {
+    const attributes = sanitizeAttributes({
+      sandbox_scope: record.scope,
+      organization_id: record.organizationId ?? 'global',
+      execution_id: record.executionId ?? 'n/a',
+      workflow_id: record.workflowId ?? 'n/a',
+      node_id: record.nodeId ?? 'n/a',
+    });
+
+    if (record.state === 'active') {
+      observableResult.observe(sandboxActiveGauge, 1, attributes);
+    }
+
+    if (record.state === 'quarantined') {
+      observableResult.observe(sandboxQuarantinedGauge, 1, attributes);
+    }
   }
 }, [
   queueDepthGauge,
@@ -215,7 +274,74 @@ meter.addBatchObservableCallback((observableResult) => {
   connectorRateLimitGauge,
   connectorRateResetGauge,
   connectorConcurrencyGauge,
+  sandboxActiveGauge,
+  sandboxQuarantinedGauge,
 ]);
+
+type SandboxIsolationAttributes = {
+  scope: 'tenant' | 'execution';
+  organizationId?: string;
+  executionId?: string;
+  workflowId?: string;
+  nodeId?: string;
+};
+
+function toMetricAttributes(attrs: SandboxIsolationAttributes): Record<string, string> {
+  return sanitizeAttributes({
+    sandbox_scope: attrs.scope,
+    organization_id: attrs.organizationId ?? 'global',
+    execution_id: attrs.executionId ?? 'n/a',
+    workflow_id: attrs.workflowId ?? 'n/a',
+    node_id: attrs.nodeId ?? 'n/a',
+  });
+}
+
+export function recordSandboxLifecycleEvent(
+  event: 'provisioned' | 'recycled' | 'disposed' | 'quarantined',
+  attrs: SandboxIsolationAttributes & { reason?: string }
+): void {
+  const attributes = {
+    ...toMetricAttributes(attrs),
+    reason: attrs.reason ?? 'n/a',
+  } as Record<string, string>;
+
+  sandboxLifecycleCounter.add(1, attributes);
+}
+
+export function recordSandboxPolicyViolation(
+  attrs: SandboxIsolationAttributes,
+  violation: SandboxPolicyEvent
+): void {
+  sandboxPolicyViolationCounter.add(1, {
+    ...toMetricAttributes(attrs),
+    violation_type: violation.type,
+    violation_resource: violation.type === 'resource-limit' ? violation.resource : 'n/a',
+  });
+}
+
+export function recordSandboxHeartbeatTimeout(attrs: SandboxIsolationAttributes): void {
+  sandboxHeartbeatTimeoutCounter.add(1, toMetricAttributes(attrs));
+}
+
+export function setSandboxState(
+  key: string,
+  attrs: SandboxIsolationAttributes,
+  state: 'active' | 'quarantined'
+): void {
+  sandboxStates.set(key, {
+    key,
+    scope: attrs.scope,
+    organizationId: attrs.organizationId,
+    executionId: attrs.executionId,
+    workflowId: attrs.workflowId,
+    nodeId: attrs.nodeId,
+    state,
+  });
+}
+
+export function clearSandboxState(key: string): void {
+  sandboxStates.delete(key);
+}
 
 function sanitizeAttributes(attributes: Record<string, unknown>): MetricAttributes {
   const sanitized: MetricAttributes = {};

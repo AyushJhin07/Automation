@@ -1,7 +1,15 @@
 import { performance } from 'node:perf_hooks';
 import { SpanStatusCode } from '@opentelemetry/api';
 
-import { recordNodeLatency, tracer } from '../observability/index.js';
+import {
+  recordNodeLatency,
+  tracer,
+  recordSandboxLifecycleEvent,
+  recordSandboxPolicyViolation,
+  recordSandboxHeartbeatTimeout,
+  setSandboxState,
+  clearSandboxState,
+} from '../observability/index.js';
 import {
   SandboxExecutionResult,
   SandboxExecutor,
@@ -13,6 +21,12 @@ import {
   SandboxResourceLimits,
   dedupeSecrets,
   sanitizeForTransfer,
+  SandboxHeartbeatTimeoutError,
+  SandboxIsolationWatchdog,
+  createSandboxIsolationWatchdog,
+  SandboxTenancyOverrides,
+  SandboxTenancyMetadata,
+  SandboxNetworkAllowlist,
 } from './SandboxShared';
 import { WorkerSandboxExecutor } from './WorkerSandboxExecutor';
 import { ProcessSandboxExecutor } from './ProcessSandboxExecutor';
@@ -20,8 +34,11 @@ import { connectionService } from '../services/ConnectionService.js';
 import type {
   OrganizationNetworkAllowlist,
   OrganizationNetworkPolicy,
+  SandboxTenancyConfiguration,
 } from '../services/ConnectionService.js';
 import { connectorRegistry } from '../ConnectorRegistry.js';
+import type { SandboxProvisionRequest, SandboxScopeDescriptor } from './sandbox/types.js';
+import { createSandboxScopeKey, mergeStringSets, toTelemetryAttributes } from './sandbox/utils.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ENV_CPU_LIMIT_MS = Number(process.env.SANDBOX_MAX_CPU_MS);
@@ -116,6 +133,12 @@ const extractConnectorId = (params: any, context: any): string | undefined => {
   return undefined;
 };
 
+type ResolvedSandboxNetworkPolicy = {
+  allowlist: SandboxNetworkAllowlist | null;
+  denylist: SandboxNetworkAllowlist | null;
+  required: SandboxNetworkAllowlist | null;
+};
+
 const getConnectorRequiredNetwork = (
   connectorId: string | undefined
 ): OrganizationNetworkAllowlist | null => {
@@ -144,29 +167,6 @@ const getConnectorRequiredNetwork = (
   }
 };
 
-export interface SandboxExecutionOptions {
-  code: string;
-  entryPoint?: string;
-  params?: any;
-  context?: any;
-  timeoutMs?: number;
-  signal?: AbortSignal;
-  secrets?: string[];
-  resourceLimits?: SandboxResourceLimits;
-  heartbeatIntervalMs?: number;
-  heartbeatTimeoutMs?: number;
-}
-
-export { collectSecretStrings } from './SandboxShared';
-export type { SandboxLogEntry } from './SandboxShared';
-export {
-  SandboxAbortError,
-  SandboxTimeoutError,
-  SandboxPolicyViolationError,
-  SandboxResourceLimitError,
-  SandboxHeartbeatTimeoutError,
-} from './SandboxShared';
-
 function resolveExecutorFromEnv(): SandboxExecutor {
   const requested = (process.env.SANDBOX_EXECUTOR || '').toLowerCase();
   if (requested) {
@@ -185,22 +185,144 @@ function resolveExecutorFromEnv(): SandboxExecutor {
   return new ProcessSandboxExecutor();
 }
 
-export class NodeSandbox {
+export interface SandboxExecutionOptions {
+  code: string;
+  entryPoint?: string;
+  params?: any;
+  context?: any;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  secrets?: string[];
+  resourceLimits?: SandboxResourceLimits;
+  heartbeatIntervalMs?: number;
+  heartbeatTimeoutMs?: number;
+  tenancy?: SandboxTenancyOverrides;
+}
+
+export { collectSecretStrings } from './SandboxShared';
+export type { SandboxLogEntry } from './SandboxShared';
+export {
+  SandboxAbortError,
+  SandboxTimeoutError,
+  SandboxPolicyViolationError,
+  SandboxResourceLimitError,
+  SandboxHeartbeatTimeoutError,
+} from './SandboxShared';
+
+class NodeSandboxFactory {
+  private readonly sandboxes = new Map<string, ScopedNodeSandbox>();
+
+  constructor(private readonly executorFactory: () => SandboxExecutor = resolveExecutorFromEnv) {}
+
+  provision(request: SandboxProvisionRequest): ScopedNodeSandbox {
+    const key = createSandboxScopeKey(request);
+    const descriptor: SandboxScopeDescriptor = { ...request, key };
+    let sandbox = this.sandboxes.get(key);
+    if (!sandbox || sandbox.isDisposed()) {
+      sandbox = new ScopedNodeSandbox(descriptor, this);
+      this.sandboxes.set(key, sandbox);
+    }
+    return sandbox;
+  }
+
+  dispose(request: SandboxProvisionRequest): void {
+    const key = createSandboxScopeKey(request);
+    const sandbox = this.sandboxes.get(key);
+    if (sandbox) {
+      sandbox.dispose('factory-dispose');
+      this.sandboxes.delete(key);
+    }
+  }
+
+  createExecutor(): SandboxExecutor {
+    return this.executorFactory();
+  }
+
+  async resolveTenancyConfiguration(organizationId?: string): Promise<SandboxTenancyConfiguration> {
+    return connectionService.getSandboxTenancyConfiguration(organizationId);
+  }
+
+  resolveEffectiveResourceLimits(
+    base: SandboxResourceLimits | undefined,
+    ...overrides: Array<SandboxResourceLimits | undefined>
+  ): SandboxResourceLimits | undefined {
+    const limits: SandboxResourceLimits = { ...(base ?? {}) };
+
+    for (const override of overrides) {
+      if (!override) continue;
+      if (typeof override.maxCpuMs === 'number' && Number.isFinite(override.maxCpuMs)) {
+        limits.maxCpuMs = override.maxCpuMs;
+      }
+      if (typeof override.cpuQuotaMs === 'number' && Number.isFinite(override.cpuQuotaMs)) {
+        limits.cpuQuotaMs = override.cpuQuotaMs;
+      }
+      if (typeof override.maxMemoryBytes === 'number' && Number.isFinite(override.maxMemoryBytes)) {
+        limits.maxMemoryBytes = override.maxMemoryBytes;
+      }
+      if (typeof override.cgroupRoot === 'string' && override.cgroupRoot.trim().length > 0) {
+        limits.cgroupRoot = override.cgroupRoot.trim();
+      }
+    }
+
+    if (!Number.isFinite(limits.maxCpuMs) && Number.isFinite(ENV_CPU_LIMIT_MS)) {
+      limits.maxCpuMs = Math.max(0, Number(ENV_CPU_LIMIT_MS));
+    }
+    if (!Number.isFinite(limits.cpuQuotaMs) && Number.isFinite(ENV_CPU_QUOTA_MS)) {
+      limits.cpuQuotaMs = Math.max(0, Number(ENV_CPU_QUOTA_MS));
+    }
+    if (!Number.isFinite(limits.maxMemoryBytes) && Number.isFinite(ENV_MEMORY_LIMIT_MB)) {
+      const bytes = Number(ENV_MEMORY_LIMIT_MB) * 1024 * 1024;
+      limits.maxMemoryBytes = Math.max(0, bytes);
+    }
+    if (!limits.cgroupRoot && typeof ENV_CGROUP_ROOT === 'string' && ENV_CGROUP_ROOT.trim().length > 0) {
+      limits.cgroupRoot = ENV_CGROUP_ROOT.trim();
+    }
+
+    const hasCpuLimit = Number.isFinite(limits.maxCpuMs) && (limits.maxCpuMs ?? 0) > 0;
+    const hasCpuQuota = Number.isFinite(limits.cpuQuotaMs) && (limits.cpuQuotaMs ?? 0) > 0;
+    const hasMemoryLimit = Number.isFinite(limits.maxMemoryBytes) && (limits.maxMemoryBytes ?? 0) > 0;
+
+    if (!hasCpuLimit && !hasCpuQuota && !hasMemoryLimit) {
+      return undefined;
+    }
+
+    return limits;
+  }
+
+  handleSandboxDisposal(key: string): void {
+    this.sandboxes.delete(key);
+  }
+}
+
+class ScopedNodeSandbox {
   private executor: SandboxExecutor;
+  private readonly watchdog: SandboxIsolationWatchdog;
+  private readonly tenancyConfigPromise: Promise<SandboxTenancyConfiguration>;
+  private readonly attributes = toTelemetryAttributes(this.descriptor);
+  private disposed = false;
+  private quarantined = false;
+  private lastViolation: SandboxPolicyEvent | null = null;
 
-  constructor(executor: SandboxExecutor = resolveExecutorFromEnv()) {
-    this.executor = executor;
+  constructor(private readonly descriptor: SandboxScopeDescriptor, private readonly factory: NodeSandboxFactory) {
+    this.executor = this.factory.createExecutor();
+    this.watchdog = createSandboxIsolationWatchdog();
+    this.tenancyConfigPromise = this.factory.resolveTenancyConfiguration(descriptor.organizationId);
+
+    recordSandboxLifecycleEvent('provisioned', { ...this.attributes });
+    setSandboxState(this.descriptor.key, this.attributes, 'active');
   }
 
-  setExecutor(executor: SandboxExecutor): void {
-    this.executor = executor;
+  isDisposed(): boolean {
+    return this.disposed;
   }
 
-  getExecutor(): SandboxExecutor {
-    return this.executor;
+  isQuarantined(): boolean {
+    return this.quarantined;
   }
 
   async execute(options: SandboxExecutionOptions): Promise<SandboxExecutionResult> {
+    this.assertActive();
+
     const {
       code,
       entryPoint = 'run',
@@ -212,6 +334,7 @@ export class NodeSandbox {
       resourceLimits,
       heartbeatIntervalMs,
       heartbeatTimeoutMs,
+      tenancy,
     } = options;
 
     if (typeof code !== 'string' || code.trim().length === 0) {
@@ -227,6 +350,7 @@ export class NodeSandbox {
       'workflow.workflow_id': (context as Record<string, unknown>)?.workflowId as string | undefined,
       'workflow.node_id': (context as Record<string, unknown>)?.nodeId as string | undefined,
       'sandbox.entry_point': entryPoint,
+      'sandbox.scope': this.descriptor.scope,
     } as const;
 
     return tracer.startActiveSpan('workflow.sandbox', { attributes: spanAttributes }, async (span) => {
@@ -234,10 +358,44 @@ export class NodeSandbox {
       const policyEvents: SandboxPolicyEvent[] = [];
       try {
         const sanitizedParams = sanitizeForTransfer(params, 'params');
-        const sanitizedContext = sanitizeForTransfer(context, 'context');
-        const collectedSecrets = dedupeSecrets(secrets);
+        const baseTenancy = await this.tenancyConfigPromise;
 
-        const resolvedResourceLimits = this.resolveResourceLimits(resourceLimits);
+        const dependencyAllowlist = mergeStringSets(
+          baseTenancy.dependencyAllowlist,
+          tenancy?.dependencyAllowlist,
+        );
+        const secretScopes = mergeStringSets(baseTenancy.secretScopes, tenancy?.secretScopes);
+        const policyVersion = tenancy?.policyVersion ?? baseTenancy.policyVersion ?? null;
+
+        const tenancyMetadata: SandboxTenancyMetadata = {
+          scope: this.descriptor.scope,
+          organizationId: this.descriptor.organizationId,
+          executionId: this.descriptor.executionId,
+          workflowId: this.descriptor.workflowId,
+          nodeId: this.descriptor.nodeId ?? (context as any)?.nodeId,
+          policyVersion,
+          dependencyAllowlist,
+          secretScopes,
+        };
+
+        const sanitizedContext = sanitizeForTransfer(context, 'context');
+        let finalContext: any;
+        if (sanitizedContext && typeof sanitizedContext === 'object' && !Array.isArray(sanitizedContext)) {
+          finalContext = { ...sanitizedContext, tenancy: sanitizeForTransfer(tenancyMetadata, 'context.tenancy') };
+        } else {
+          finalContext = {
+            value: sanitizedContext,
+            tenancy: sanitizeForTransfer(tenancyMetadata, 'context.tenancy'),
+          };
+        }
+
+        const collectedSecrets = dedupeSecrets(secrets);
+        const resolvedResourceLimits = this.factory.resolveEffectiveResourceLimits(
+          baseTenancy.resourceLimits,
+          tenancy?.resourceLimits,
+          resourceLimits
+        );
+
         const resolvedHeartbeatInterval = Number.isFinite(heartbeatIntervalMs)
           ? Math.max(25, Math.floor(heartbeatIntervalMs))
           : Number.isFinite(ENV_HEARTBEAT_INTERVAL_MS)
@@ -249,31 +407,11 @@ export class NodeSandbox {
             ? Math.max(resolvedHeartbeatInterval ? resolvedHeartbeatInterval * 2 : 100, Math.floor(ENV_HEARTBEAT_TIMEOUT_MS))
             : undefined;
 
-        const organizationId = typeof (context as any)?.organizationId === 'string'
-          ? (context as any).organizationId
-          : undefined;
-        const executionId = typeof (context as any)?.executionId === 'string'
-          ? (context as any).executionId
-          : undefined;
-        const nodeId = typeof (context as any)?.nodeId === 'string'
-          ? (context as any).nodeId
-          : undefined;
-        const connectionId = typeof (context as any)?.connectionId === 'string'
-          ? (context as any).connectionId
-          : undefined;
-        const userId = typeof (context as any)?.userId === 'string'
-          ? (context as any).userId
-          : undefined;
-
-        const basePolicy: OrganizationNetworkPolicy = await connectionService.getOrganizationNetworkPolicy(
-          organizationId
-        );
         const connectorId = extractConnectorId(params, context);
         const connectorRequirements = getConnectorRequiredNetwork(connectorId);
-        const mergedAllowlist = mergeNetworkLists(basePolicy.allowlist, connectorRequirements);
         const effectivePolicy: OrganizationNetworkPolicy = {
-          allowlist: mergedAllowlist,
-          denylist: mergeNetworkLists(basePolicy.denylist),
+          allowlist: mergeNetworkLists(baseTenancy.networkPolicy.allowlist, connectorRequirements),
+          denylist: mergeNetworkLists(baseTenancy.networkPolicy.denylist),
         };
 
         const networkPolicy = {
@@ -281,19 +419,25 @@ export class NodeSandbox {
           denylist: toSandboxList(effectivePolicy.denylist),
           required: connectorRequirements ? toSandboxList(connectorRequirements) : null,
           audit: {
-            organizationId,
-            executionId,
-            nodeId,
-            connectionId,
-            userId,
+            organizationId: this.descriptor.organizationId,
+            executionId: this.descriptor.executionId,
+            nodeId: this.descriptor.nodeId ?? (context as any)?.nodeId,
+            connectionId: (context as any)?.connectionId,
+            userId: (context as any)?.userId,
           },
         } as const;
+
+        const simplifiedPolicy: ResolvedSandboxNetworkPolicy = {
+          allowlist: networkPolicy.allowlist,
+          denylist: networkPolicy.denylist,
+          required: networkPolicy.required,
+        };
 
         const executorOptions: SandboxExecutorRunOptions = {
           code,
           entryPoint,
           params: sanitizedParams,
-          context: sanitizedContext,
+          context: finalContext,
           timeoutMs,
           signal,
           secrets: collectedSecrets,
@@ -303,38 +447,30 @@ export class NodeSandbox {
           heartbeatTimeoutMs: resolvedHeartbeatTimeout,
           onPolicyEvent: (event) => {
             policyEvents.push(event);
-            if (event.type === 'network-denied') {
-              try {
-                const policyDetails = {
-                  allowlist: event.allowlist ? { ...event.allowlist } : networkPolicy.allowlist,
-                  denylist: event.denylist ? { ...event.denylist } : networkPolicy.denylist,
-                  required: event.required ? { ...event.required } : networkPolicy.required ?? undefined,
-                  source: 'sandbox',
-                };
-                connectionService.recordDeniedNetworkAccess({
-                  organizationId,
-                  connectionId,
-                  userId,
-                  attemptedHost: event.host,
-                  attemptedUrl: event.url,
-                  reason: event.reason,
-                  policy: policyDetails,
-                });
-              } catch (recordError) {
-                console.warn('[Sandbox] Failed to record denied network access', recordError);
-              }
-            }
+            this.handlePolicyEvent(event, simplifiedPolicy);
           },
         };
 
         const outcome = await this.executor.run(executorOptions);
+
+        this.watchdog.reset();
+        this.lastViolation = null;
+        this.quarantined = false;
+        this.watchdog.liftQuarantine();
+        setSandboxState(this.descriptor.key, this.attributes, 'active');
 
         span.setAttribute('sandbox.log_count', outcome.logs.length);
         span.setStatus({ code: SpanStatusCode.OK });
         return outcome;
       } catch (error) {
         const exception = error instanceof Error ? error : new Error(String(error));
-        if (!(exception instanceof SandboxPolicyViolationError) && policyEvents.length > 0) {
+        if (exception instanceof SandboxPolicyViolationError) {
+          if (policyEvents.length === 0) {
+            this.handlePolicyViolation(exception.violation);
+          }
+        } else if (exception instanceof SandboxHeartbeatTimeoutError) {
+          this.handleHeartbeatTimeout();
+        } else if (!(exception instanceof SandboxPolicyViolationError) && policyEvents.length > 0) {
           const violation = policyEvents[policyEvents.length - 1];
           throw new SandboxPolicyViolationError(exception.message, violation, { cause: exception });
         }
@@ -371,31 +507,96 @@ export class NodeSandbox {
     });
   }
 
-  private resolveResourceLimits(overrides?: SandboxResourceLimits): SandboxResourceLimits | undefined {
-    const limits: SandboxResourceLimits = { ...overrides };
-    if (!Number.isFinite(limits.maxCpuMs) && Number.isFinite(ENV_CPU_LIMIT_MS)) {
-      limits.maxCpuMs = Math.max(0, Number(ENV_CPU_LIMIT_MS));
+  dispose(reason: string): void {
+    if (this.disposed) {
+      return;
     }
-    if (!Number.isFinite(limits.cpuQuotaMs) && Number.isFinite(ENV_CPU_QUOTA_MS)) {
-      limits.cpuQuotaMs = Math.max(0, Number(ENV_CPU_QUOTA_MS));
+    this.disposed = true;
+    recordSandboxLifecycleEvent('disposed', { ...this.attributes, reason });
+    clearSandboxState(this.descriptor.key);
+    this.factory.handleSandboxDisposal(this.descriptor.key);
+  }
+
+  private assertActive(): void {
+    if (this.disposed) {
+      throw new Error('Sandbox has been disposed');
     }
-    if (!Number.isFinite(limits.maxMemoryBytes) && Number.isFinite(ENV_MEMORY_LIMIT_MB)) {
-      const bytes = Number(ENV_MEMORY_LIMIT_MB) * 1024 * 1024;
-      limits.maxMemoryBytes = Math.max(0, bytes);
+    if (this.quarantined) {
+      const violation =
+        this.lastViolation ?? ({ type: 'resource-limit', resource: 'cpu', usage: 0, limit: 0 } as SandboxPolicyEvent);
+      throw new SandboxPolicyViolationError('Sandbox is quarantined due to previous violations', violation);
     }
-    if (!limits.cgroupRoot && typeof ENV_CGROUP_ROOT === 'string' && ENV_CGROUP_ROOT.trim().length > 0) {
-      limits.cgroupRoot = ENV_CGROUP_ROOT.trim();
+  }
+
+  private handlePolicyEvent(event: SandboxPolicyEvent, policy: ResolvedSandboxNetworkPolicy): void {
+    recordSandboxPolicyViolation(this.attributes, event);
+    this.lastViolation = event;
+
+    if (event.type === 'network-denied') {
+      try {
+        const audit = (event as any).audit ?? {};
+        connectionService.recordDeniedNetworkAccess({
+          organizationId: typeof audit.organizationId === 'string' ? audit.organizationId : this.descriptor.organizationId,
+          connectionId: typeof audit.connectionId === 'string' ? audit.connectionId : undefined,
+          userId: typeof audit.userId === 'string' ? audit.userId : undefined,
+          attemptedHost: event.host,
+          attemptedUrl: event.url,
+          reason: event.reason,
+          policy: {
+            allowlist: event.allowlist ?? policy.allowlist,
+            denylist: event.denylist ?? policy.denylist,
+            required: event.required ?? policy.required ?? undefined,
+            source: 'sandbox',
+          },
+        });
+      } catch (recordError) {
+        console.warn('[Sandbox] Failed to record denied network access', recordError);
+      }
     }
 
-    const hasCpuLimit = Number.isFinite(limits.maxCpuMs) && (limits.maxCpuMs ?? 0) > 0;
-    const hasCpuQuota = Number.isFinite(limits.cpuQuotaMs) && (limits.cpuQuotaMs ?? 0) > 0;
-    const hasMemoryLimit = Number.isFinite(limits.maxMemoryBytes) && (limits.maxMemoryBytes ?? 0) > 0;
-
-    if (!hasCpuLimit && !hasCpuQuota && !hasMemoryLimit) {
-      return undefined;
+    const result = this.watchdog.recordPolicyViolation(event);
+    if (result.action === 'quarantine') {
+      this.quarantine(event, 'policy-violation');
+    } else if (result.action === 'recycle') {
+      this.recycle('policy-violation');
     }
-    return limits;
+  }
+
+  private handlePolicyViolation(event: SandboxPolicyEvent): void {
+    this.lastViolation = event;
+    const result = this.watchdog.recordPolicyViolation(event);
+    if (result.action === 'quarantine') {
+      this.quarantine(event, 'policy-violation');
+    } else if (result.action === 'recycle') {
+      this.recycle('policy-violation');
+    }
+  }
+
+  private handleHeartbeatTimeout(): void {
+    recordSandboxHeartbeatTimeout(this.attributes);
+    const result = this.watchdog.recordHeartbeatTimeout();
+    if (result.action === 'quarantine') {
+      this.quarantine(null, 'heartbeat-timeout');
+    } else {
+      this.recycle('heartbeat-timeout');
+    }
+  }
+
+  private recycle(reason: string): void {
+    this.executor = this.factory.createExecutor();
+    recordSandboxLifecycleEvent('recycled', { ...this.attributes, reason });
+    setSandboxState(this.descriptor.key, this.attributes, 'active');
+  }
+
+  private quarantine(event: SandboxPolicyEvent | null, reason: string): void {
+    this.quarantined = true;
+    if (event) {
+      this.lastViolation = event;
+    }
+    recordSandboxLifecycleEvent('quarantined', { ...this.attributes, reason });
+    setSandboxState(this.descriptor.key, this.attributes, 'quarantined');
   }
 }
 
-export const nodeSandbox = new NodeSandbox();
+export const nodeSandboxFactory = new NodeSandboxFactory();
+
