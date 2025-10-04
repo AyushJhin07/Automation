@@ -56,6 +56,25 @@ interface ScriptOptions {
 }
 
 const DEFAULT_SMOKE_PLANS: Record<string, { actions?: SmokeActionConfig[]; triggers?: SmokeActionConfig[]; notes?: string }> = {
+  adp: {
+    actions: [
+      { id: 'test_connection' },
+      {
+        id: 'run_payroll',
+        parameters: {
+          payrollGroupId: 'demo-group',
+          payPeriodStart: '2024-01-01',
+          payPeriodEnd: '2024-01-15',
+          waitForCompletion: false,
+        },
+        expectSuccess: false,
+      },
+    ],
+    triggers: [
+      { id: 'payroll_completed', expectSuccess: false },
+    ],
+    notes: 'Default ADP smoke plan validates OAuth client credential flow and payroll event wiring using non-production defaults.',
+  },
   dynamics365: {
     actions: [
       { id: 'test_connection' },

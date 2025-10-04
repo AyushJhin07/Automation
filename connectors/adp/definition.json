@@ -12,7 +12,11 @@
       "authUrl": "https://accounts.adp.com/auth/oauth/v2/authorize",
       "tokenUrl": "https://accounts.adp.com/auth/oauth/v2/token",
       "scopes": [
-        "api"
+        "api",
+        "hr.worker.read",
+        "hr.worker.write",
+        "payroll.payroll_processing",
+        "payroll.payroll_reports.read"
       ]
     }
   },
