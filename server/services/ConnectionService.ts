@@ -219,6 +219,8 @@ export class ConnectionService {
   private readonly networkAuditLogLimit = 500;
   private readonly platformNetworkPolicy: OrganizationNetworkPolicy;
   private platformPolicyOverride: OrganizationNetworkPolicy | null = null;
+  private readonly allowDevPlaintextTokenBypass: boolean;
+  private devPlaintextBypassWarningLogged = false;
 
   constructor() {
     this.db = db;
@@ -232,6 +234,8 @@ export class ConnectionService {
     this.refreshThresholdMs = Number.isFinite(threshold) && threshold >= 0 ? threshold : defaultThreshold;
 
     this.platformNetworkPolicy = this.computePlatformNetworkPolicy();
+    this.allowDevPlaintextTokenBypass =
+      env.NODE_ENV === 'development' && env.ALLOW_PLAINTEXT_TOKENS_IN_DEV === true;
 
     if (!this.db) {
       if (this.allowFileStore) {
@@ -358,6 +362,21 @@ export class ConnectionService {
     if (!this.db && !this.useFileStore) {
       throw new Error('Database not available. Set DATABASE_URL.');
     }
+  }
+
+  private shouldUseDevPlaintextBypass(): boolean {
+    return this.allowDevPlaintextTokenBypass;
+  }
+
+  private logDevPlaintextBypassWarning(): void {
+    if (this.devPlaintextBypassWarningLogged) {
+      return;
+    }
+
+    console.warn(
+      '🚨 ALLOW_PLAINTEXT_TOKENS_IN_DEV enabled: storing OAuth tokens without envelope encryption. Disable this flag once migrations are applied.'
+    );
+    this.devPlaintextBypassWarningLogged = true;
   }
 
   private async ensureFileStoreDir(): Promise<void> {
@@ -1648,6 +1667,10 @@ export class ConnectionService {
       ...tokens,
       userInfo,
     };
+    const bypassEnvelopeEncryption = this.shouldUseDevPlaintextBypass();
+    if (bypassEnvelopeEncryption) {
+      this.logDevPlaintextBypassWarning();
+    }
     const encrypted = await this.encryptCredentials(credentialsPayload);
     const nowIso = new Date().toISOString();
     const metadata = {
@@ -1750,19 +1773,24 @@ export class ConnectionService {
     }
 
     if (existingConnectionId) {
+      const updateValues: Partial<typeof connections.$inferInsert> = {
+        name: connectionName,
+        encryptedCredentials: encrypted.encryptedData,
+        iv: encrypted.iv,
+        metadata,
+        updatedAt: new Date(),
+        isActive: true,
+        type: options.type || 'saas'
+      };
+
+      if (!bypassEnvelopeEncryption) {
+        updateValues.encryptionKeyId = encrypted.keyId ?? null;
+        updateValues.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+      }
+
       await this.db
         .update(connections)
-        .set({
-          name: connectionName,
-          encryptedCredentials: encrypted.encryptedData,
-          iv: encrypted.iv,
-          encryptionKeyId: encrypted.keyId ?? null,
-          dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
-          metadata,
-          updatedAt: new Date(),
-          isActive: true,
-          type: options.type || 'saas'
-        })
+        .set(updateValues)
         .where(and(
           eq(connections.id, existingConnectionId),
           eq(connections.organizationId, organizationId),
@@ -1773,7 +1801,7 @@ export class ConnectionService {
       return existingConnectionId;
     }
 
-    const baseValues: typeof connections.$inferInsert = {
+    const baseValues: Partial<typeof connections.$inferInsert> = {
       userId,
       organizationId,
       name: connectionName,
@@ -1781,15 +1809,33 @@ export class ConnectionService {
       type: options.type || 'saas',
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
-      encryptionKeyId: encrypted.keyId ?? null,
-      dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
       metadata,
       isActive: true,
     };
 
-    const insertValues: typeof connections.$inferInsert = requestedConnectionId
+    if (!bypassEnvelopeEncryption) {
+      baseValues.encryptionKeyId = encrypted.keyId ?? null;
+      baseValues.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+    }
+
+    const insertValues: typeof connections.$inferInsert = (requestedConnectionId
       ? { ...baseValues, id: requestedConnectionId }
-      : baseValues;
+      : baseValues) as typeof connections.$inferInsert;
+
+    const conflictUpdate: Partial<typeof connections.$inferInsert> = {
+      name: connectionName,
+      encryptedCredentials: encrypted.encryptedData,
+      iv: encrypted.iv,
+      metadata,
+      updatedAt: new Date(),
+      isActive: true,
+      type: options.type || 'saas',
+    };
+
+    if (!bypassEnvelopeEncryption) {
+      conflictUpdate.encryptionKeyId = encrypted.keyId ?? null;
+      conflictUpdate.dataKeyCiphertext = encrypted.dataKeyCiphertext ?? null;
+    }
 
     const [created] = await this.db
       .insert(connections)
@@ -1801,17 +1847,7 @@ export class ConnectionService {
           connections.provider,
           connections.name,
         ],
-        set: {
-          name: connectionName,
-          encryptedCredentials: encrypted.encryptedData,
-          iv: encrypted.iv,
-          encryptionKeyId: encrypted.keyId ?? null,
-          dataKeyCiphertext: encrypted.dataKeyCiphertext ?? null,
-          metadata,
-          updatedAt: new Date(),
-          isActive: true,
-          type: options.type || 'saas',
-        },
+        set: conflictUpdate,
       })
       .returning({ id: connections.id });
 
