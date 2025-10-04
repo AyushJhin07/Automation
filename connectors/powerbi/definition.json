@@ -5,23 +5,34 @@
   "category": "Analytics",
   "icon": "powerbi",
   "color": "#F2C811",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "authentication": {
     "type": "oauth2",
     "config": {
-      "authUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "grantType": "client_credentials",
+      "tokenUrl": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token",
       "scopes": [
         "https://analysis.windows.net/powerbi/api/.default"
+      ],
+      "clientIdRequired": true,
+      "clientSecretRequired": true,
+      "additionalFields": [
+        {
+          "id": "tenantId",
+          "name": "Directory (tenant) ID",
+          "type": "string",
+          "required": true,
+          "description": "Azure AD directory (tenant) identifier used for service principal authentication."
+        }
       ]
     }
   },
-  "baseUrl": "https://api.powerbi.com/v1.0/myorg",
+  "baseUrl": "https://api.powerbi.com/v1.0",
   "actions": [
     {
       "id": "test_connection",
       "name": "Test Connection",
-      "description": "Test the connection to Power BI",
+      "description": "Verify service principal access to the Power BI REST API",
       "parameters": {
         "type": "object",
         "properties": {},
@@ -31,14 +42,29 @@
     },
     {
       "id": "get_datasets",
-      "name": "Get Datasets",
-      "description": "Get list of datasets",
+      "name": "List Datasets",
+      "description": "Retrieve datasets available to the authenticated service principal",
       "parameters": {
         "type": "object",
         "properties": {
           "groupId": {
             "type": "string",
             "description": "Workspace ID (optional)"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5000,
+            "description": "Maximum number of datasets to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of datasets to skip"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Optional OData filter expression"
           }
         },
         "required": [],
@@ -46,9 +72,9 @@
       }
     },
     {
-      "id": "refresh_dataset",
-      "name": "Refresh Dataset",
-      "description": "Trigger dataset refresh",
+      "id": "query_dataset",
+      "name": "Query Dataset",
+      "description": "Execute a DAX query against a dataset",
       "parameters": {
         "type": "object",
         "properties": {
@@ -59,6 +85,117 @@
           "groupId": {
             "type": "string",
             "description": "Workspace ID (optional)"
+          },
+          "sql": {
+            "type": "string",
+            "description": "DAX query text to execute"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Optional query parameters (name/value pairs)",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "datasetId",
+          "sql"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "trigger_refresh",
+      "name": "Trigger Dataset Refresh",
+      "description": "Start a dataset refresh and optionally wait for completion",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "notifyOption": {
+            "type": "string",
+            "enum": [
+              "MailOnCompletion",
+              "MailOnFailure",
+              "NoNotification"
+            ],
+            "description": "Notification preference for refresh completion"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Full",
+              "Calculate"
+            ],
+            "description": "Refresh type"
+          },
+          "commitMode": {
+            "type": "string",
+            "enum": [
+              "transactional",
+              "partialBatch"
+            ],
+            "description": "Commit mode used for the refresh"
+          },
+          "applyRefreshPolicy": {
+            "type": "boolean",
+            "description": "Respect incremental refresh policy when true"
+          },
+          "maxParallelism": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum number of parallel partitions refreshed"
+          },
+          "retryCount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of retry attempts allowed by the service"
+          },
+          "objects": {
+            "type": "array",
+            "description": "Limit the refresh to specific tables or partitions",
+            "items": {
+              "type": "object",
+              "properties": {
+                "table": {
+                  "type": "string",
+                  "description": "Table name"
+                },
+                "partition": {
+                  "type": "string",
+                  "description": "Partition name"
+                }
+              },
+              "required": [
+                "table"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "waitForCompletion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Wait for the refresh to reach a terminal state before returning"
+          },
+          "pollIntervalSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "default": 5,
+            "description": "Polling interval in seconds when waiting for completion"
+          },
+          "maxPollAttempts": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 120,
+            "default": 30,
+            "description": "Maximum polling attempts before timing out"
           }
         },
         "required": [
@@ -68,9 +205,78 @@
       }
     },
     {
+      "id": "get_refreshes",
+      "name": "List Refresh History",
+      "description": "Retrieve refresh history for a dataset",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "Maximum number of refresh entries to return"
+          },
+          "skip": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Number of refresh entries to skip"
+          }
+        },
+        "required": [
+          "datasetId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "add_rows",
+      "name": "Add Rows",
+      "description": "Append rows to a dataset table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Workspace ID (optional)"
+          },
+          "tableName": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "rows": {
+            "type": "array",
+            "description": "Array of row objects to append",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "datasetId",
+          "tableName",
+          "rows"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "get_reports",
-      "name": "Get Reports",
-      "description": "Get list of reports",
+      "name": "List Reports",
+      "description": "Retrieve reports within a workspace",
       "parameters": {
         "type": "object",
         "properties": {
@@ -85,8 +291,8 @@
     },
     {
       "id": "get_dashboards",
-      "name": "Get Dashboards",
-      "description": "Get list of dashboards",
+      "name": "List Dashboards",
+      "description": "Retrieve dashboards within a workspace",
       "parameters": {
         "type": "object",
         "properties": {
@@ -102,19 +308,31 @@
   ],
   "triggers": [
     {
-      "id": "dataset_refreshed",
-      "name": "Dataset Refreshed",
-      "description": "Triggered when a dataset refresh completes",
-      "type": "webhook",
+      "id": "dataset_refresh_completed",
+      "name": "Dataset Refresh Completed",
+      "description": "Triggered when a dataset refresh enters a terminal state",
+      "type": "polling",
       "parameters": {
         "type": "object",
         "properties": {
+          "datasetId": {
+            "type": "string",
+            "description": "Dataset ID to monitor"
+          },
           "groupId": {
             "type": "string",
-            "description": "Filter by workspace ID"
+            "description": "Workspace ID (optional)"
+          },
+          "top": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Number of recent refreshes to evaluate"
           }
         },
-        "required": [],
+        "required": [
+          "datasetId"
+        ],
         "additionalProperties": false
       },
       "outputSchema": {
@@ -123,10 +341,25 @@
           "datasetId": {
             "type": "string"
           },
-          "refreshType": {
+          "groupId": {
+            "type": "string"
+          },
+          "refreshId": {
             "type": "string"
           },
           "status": {
+            "type": "string"
+          },
+          "refreshType": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "serviceExceptionJson": {
             "type": "string"
           }
         }
@@ -135,10 +368,10 @@
   ],
   "testConnection": {
     "method": "GET",
-    "endpoint": "/groups"
+    "endpoint": "/myorg/datasets?$top=1"
   },
   "release": {
-    "semver": "1.0.0",
+    "semver": "1.1.0",
     "status": "stable",
     "isBeta": false,
     "betaStartedAt": null,
