@@ -14,6 +14,8 @@ import { env } from '../env';
 import { LocalSheetsAPIClient, LocalTimeAPIClient } from './LocalCoreAPIClients';
 import { getErrorMessage } from '../types/common';
 import { ConnectorSimulator } from '../testing/ConnectorSimulator';
+import { connectorFramework } from '../connectors/ConnectorFramework';
+import type { RateLimitRules } from './RateLimiter';
 
 export interface IntegrationConfig {
   appName: string;
@@ -245,7 +247,21 @@ export class IntegrationManager {
         };
       }
 
-      client.setConnectorContext(appKey, config.connectionId, definition?.rateLimits);
+      let rateLimitRules: RateLimitRules | null = null;
+      try {
+        const frameworkDefinition = await connectorFramework.getConnector(appKey);
+        if (frameworkDefinition) {
+          rateLimitRules = connectorFramework.buildRateLimitRules(frameworkDefinition);
+        }
+      } catch (frameworkError) {
+        console.warn('[IntegrationManager] Failed to hydrate connector definition from framework:', frameworkError);
+      }
+
+      if (!rateLimitRules) {
+        rateLimitRules = this.normalizeRegistryRateLimits(definition?.rateLimits);
+      }
+
+      client.setConnectorContext(appKey, config.connectionId, rateLimitRules);
 
       // Test the connection
       const testResult = await client.testConnection();
@@ -641,6 +657,66 @@ export class IntegrationManager {
       // ignore
     }
     return null;
+  }
+
+  private normalizeRegistryRateLimits(rateLimits?: any): RateLimitRules | null {
+    if (!rateLimits) {
+      return null;
+    }
+
+    const result: RateLimitRules = {};
+    const secondCandidates: number[] = [];
+
+    if (typeof rateLimits.requestsPerSecond === 'number' && rateLimits.requestsPerSecond > 0) {
+      secondCandidates.push(rateLimits.requestsPerSecond);
+    }
+
+    if (typeof rateLimits.requestsPerMinute === 'number' && rateLimits.requestsPerMinute > 0) {
+      result.requestsPerMinute = rateLimits.requestsPerMinute;
+      secondCandidates.push(rateLimits.requestsPerMinute / 60);
+    }
+
+    if (typeof rateLimits.requestsPerHour === 'number' && rateLimits.requestsPerHour > 0) {
+      secondCandidates.push(rateLimits.requestsPerHour / 3600);
+    }
+
+    const perDay = rateLimits.requestsPerDay ?? rateLimits.dailyLimit;
+    if (typeof perDay === 'number' && perDay > 0) {
+      secondCandidates.push(perDay / 86_400);
+    }
+
+    if (secondCandidates.length > 0) {
+      result.requestsPerSecond = Math.min(...secondCandidates);
+    }
+
+    const burstCandidate = rateLimits.burst ?? rateLimits.burstLimit;
+    if (typeof burstCandidate === 'number' && burstCandidate > 0) {
+      result.burst = burstCandidate;
+    }
+
+    const concurrency = rateLimits.concurrency;
+    if (concurrency) {
+      const maxConcurrent =
+        concurrency.maxConcurrent ?? concurrency.maxConcurrentRequests;
+      if (typeof maxConcurrent === 'number' && maxConcurrent > 0) {
+        result.concurrency = {
+          maxConcurrent,
+          scope: concurrency.scope ?? 'connection',
+        };
+      }
+    }
+
+    const headers = rateLimits.rateHeaders ?? rateLimits.headers;
+    if (headers) {
+      const hasHeaders = Object.values(headers).some(value =>
+        Array.isArray(value) ? value.length > 0 : Boolean(value)
+      );
+      if (hasHeaders) {
+        result.rateHeaders = { ...headers };
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
   }
 
   /**

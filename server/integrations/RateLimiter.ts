@@ -2,15 +2,30 @@ import IORedis from 'ioredis';
 
 import { getRedisConnectionOptions } from '../queue/index';
 
+export type RateLimitHeaderConfig = {
+  limit?: string[];
+  remaining?: string[];
+  reset?: string[];
+  retryAfter?: string[];
+};
+
+export type RateLimitConcurrencyRule = {
+  maxConcurrent?: number;
+  scope?: 'connection' | 'connector' | 'organization';
+};
+
 export type RateLimitRules = {
   requestsPerSecond?: number;
   requestsPerMinute?: number;
   burst?: number;
+  concurrency?: RateLimitConcurrencyRule | null;
+  rateHeaders?: RateLimitHeaderConfig | null;
 };
 
 export interface AcquireOptions {
   connectorId: string;
   connectionId?: string | null;
+  organizationId?: string | null;
   tokens?: number;
   rules?: RateLimitRules | null;
 }
@@ -19,6 +34,7 @@ export interface AcquireResult {
   waitMs: number;
   attempts: number;
   enforced: boolean;
+  release?: () => void;
 }
 
 type TokenBucketConfig = {
@@ -103,20 +119,36 @@ export class RateLimiter {
   private connecting: Promise<IORedis | null> | null = null;
   private scriptSha?: string;
   private readonly localBuckets = new Map<string, LocalBucket>();
+  private readonly penalties = new Map<string, number>();
+  private readonly concurrencyStates = new Map<
+    string,
+    { active: number; queue: Array<() => void> }
+  >();
   private warnedFallback = false;
 
   public async acquire(options: AcquireOptions): Promise<AcquireResult> {
     const connectorId = normalizeId(options.connectorId || 'unknown');
     const connectionId = options.connectionId ? normalizeId(options.connectionId) : 'global';
+    const organizationId = options.organizationId ? normalizeId(options.organizationId) : 'global';
     const key = `rate:${connectorId}:${connectionId}`;
 
     const tokens = Math.max(1, Math.ceil(options.tokens ?? 1));
     const bucketConfig = this.buildBucketConfig(options.rules);
 
+    const penaltyWait = await this.enforcePenalty({ connectorId, connectionId, organizationId });
+    const { waitMs: concurrencyWait, release: releaseConcurrency, waited: concurrencyWaited } =
+      await this.acquireConcurrency(options, connectorId);
+
     const client = await this.getRedisClient();
     if (client) {
       try {
-        return await this.acquireWithRedis(client, key, bucketConfig, tokens);
+        const bucketResult = await this.acquireWithRedis(client, key, bucketConfig, tokens);
+        return {
+          waitMs: bucketResult.waitMs + penaltyWait + concurrencyWait,
+          attempts: bucketResult.attempts + (concurrencyWaited ? 1 : 0),
+          enforced: bucketResult.enforced || penaltyWait > 0 || concurrencyWaited,
+          release: releaseConcurrency,
+        };
       } catch (error: any) {
         console.warn('[RateLimiter] Redis acquisition failed, falling back to in-memory limiter:', error?.message || error);
         if (this.redis === client) {
@@ -126,7 +158,50 @@ export class RateLimiter {
       }
     }
 
-    return this.acquireLocally(key, bucketConfig, tokens);
+    const localResult = await this.acquireLocally(key, bucketConfig, tokens);
+    return {
+      waitMs: localResult.waitMs + penaltyWait + concurrencyWait,
+      attempts: localResult.attempts + (concurrencyWaited ? 1 : 0),
+      enforced: localResult.enforced || penaltyWait > 0 || concurrencyWaited,
+      release: releaseConcurrency,
+    };
+  }
+
+  public schedulePenalty(options: {
+    connectorId: string;
+    connectionId?: string | null;
+    organizationId?: string | null;
+    waitMs: number;
+    scope?: 'connection' | 'connector' | 'organization';
+  }): void {
+    const connectorId = normalizeId(options.connectorId || 'unknown');
+    const connectionId = options.connectionId ? normalizeId(options.connectionId) : 'global';
+    const organizationId = options.organizationId ? normalizeId(options.organizationId) : 'global';
+    const scope = options.scope ?? 'connection';
+
+    let key: string;
+    switch (scope) {
+      case 'organization':
+        key = `penalty:${connectorId}:org:${organizationId}`;
+        break;
+      case 'connector':
+        key = `penalty:${connectorId}`;
+        break;
+      case 'connection':
+      default:
+        key = `penalty:${connectorId}:${connectionId}`;
+        break;
+    }
+
+    const waitMs = Math.max(0, Math.round(options.waitMs));
+    if (waitMs <= 0) {
+      this.penalties.delete(key);
+      return;
+    }
+
+    const until = Date.now() + waitMs;
+    const existing = this.penalties.get(key) ?? 0;
+    this.penalties.set(key, Math.max(existing, until));
   }
 
   private buildBucketConfig(rules?: RateLimitRules | null): TokenBucketConfig {
@@ -263,6 +338,129 @@ export class RateLimiter {
       }
       return null;
     }
+  }
+
+  private async enforcePenalty(context: {
+    connectorId: string;
+    connectionId: string;
+    organizationId: string;
+  }): Promise<number> {
+    const keys = [
+      `penalty:${context.connectorId}:${context.connectionId}`,
+      `penalty:${context.connectorId}:org:${context.organizationId}`,
+      `penalty:${context.connectorId}`,
+    ];
+
+    let waited = 0;
+
+    while (true) {
+      const now = Date.now();
+      let maxUntil = 0;
+
+      for (const key of keys) {
+        const until = this.penalties.get(key);
+        if (!until) {
+          continue;
+        }
+        if (until <= now) {
+          this.penalties.delete(key);
+          continue;
+        }
+        maxUntil = Math.max(maxUntil, until);
+      }
+
+      if (maxUntil === 0) {
+        return waited;
+      }
+
+      const waitMs = Math.max(10, maxUntil - now);
+      await sleep(waitMs);
+      waited += waitMs;
+
+      const refreshedNow = Date.now();
+      for (const key of keys) {
+        const until = this.penalties.get(key);
+        if (until && until <= refreshedNow) {
+          this.penalties.delete(key);
+        }
+      }
+    }
+  }
+
+  private async acquireConcurrency(
+    options: AcquireOptions,
+    normalizedConnectorId: string
+  ): Promise<{ waitMs: number; release?: () => void; waited: boolean }> {
+    const rule = options.rules?.concurrency;
+    const maxConcurrent = rule?.maxConcurrent ?? 0;
+    if (!maxConcurrent || maxConcurrent <= 0) {
+      return { waitMs: 0, release: undefined, waited: false };
+    }
+
+    const scope = rule?.scope ?? 'connection';
+    const connectionId = options.connectionId ? normalizeId(options.connectionId) : 'global';
+    const organizationId = options.organizationId ? normalizeId(options.organizationId) : 'global';
+
+    let key: string;
+    switch (scope) {
+      case 'organization':
+        key = `concurrency:${normalizedConnectorId}:org:${organizationId}`;
+        break;
+      case 'connector':
+        key = `concurrency:${normalizedConnectorId}`;
+        break;
+      case 'connection':
+      default:
+        key = `concurrency:${normalizedConnectorId}:${connectionId}`;
+        break;
+    }
+
+    const start = Date.now();
+    const state = this.concurrencyStates.get(key) ?? { active: 0, queue: [] };
+    this.concurrencyStates.set(key, state);
+
+    return new Promise(resolve => {
+      const tryAcquire = () => {
+        if (state.active < maxConcurrent) {
+          state.active += 1;
+
+          const release = () => {
+            if (!this.concurrencyStates.has(key)) {
+              return;
+            }
+
+            state.active = Math.max(0, state.active - 1);
+            const next = state.queue.shift();
+            if (!next) {
+              if (state.active === 0) {
+                this.concurrencyStates.delete(key);
+              }
+              return;
+            }
+            next();
+          };
+
+          const waitMs = Math.max(0, Date.now() - start);
+          resolve({ waitMs, release: this.once(release), waited: waitMs > 0 });
+          return;
+        }
+
+        state.queue.push(tryAcquire);
+      };
+
+      tryAcquire();
+    });
+  }
+
+  private once(fn: () => void): () => void {
+    let called = false;
+    return () => {
+      if (called) {
+        return;
+      }
+      called = true;
+      fn();
+    };
   }
 
   private acquireLocally(key: string, bucket: TokenBucketConfig, tokens: number): Promise<AcquireResult> {
