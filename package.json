@@ -15,6 +15,7 @@
     "dev:rotation": "NODE_ENV=development tsx watch server/workers/encryption-rotation.ts",
     "dev:scheduler": "NODE_ENV=development tsx watch server/workers/scheduler.ts",
     "dev:stack": "tsx scripts/dev-stack.ts",
+    "bootstrap:secrets": "tsx scripts/bootstrap-secrets.ts",
     "build": "npm run check:deps && npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts server/workers/execution.ts server/workers/scheduler.ts server/workers/timerDispatcher.ts server/workers/encryption-rotation.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --outbase=server",
