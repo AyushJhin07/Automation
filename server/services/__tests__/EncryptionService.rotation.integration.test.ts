@@ -17,6 +17,58 @@ const mockDb = {
   },
 };
 
+const legacyGuidanceMessage =
+  'No encryption keys available. Configure ENCRYPTION_MASTER_KEY or register an active key in encryption_keys.';
+
+{
+  const originalMasterKey = process.env.ENCRYPTION_MASTER_KEY;
+  const originalKmsProvider = process.env.KMS_PROVIDER;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  const emptyDb = {
+    async execute() {
+      return { rows: [] };
+    },
+  };
+
+  setDatabaseClientForTests(emptyDb);
+  resetKmsClientForTests();
+  EncryptionService.resetForTests();
+
+  try {
+    delete process.env.ENCRYPTION_MASTER_KEY;
+
+    await assert.rejects(
+      async () => {
+        await EncryptionService.init();
+      },
+      (error: any) => {
+        assert.equal(error?.message, legacyGuidanceMessage);
+        return true;
+      },
+      'init should fail when no master key and no database-backed keys are available'
+    );
+  } finally {
+    if (originalMasterKey === undefined) {
+      delete process.env.ENCRYPTION_MASTER_KEY;
+    } else {
+      process.env.ENCRYPTION_MASTER_KEY = originalMasterKey;
+    }
+
+    if (originalKmsProvider === undefined) {
+      delete process.env.KMS_PROVIDER;
+    } else {
+      process.env.KMS_PROVIDER = originalKmsProvider;
+    }
+
+    process.env.NODE_ENV = originalNodeEnv;
+
+    EncryptionService.resetForTests();
+    resetKmsClientForTests();
+    setDatabaseClientForTests(mockDb);
+  }
+}
+
 setDatabaseClientForTests(mockDb);
 resetKmsClientForTests();
 EncryptionService.resetForTests();
