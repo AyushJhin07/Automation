@@ -92,6 +92,13 @@
       "when": 1760000000000,
       "tag": "0017_connections_payload_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1760000001000,
+      "tag": "0018_execution_resume_tokens",
+      "breakpoints": true
     }
   ]
 }

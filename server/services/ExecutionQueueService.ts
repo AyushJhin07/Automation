@@ -35,6 +35,7 @@ import {
 } from './ConnectorConcurrencyService.js';
 import type { Job } from 'bullmq';
 import { usageMeteringService, type QuotaCheck } from './UsageMeteringService.js';
+import { executionResumeTokenService } from './ExecutionResumeTokenService.js';
 
 export type QueueRunRequest = {
   workflowId: string;
@@ -639,7 +640,8 @@ class ExecutionQueueService {
   }
 
   public async enqueueResume(params: {
-    timerId: string;
+    timerId?: string;
+    tokenId?: string;
     executionId: string;
     workflowId: string;
     organizationId: string;
@@ -652,7 +654,8 @@ class ExecutionQueueService {
       return;
     }
 
-    const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
+    const resumeIdentifier = params.timerId ?? params.tokenId ?? Date.now().toString(36);
+    const jobId = `${params.executionId}:${resumeIdentifier}`;
     const region = await organizationService.getOrganizationRegion(params.organizationId);
     const queueName = this.getQueueName(region);
 
@@ -668,7 +671,7 @@ class ExecutionQueueService {
             triggerType: params.triggerType ?? 'timer',
             resumeState: params.resumeState,
             initialData: params.initialData,
-            timerId: params.timerId,
+            timerId: params.timerId ?? null,
             region,
           },
           {
@@ -978,6 +981,9 @@ class ExecutionQueueService {
     if ('lease' in runningMetadata) {
       delete runningMetadata.lease;
     }
+    if ('resumeCallbacks' in runningMetadata) {
+      delete runningMetadata.resumeCallbacks;
+    }
 
     if (connectorsForExecution.length > 0) {
       runningMetadata.connectorConcurrency = {
@@ -1134,6 +1140,38 @@ class ExecutionQueueService {
           delete waitingMetadata.lease;
         }
 
+        if (result.resumeState && result.waitingNode?.id) {
+          const tokenResult = await executionResumeTokenService.issueToken({
+            executionId,
+            workflowId,
+            organizationId,
+            nodeId: result.waitingNode.id,
+            userId,
+            resumeState: result.resumeState,
+            initialData: job.data.initialData ?? null,
+            triggerType: 'callback',
+            waitUntil: result.waitUntil ? new Date(result.waitUntil) : null,
+            metadata: {
+              timerId: result.timerId ?? null,
+              waitingNode: {
+                id: result.waitingNode.id,
+                label: result.waitingNode.label,
+                type: result.waitingNode.type,
+              },
+            },
+          });
+
+          if (tokenResult) {
+            waitingMetadata.resumeCallbacks = {
+              ...(waitingMetadata.resumeCallbacks ?? {}),
+              [result.waitingNode.id]: {
+                callbackUrl: tokenResult.callbackUrl,
+                expiresAt: tokenResult.expiresAt.toISOString(),
+              },
+            } as Record<string, any>;
+          }
+        }
+
         await WorkflowRepository.updateWorkflowExecution(
           executionId,
           {
@@ -1164,6 +1202,9 @@ class ExecutionQueueService {
       }
       if ('lease' in metadata) {
         delete metadata.lease;
+      }
+      if ('resumeCallbacks' in metadata) {
+        delete metadata.resumeCallbacks;
       }
 
       await WorkflowRepository.updateWorkflowExecution(

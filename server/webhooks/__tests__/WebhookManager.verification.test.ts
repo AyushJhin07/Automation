@@ -178,6 +178,9 @@ async function createManager(options: { allowQueue?: boolean } = {}): Promise<Te
       }
       return { executionId: `exec-${queueCalls.length}` };
     },
+    enqueueResume: async () => {
+      throw new Error('resume should not be invoked during this test');
+    },
   });
 
   const manager = WebhookManager.getInstance();

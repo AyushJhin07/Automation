@@ -15,7 +15,7 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import type { WorkflowTimerPayload } from '../types/workflowTimers';
+import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
 export type OrganizationPlan =
   | 'free'
@@ -870,6 +870,37 @@ export const workflowTimers = pgTable(
   })
 );
 
+export const executionResumeTokens = pgTable(
+  'execution_resume_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    workflowId: uuid('workflow_id')
+      .references(() => workflows.id, { onDelete: 'cascade' })
+      .notNull(),
+    organizationId: uuid('organization_id').notNull(),
+    nodeId: text('node_id').notNull(),
+    userId: uuid('user_id'),
+    tokenHash: text('token_hash').notNull(),
+    resumeState: jsonb('resume_state').$type<WorkflowResumeState>().notNull(),
+    initialData: jsonb('initial_data'),
+    triggerType: text('trigger_type').default('callback').notNull(),
+    waitUntil: timestamp('wait_until', { withTimezone: true }),
+    metadata: jsonb('metadata'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tokenHashUnique: uniqueIndex('execution_resume_tokens_token_hash_uq').on(table.tokenHash),
+    executionIdx: index('execution_resume_tokens_execution_idx').on(table.executionId),
+    nodeIdx: index('execution_resume_tokens_node_idx').on(table.nodeId),
+  })
+);
+
 // Usage tracking table with comprehensive metering for ALL applications
 export const usageTracking = pgTable(
   'usage_tracking',
@@ -1466,6 +1497,7 @@ const schemaRegistry = {
   executionLogs,
   executionAuditLogs,
   nodeLogs,
+  executionResumeTokens,
   workflowTimers,
   usageTracking,
   connectorDefinitions,

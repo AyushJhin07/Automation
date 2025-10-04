@@ -84,6 +84,12 @@ export interface ExecutionResult {
     idempotency?: Record<string, string>;
     request?: Record<string, string>;
   };
+  resumeState?: WorkflowResumeState | null;
+  waitingNode?: {
+    id: string;
+    label?: string;
+    type?: string;
+  } | null;
 }
 
 interface ConnectorCredentialResolution {
@@ -250,6 +256,16 @@ export class WorkflowRuntime {
                   scheduleResult.resumeAt
                 );
                 const executionTime = Date.now() - startTime.getTime();
+                const resumeState: WorkflowResumeState = {
+                  nodeOutputs: { ...context.outputs },
+                  prevOutput: context.prevOutput,
+                  remainingNodeIds: [...remainingNodeIds],
+                  nextNodeId: remainingNodeIds[0] ?? null,
+                  startedAt: context.startTime.toISOString(),
+                  idempotencyKeys: { ...context.idempotencyKeys },
+                  requestHashes: { ...context.requestHashes },
+                };
+
                 return {
                   success: true,
                   status: 'waiting',
@@ -261,6 +277,12 @@ export class WorkflowRuntime {
                   deterministicKeys: {
                     idempotency: { ...context.idempotencyKeys },
                     request: { ...context.requestHashes },
+                  },
+                  resumeState,
+                  waitingNode: {
+                    id: node.id,
+                    label: node.label,
+                    type: node.type,
                   },
                 };
               }
