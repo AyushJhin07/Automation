@@ -25,6 +25,8 @@ export interface OrganizationLimits {
   maxExecutions: number;
   maxUsers: number;
   maxStorage: number;
+  maxConcurrentExecutions: number;
+  maxExecutionsPerMinute: number;
 }
 
 export interface OrganizationUsageMetrics {
@@ -34,6 +36,8 @@ export interface OrganizationUsageMetrics {
   usersActive: number;
   llmTokens?: number;
   llmCostUSD?: number;
+  concurrentExecutions?: number;
+  executionsInCurrentWindow?: number;
 }
 
 export interface OrganizationFeatureFlags {
@@ -250,6 +254,40 @@ export const organizationQuotas = pgTable(
   (table) => ({
     organizationIdx: index('organization_quotas_org_idx').on(table.organizationId),
     billingPeriodIdx: index('organization_quotas_period_idx').on(table.organizationId, table.billingPeriodEnd),
+  })
+);
+
+export const organizationExecutionCounters = pgTable(
+  'organization_execution_counters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    runningExecutions: integer('running_executions').default(0).notNull(),
+    windowStart: timestamp('window_start').defaultNow().notNull(),
+    executionsInWindow: integer('executions_in_window').default(0).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationIdx: uniqueIndex('org_exec_counters_org_idx').on(table.organizationId),
+  })
+);
+
+export const organizationExecutionQuotaAudit = pgTable(
+  'organization_execution_quota_audit',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    eventType: text('event_type').notNull(),
+    limitValue: integer('limit_value').notNull(),
+    observedValue: integer('observed_value').notNull(),
+    windowCount: integer('window_count'),
+    windowStart: timestamp('window_start'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    organizationIdx: index('org_exec_quota_audit_org_idx').on(table.organizationId),
+    createdIdx: index('org_exec_quota_audit_created_idx').on(table.createdAt),
   })
 );
 
@@ -992,6 +1030,23 @@ export const organizationQuotasRelations = relations(organizationQuotas, ({ one 
   organization: one(organizations, { fields: [organizationQuotas.organizationId], references: [organizations.id] }),
 }));
 
+export const organizationExecutionCountersRelations = relations(organizationExecutionCounters, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationExecutionCounters.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const organizationExecutionQuotaAuditRelations = relations(
+  organizationExecutionQuotaAudit,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationExecutionQuotaAudit.organizationId],
+      references: [organizations.id],
+    }),
+  })
+);
+
 export const tenantIsolationsRelations = relations(tenantIsolations, ({ one }) => ({
   organization: one(organizations, { fields: [tenantIsolations.organizationId], references: [organizations.id] }),
 }));
@@ -1250,6 +1305,8 @@ if (!connectionString) {
       organizationMembers,
       organizationInvites,
       organizationQuotas,
+      organizationExecutionCounters,
+      organizationExecutionQuotaAudit,
       tenantIsolations,
       connections,
       encryptionKeys,
@@ -1271,6 +1328,8 @@ if (!connectionString) {
       organizationMembersRelations,
       organizationInvitesRelations,
       organizationQuotasRelations,
+      organizationExecutionCountersRelations,
+      organizationExecutionQuotaAuditRelations,
       tenantIsolationsRelations,
       encryptionKeysRelations,
       encryptionRotationJobsRelations,

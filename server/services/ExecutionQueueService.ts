@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db, workflowTimers } from '../database/schema.js';
+import { db, workflowTimers, type OrganizationLimits } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
@@ -17,6 +17,12 @@ import {
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 import { updateQueueDepthMetric } from '../observability/index.js';
+import { organizationService } from './OrganizationService.js';
+import {
+  executionQuotaService,
+  ExecutionQuotaExceededError,
+  type ExecutionQuotaCounters,
+} from './ExecutionQuotaService.js';
 import type { Job } from 'bullmq';
 
 type QueueRunRequest = {
@@ -143,7 +149,119 @@ class ExecutionQueueService {
     }
   }
 
+  private async acquireRunningSlotWithBackoff(
+    organizationId: string,
+    limits: OrganizationLimits
+  ): Promise<{ acquired: boolean; state: ExecutionQuotaCounters }> {
+    type RunningDecision = Awaited<ReturnType<typeof executionQuotaService.acquireRunningSlot>>;
+    const pollInterval = Math.min(1000, Math.max(200, Math.floor(this.lockRenewTimeMs / 2)));
+    const maxWaitMs = Math.max(this.lockDurationMs, 5000);
+    const deadline = Date.now() + maxWaitMs;
+    let lastDecision: RunningDecision | null = null;
+
+    while (Date.now() <= deadline) {
+      const decision = await executionQuotaService.acquireRunningSlot(organizationId, {
+        maxConcurrentExecutions: limits.maxConcurrentExecutions,
+      });
+
+      if (decision.allowed) {
+        return { acquired: true, state: decision.state };
+      }
+
+      lastDecision = decision;
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    if (lastDecision) {
+      return { acquired: false, state: lastDecision.state };
+    }
+
+    const fallback = await executionQuotaService.getState(organizationId);
+    return { acquired: false, state: fallback };
+  }
+
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
+    const quotaProfile = await organizationService.getExecutionQuotaProfile(req.organizationId);
+
+    const admission = await executionQuotaService.reserveAdmission(req.organizationId, {
+      maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
+      maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
+    });
+
+    const baseMetadata = {
+      queuedAt: new Date().toISOString(),
+      attemptsMade: 0,
+      retryCount: 0,
+      quota: {
+        runningBeforeEnqueue: admission.state.running,
+        executionsInWindow: admission.state.windowCount,
+        windowStart: new Date(admission.state.windowStartMs).toISOString(),
+        maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
+        maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
+      },
+    } as Record<string, any>;
+
+    if (!admission.allowed) {
+      const execution = await WorkflowRepository.createWorkflowExecution({
+        workflowId: req.workflowId,
+        userId: req.userId,
+        organizationId: req.organizationId,
+        status: 'failed',
+        triggerType: req.triggerType ?? 'manual',
+        triggerData: req.triggerData ?? null,
+        metadata: baseMetadata,
+      });
+
+      const quotaError = new ExecutionQuotaExceededError({
+        organizationId: req.organizationId,
+        reason: admission.reason,
+        limit: admission.limit,
+        current: admission.current,
+        windowCount: admission.state.windowCount,
+        windowStart: new Date(admission.state.windowStartMs),
+        executionId: execution.id,
+      });
+
+      await WorkflowRepository.updateWorkflowExecution(
+        execution.id,
+        {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: 0,
+          errorDetails: {
+            error: quotaError.message,
+            reason: quotaError.reason,
+            limit: quotaError.limit,
+            current: quotaError.current,
+          },
+          metadata: {
+            ...baseMetadata,
+            quota: {
+              ...baseMetadata.quota,
+              reason: quotaError.reason,
+              limit: quotaError.limit,
+              current: quotaError.current,
+            },
+          },
+        },
+        req.organizationId
+      );
+
+      await executionQuotaService.recordQuotaEvent({
+        organizationId: req.organizationId,
+        reason: admission.reason,
+        limit: admission.limit,
+        current: admission.current,
+        state: admission.state,
+        metadata: {
+          workflowId: req.workflowId,
+          triggerType: req.triggerType ?? 'manual',
+        },
+      });
+
+      throw quotaError;
+    }
+
     const execution = await WorkflowRepository.createWorkflowExecution({
       workflowId: req.workflowId,
       userId: req.userId,
@@ -151,7 +269,7 @@ class ExecutionQueueService {
       status: 'queued',
       triggerType: req.triggerType ?? 'manual',
       triggerData: req.triggerData ?? null,
-      metadata: { queuedAt: new Date().toISOString(), attemptsMade: 0, retryCount: 0 },
+      metadata: baseMetadata,
     });
 
     if (!this.isDbEnabled()) {
@@ -181,6 +299,12 @@ class ExecutionQueueService {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       console.error('Failed to enqueue workflow execution job:', errorMessage);
+      await executionQuotaService.releaseAdmission(req.organizationId).catch((releaseError) => {
+        console.warn(
+          'Failed to release admission slot after enqueue failure:',
+          getErrorMessage(releaseError)
+        );
+      });
       await WorkflowRepository.updateWorkflowExecution(
         execution.id,
         {
@@ -188,6 +312,13 @@ class ExecutionQueueService {
           completedAt: new Date(),
           duration: 0,
           errorDetails: { error: errorMessage },
+          metadata: {
+            ...baseMetadata,
+            quota: {
+              ...baseMetadata.quota,
+              enqueueFailed: true,
+            },
+          },
         },
         req.organizationId
       );
@@ -496,25 +627,65 @@ class ExecutionQueueService {
       renewCount: 0,
     } as Record<string, any>;
 
-    await WorkflowRepository.updateWorkflowExecution(
-      executionId,
-      {
-        status: 'running',
-        startedAt: new Date(),
-        completedAt: null,
+    let runningSlotAcquired = false;
+    let runningSlotState: ExecutionQuotaCounters | null = null;
+
+    try {
+      const quotaProfile = await organizationService.getExecutionQuotaProfile(organizationId);
+      const runningSlot = await this.acquireRunningSlotWithBackoff(organizationId, quotaProfile.limits);
+      if (!runningSlot.acquired) {
+        const quotaError = new ExecutionQuotaExceededError({
+          organizationId,
+          reason: 'concurrency',
+          limit: quotaProfile.limits.maxConcurrentExecutions,
+          current: runningSlot.state.running,
+          windowCount: runningSlot.state.windowCount,
+          windowStart: new Date(runningSlot.state.windowStartMs),
+          executionId,
+          message: `Execution ${executionId} is waiting for a concurrency slot (${runningSlot.state.running}/${quotaProfile.limits.maxConcurrentExecutions})`,
+        });
+        await executionQuotaService.recordQuotaEvent({
+          organizationId,
+          reason: 'concurrency',
+          limit: quotaProfile.limits.maxConcurrentExecutions,
+          current: runningSlot.state.running,
+          state: runningSlot.state,
+          metadata: { executionId, workflowId },
+        });
+        throw quotaError;
+      }
+
+      runningSlotAcquired = true;
+      runningSlotState = runningSlot.state;
+
+      if (runningSlotState) {
+        runningMetadata.quota = {
+          ...(runningMetadata.quota ?? {}),
+          runningAt: new Date().toISOString(),
+          concurrentExecutions: runningSlotState.running,
+          executionsInWindow: runningSlotState.windowCount,
+          windowStart: new Date(runningSlotState.windowStartMs).toISOString(),
+        } as Record<string, any>;
+      }
+
+      await WorkflowRepository.updateWorkflowExecution(
+        executionId,
+        {
+          status: 'running',
+          startedAt: new Date(),
+          completedAt: null,
         duration: null,
         metadata: runningMetadata,
       },
-      organizationId
-    );
+        organizationId
+      );
 
-    this.activeLeases.set(executionId, {
-      metadata: runningMetadata,
-      organizationId,
-      lastPersistedAt: Date.now(),
-    });
+      this.activeLeases.set(executionId, {
+        metadata: runningMetadata,
+        organizationId,
+        lastPersistedAt: Date.now(),
+      });
 
-    try {
       const wf = await WorkflowRepository.getWorkflowById(workflowId, organizationId);
       if (!wf || !wf.graph) {
         throw new Error(`Workflow not found or missing graph: ${workflowId}`);
@@ -613,6 +784,15 @@ class ExecutionQueueService {
         delete failureMetadata.lease;
       }
 
+      if (error instanceof ExecutionQuotaExceededError) {
+        failureMetadata.quota = {
+          ...(failureMetadata.quota ?? {}),
+          reason: error.reason,
+          limit: error.limit,
+          current: error.current,
+        } as Record<string, any>;
+      }
+
       const remainingAttempts = Math.max(0, maxAttempts - attemptNumber);
 
       if (remainingAttempts > 0) {
@@ -653,6 +833,14 @@ class ExecutionQueueService {
 
       throw error;
     } finally {
+      if (runningSlotAcquired) {
+        await executionQuotaService.releaseRunningSlot(organizationId).catch((error) => {
+          console.warn(
+            `Failed to release running slot for organization ${organizationId}:`,
+            getErrorMessage(error)
+          );
+        });
+      }
       this.activeLeases.delete(executionId);
     }
   }

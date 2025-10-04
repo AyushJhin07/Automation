@@ -47,10 +47,12 @@ import { getAppFunctions } from './complete500Apps';
 import { getComprehensiveAppFunctions } from './comprehensive-app-functions';
 import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
+import { ExecutionQuotaExceededError } from './services/ExecutionQuotaService.js';
 import { triggerPersistenceService } from './services/TriggerPersistenceService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
+import type { OrganizationLimits } from './database/schema.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
@@ -6553,9 +6555,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json({ success: true, executionId });
     } catch (error) {
+      if (error instanceof ExecutionQuotaExceededError) {
+        return res.status(429).json({
+          success: false,
+          error: error.message,
+          reason: error.reason,
+          limit: error.limit,
+          current: error.current,
+          windowCount: error.windowCount ?? null,
+          windowStart: error.windowStart?.toISOString() ?? null,
+          executionId: error.executionId ?? null,
+        });
+      }
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
+
+  app.get(
+    '/api/admin/organizations/:organizationId/execution-limits',
+    authenticateToken,
+    adminOnly,
+    async (req, res) => {
+      const { organizationId } = req.params;
+      try {
+        const profile = await organizationService.getExecutionQuotaProfile(organizationId);
+        res.json({ success: true, plan: profile.plan, limits: profile.limits, usage: profile.usage });
+      } catch (error) {
+        const message = getErrorMessage(error);
+        const status = message.includes('not found') ? 404 : 500;
+        res.status(status).json({ success: false, error: message });
+      }
+    }
+  );
+
+  app.post(
+    '/api/admin/organizations/:organizationId/execution-limits',
+    authenticateToken,
+    adminOnly,
+    async (req, res) => {
+      const { organizationId } = req.params;
+      const { maxConcurrentExecutions, maxExecutionsPerMinute, maxExecutions } = req.body ?? {};
+
+      const updates: Partial<OrganizationLimits> = {};
+
+      if (maxConcurrentExecutions !== undefined) {
+        const value = Number(maxConcurrentExecutions);
+        if (!Number.isFinite(value) || value <= 0) {
+          return res.status(400).json({ success: false, error: 'maxConcurrentExecutions must be a positive number' });
+        }
+        updates.maxConcurrentExecutions = Math.floor(value);
+      }
+
+      if (maxExecutionsPerMinute !== undefined) {
+        const value = Number(maxExecutionsPerMinute);
+        if (!Number.isFinite(value) || value <= 0) {
+          return res
+            .status(400)
+            .json({ success: false, error: 'maxExecutionsPerMinute must be a positive number' });
+        }
+        updates.maxExecutionsPerMinute = Math.floor(value);
+      }
+
+      if (maxExecutions !== undefined) {
+        const value = Number(maxExecutions);
+        if (!Number.isFinite(value) || value <= 0) {
+          return res.status(400).json({ success: false, error: 'maxExecutions must be a positive number' });
+        }
+        updates.maxExecutions = Math.floor(value);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ success: false, error: 'No valid execution limit fields supplied' });
+      }
+
+      try {
+        const limits = await organizationService.updateExecutionLimits(organizationId, updates);
+        res.json({ success: true, limits });
+      } catch (error) {
+        const message = getErrorMessage(error);
+        const status = message.includes('not available') ? 503 : message.includes('not found') ? 404 : 500;
+        res.status(status).json({ success: false, error: message });
+      }
+    }
+  );
 
   app.get('/api/executions/:id', optionalAuth, async (req, res) => {
     try {
