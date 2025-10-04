@@ -2174,8 +2174,8 @@
       "name": "Tableau",
       "category": "Analytics",
       "availability": "stable",
-      "authType": "basic",
-      "actions": 15,
+      "authType": "personal_access_token",
+      "actions": 16,
       "triggers": 2,
       "implemented": false
     },

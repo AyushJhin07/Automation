@@ -101,5 +101,22 @@
       }
     ],
     "notes": "Populate the personal access token and workspace URL before running against an actual Databricks environment."
+  },
+  "tableau": {
+    "credentials": {
+      "serverUrl": "https://example.online.tableau.com",
+      "personalAccessTokenName": "automation-smoke",
+      "personalAccessTokenSecret": "YOUR_TABLEAU_PAT",
+      "siteId": "YOUR_SITE_ID"
+    },
+    "actions": [
+      {
+        "id": "get_workbooks",
+        "parameters": {
+          "pageSize": 1
+        }
+      }
+    ],
+    "notes": "Provide a Tableau Server PAT and site targeting details before running smoke coverage."
   }
 }

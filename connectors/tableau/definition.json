@@ -5,15 +5,43 @@
   "category": "Analytics",
   "icon": "tableau",
   "color": "#E97627",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "authentication": {
-    "type": "basic",
-    "config": {
-      "usernameField": "username",
-      "passwordField": "password"
-    }
+    "type": "personal_access_token",
+    "fields": [
+      {
+        "key": "server_url",
+        "label": "Server URL",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "personal_access_token_name",
+        "label": "Personal Access Token Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "personal_access_token_secret",
+        "label": "Personal Access Token Secret",
+        "type": "password",
+        "required": true
+      },
+      {
+        "key": "site_id",
+        "label": "Site ID",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "site_content_url",
+        "label": "Site Content URL",
+        "type": "text",
+        "required": false
+      }
+    ]
   },
-  "baseUrl": "https://your-server.tableauservices.com/api/3.16",
+  "baseUrl": "https://example.online.tableau.com/api/3.22",
   "actions": [
     {
       "id": "test_connection",
@@ -26,33 +54,37 @@
         "additionalProperties": false
       }
     },
-    {
-      "id": "sign_in",
-      "name": "Sign In",
-      "description": "Sign in to Tableau Server",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "username": {
-            "type": "string",
-            "description": "Username"
+      {
+        "id": "sign_in",
+        "name": "Sign In",
+        "description": "Sign in to Tableau Server",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "personalAccessTokenName": {
+              "type": "string",
+              "description": "Personal access token name"
+            },
+            "personalAccessTokenSecret": {
+              "type": "string",
+              "description": "Personal access token secret"
+            },
+            "siteContentUrl": {
+              "type": "string",
+              "description": "Optional site content URL"
+            },
+            "siteId": {
+              "type": "string",
+              "description": "Override site ID"
+            }
           },
-          "password": {
-            "type": "string",
-            "description": "Password"
-          },
-          "siteName": {
-            "type": "string",
-            "description": "Site name (optional)"
-          }
-        },
-        "required": [
-          "username",
-          "password"
-        ],
-        "additionalProperties": false
-      }
-    },
+          "required": [
+            "personalAccessTokenName",
+            "personalAccessTokenSecret"
+          ],
+          "additionalProperties": false
+        }
+      },
     {
       "id": "get_sites",
       "name": "Get Sites",
@@ -183,6 +215,70 @@
         "required": [
           "siteId",
           "workbookId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "publish_workbook",
+      "name": "Publish Workbook",
+      "description": "Upload and publish a workbook to Tableau",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "siteId": {
+            "type": "string",
+            "description": "Site ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "workbookName": {
+            "type": "string",
+            "description": "Workbook name"
+          },
+          "workbookFile": {
+            "type": "object",
+            "description": "Workbook file payload (base64 encoded)",
+            "properties": {
+              "filename": {
+                "type": "string",
+                "description": "Original workbook filename"
+              },
+              "content": {
+                "type": "string",
+                "description": "Base64 encoded workbook contents"
+              },
+              "contentType": {
+                "type": "string",
+                "description": "Optional MIME type"
+              }
+            },
+            "required": [
+              "filename",
+              "content"
+            ],
+            "additionalProperties": false
+          },
+          "showTabs": {
+            "type": "boolean",
+            "description": "Show workbook tabs after publish"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Overwrite existing workbook with same name"
+          },
+          "asJob": {
+            "type": "boolean",
+            "description": "Publish asynchronously as a background job"
+          }
+        },
+        "required": [
+          "siteId",
+          "projectId",
+          "workbookName",
+          "workbookFile"
         ],
         "additionalProperties": false
       }
@@ -564,7 +660,7 @@
     "endpoint": "/sites"
   },
   "release": {
-    "semver": "1.0.0",
+    "semver": "1.1.0",
     "status": "stable",
     "isBeta": false,
     "betaStartedAt": null,
