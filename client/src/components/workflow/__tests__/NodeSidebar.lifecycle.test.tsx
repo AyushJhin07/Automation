@@ -1,38 +1,50 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { NodeSidebar } from '../ProfessionalGraphEditor';
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { NodeSidebar } from "../ProfessionalGraphEditor";
 
-describe('NodeSidebar lifecycle badges', () => {
+describe("NodeSidebar lifecycle badges", () => {
   const baseCatalog = {
     connectors: {
       betaApp: {
-        name: 'Beta App',
-        category: 'Testing',
+        name: "Beta App",
+        category: "Testing",
         actions: [
-          { id: 'send', name: 'Send', description: 'Send something', parameters: {}, nodeType: 'action.betaApp.send' },
+          {
+            id: "send",
+            name: "Send",
+            description: "Send something",
+            parameters: {},
+            nodeType: "action.betaApp.send",
+          },
         ],
         triggers: [],
         hasImplementation: true,
-        availability: 'stable',
-        release: { status: 'beta', semver: '1.0.0', isBeta: true },
+        availability: "stable",
+        release: { status: "beta", semver: "1.0.0", isBeta: true },
         lifecycle: {
-          status: 'beta',
-          badges: [{ id: 'beta', label: 'Beta', tone: 'warning' }],
+          status: "beta",
+          badges: [{ id: "beta", label: "Beta", tone: "warning" }],
         },
       },
       stableApp: {
-        name: 'Stable App',
-        category: 'Testing',
+        name: "Stable App",
+        category: "Testing",
         actions: [
-          { id: 'do', name: 'Do', description: 'Do something', parameters: {}, nodeType: 'action.stableApp.do' },
+          {
+            id: "do",
+            name: "Do",
+            description: "Do something",
+            parameters: {},
+            nodeType: "action.stableApp.do",
+          },
         ],
         triggers: [],
         hasImplementation: true,
-        availability: 'stable',
-        release: { status: 'stable', semver: '2.0.0', isBeta: false },
+        availability: "stable",
+        release: { status: "stable", semver: "2.0.0", isBeta: false },
         lifecycle: {
-          status: 'stable',
+          status: "stable",
           badges: [],
         },
       },
@@ -40,15 +52,25 @@ describe('NodeSidebar lifecycle badges', () => {
   };
 
   const renderSidebar = () =>
-    render(<NodeSidebar onAddNode={vi.fn()} catalog={baseCatalog} loading={false} />);
+    render(
+      <NodeSidebar
+        onAddNode={vi.fn()}
+        catalog={baseCatalog}
+        loading={false}
+        connectorDefinitions={null}
+        metadataError={null}
+      />,
+    );
 
-  it('shows a beta badge for connectors in beta', () => {
+  it("shows a beta badge for connectors in beta", () => {
     renderSidebar();
-    expect(screen.getByTestId('lifecycle-badge-betaApp')).toHaveTextContent('Beta');
+    expect(screen.getByTestId("lifecycle-badge-betaApp")).toHaveTextContent(
+      "Beta",
+    );
   });
 
-  it('does not render lifecycle badges for stable connectors', () => {
+  it("does not render lifecycle badges for stable connectors", () => {
     renderSidebar();
-    expect(screen.queryByTestId('lifecycle-badge-stableApp')).toBeNull();
+    expect(screen.queryByTestId("lifecycle-badge-stableApp")).toBeNull();
   });
 });

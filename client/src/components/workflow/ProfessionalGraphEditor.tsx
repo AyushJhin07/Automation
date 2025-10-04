@@ -2820,7 +2820,12 @@ const GraphEditorContent = () => {
             
             {/* ChatGPT Schema Fix: Smart Parameters Panel */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
-              <SmartParametersPanel />
+              <SmartParametersPanel
+                connectorDefinitions={connectorDefinitions}
+                onRefreshConnectors={handleRefreshConnectorMetadata}
+                isRefreshingConnectors={connectorDefinitionsLoading}
+                metadataError={connectorDefinitionsError}
+              />
             </div>
             
             {/* Node Actions */}

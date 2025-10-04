@@ -8,6 +8,7 @@ import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
 import { productionDeployer } from '../core/ProductionDeployer.js';
 import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
 import { getErrorMessage } from '../types/common.js';
+import { simpleGraphValidator } from '../core/SimpleGraphValidator.js';
 
 export const workflowReadRouter = Router();
 
@@ -693,6 +694,45 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     } else {
       res.end();
     }
+  }
+});
+
+workflowReadRouter.post('/workflows/validate', async (req, res) => {
+  const organizationId = requireOrganizationContext(req as any, res);
+  if (!organizationId) {
+    return;
+  }
+
+  const graphPayload = (req.body && typeof req.body === 'object' && 'graph' in req.body)
+    ? (req.body as any).graph
+    : req.body;
+
+  if (!graphPayload || typeof graphPayload !== 'object') {
+    return res.status(400).json({ success: false, error: 'Workflow graph payload is required' });
+  }
+
+  try {
+    const sanitizedGraph = sanitizeGraphForExecution(graphPayload);
+    const validation = simpleGraphValidator.validate(sanitizedGraph as any);
+    const errors = Array.isArray(validation.errors) ? validation.errors : [];
+    const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+    const securityWarnings = Array.isArray(validation.securityWarnings)
+      ? validation.securityWarnings
+      : [];
+
+    return res.json({
+      success: true,
+      validation: {
+        valid: validation.valid,
+        errors,
+        warnings: [...warnings, ...securityWarnings],
+        requiredScopes: Array.isArray(validation.requiredScopes) ? validation.requiredScopes : [],
+        estimatedComplexity: validation.estimatedComplexity ?? 'unknown',
+      },
+    });
+  } catch (error) {
+    console.error('Failed to validate workflow graph:', error);
+    return res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
 
