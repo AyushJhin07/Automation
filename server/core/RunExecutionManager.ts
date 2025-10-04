@@ -9,7 +9,7 @@ import { and, asc, desc, eq, gte, gt, inArray, lt, lte, sql } from 'drizzle-orm'
 import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
 import type { WorkflowNodeMetadataSnapshot } from '../../shared/workflow/metadata';
 import { db, executionLogs, nodeLogs, nodeExecutionResults, workflows } from '../database/schema.js';
-import { sanitizeLogPayload, appendTimelineEvent } from '../utils/executionLogRedaction';
+import { sanitizeLogPayload, appendTimelineEvent, coerceTimeline } from '../utils/executionLogRedaction';
 import { logAction } from '../utils/actionLog';
 import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
 
@@ -55,6 +55,7 @@ export interface NodeExecution {
     metadataSnapshots?: WorkflowNodeMetadataSnapshot[];
     [key: string]: any;
   };
+  timeline: Array<Record<string, any>>;
 }
 
 export interface WorkflowExecution {
@@ -77,6 +78,7 @@ export interface WorkflowExecution {
   error?: string;
   correlationId: string;
   tags: string[];
+  timeline: Array<Record<string, any>>;
   metadata: {
     retryCount: number;
     totalCostUSD: number;
@@ -259,6 +261,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     organizationId?: string
   ): Promise<WorkflowExecution> {
     const correlationId = generateCorrelationId();
+    const startTime = new Date();
     const execution: WorkflowExecution = {
       executionId,
       workflowId: workflow.id,
@@ -266,7 +269,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
       organizationId,
       userId,
       status: 'pending',
-      startTime: new Date(),
+      startTime,
       triggerType,
       triggerData,
       totalNodes: workflow.nodes.length,
@@ -276,6 +279,12 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
       correlationId,
       tags: workflow.tags || [],
       metadata: createDefaultMetadata(),
+      timeline: [
+        {
+          type: 'execution.start',
+          timestamp: startTime.toISOString(),
+        },
+      ],
     };
 
     this.executions.set(executionId, execution);
@@ -304,12 +313,13 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     const connectorId = options.connectorId ?? this.resolveConnectorId(node);
     const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
 
+    const startTime = new Date();
     const nodeExecution: NodeExecution = {
       nodeId: node.id,
       nodeType: node.type,
       nodeLabel: node.data.label || node.id,
       status: 'running',
-      startTime: new Date(),
+      startTime,
       attempt: 1,
       maxAttempts: 3,
       input,
@@ -320,6 +330,7 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
         connectorId,
         circuitState,
       },
+      timeline: [],
     };
 
     const retryStatus = retryManager.getRetryStatus(executionId, node.id);
@@ -353,6 +364,13 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
       }
     }
 
+    nodeExecution.timeline.push({
+      type: 'node.start',
+      timestamp: startTime.toISOString(),
+      status: 'running',
+      attempt: nodeExecution.attempt,
+    });
+
     const nodeExecutions = this.nodeExecutions.get(executionId)!;
     nodeExecutions.push(nodeExecution);
 
@@ -375,6 +393,12 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     nodeExecution.duration = nodeExecution.endTime.getTime() - nodeExecution.startTime.getTime();
     nodeExecution.output = output;
     nodeExecution.metadata = mergeNodeMetadata(nodeExecution.metadata, metadata);
+    nodeExecution.timeline.push({
+      type: 'node.complete',
+      timestamp: nodeExecution.endTime.toISOString(),
+      status: 'succeeded',
+      durationMs: nodeExecution.duration,
+    });
 
     const execution = this.executions.get(executionId)!;
     execution.completedNodes++;
@@ -395,6 +419,13 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     nodeExecution.duration = nodeExecution.endTime.getTime() - nodeExecution.startTime.getTime();
     nodeExecution.error = error;
     nodeExecution.metadata = mergeNodeMetadata(nodeExecution.metadata, metadata);
+    nodeExecution.timeline.push({
+      type: 'node.fail',
+      timestamp: nodeExecution.endTime.toISOString(),
+      status: 'failed',
+      error,
+      durationMs: nodeExecution.duration,
+    });
 
     const execution = this.executions.get(executionId)!;
     execution.failedNodes++;
@@ -418,6 +449,11 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     }
 
     this.updateWorkflowMetadata(execution);
+    execution.timeline.push({
+      type: 'execution.complete',
+      timestamp: execution.endTime.toISOString(),
+      status: execution.status,
+    });
     logAction({ type: 'execution_complete', executionId, status: execution.status });
   }
 
@@ -432,6 +468,12 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     if (reason) {
       execution.metadata.waitReason = reason;
     }
+    execution.timeline.push({
+      type: 'execution.wait',
+      timestamp: new Date().toISOString(),
+      reason,
+      resumeAt: resumeAt ? resumeAt.toISOString() : undefined,
+    });
   }
 
   async getExecution(executionId: string, organizationId?: string): Promise<WorkflowExecution | undefined> {
@@ -746,6 +788,12 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       correlationId,
       tags: workflow.tags || [],
       metadata: createDefaultMetadata(),
+      timeline: [
+        {
+          type: 'execution.start',
+          timestamp: now.toISOString(),
+        },
+      ],
     };
 
     const row: ExecutionLogInsert = {
@@ -821,12 +869,13 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const connectorId = options.connectorId ?? this.resolveConnectorId(node);
     const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
 
+    const now = new Date();
     const nodeExecution: NodeExecution = {
       nodeId: node.id,
       nodeType: node.type,
       nodeLabel: node.data.label || node.id,
       status: 'running',
-      startTime: new Date(),
+      startTime: now,
       attempt: 1,
       maxAttempts: 3,
       input,
@@ -837,6 +886,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
         connectorId,
         circuitState,
       },
+      timeline: [],
     };
 
     const retryStatus = retryManager.getRetryStatus(executionId, node.id);
@@ -853,7 +903,6 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     }
 
     const existing = await this.getNodeRow(executionId, node.id);
-    const now = nodeExecution.startTime;
 
     const timelineEvent = {
       type: existing ? 'node.restart' : 'node.start',
@@ -868,6 +917,8 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       circuitState: nodeExecution.metadata.circuitState,
       idempotencyKey: nodeExecution.metadata.idempotencyKey,
     });
+
+    nodeExecution.timeline = appendTimelineEvent([], timelineEvent);
 
     if (!existing) {
       const row: NodeLogInsert = {
@@ -1639,6 +1690,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       error: row.error ?? undefined,
       correlationId: row.correlationId ?? '',
       tags: row.tags ?? [],
+      timeline: coerceTimeline(row.timeline),
       metadata,
     };
   }
@@ -1671,6 +1723,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       metadata: {
         ...(row.metadata || {}),
       },
+      timeline: coerceTimeline(row.timeline),
     };
   }
 

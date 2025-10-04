@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 
 import { getErrorMessage } from '../types/common.js';
+import { sanitizeLogPayload } from '../utils/executionLogRedaction.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
 import { db, workflowTimers, type OrganizationLimits, type OrganizationRegion } from '../database/schema.js';
@@ -43,6 +44,15 @@ export type QueueRunRequest = {
   triggerType?: string;
   triggerData?: Record<string, any> | null;
   organizationId: string;
+  initialData?: any;
+  resumeState?: WorkflowResumeState | null;
+  replay?: {
+    sourceExecutionId: string;
+    mode: 'full' | 'node';
+    nodeId?: string | null;
+    reason?: string | null;
+    triggeredBy?: string | null;
+  };
 };
 
 type ExecutionLeaseTelemetry = {
@@ -317,6 +327,10 @@ class ExecutionQueueService {
     const region = await organizationService.getOrganizationRegion(req.organizationId);
     const queueName = this.getQueueName(region);
 
+    const sanitizedInitialData =
+      req.initialData !== undefined ? sanitizeLogPayload(req.initialData) : undefined;
+    const sanitizedResumeState = req.resumeState ? sanitizeLogPayload(req.resumeState) : undefined;
+
     const workflowRecord = await WorkflowRepository.getWorkflowById(req.workflowId, req.organizationId);
     if (!workflowRecord || !workflowRecord.graph) {
       throw new Error(`Workflow ${req.workflowId} not found or missing graph for organization ${req.organizationId}`);
@@ -338,6 +352,17 @@ class ExecutionQueueService {
         region,
       },
     };
+
+    if (req.replay) {
+      baseMetadata.replay = {
+        sourceExecutionId: req.replay.sourceExecutionId,
+        mode: req.replay.mode,
+        nodeId: req.replay.nodeId ?? null,
+        reason: req.replay.reason ?? null,
+        triggeredBy: req.replay.triggeredBy ?? req.userId ?? null,
+        requestedAt: new Date().toISOString(),
+      };
+    }
 
     const dedupeToken = req.triggerData && typeof req.triggerData === 'object'
       ? (req.triggerData as Record<string, any>).dedupeToken
@@ -576,7 +601,7 @@ class ExecutionQueueService {
       userId: req.userId,
       organizationId: req.organizationId,
       status: 'queued',
-      triggerType: req.triggerType ?? 'manual',
+      triggerType: req.triggerType ?? (sanitizedResumeState ? 'resume' : 'manual'),
       triggerData: req.triggerData ?? null,
       metadata: baseMetadata,
     });
@@ -586,19 +611,33 @@ class ExecutionQueueService {
     }
 
     try {
+      const jobPayload: WorkflowExecuteJobPayload & { replayOf?: string } = {
+        executionId: execution.id,
+        workflowId: req.workflowId,
+        organizationId: req.organizationId,
+        userId: req.userId,
+        triggerType: req.triggerType ?? (sanitizedResumeState ? 'resume' : 'manual'),
+        triggerData: req.triggerData ?? null,
+        connectors,
+        region,
+      };
+
+      if (sanitizedResumeState) {
+        jobPayload.resumeState = sanitizedResumeState;
+      }
+
+      if (sanitizedInitialData !== undefined) {
+        jobPayload.initialData = sanitizedInitialData;
+      }
+
+      if (req.replay?.sourceExecutionId) {
+        jobPayload.replayOf = req.replay.sourceExecutionId;
+      }
+
       await this.withQueueOperation(queueName, (queue) =>
         queue.add(
           'workflow.execute',
-          {
-            executionId: execution.id,
-            workflowId: req.workflowId,
-            organizationId: req.organizationId,
-            userId: req.userId,
-            triggerType: req.triggerType ?? 'manual',
-            triggerData: req.triggerData ?? null,
-            connectors,
-            region,
-          },
+          jobPayload,
           {
             jobId: execution.id,
             group: {
