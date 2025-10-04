@@ -472,11 +472,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "stripe",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "stripe-signature"
-        }
+          "templateId": "stripe.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
@@ -527,11 +526,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "stripe",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "stripe-signature"
-        }
+          "templateId": "stripe.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
@@ -575,11 +573,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "stripe",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "stripe-signature"
-        }
+          "templateId": "stripe.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
@@ -626,11 +623,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "stripe",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "stripe-signature"
-        }
+          "templateId": "stripe.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",

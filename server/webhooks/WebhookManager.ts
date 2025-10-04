@@ -9,6 +9,7 @@ import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
 import type { ConnectionService } from '../services/ConnectionService';
+import { webhookSignatureRegistry } from './WebhookSignatureRegistry';
 import {
   webhookVerifier,
   WebhookVerificationFailureReason,
@@ -32,6 +33,7 @@ type QueueService = {
 };
 
 type SignatureEnforcementConfig = {
+  templateId?: string;
   providerId: string;
   required: boolean;
   timestampToleranceSeconds?: number;
@@ -103,6 +105,71 @@ export class WebhookManager {
       ...trigger,
       nextPoll,
       nextPollAt,
+    };
+  }
+
+  private normalizeNonNegativeNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      return undefined;
+    }
+    return numeric;
+  }
+
+  private extractSignatureConfig(
+    appId: string,
+    signatureConfig: any,
+    metadata: Record<string, any> | null | undefined
+  ): SignatureEnforcementConfig | null {
+    if (!signatureConfig || typeof signatureConfig !== 'object') {
+      return null;
+    }
+
+    const templateId =
+      typeof signatureConfig.templateId === 'string'
+        ? signatureConfig.templateId
+        : typeof signatureConfig.registryId === 'string'
+        ? signatureConfig.registryId
+        : undefined;
+
+    const template =
+      webhookSignatureRegistry.getTemplateById(templateId) ??
+      webhookSignatureRegistry.getTemplateForConnector(appId);
+
+    const providerId =
+      typeof signatureConfig.providerId === 'string'
+        ? signatureConfig.providerId
+        : template?.providerId;
+
+    if (!providerId) {
+      return null;
+    }
+
+    const signatureHeader =
+      typeof signatureConfig.signatureHeader === 'string'
+        ? signatureConfig.signatureHeader
+        : template?.signatureHeader;
+
+    const toleranceSeconds = this.normalizeNonNegativeNumber(
+      signatureConfig.timestampToleranceSeconds ?? template?.timestampToleranceSeconds
+    );
+
+    const replayWindowSeconds = this.normalizeNonNegativeNumber(
+      metadata?.replayWindowSeconds ??
+        signatureConfig.replayWindowSeconds ??
+        template?.replayWindowSeconds
+    );
+
+    return {
+      templateId: template?.id ?? templateId,
+      providerId,
+      required: signatureConfig.required !== false,
+      timestampToleranceSeconds: toleranceSeconds,
+      signatureHeader,
+      replayWindowSeconds,
     };
   }
 
@@ -276,28 +343,7 @@ export class WebhookManager {
         return null;
       }
 
-      const signatureConfig = (metadata as any).signatureVerification;
-      if (!signatureConfig || typeof signatureConfig.providerId !== 'string') {
-        return null;
-      }
-
-      const replayWindow = Number.isFinite(metadata.replayWindowSeconds)
-        ? Number(metadata.replayWindowSeconds)
-        : Number.isFinite(signatureConfig.replayWindowSeconds)
-        ? Number(signatureConfig.replayWindowSeconds)
-        : undefined;
-
-      return {
-        providerId: signatureConfig.providerId,
-        required: signatureConfig.required !== false,
-        timestampToleranceSeconds: Number.isFinite(signatureConfig.timestampToleranceSeconds)
-          ? Number(signatureConfig.timestampToleranceSeconds)
-          : undefined,
-        signatureHeader: typeof signatureConfig.signatureHeader === 'string'
-          ? signatureConfig.signatureHeader
-          : undefined,
-        replayWindowSeconds: replayWindow,
-      };
+      return this.extractSignatureConfig(appId, (metadata as any).signatureVerification, metadata);
     } catch (error) {
       console.warn(
         `⚠️ Failed to resolve signature enforcement for ${appId}.${triggerId}:`,
@@ -310,19 +356,21 @@ export class WebhookManager {
   private resolveStoredSignatureConfig(webhook: WebhookTrigger): SignatureEnforcementConfig | null {
     const metadata = webhook.metadata as Record<string, any> | undefined;
     const stored = metadata?.signatureVerification;
+    const normalized = this.extractSignatureConfig(webhook.appId, stored, metadata ?? null);
+    if (normalized) {
+      return normalized;
+    }
+
     if (stored && typeof stored.providerId === 'string') {
       return {
         providerId: stored.providerId,
         required: stored.required !== false,
-        timestampToleranceSeconds: Number.isFinite(stored.timestampToleranceSeconds)
-          ? Number(stored.timestampToleranceSeconds)
-          : undefined,
+        timestampToleranceSeconds: this.normalizeNonNegativeNumber(stored.timestampToleranceSeconds),
         signatureHeader: typeof stored.signatureHeader === 'string' ? stored.signatureHeader : undefined,
-        replayWindowSeconds: Number.isFinite(stored.replayWindowSeconds)
-          ? Number(stored.replayWindowSeconds)
-          : undefined,
+        replayWindowSeconds: this.normalizeNonNegativeNumber(stored.replayWindowSeconds),
       };
     }
+
     return null;
   }
 
@@ -395,15 +443,16 @@ export class WebhookManager {
   }
 
   private resolveVerificationProvider(webhook: WebhookTrigger, config: SignatureEnforcementConfig | null): string | null {
-    if (config?.providerId) {
-      return config.providerId;
+    const template =
+      webhookSignatureRegistry.getTemplateById(config?.templateId) ??
+      webhookSignatureRegistry.getTemplateForConnector(webhook.appId);
+
+    const candidateProvider = config?.providerId ?? template?.providerId;
+
+    if (candidateProvider && webhookVerifier.hasProvider(candidateProvider)) {
+      return candidateProvider;
     }
-    if (webhook.secret) {
-      if (webhookVerifier.hasProvider(webhook.appId)) {
-        return webhook.appId;
-      }
-      return 'generic_hmac';
-    }
+
     return null;
   }
 
@@ -414,12 +463,27 @@ export class WebhookManager {
     rawBody: string | undefined,
     config: SignatureEnforcementConfig | null
   ): Promise<boolean> {
+    const secret = webhook.secret ?? '';
     const providerId = this.resolveVerificationProvider(webhook, config);
+    const requiresProvider = !!config || secret.length > 0;
+
     if (!providerId) {
-      return true;
+      if (!requiresProvider) {
+        return true;
+      }
+
+      const failureResult: WebhookVerificationResult = {
+        isValid: false,
+        provider: config?.providerId ?? webhook.appId ?? 'unregistered',
+        failureReason: WebhookVerificationFailureReason.PROVIDER_NOT_REGISTERED,
+        message: `No signature verification provider registered for ${webhook.appId}`,
+        signatureHeader: config?.signatureHeader,
+      };
+      await this.recordVerificationFailure(event, failureResult);
+      console.warn(`🔒 No registered signature verification provider for ${webhook.appId}; rejecting event`);
+      return false;
     }
 
-    const secret = webhook.secret ?? '';
     const isRequired = config ? config.required !== false : secret.length > 0;
 
     if (!secret) {

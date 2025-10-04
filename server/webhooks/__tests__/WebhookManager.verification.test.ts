@@ -131,12 +131,20 @@ class InMemoryTriggerPersistenceDb {
     if (filtered.length > 500) {
       filtered.splice(0, filtered.length - 500);
     }
+
     this.dedupeTokens.set(key, filtered);
     return 'recorded';
   }
 
   async listDuplicateWebhookEvents(): Promise<Array<{ id: string; webhookId: string; timestamp: Date; error: string }>> {
     return [];
+  }
+
+  reset(): void {
+    this.workflowTriggers.clear();
+    this.pollingTriggers.clear();
+    this.webhookLogs.clear();
+    this.dedupeTokens.clear();
   }
 }
 
@@ -153,79 +161,207 @@ setDatabaseAvailabilityForTests(true);
 
 const { WebhookManager } = await import('../WebhookManager.js');
 
-WebhookManager.resetForTests();
-
-WebhookManager.setQueueServiceForTests({
-  enqueue: async () => {
-    throw new Error('Queue should not be invoked during signature rejection tests');
-  },
-});
-
-const manager = WebhookManager.getInstance();
-
 const organizationId = 'org-signature-tests';
 const userId = 'user-signature-tests';
-const secret = 'super-secret';
 
-const endpoint = await manager.registerWebhook({
-  id: '',
-  appId: 'slack',
-  triggerId: 'message_received',
-  workflowId: 'wf-signature',
-  secret,
-  isActive: true,
-  metadata: { organizationId, userId },
-  organizationId,
-  userId,
-});
+type TestQueueResult = { manager: InstanceType<typeof WebhookManager>; queueCalls: any[] };
 
-const webhookId = endpoint.split('/').at(-1)!;
+async function createManager(options: { allowQueue?: boolean } = {}): Promise<TestQueueResult> {
+  WebhookManager.resetForTests();
 
-// Test 1: Missing signature header should be rejected and logged
+  const queueCalls: any[] = [];
+  WebhookManager.setQueueServiceForTests({
+    enqueue: async (request: any) => {
+      queueCalls.push(request);
+      if (!options.allowQueue) {
+        throw new Error('Queue should not be invoked during this test');
+      }
+      return { executionId: `exec-${queueCalls.length}` };
+    },
+  });
 
-dbStub.webhookLogs.clear();
+  const manager = WebhookManager.getInstance();
+  return { manager, queueCalls };
+}
 
-const unsignedHandled = await manager.handleWebhook(
-  webhookId,
-  { text: 'hello world' },
-  { 'content-type': 'application/json' }
-);
+function extractWebhookId(endpoint: string): string {
+  const parts = endpoint.split('/');
+  const id = parts.at(-1);
+  if (!id) {
+    throw new Error(`Unable to parse webhook id from endpoint: ${endpoint}`);
+  }
+  return id;
+}
 
-assert.equal(unsignedHandled, false, 'unsigned webhook should be rejected');
-const unsignedLogs = Array.from(dbStub.webhookLogs.values());
-assert.equal(unsignedLogs.length, 1, 'unsigned webhook should produce a log entry');
-assert.equal(unsignedLogs[0].processed, false, 'log entry should be marked as failed');
-assert.ok(unsignedLogs[0].error && /missing/i.test(unsignedLogs[0].error), 'error message should mention missing signature');
+async function runSlackSignatureRejectionTests(): Promise<void> {
+  dbStub.reset();
+  const { manager } = await createManager({ allowQueue: false });
 
-// Test 2: Expired signature should be rejected and logged with tolerance error
+  const secret = 'super-secret';
+  const endpoint = await manager.registerWebhook({
+    id: '',
+    appId: 'slack',
+    triggerId: 'message_received',
+    workflowId: 'wf-slack-signature',
+    secret,
+    isActive: true,
+    metadata: { organizationId, userId },
+    organizationId,
+    userId,
+  });
 
-dbStub.webhookLogs.clear();
+  const webhookId = extractWebhookId(endpoint);
 
-const staleTimestamp = Math.floor(Date.now() / 1000) - 1000; // outside 5 minute window
-const stalePayload = { text: 'stale message' };
-const rawBody = JSON.stringify(stalePayload);
-const baseString = `v0:${staleTimestamp}:${rawBody}`;
-const slackSignature = 'v0=' + crypto.createHmac('sha256', secret).update(baseString).digest('hex');
+  dbStub.webhookLogs.clear();
+  const unsignedHandled = await manager.handleWebhook(
+    webhookId,
+    { text: 'hello world' },
+    { 'content-type': 'application/json' }
+  );
 
-const expiredHandled = await manager.handleWebhook(
-  webhookId,
-  stalePayload,
-  {
-    'x-slack-signature': slackSignature,
-    'x-slack-request-timestamp': String(staleTimestamp),
-    'content-type': 'application/json',
-  },
-  rawBody
-);
+  assert.equal(unsignedHandled, false, 'unsigned webhook should be rejected');
+  const unsignedLogs = Array.from(dbStub.webhookLogs.values());
+  assert.equal(unsignedLogs.length, 1, 'unsigned webhook should produce a log entry');
+  assert.equal(unsignedLogs[0].processed, false, 'unsigned webhook log should be marked as failed');
+  assert.ok(unsignedLogs[0].error && /missing/i.test(unsignedLogs[0].error), 'error should mention missing signature');
 
-assert.equal(expiredHandled, false, 'expired webhook should be rejected');
-const expiredLogs = Array.from(dbStub.webhookLogs.values());
-assert.equal(expiredLogs.length, 1, 'expired webhook should produce a single log entry');
-assert.equal(expiredLogs[0].processed, false, 'expired webhook log should be marked as failed');
-assert.ok(expiredLogs[0].error && /tolerance/i.test(expiredLogs[0].error), 'error should reference timestamp tolerance');
+  dbStub.webhookLogs.clear();
+
+  const staleTimestamp = Math.floor(Date.now() / 1000) - 1000;
+  const stalePayload = { text: 'stale message' };
+  const rawBody = JSON.stringify(stalePayload);
+  const baseString = `v0:${staleTimestamp}:${rawBody}`;
+  const slackSignature = 'v0=' + crypto.createHmac('sha256', secret).update(baseString).digest('hex');
+
+  const expiredHandled = await manager.handleWebhook(
+    webhookId,
+    stalePayload,
+    {
+      'x-slack-signature': slackSignature,
+      'x-slack-request-timestamp': String(staleTimestamp),
+      'content-type': 'application/json',
+    },
+    rawBody
+  );
+
+  assert.equal(expiredHandled, false, 'expired webhook should be rejected');
+  const expiredLogs = Array.from(dbStub.webhookLogs.values());
+  assert.equal(expiredLogs.length, 1, 'expired webhook should produce a log entry');
+  assert.equal(expiredLogs[0].processed, false, 'expired webhook log should be marked as failed');
+  assert.ok(expiredLogs[0].error && /tolerance/i.test(expiredLogs[0].error), 'error should reference tolerance window');
+}
+
+async function runStripeSignatureAcceptanceTest(): Promise<void> {
+  dbStub.reset();
+  const { manager, queueCalls } = await createManager({ allowQueue: true });
+
+  const secret = 'stripe-secret';
+  const endpoint = await manager.registerWebhook({
+    id: '',
+    appId: 'stripe',
+    triggerId: 'invoice_payment_succeeded',
+    workflowId: 'wf-stripe-signature',
+    secret,
+    isActive: true,
+    metadata: { organizationId, userId },
+    organizationId,
+    userId,
+  });
+
+  const webhookId = extractWebhookId(endpoint);
+  const payload = { id: 'evt_123', type: 'invoice.payment_succeeded' };
+  const rawBody = JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+  const stripeHeader = `t=${timestamp},v1=${signature}`;
+
+  const handled = await manager.handleWebhook(
+    webhookId,
+    payload,
+    { 'stripe-signature': stripeHeader },
+    rawBody
+  );
+
+  assert.equal(handled, true, 'valid Stripe webhook should be accepted');
+  assert.equal(queueCalls.length, 1, 'Stripe webhook should enqueue a workflow execution');
+  assert.equal(queueCalls[0].triggerType, 'webhook');
+  assert.equal(queueCalls[0].organizationId, organizationId);
+}
+
+async function runGithubSignatureAcceptanceTest(): Promise<void> {
+  dbStub.reset();
+  const { manager, queueCalls } = await createManager({ allowQueue: true });
+
+  const secret = 'github-secret';
+  const endpoint = await manager.registerWebhook({
+    id: '',
+    appId: 'github',
+    triggerId: 'issue_opened',
+    workflowId: 'wf-github-signature',
+    secret,
+    isActive: true,
+    metadata: { organizationId, userId },
+    organizationId,
+    userId,
+  });
+
+  const webhookId = extractWebhookId(endpoint);
+  const payload = { action: 'opened', issue: { id: 42 }, repository: { full_name: 'acme/repo' } };
+  const rawBody = JSON.stringify(payload);
+  const signature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const githubHeader = `sha256=${signature}`;
+
+  const handled = await manager.handleWebhook(
+    webhookId,
+    payload,
+    { 'x-hub-signature-256': githubHeader },
+    rawBody
+  );
+
+  assert.equal(handled, true, 'valid GitHub webhook should be accepted');
+  assert.equal(queueCalls.length, 1, 'GitHub webhook should enqueue a workflow execution');
+  assert.equal(queueCalls[0].organizationId, organizationId);
+}
+
+async function runGenericFallbackRejectionTest(): Promise<void> {
+  dbStub.reset();
+  const { manager } = await createManager({ allowQueue: false });
+
+  const secret = 'generic-secret';
+  const endpoint = await manager.registerWebhook({
+    id: '',
+    appId: 'custom-app',
+    triggerId: 'unregistered-event',
+    workflowId: 'wf-generic-fallback',
+    secret,
+    isActive: true,
+    metadata: { organizationId, userId },
+    organizationId,
+    userId,
+  });
+
+  const webhookId = extractWebhookId(endpoint);
+  const payload = { ping: 'pong' };
+  const handled = await manager.handleWebhook(
+    webhookId,
+    payload,
+    { 'x-signature': 'unused' },
+    JSON.stringify(payload)
+  );
+
+  assert.equal(handled, false, 'webhook without registered template should be rejected');
+  const logs = Array.from(dbStub.webhookLogs.values());
+  assert.equal(logs.length, 1, 'rejection should be logged');
+  assert.equal(logs[0].processed, false, 'rejection log should be marked as failed');
+  assert.ok(logs[0].error && /provider/i.test(logs[0].error), 'error should mention provider registration');
+}
+
+await runSlackSignatureRejectionTests();
+await runStripeSignatureAcceptanceTest();
+await runGithubSignatureAcceptanceTest();
+await runGenericFallbackRejectionTest();
 
 WebhookManager.resetForTests();
 resetDatabaseAvailabilityOverrideForTests();
 
 console.log('WebhookManager signature enforcement tests passed.');
-

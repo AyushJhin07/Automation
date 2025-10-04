@@ -461,11 +461,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "slack",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "x-slack-signature"
-        }
+          "templateId": "slack.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
@@ -523,11 +522,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "slack",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "x-slack-signature"
-        }
+          "templateId": "slack.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
@@ -578,11 +576,10 @@
       "type": "webhook",
       "metadata": {
         "signatureVerification": {
-          "providerId": "slack",
-          "required": true,
-          "timestampToleranceSeconds": 300,
-          "signatureHeader": "x-slack-signature"
-        }
+          "templateId": "slack.default",
+          "required": true
+        },
+        "replayWindowSeconds": 300
       },
       "parameters": {
         "type": "object",
