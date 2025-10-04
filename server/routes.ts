@@ -196,6 +196,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/webhooks/:webhookId/verification-failures', authenticateToken, async (req, res) => {
+    const { webhookId } = req.params;
+    if (!webhookId) {
+      return res.status(400).json({ success: false, error: 'webhookId is required' });
+    }
+
+    const workflowId = req.query.workflowId ? String(req.query.workflowId) : undefined;
+    const limitValue = req.query.limit !== undefined ? Number(req.query.limit) : undefined;
+    const limit = limitValue !== undefined && Number.isFinite(limitValue) ? Math.trunc(limitValue) : undefined;
+    const sinceValue = req.query.since ? new Date(String(req.query.since)) : undefined;
+    const since = sinceValue && !Number.isNaN(sinceValue.getTime()) ? sinceValue : undefined;
+
+    try {
+      const failures = await triggerPersistenceService.listVerificationFailures({
+        webhookId,
+        workflowId,
+        limit,
+        since,
+      });
+
+      res.json({
+        success: true,
+        failures: failures.map((entry) => ({
+          ...entry,
+          timestamp: entry.timestamp.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error('❌ Failed to fetch webhook verification failures:', getErrorMessage(error));
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   app.use('/api/workflows', workflowDeploymentRoutes);
   
   // PRODUCTION: Health monitoring and metrics routes

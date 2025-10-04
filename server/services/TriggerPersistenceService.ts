@@ -27,6 +27,73 @@ interface DedupeTokenRecord {
 }
 const DEFAULT_MAX_BACKOFF_MULTIPLIER = 32;
 
+export const VERIFICATION_FAILURE_PREFIX = 'verification_failed:';
+
+export interface VerificationFailureLogPayload {
+  status?: string;
+  reason?: string;
+  message?: string;
+  provider?: string | null;
+  signatureHeader?: string | null;
+  providedSignature?: string | null;
+  timestampSkewSeconds?: number | null;
+}
+
+export function encodeVerificationFailure(payload: VerificationFailureLogPayload): string {
+  return `${VERIFICATION_FAILURE_PREFIX}${JSON.stringify(payload)}`;
+}
+
+interface ParsedVerificationFailure {
+  status: string;
+  reason: string;
+  message: string;
+  provider?: string | null;
+  signatureHeader?: string | null;
+  providedSignature?: string | null;
+  timestampSkewSeconds?: number | null;
+}
+
+function parseVerificationFailurePayload(error: string | null | undefined): ParsedVerificationFailure {
+  if (!error) {
+    return {
+      status: 'failed',
+      reason: 'UNKNOWN',
+      message: 'Webhook signature verification failed',
+    };
+  }
+
+  if (!error.startsWith(VERIFICATION_FAILURE_PREFIX)) {
+    return {
+      status: 'failed',
+      reason: 'UNKNOWN',
+      message: error,
+    };
+  }
+
+  const raw = error.slice(VERIFICATION_FAILURE_PREFIX.length);
+
+  try {
+    const payload = JSON.parse(raw) as VerificationFailureLogPayload;
+    return {
+      status: payload.status ?? 'failed',
+      reason: payload.reason ?? 'UNKNOWN',
+      message:
+        payload.message ??
+        (payload.reason ? `Webhook signature verification failed (${payload.reason})` : 'Webhook signature verification failed'),
+      provider: payload.provider ?? null,
+      signatureHeader: payload.signatureHeader ?? null,
+      providedSignature: payload.providedSignature ?? null,
+      timestampSkewSeconds: payload.timestampSkewSeconds ?? null,
+    };
+  } catch {
+    return {
+      status: 'failed',
+      reason: 'UNKNOWN',
+      message: raw,
+    };
+  }
+}
+
 interface BackoffOptions {
   maxIntervalSeconds?: number;
 }
@@ -432,6 +499,70 @@ class InMemoryTriggerPersistenceStore {
 
     return entries;
   }
+
+  public async listVerificationFailures(
+    options: { webhookId?: string; workflowId?: string; limit?: number; since?: Date } = {}
+  ): Promise<VerificationFailureEntry[]> {
+    const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+    const since = options.since;
+
+    const entries = Array.from(this.webhookLogs.values())
+      .filter((log) => (options.webhookId ? log.webhookId === options.webhookId : true))
+      .filter((log) => (options.workflowId ? log.workflowId === options.workflowId : true))
+      .filter((log) => log.processed !== true)
+      .filter((log) => typeof log.error === 'string' && log.error.startsWith(VERIFICATION_FAILURE_PREFIX))
+      .filter((log) => {
+        if (!since) {
+          return true;
+        }
+        const updated = log.updatedAt instanceof Date ? log.updatedAt : new Date(log.updatedAt ?? log.timestamp);
+        return updated >= since;
+      })
+      .sort((a, b) => {
+        const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : new Date(a.updatedAt ?? a.timestamp).getTime();
+        const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : new Date(b.updatedAt ?? b.timestamp).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, limit)
+      .map((log) => {
+        const parsed = parseVerificationFailurePayload(log.error ?? null);
+        const timestamp = log.updatedAt instanceof Date ? log.updatedAt : new Date(log.updatedAt ?? log.timestamp);
+
+        return {
+          id: log.id,
+          webhookId: log.webhookId,
+          workflowId: log.workflowId,
+          status: parsed.status,
+          reason: parsed.reason,
+          message: parsed.message,
+          provider: parsed.provider ?? null,
+          timestamp,
+          metadata: {
+            signatureHeader: parsed.signatureHeader ?? null,
+            providedSignature: parsed.providedSignature ?? null,
+            timestampSkewSeconds: parsed.timestampSkewSeconds ?? null,
+          },
+        } satisfies VerificationFailureEntry;
+      });
+
+    return entries;
+  }
+}
+
+export interface VerificationFailureEntry {
+  id: string;
+  webhookId: string;
+  workflowId: string;
+  status: string;
+  reason: string;
+  message: string;
+  provider?: string | null;
+  timestamp: Date;
+  metadata?: {
+    signatureHeader?: string | null;
+    providedSignature?: string | null;
+    timestampSkewSeconds?: number | null;
+  };
 }
 
 export interface TriggerExecutionResult {
@@ -1066,6 +1197,83 @@ export class TriggerPersistenceService {
       timestamp: row.timestamp instanceof Date ? row.timestamp : new Date(row.timestamp),
       error: row.error ?? 'duplicate event',
     }));
+  }
+
+  public async listVerificationFailures(options: {
+    webhookId?: string;
+    workflowId?: string;
+    limit?: number;
+    since?: Date;
+    region?: OrganizationRegion;
+  }): Promise<VerificationFailureEntry[]> {
+    const database = this.requireDatabase('listVerificationFailures', options.region ?? null);
+
+    if (typeof (database as any).listVerificationFailures === 'function') {
+      return (database as any).listVerificationFailures(options);
+    }
+
+    const limit = Math.max(1, Math.min(100, options.limit ?? 20));
+
+    const conditions: any[] = [
+      eq(webhookLogs.processed, false),
+      sql`COALESCE(${webhookLogs.error}, '') LIKE 'verification_failed:%'`,
+    ];
+
+    if (options.webhookId) {
+      conditions.push(eq(webhookLogs.webhookId, options.webhookId));
+    }
+
+    if (options.workflowId) {
+      conditions.push(eq(webhookLogs.workflowId, options.workflowId));
+    }
+
+    if (options.since) {
+      conditions.push(gte(webhookLogs.updatedAt, options.since));
+    }
+
+    const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions);
+
+    const rows = await database
+      .select({
+        id: webhookLogs.id,
+        webhookId: webhookLogs.webhookId,
+        workflowId: webhookLogs.workflowId,
+        error: webhookLogs.error,
+        updatedAt: webhookLogs.updatedAt,
+        timestamp: webhookLogs.timestamp,
+      })
+      .from(webhookLogs)
+      .where(whereClause)
+      .orderBy(desc(webhookLogs.updatedAt))
+      .limit(limit);
+
+    return rows.map((row: any) => {
+      const parsed = parseVerificationFailurePayload(row.error ?? null);
+      const timestampValue =
+        row.updatedAt instanceof Date
+          ? row.updatedAt
+          : row.updatedAt
+          ? new Date(row.updatedAt)
+          : row.timestamp instanceof Date
+          ? row.timestamp
+          : new Date(row.timestamp);
+
+      return {
+        id: row.id,
+        webhookId: row.webhookId,
+        workflowId: row.workflowId,
+        status: parsed.status,
+        reason: parsed.reason,
+        message: parsed.message,
+        provider: parsed.provider ?? null,
+        timestamp: timestampValue,
+        metadata: {
+          signatureHeader: parsed.signatureHeader ?? null,
+          providedSignature: parsed.providedSignature ?? null,
+          timestampSkewSeconds: parsed.timestampSkewSeconds ?? null,
+        },
+      } satisfies VerificationFailureEntry;
+    });
   }
 
   public async loadDedupeTokens(region?: OrganizationRegion): Promise<Record<string, string[]>> {
