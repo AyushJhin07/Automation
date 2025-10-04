@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
@@ -837,7 +838,7 @@ interface NodeSidebarProps {
   loading?: boolean;
 }
 
-const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
+export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -866,6 +867,11 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
       status?: string;
       isBeta?: boolean;
       deprecationWindow?: { startDate?: string | null; sunsetDate?: string | null };
+    };
+    lifecycle?: {
+      alpha?: boolean;
+      beta?: boolean;
+      stable?: boolean;
     };
   };
 
@@ -982,6 +988,7 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
           actions,
           triggers,
           release: def.release,
+          lifecycle: def.lifecycle,
         };
       }
     }
@@ -1025,7 +1032,8 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
 
   // -------- Render --------
   return (
-    <div className="w-80 bg-white border-r border-gray-100 h-full flex flex-col">
+    <TooltipProvider delayDuration={100}>
+      <div className="w-80 bg-white border-r border-gray-100 h-full flex flex-col">
       {/* Sticky top: title + search + category chips */}
       <div className="p-4 sticky top-0 bg-white z-10 border-b border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -1115,25 +1123,91 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
                     <div className="flex flex-col text-left">
                       <span className="text-gray-900 font-medium">{app.appName}</span>
                       <span className="text-xs text-gray-500">{app.category}</span>
-                      {app.release && (
-                        <div className="flex items-center gap-2 mt-1">
-                          {app.release.semver && (
-                            <span className="text-[10px] font-mono text-slate-500">v{app.release.semver}</span>
-                          )}
-                          <Badge
-                            className="text-[10px]"
-                            variant={
-                              app.release.status === 'deprecated' || app.release.status === 'sunset'
-                                ? 'destructive'
-                                : app.release.status === 'beta' || app.release.isBeta
-                                  ? 'outline'
-                                  : 'secondary'
-                            }
-                          >
-                            {(app.release.status ?? (app.release.isBeta ? 'beta' : 'stable')).replace(/^(.)/, (_, c) => c.toUpperCase())}
-                          </Badge>
-                        </div>
-                      )}
+                      {(() => {
+                        const lifecycle = app.lifecycle;
+                        const releaseStatus = app.release?.status;
+
+                        const badgeContent = (() => {
+                          if (releaseStatus === 'deprecated' || releaseStatus === 'sunset') {
+                            const label = releaseStatus === 'sunset' ? 'Sunset' : 'Deprecated';
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    data-testid={`lifecycle-badge-${app.appId}`}
+                                    className="text-[10px]"
+                                    variant="destructive"
+                                  >
+                                    {label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[220px] text-xs leading-relaxed">
+                                  {label === 'Sunset'
+                                    ? 'This connector is being sunset and will be removed soon.'
+                                    : 'This connector is deprecated and may be removed in the future.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          if (lifecycle?.alpha) {
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    data-testid={`lifecycle-badge-${app.appId}`}
+                                    className="text-[10px]"
+                                    variant="destructive"
+                                  >
+                                    Alpha
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[220px] text-xs leading-relaxed">
+                                  Alpha connectors are experimental previews and may change without notice.
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          if (lifecycle?.beta) {
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    data-testid={`lifecycle-badge-${app.appId}`}
+                                    className="text-[10px]"
+                                    variant="outline"
+                                  >
+                                    Beta
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[220px] text-xs leading-relaxed">
+                                  Beta connectors are near launch but may still receive minor updates or fixes.
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          if (lifecycle?.stable === false) {
+                            return null;
+                          }
+
+                          return null;
+                        })();
+
+                        if (!app.release?.semver && !badgeContent) {
+                          return null;
+                        }
+
+                        return (
+                          <div className="flex items-center gap-2 mt-1">
+                            {app.release?.semver && (
+                              <span className="text-[10px] font-mono text-slate-500">v{app.release.semver}</span>
+                            )}
+                            {badgeContent}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       {app.triggers.length > 0 && (
@@ -1231,7 +1305,8 @@ const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSideba
           </Accordion>
         )}
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
