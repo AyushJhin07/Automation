@@ -1,0 +1,52 @@
+{
+  "description": "Simulated Workday create_worker action for smoke testing.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-workday-token",
+      "tenant": "acme-co",
+      "region": "wd5-impl-services1"
+    },
+    "notes": "Connector simulator fixture for Workday worker creation."
+  },
+  "params": {
+    "personalData": {
+      "firstName": "Simulated",
+      "lastName": "Employee"
+    },
+    "positionData": {
+      "positionId": "SIM-POS-001"
+    },
+    "hireDate": "2024-01-02"
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://wd5-impl-services1.workday.com/ccx/api/v1/acme-co/workers",
+    "body": {
+      "personalData": {
+        "firstName": "Simulated",
+        "lastName": "Employee"
+      },
+      "positionData": {
+        "positionId": "SIM-POS-001"
+      },
+      "hireDate": "2024-01-02"
+    }
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "SIM-WORKER-001",
+      "status": "ACTIVE"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "id": "SIM-WORKER-001",
+      "status": "ACTIVE"
+    }
+  }
+}

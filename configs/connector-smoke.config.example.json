@@ -49,5 +49,36 @@
     ],
     "skip": true,
     "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  },
+  "workday": {
+    "credentials": {
+      "accessToken": "YOUR_WORKDAY_ACCESS_TOKEN",
+      "tenant": "your-tenant",
+      "region": "wd5-impl-services1"
+    },
+    "actions": [
+      {
+        "id": "create_worker",
+        "parameters": {
+          "personalData": {
+            "firstName": "Smoke",
+            "lastName": "Tester"
+          },
+          "positionData": {
+            "positionId": "SMK-001"
+          },
+          "hireDate": "2024-01-01"
+        }
+      },
+      {
+        "id": "terminate_worker",
+        "parameters": {
+          "workerId": "SMK-001",
+          "terminationDate": "2024-01-31",
+          "reason": "Completed smoke test"
+        }
+      }
+    ],
+    "notes": "Provide tenant/region-specific credentials or run smoke tests with --use-simulator to exercise the bundled fixtures."
   }
 }

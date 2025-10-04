@@ -1,0 +1,40 @@
+{
+  "description": "Simulated Workday terminate_worker action for smoke testing.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-workday-token",
+      "tenant": "acme-co",
+      "region": "wd5-impl-services1"
+    }
+  },
+  "params": {
+    "workerId": "SIM-WORKER-001",
+    "terminationDate": "2024-03-31",
+    "reason": "Voluntary"
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://wd5-impl-services1.workday.com/ccx/api/v1/acme-co/workers/SIM-WORKER-001/terminate",
+    "body": {
+      "terminationDate": "2024-03-31",
+      "reason": "Voluntary"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "workerId": "SIM-WORKER-001",
+      "status": "TERMINATED"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "workerId": "SIM-WORKER-001",
+      "status": "TERMINATED"
+    }
+  }
+}
