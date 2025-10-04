@@ -31,6 +31,9 @@ export interface FunctionExecutionParams {
   credentials: APICredentials;
   additionalConfig?: Record<string, any>;
   connectionId?: string;
+  executionId?: string;
+  nodeId?: string;
+  idempotencyKey?: string;
 }
 
 export interface FunctionExecutionResult {
@@ -403,12 +406,18 @@ export class IntegrationManager {
       }
 
       // Execute the function
-      const result = await this.executeFunctionOnClient(
-        client,
-        appKey,
-        params.functionId,
-        params.parameters
-      );
+      const clientRequestContext = this.buildClientRequestContext(params);
+      const executeOnClient = () =>
+        this.executeFunctionOnClient(
+          client,
+          appKey,
+          params.functionId,
+          params.parameters
+        );
+
+      const result = clientRequestContext
+        ? await client.withRequestContext(clientRequestContext, executeOnClient)
+        : await executeOnClient();
 
       return {
         success: result.success,
@@ -784,6 +793,24 @@ export class IntegrationManager {
     return {
       success: false,
       error: `Function ${functionId} not implemented for ${appKey}`
+    };
+  }
+
+  private buildClientRequestContext(
+    params: FunctionExecutionParams
+  ): { executionId?: string; nodeId?: string; idempotencyKey?: string } | undefined {
+    const executionId = params.executionId != null ? String(params.executionId).trim() : '';
+    const nodeId = params.nodeId != null ? String(params.nodeId).trim() : '';
+    const idempotencyKey = params.idempotencyKey != null ? String(params.idempotencyKey).trim() : '';
+
+    if (!executionId && !nodeId && !idempotencyKey) {
+      return undefined;
+    }
+
+    return {
+      executionId: executionId || undefined,
+      nodeId: nodeId || undefined,
+      idempotencyKey: idempotencyKey || undefined,
     };
   }
 

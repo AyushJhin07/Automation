@@ -60,6 +60,7 @@ export interface ExecutionContext {
   executionId: string;
   initialData?: any;
   organizationId?: string;
+  idempotencyKeys: Record<string, string>;
 }
 
 export interface ExecutionResult {
@@ -111,6 +112,7 @@ export class WorkflowRuntime {
       executionId,
       initialData,
       organizationId: options.organizationId,
+      idempotencyKeys: {},
     };
 
     const runtimeOptions = this.normalizeOptions(options);
@@ -152,6 +154,8 @@ export class WorkflowRuntime {
         });
 
         const nodeAbortController = new AbortController();
+        const nodeIdempotencyKey = this.generateIdempotencyKey(node, context);
+        context.idempotencyKeys[node.id] = nodeIdempotencyKey;
         try {
           // Execute node with retry logic and idempotency
           const nodeResult = await retryManager.executeWithRetry(
@@ -160,7 +164,7 @@ export class WorkflowRuntime {
             () => this.executeNode(node, context, { signal: nodeAbortController.signal, timeoutMs: configuredTimeout }),
             {
               policy: this.getRetryPolicyForNode(node),
-              idempotencyKey: this.generateIdempotencyKey(node, context),
+              idempotencyKey: nodeIdempotencyKey,
               nodeType: node.type,
               connectorId,
               nodeLabel: node.label
@@ -177,9 +181,14 @@ export class WorkflowRuntime {
           // Track successful completion
           const metadata = this.consumeNodeMetadata(context.executionId, node.id);
           const circuitState = connectorId ? retryManager.getCircuitState(connectorId, node.id) : undefined;
+          const retryStatus = retryManager.getRetryStatus(context.executionId, node.id);
+          const requestHash = retryManager.getRequestHash(context.executionId, node.id);
           await runExecutionManager.completeNodeExecution(context.executionId, node.id, nodeOutput, {
             ...metadata,
-            circuitState
+            circuitState,
+            idempotencyKey: nodeIdempotencyKey,
+            requestHash,
+            resultHash: retryStatus?.lastResultHash
           });
 
           if (isDelayResult && nodeResult.delayMs > 0) {
@@ -298,7 +307,11 @@ export class WorkflowRuntime {
     };
 
     const resolvedParams = await resolveAllParams(node.data, paramContext);
-    const nodeContext = { ...context, nodeId: node.id };
+    const nodeContext = {
+      ...context,
+      nodeId: node.id,
+      idempotencyKey: context.idempotencyKeys[node.id] ?? this.generateIdempotencyKey(node, context),
+    };
 
     if (this.isDelayNode(node)) {
       return this.buildDelayNodeResult(resolvedParams);
@@ -754,43 +767,9 @@ export class WorkflowRuntime {
    * Generate idempotency key for node execution
    */
   private generateIdempotencyKey(node: GraphNode, context: ExecutionContext): string {
-    // Create a hash-like key based on node content and context
-    const nodeFingerprint = JSON.stringify({
-      nodeId: node.id,
-      nodeType: node.type,
-      params: node.data.params,
-      workflowId: context.workflowId,
-      // Include relevant previous outputs for context-dependent idempotency
-      relevantInputs: this.getRelevantInputsForIdempotency(node, context)
-    });
-    
-    // Simple hash function for idempotency key
-    let hash = 0;
-    for (let i = 0; i < nodeFingerprint.length; i++) {
-      const char = nodeFingerprint.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    
-    return `idem_${Math.abs(hash)}_${node.id}`;
-  }
-
-  /**
-   * Get relevant inputs for idempotency calculation
-   */
-  private getRelevantInputsForIdempotency(node: GraphNode, context: ExecutionContext): any {
-    // For most nodes, we only care about the direct dependencies
-    const relevantInputs: any = {};
-
-    // If this node has parameter references to other nodes, include those outputs
-    const nodeParams = node.data.params || {};
-    for (const [key, value] of Object.entries(nodeParams)) {
-      if (typeof value === 'object' && value?.mode === 'ref' && value?.nodeId) {
-        relevantInputs[key] = context.outputs[value.nodeId];
-      }
-    }
-
-    return relevantInputs;
+    const executionPart = String(context.executionId || '').trim() || 'execution';
+    const nodePart = String(node.id || '').trim() || 'node';
+    return `${executionPart}:${nodePart}`;
   }
 
   private normalizeOptions(options: WorkflowRuntimeOptions): NormalizedRuntimeOptions {

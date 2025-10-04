@@ -209,13 +209,18 @@ export class WorkflowRuntimeService {
       });
     }
 
+    const idempotencyKey = this.buildIdempotencyKey(context.executionId, node.id);
+
     const executionResponse = await integrationManager.executeFunction({
       appName: appId,
       functionId,
       parameters: resolvedParams,
       credentials: credentialResolution.credentials,
       additionalConfig: credentialResolution.additionalConfig,
-      connectionId: credentialResolution.connectionId
+      connectionId: credentialResolution.connectionId,
+      executionId: context.executionId,
+      nodeId: String(node.id),
+      idempotencyKey
     });
 
     if (!executionResponse.success) {
@@ -277,6 +282,12 @@ export class WorkflowRuntimeService {
     }
 
     return 'action';
+  }
+
+  private buildIdempotencyKey(executionId: string, nodeId: string | number): string {
+    const executionPart = String(executionId || '').trim() || 'execution';
+    const nodePart = String(nodeId ?? '').trim() || 'node';
+    return `${executionPart}:${nodePart}`;
   }
 
   private executeCondition(

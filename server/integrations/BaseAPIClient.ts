@@ -4,9 +4,11 @@
 import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import { isIP } from 'node:net';
+import { createHash } from 'node:crypto';
 import type { ConnectionService, OrganizationNetworkAllowlist } from '../services/ConnectionService';
 import { updateConnectorRateBudgetMetric } from '../observability/index.js';
 import { rateLimiter, type RateLimitRules } from './RateLimiter';
+import { retryManager } from '../core/RetryManager.js';
 
 let cachedConnectionService: ConnectionService | null | undefined;
 
@@ -131,6 +133,36 @@ type TokenRefreshPayload = {
   [key: string]: any;
 };
 
+type RequestContext = {
+  executionId?: string;
+  nodeId?: string;
+  idempotencyKey?: string;
+};
+
+type ProviderIdempotencyFormat = {
+  /** Header name used by the provider for idempotency keys. */
+  header?: string;
+  /** Path (dot notation) to where the idempotency key should be injected in the body. */
+  bodyPath?: string;
+  /** Optional query string parameter recognised by the provider. */
+  queryParam?: string;
+  /** Description documenting the provider specific behaviour. */
+  description: string;
+};
+
+const PROVIDER_IDEMPOTENCY_FORMATS: Record<string, ProviderIdempotencyFormat> = {
+  /** Stripe expects the Idempotency-Key header for all POST/PUT endpoints. */
+  stripe: { header: 'Idempotency-Key', description: 'Stripe REST APIs honour the Idempotency-Key header for safely retrying writes.' },
+  /** Square requires an idempotency_key field in the request payload. */
+  square: { bodyPath: 'idempotency_key', description: 'Square write APIs expect an idempotency_key property in the JSON body.' },
+  /** PayPal uses PayPal-Request-Id for idempotent operations. */
+  paypal: { header: 'PayPal-Request-Id', description: 'PayPal REST APIs use the PayPal-Request-Id header to dedupe retries.' },
+  /** Adyen supports the standard Idempotency-Key header. */
+  adyen: { header: 'Idempotency-Key', description: 'Adyen checkout services follow the Idempotency-Key header convention.' },
+  /** Shopify Admin REST supports X-Idempotency-Key header for mutations. */
+  shopify: { header: 'X-Idempotency-Key', description: 'Shopify Admin APIs accept X-Idempotency-Key to deduplicate POST/PUT requests.' },
+};
+
 export abstract class BaseAPIClient {
   private static readonly ajv = new Ajv({ allErrors: true, strict: false });
   private static readonly schemaCache = new WeakMap<object, ValidateFunction>();
@@ -146,6 +178,7 @@ export abstract class BaseAPIClient {
   private readonly responseMiddleware: ResponseMiddleware[];
   private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
   private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
+  private requestContext: RequestContext | null = null;
 
   private static getSchemaValidator(schema: object): ValidateFunction {
     let validator = BaseAPIClient.schemaCache.get(schema);
@@ -184,6 +217,34 @@ export abstract class BaseAPIClient {
       context.rateLimitMetadata = metadata;
       this.handleRateLimitEffects(context.response, metadata);
     });
+  }
+
+  public async withRequestContext<T>(context: RequestContext | undefined, fn: () => Promise<T>): Promise<T> {
+    const previous = this.requestContext;
+    this.requestContext = context ?? null;
+    try {
+      return await fn();
+    } finally {
+      this.requestContext = previous;
+    }
+  }
+
+  protected getRequestContext(): RequestContext | null {
+    return this.requestContext;
+  }
+
+  protected resolveIdempotencyKey(): string | undefined {
+    const context = this.requestContext;
+    if (!context) {
+      return undefined;
+    }
+    if (context.idempotencyKey && context.idempotencyKey.trim().length > 0) {
+      return context.idempotencyKey;
+    }
+    if (context.executionId && context.nodeId) {
+      return `${context.executionId}:${context.nodeId}`;
+    }
+    return undefined;
   }
 
   public setConnectorContext(
@@ -305,6 +366,30 @@ export abstract class BaseAPIClient {
           ...headers
         };
 
+        const requestPayload = this.cloneRequestPayload(data);
+        const isWriteMethod = method === 'POST' || method === 'PUT';
+        const providerId = this.connectorId ?? this.deriveConnectorId();
+        const idempotencyFormat = providerId ? PROVIDER_IDEMPOTENCY_FORMATS[providerId] : undefined;
+        const idempotencyKey = this.resolveIdempotencyKey();
+        const context = this.getRequestContext();
+        let requestUrl = url;
+
+        if (isWriteMethod && idempotencyFormat && idempotencyKey) {
+          if (idempotencyFormat.header) {
+            requestHeaders[idempotencyFormat.header] = idempotencyKey;
+          }
+          if (idempotencyFormat.bodyPath) {
+            this.applyIdempotencyValue(requestPayload, idempotencyFormat.bodyPath, idempotencyKey);
+          }
+          if (idempotencyFormat.queryParam) {
+            requestUrl = this.appendQueryParam(requestUrl, idempotencyFormat.queryParam, idempotencyKey);
+          }
+        } else if (isWriteMethod && context?.executionId && context?.nodeId) {
+          const hashPayload = requestPayload ?? data;
+          const requestHash = this.computeRequestHash(method, requestUrl, hashPayload);
+          retryManager.registerRequestHash(context.executionId, context.nodeId, requestHash);
+        }
+
         // Check rate limits before making request
         if (this.rateLimitInfo && this.isRateLimited()) {
           const waitTime = this.rateLimitInfo.resetTime - Date.now();
@@ -316,18 +401,18 @@ export abstract class BaseAPIClient {
         const requestOptions: RequestInit = {
           method,
           headers: requestHeaders,
-          body: data ? JSON.stringify(data) : undefined
+          body: this.serializeRequestBody(requestPayload)
         };
 
-        const response = await fetch(url, requestOptions);
+        const response = await fetch(requestUrl, requestOptions);
 
         await this.runResponseMiddleware({
           response,
           request: {
             method,
-            url,
+            url: requestUrl,
             headers: requestHeaders,
-            body: data,
+            body: requestPayload,
             init: requestOptions,
           },
           connectorId: this.connectorId,
@@ -391,6 +476,86 @@ export abstract class BaseAPIClient {
     }
 
     return `${this.baseURL}/${endpoint}`;
+  }
+
+  private cloneRequestPayload(payload: any): any {
+    if (payload === undefined || payload === null) {
+      return payload;
+    }
+
+    if (typeof payload !== 'object') {
+      return payload;
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(payload));
+    } catch {
+      return Array.isArray(payload) ? [...payload] : { ...payload };
+    }
+  }
+
+  private applyIdempotencyValue(payload: any, path: string, value: string): void {
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+
+    const segments = path.split('.').filter(Boolean);
+    if (segments.length === 0) {
+      return;
+    }
+
+    let cursor: any = payload;
+    for (let i = 0; i < segments.length - 1; i++) {
+      const segment = segments[i];
+      if (cursor[segment] == null || typeof cursor[segment] !== 'object') {
+        cursor[segment] = {};
+      }
+      cursor = cursor[segment];
+    }
+
+    cursor[segments[segments.length - 1]] = value;
+  }
+
+  private appendQueryParam(url: string, key: string, value: string): string {
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.set(key, value);
+      return parsed.toString();
+    } catch {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+    }
+  }
+
+  private serializeRequestBody(payload: any): string | undefined {
+    if (payload === undefined || payload === null) {
+      return undefined;
+    }
+
+    if (typeof payload === 'string') {
+      return payload;
+    }
+
+    return JSON.stringify(payload);
+  }
+
+  private computeRequestHash(method: string, url: string, payload: any): string {
+    let bodyString = '';
+    if (payload !== undefined && payload !== null) {
+      try {
+        bodyString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      } catch {
+        bodyString = String(payload);
+      }
+    }
+
+    return createHash('sha256')
+      .update(method.toUpperCase())
+      .update('|')
+      .update(url)
+      .update('|')
+      .update(bodyString)
+      .digest('hex');
   }
 
   private deriveConnectorId(): string | undefined {
