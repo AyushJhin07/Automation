@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 
 import {
@@ -13,13 +13,68 @@ import {
   SandboxResourceLimitError,
   SandboxHeartbeatTimeoutError,
   SandboxPolicyEvent,
+  SandboxResourceLimits,
 } from './SandboxShared';
+import { CgroupController, ExecutionCgroup } from './CgroupController';
 
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 500;
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 3_000;
 const RESOURCE_POLL_INTERVAL_MS = 200;
 
 const EXECUTOR_ENV_KEY = 'SANDBOX_PAYLOAD';
+
+let hasPrlimitSupport: boolean | null = null;
+
+function detectPrlimitSupport(): boolean {
+  if (hasPrlimitSupport !== null) {
+    return hasPrlimitSupport;
+  }
+  if (process.platform !== 'linux' && process.platform !== 'darwin') {
+    hasPrlimitSupport = false;
+    return hasPrlimitSupport;
+  }
+  try {
+    const result = spawnSync('prlimit', ['--version'], { stdio: 'ignore' });
+    hasPrlimitSupport = result.error == null && (result.status === 0 || result.status === null);
+  } catch {
+    hasPrlimitSupport = false;
+  }
+  return hasPrlimitSupport;
+}
+
+function applyPosixResourceLimits(pid: number, limits: SandboxResourceLimits): void {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return;
+  }
+  if (!detectPrlimitSupport()) {
+    return;
+  }
+
+  const args = ['--pid', String(pid)];
+
+  if (Number.isFinite(limits.maxCpuMs) && (limits.maxCpuMs ?? 0) > 0) {
+    const seconds = Math.max(1, Math.ceil((limits.maxCpuMs ?? 0) / 1000));
+    args.push(`--cpu=${seconds}:${seconds}`);
+  }
+
+  if (Number.isFinite(limits.maxMemoryBytes) && (limits.maxMemoryBytes ?? 0) > 0) {
+    const bytes = Math.max(1024, Math.floor(limits.maxMemoryBytes ?? 0));
+    args.push(`--as=${bytes}:${bytes}`);
+  }
+
+  if (args.length <= 2) {
+    return;
+  }
+
+  try {
+    const result = spawnSync('prlimit', args, { stdio: 'ignore' });
+    if (result.error) {
+      throw result.error;
+    }
+  } catch (error) {
+    console.warn('[Sandbox] Failed to apply POSIX resource limits', error);
+  }
+}
 
 export class ProcessSandboxExecutor implements SandboxExecutor {
   async run(options: SandboxExecutorRunOptions): Promise<SandboxExecutionResult> {
@@ -64,6 +119,9 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
         [EXECUTOR_ENV_KEY]: payload,
       },
     });
+
+    const cgroupController = resourceLimits?.cgroupRoot ? CgroupController.create(resourceLimits.cgroupRoot) : null;
+    let executionCgroup: ExecutionCgroup | null = null;
 
     const logs: SandboxLogEntry[] = [];
     let lastHeartbeat = Date.now();
@@ -143,6 +201,28 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
       let heartbeatMonitor: NodeJS.Timeout | null = null;
       let resourceMonitor: NodeJS.Timeout | null = null;
 
+      const applyRuntimeGuards = async () => {
+        if (!resourceLimits) {
+          return;
+        }
+        const pid = child.pid ?? -1;
+        if (pid <= 0) {
+          return;
+        }
+        try {
+          if (cgroupController) {
+            executionCgroup = await cgroupController.createExecutionGroup(resourceLimits);
+            if (executionCgroup) {
+              await executionCgroup.addProcess(pid);
+            }
+          } else {
+            applyPosixResourceLimits(pid, resourceLimits);
+          }
+        } catch (error) {
+          console.warn('[Sandbox] Failed to apply resource guards', error);
+        }
+      };
+
       const cleanup = () => {
         signal?.removeEventListener('abort', handleAbort);
         child.removeAllListeners('message');
@@ -155,6 +235,10 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
         if (resourceMonitor) {
           clearInterval(resourceMonitor);
           resourceMonitor = null;
+        }
+        if (executionCgroup) {
+          executionCgroup.cleanup().catch(() => {});
+          executionCgroup = null;
         }
       };
 
@@ -177,8 +261,8 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
           clearTimeout(hardTimeout);
           hardTimeout = null;
         }
-        cleanup();
         terminate();
+        cleanup();
 
         const durationMs = performance.now() - start;
         if (error) {
@@ -198,6 +282,7 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
         const message = resource === 'cpu'
           ? `Sandbox CPU limit exceeded: ${usage.toFixed(2)}ms > ${limit.toFixed(2)}ms`
           : `Sandbox memory limit exceeded: ${Math.round(usage / (1024 * 1024))}MB > ${Math.round(limit / (1024 * 1024))}MB`;
+        terminate();
         finalize(new SandboxResourceLimitError(resource, usage, limit, message));
       };
 
@@ -257,7 +342,15 @@ export class ProcessSandboxExecutor implements SandboxExecutor {
         }
       };
 
-      child.once('spawn', startMonitors);
+      child.once('spawn', () => {
+        (async () => {
+          await applyRuntimeGuards();
+          startMonitors();
+        })().catch((error) => {
+          console.warn('[Sandbox] Failed during spawn handling', error);
+          startMonitors();
+        });
+      });
 
       const handleAbort = () => {
         try {
