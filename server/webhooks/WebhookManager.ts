@@ -249,7 +249,10 @@ export class WebhookManager {
       }
 
       const parsed = new Date(trimmed);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
   }
 
   private lookupSignatureEnforcement(appId: string, triggerId: string): SignatureEnforcementConfig | null {
