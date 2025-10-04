@@ -49,5 +49,30 @@
     ],
     "skip": true,
     "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  },
+  "greenhouse": {
+    "credentials": {
+      "apiKey": "YOUR_HARVEST_API_KEY"
+    },
+    "actions": [
+      {
+        "id": "create_candidate",
+        "parameters": {
+          "firstName": "Avery",
+          "lastName": "Johnson",
+          "email": "avery.johnson@example.com",
+          "phone": "+14155550123"
+        }
+      },
+      {
+        "id": "advance_stage",
+        "parameters": {
+          "applicationId": "12345",
+          "stageId": "67890"
+        },
+        "expectSuccess": false
+      }
+    ],
+    "notes": "Use sandbox Harvest IDs; the API key must be provided via HTTP Basic auth (key as username, blank password)."
   }
 }

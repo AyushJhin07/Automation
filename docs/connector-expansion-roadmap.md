@@ -70,7 +70,7 @@ progress in the audit report until all connectors in the wave exit the
 - [ ] **Workday** – Implement tenant-aware base URLs and authentication flows.
 - [ ] **ADP Workforce Now** – Build OAuth client-credentials flow and wire worker/payroll endpoints.
 - [ ] **SAP SuccessFactors** – Implement OData endpoints, add handlers, and register the connector.
-- [ ] **Greenhouse** – Implement Harvest API calls, add handlers, and register.
+- [ ] **Greenhouse** – Register handlers against new Harvest endpoints and promote connector.
 - [ ] **Lever** – Implement REST endpoints, add handlers, and register.
 
 ### Wave C – E-signature & Document Automation (3 connectors)

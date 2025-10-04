@@ -722,6 +722,25 @@ Every app listed below has been tested and verified to work. No placeholders, no
 - **Authentication:** API Key
 - **Popular Use Cases:** Recruitment automation, candidate tracking
 - **Example:** "Post jobs to multiple boards and track candidate progress"
+- **Sample payload:**
+  ```json
+  {
+    "first_name": "Avery",
+    "last_name": "Johnson",
+    "email_addresses": [
+      {
+        "type": "work",
+        "value": "avery.johnson@example.com"
+      }
+    ],
+    "phone_numbers": [
+      {
+        "type": "mobile",
+        "value": "+14155550123"
+      }
+    ]
+  }
+  ```
 
 ### **✅ Lever** - *Talent Acquisition Platform*
 - **Operations:** Candidate Sourcing, Interview Management, Hiring Analytics

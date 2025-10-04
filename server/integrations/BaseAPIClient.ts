@@ -348,6 +348,8 @@ export abstract class BaseAPIClient {
   ): Promise<APIResponse<T>> {
     try {
       const url = this.buildRequestUrl(endpoint);
+      let requestUrl = url;
+
       await this.assertHostAllowed(url);
 
       const limiterResult = await rateLimiter.acquire({
@@ -372,13 +374,16 @@ export abstract class BaseAPIClient {
           ...headers
         };
 
-        const requestPayload = this.cloneRequestPayload(data);
+        let requestPayload = this.cloneRequestPayload(data);
+        if (method === 'GET' && this.isPlainObject(requestPayload)) {
+          requestUrl = this.appendQueryParams(requestUrl, requestPayload);
+          requestPayload = undefined;
+        }
         const isWriteMethod = method === 'POST' || method === 'PUT';
         const providerId = this.connectorId ?? this.deriveConnectorId();
         const idempotencyFormat = providerId ? PROVIDER_IDEMPOTENCY_FORMATS[providerId] : undefined;
         const idempotencyKey = this.resolveIdempotencyKey();
         const context = this.getRequestContext();
-        let requestUrl = url;
 
         if (isWriteMethod && idempotencyFormat && idempotencyKey) {
           if (idempotencyFormat.header) {
@@ -533,6 +538,49 @@ export abstract class BaseAPIClient {
     }
   }
 
+  private appendQueryParams(url: string, params: Record<string, any>): string {
+    const entries = Object.entries(params ?? {});
+    if (entries.length === 0) {
+      return url;
+    }
+
+    try {
+      const parsed = new URL(url);
+      for (const [key, rawValue] of entries) {
+        if (rawValue === undefined || rawValue === null) {
+          continue;
+        }
+
+        parsed.searchParams.delete(key);
+
+        const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+        for (const value of values) {
+          if (value === undefined || value === null) {
+            continue;
+          }
+          parsed.searchParams.append(key, String(value));
+        }
+      }
+
+      return parsed.toString();
+    } catch {
+      let output = url;
+      for (const [key, rawValue] of entries) {
+        if (rawValue === undefined || rawValue === null) {
+          continue;
+        }
+        const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+        for (const value of values) {
+          if (value === undefined || value === null) {
+            continue;
+          }
+          output = this.appendQueryParam(output, key, String(value));
+        }
+      }
+      return output;
+    }
+  }
+
   private serializeRequestBody(payload: any): string | undefined {
     if (payload === undefined || payload === null) {
       return undefined;
@@ -562,6 +610,16 @@ export abstract class BaseAPIClient {
       .update('|')
       .update(bodyString)
       .digest('hex');
+  }
+
+  private isPlainObject(value: unknown): value is Record<string, any> {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    if (Array.isArray(value)) {
+      return false;
+    }
+    return Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null;
   }
 
   private deriveConnectorId(): string | undefined {

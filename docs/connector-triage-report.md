@@ -55,7 +55,7 @@ actions/triggers that the audit located in `registerHandler(s)` calls.
 | Workday | Placeholder client without base URL configuration or handlers. | 0/17 | Build tenant-aware REST client, implement actions/triggers, then register. |
 | ADP Workforce Now | Placeholder client lacking base URL configuration and handlers. | 0/7 | Implement OAuth, worker/payroll endpoints, and register the client. |
 | SAP SuccessFactors | Placeholder client lacking base URL configuration and handlers. | 0/7 | Implement OData endpoints, add handlers, and register. |
-| Greenhouse | Placeholder client lacking base URL configuration and handlers. | 0/7 | Implement Harvest API calls, add handlers, and register. |
+| Greenhouse | Harvest client now targets `/candidates` plus stage endpoints with Basic auth and pagination. | 0/7 | Register handlers and promote connector to stable. |
 | Lever | Placeholder client lacking base URL configuration and handlers. | 0/18 | Implement REST endpoints, add handlers, and register. |
 
 ### Wave C – E-signature & Document Automation

@@ -30,3 +30,15 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
 - CI runs `npm run ci:smoke`, which exercises the suite against the connector
   simulator fixtures in `server/testing/fixtures` so that smoke coverage is
   available without live credentials.
+- Sample Greenhouse Harvest payload for the smoke suite:
+  ```json
+  {
+    "id": "create_candidate",
+    "parameters": {
+      "firstName": "Avery",
+      "lastName": "Johnson",
+      "email": "avery.johnson@example.com",
+      "phone": "+14155550123"
+    }
+  }
+  ```
