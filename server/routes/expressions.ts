@@ -16,7 +16,7 @@ router.get('/sample-node-outputs', (_req, res) => {
   });
 });
 
-router.post('/validate', (req, res) => {
+router.post('/validate', async (req, res) => {
   try {
     const { expression, nodeOutputs, vars, currentNodeId } = req.body ?? {};
 
@@ -30,19 +30,24 @@ router.post('/validate', (req, res) => {
     const safeNodeOutputs =
       nodeOutputs && typeof nodeOutputs === 'object' ? nodeOutputs : SAMPLE_NODE_OUTPUTS;
 
-    const result = expressionEvaluator.evaluate(expression, {
+    const evaluation = expressionEvaluator.evaluateDetailed(expression, {
       nodeOutputs: safeNodeOutputs,
       currentNodeId: typeof currentNodeId === 'string' ? currentNodeId : DEFAULT_CONTEXT.currentNodeId,
       workflowId: DEFAULT_CONTEXT.workflowId,
       executionId: DEFAULT_CONTEXT.executionId,
       userId: undefined,
+      trigger: safeNodeOutputs?.trigger,
+      steps: safeNodeOutputs,
       vars: vars && typeof vars === 'object' ? vars : undefined,
     });
 
     return res.json({
       success: true,
-      result,
-      typeHint: getExpressionTypeHint(result),
+      result: evaluation.value,
+      typeHint: evaluation.typeHint,
+      contextSchema: evaluation.contextSchema,
+      diagnostics: evaluation.diagnostics,
+      valid: evaluation.valid,
       usedSampleData: !(nodeOutputs && typeof nodeOutputs === 'object'),
     });
   } catch (error) {

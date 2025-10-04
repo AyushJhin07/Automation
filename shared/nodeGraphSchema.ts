@@ -325,4 +325,7 @@ export interface ParameterContext {
   workflowId: string;
   userId?: string;
   executionId: string;
+  trigger?: any;
+  steps?: Record<string, any>;
+  variables?: Record<string, any>;
 }

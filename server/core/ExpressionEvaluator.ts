@@ -1,8 +1,9 @@
+import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
 import type { ParameterContext } from '../../shared/nodeGraphSchema.js';
 
 type SafePrimitive = string | number | boolean | null | undefined;
 
-type ExpressionEvaluationInput = Pick<ParameterContext, 'nodeOutputs' | 'currentNodeId' | 'workflowId' | 'executionId' | 'userId'> & {
+type ExpressionEvaluationInput = Pick<ParameterContext, 'nodeOutputs' | 'currentNodeId' | 'workflowId' | 'executionId' | 'userId' | 'trigger' | 'steps' | 'variables'> & {
   vars?: Record<string, any>;
 };
 
@@ -124,6 +125,9 @@ const SAFE_ARRAY = Object.freeze({
     Array.isArray(value) ? value.includes(search) : false,
   first: <T>(value: T[]) => (Array.isArray(value) ? value[0] : undefined),
   last: <T>(value: T[]) => (Array.isArray(value) ? value[value.length - 1] : undefined),
+  compact: (value: unknown[]) => (Array.isArray(value) ? value.filter(Boolean) : []),
+  flatten: (value: unknown[]) =>
+    Array.isArray(value) ? value.flat(Infinity) : [],
 });
 
 const SAFE_DATE = Object.freeze({
@@ -146,6 +150,56 @@ const SAFE_BOOL = Object.freeze({
   or: (a: unknown, b: unknown) => Boolean(a || b),
 });
 
+const JSONATA_FUNCTIONS = Object.freeze({
+  $uppercase: (value: SafePrimitive) => String(value ?? '').toUpperCase(),
+  $lowercase: (value: SafePrimitive) => String(value ?? '').toLowerCase(),
+  $contains: (sequence: unknown, search: unknown) => {
+    if (Array.isArray(sequence)) {
+      return sequence.includes(search);
+    }
+    return String(sequence ?? '').includes(String(search ?? ''));
+  },
+  $not: (value: unknown) => !value,
+  $string: (value: unknown) => (value === undefined || value === null ? '' : String(value)),
+  $number: (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  },
+  $boolean: (value: unknown) => Boolean(value),
+  $count: (value: unknown) => {
+    if (Array.isArray(value)) {
+      return value.length;
+    }
+    if (typeof value === 'string') {
+      return value.length;
+    }
+    if (value && typeof value === 'object') {
+      return Object.keys(value as Record<string, any>).length;
+    }
+    return 0;
+  },
+  $sum: (values: unknown) =>
+    Array.isArray(values)
+      ? values.reduce((total, current) => total + (Number(current) || 0), 0)
+      : 0,
+  $average: (values: unknown) => {
+    if (!Array.isArray(values) || values.length === 0) {
+      return 0;
+    }
+    const sum = values.reduce((total, current) => total + (Number(current) || 0), 0);
+    return sum / values.length;
+  },
+  $max: (values: unknown) =>
+    Array.isArray(values) && values.length > 0
+      ? values.reduce((max, current) => Math.max(max, Number(current) || 0), Number.NEGATIVE_INFINITY)
+      : undefined,
+  $min: (values: unknown) =>
+    Array.isArray(values) && values.length > 0
+      ? values.reduce((min, current) => Math.min(min, Number(current) || 0), Number.POSITIVE_INFINITY)
+      : undefined,
+  $exists: (value: unknown) => value !== undefined && value !== null,
+});
+
 const SAFE_GLOBALS = Object.freeze({
   math: SAFE_MATH,
   number: SAFE_NUMBER,
@@ -154,6 +208,7 @@ const SAFE_GLOBALS = Object.freeze({
   date: SAFE_DATE,
   json: SAFE_JSON,
   bool: SAFE_BOOL,
+  ...JSONATA_FUNCTIONS,
 });
 
 const THREE_CHAR_OPERATORS = new Set(['===', '!==']);
@@ -204,39 +259,30 @@ function tokenize(input: string): Token[] {
     }
 
     if (isDigit(char) || (char === '.' && isDigit(input[position + 1] ?? ''))) {
-      let numberStr = '';
-      let hasDot = false;
+      let value = char;
+      position += 1;
       while (position < length) {
         const current = input[position];
-        if (current === '.') {
-          if (hasDot) {
-            break;
-          }
-          hasDot = true;
-          numberStr += current;
-          position += 1;
-          continue;
-        }
-        if (!isDigit(current)) {
+        if (!/[0-9.]/.test(current)) {
           break;
         }
-        numberStr += current;
+        value += current;
         position += 1;
       }
-      tokens.push({ type: 'number', value: numberStr, position });
+      tokens.push({ type: 'number', value, position });
       continue;
     }
 
-    const threeChar = input.slice(position, position + 3);
-    if (THREE_CHAR_OPERATORS.has(threeChar)) {
-      tokens.push({ type: 'operator', value: threeChar, position });
+    if (THREE_CHAR_OPERATORS.has(input.slice(position, position + 3))) {
+      const operator = input.slice(position, position + 3);
+      tokens.push({ type: 'operator', value: operator, position });
       position += 3;
       continue;
     }
 
-    const twoChar = input.slice(position, position + 2);
-    if (TWO_CHAR_OPERATORS.has(twoChar)) {
-      tokens.push({ type: 'operator', value: twoChar, position });
+    if (TWO_CHAR_OPERATORS.has(input.slice(position, position + 2))) {
+      const operator = input.slice(position, position + 2);
+      tokens.push({ type: 'operator', value: operator, position });
       position += 2;
       continue;
     }
@@ -260,13 +306,18 @@ function tokenize(input: string): Token[] {
         identifier += input[position];
         position += 1;
       }
+
       if (identifier === 'true' || identifier === 'false') {
         tokens.push({ type: 'boolean', value: identifier, position });
-      } else if (identifier === 'null') {
-        tokens.push({ type: 'null', value: identifier, position });
-      } else {
-        tokens.push({ type: 'identifier', value: identifier, position });
+        continue;
       }
+
+      if (identifier === 'null') {
+        tokens.push({ type: 'null', value: identifier, position });
+        continue;
+      }
+
+      tokens.push({ type: 'identifier', value: identifier, position });
       continue;
     }
 
@@ -283,25 +334,31 @@ class Parser {
   constructor(private readonly tokens: Token[]) {}
 
   parseExpression(): ASTNode {
-    const expression = this.parseLogicalOr();
-    this.expect('eof');
-    return expression;
+    return this.parseLogicalOr();
   }
 
   private parseLogicalOr(): ASTNode {
     let left = this.parseLogicalAnd();
-    while (this.matchOperator('||')) {
-      const right = this.parseLogicalAnd();
-      left = { type: 'LogicalExpression', operator: '||', left, right };
+    while (true) {
+      if (this.matchOperator('||')) {
+        const right = this.parseLogicalAnd();
+        left = { type: 'LogicalExpression', operator: '||', left, right };
+        continue;
+      }
+      break;
     }
     return left;
   }
 
   private parseLogicalAnd(): ASTNode {
     let left = this.parseEquality();
-    while (this.matchOperator('&&')) {
-      const right = this.parseEquality();
-      left = { type: 'LogicalExpression', operator: '&&', left, right };
+    while (true) {
+      if (this.matchOperator('&&')) {
+        const right = this.parseEquality();
+        left = { type: 'LogicalExpression', operator: '&&', left, right };
+        continue;
+      }
+      break;
     }
     return left;
   }
@@ -337,24 +394,24 @@ class Parser {
   private parseRelational(): ASTNode {
     let left = this.parseAdditive();
     while (true) {
-      if (this.matchOperator('<')) {
-        const right = this.parseAdditive();
-        left = { type: 'BinaryExpression', operator: '<', left, right };
-        continue;
-      }
       if (this.matchOperator('>')) {
         const right = this.parseAdditive();
         left = { type: 'BinaryExpression', operator: '>', left, right };
         continue;
       }
-      if (this.matchOperator('<=')) {
+      if (this.matchOperator('<')) {
         const right = this.parseAdditive();
-        left = { type: 'BinaryExpression', operator: '<=', left, right };
+        left = { type: 'BinaryExpression', operator: '<', left, right };
         continue;
       }
       if (this.matchOperator('>=')) {
         const right = this.parseAdditive();
         left = { type: 'BinaryExpression', operator: '>=', left, right };
+        continue;
+      }
+      if (this.matchOperator('<=')) {
+        const right = this.parseAdditive();
+        left = { type: 'BinaryExpression', operator: '<=', left, right };
         continue;
       }
       break;
@@ -512,14 +569,6 @@ class Parser {
     return false;
   }
 
-  private expect(type: TokenType): void {
-    const token = this.tokens[this.index];
-    if (!token || token.type !== type) {
-      throw new Error(`Unexpected token at position ${token?.position ?? 'end of input'}`);
-    }
-    this.index += 1;
-  }
-
   private expectPunctuation(punctuation: string): void {
     const token = this.tokens[this.index];
     if (!token || token.type !== 'punctuation' || token.value !== punctuation) {
@@ -534,8 +583,8 @@ class Parser {
   }
 }
 
-function compile(expression: string): (scope: Record<string, any>) => any {
-  const tokens = tokenize(expression);
+function compile(input: string): (scope: Record<string, any>) => any {
+  const tokens = tokenize(input);
   const parser = new Parser(tokens);
   const ast = parser.parseExpression();
   return (scope: Record<string, any>) => evaluateAST(ast, scope);
@@ -628,6 +677,23 @@ function evaluateMember(node: MemberNode, scope: Record<string, any>): any {
     return undefined;
   }
 
+  if (Array.isArray(object)) {
+    if (node.computed) {
+      return evaluateArrayComputedMember(object, node.property as ASTNode, scope);
+    }
+
+    const propertyName = (node.property as IdentifierNode).name;
+    return object.map(item => {
+      if (item === null || item === undefined) {
+        return undefined;
+      }
+      if (typeof item === 'object') {
+        return (item as any)[propertyName];
+      }
+      return undefined;
+    });
+  }
+
   const property = node.computed
     ? evaluateAST(node.property as ASTNode, scope)
     : (node.property as IdentifierNode).name;
@@ -653,6 +719,69 @@ function evaluateMember(node: MemberNode, scope: Record<string, any>): any {
   return undefined;
 }
 
+function evaluateArrayComputedMember(array: any[], propertyNode: ASTNode, scope: Record<string, any>): any {
+  if (propertyNode.type === 'Literal') {
+    const literalValue = propertyNode.value;
+    if (typeof literalValue === 'number') {
+      return array[literalValue];
+    }
+    if (typeof literalValue === 'string') {
+      return array.map(item => (item ? (item as any)[literalValue] : undefined));
+    }
+  }
+
+  if (propertyNode.type === 'Identifier') {
+    const key = propertyNode.name;
+    if (key === 'length') {
+      return array.length;
+    }
+    return array.map(item => (item ? (item as any)[key] : undefined));
+  }
+
+  const matchedItems: any[] = [];
+  const indexSelections: number[] = [];
+
+  array.forEach((item, index) => {
+    const localScope = createArrayItemScope(scope, item, index);
+    const evaluation = evaluateAST(propertyNode, localScope);
+
+    if (typeof evaluation === 'number' && Number.isInteger(evaluation)) {
+      indexSelections.push(evaluation);
+      return;
+    }
+
+    if (Array.isArray(evaluation)) {
+      evaluation.forEach(entry => {
+        if (typeof entry === 'number' && Number.isInteger(entry)) {
+          indexSelections.push(entry);
+        }
+      });
+      return;
+    }
+
+    if (evaluation) {
+      matchedItems.push(item);
+    }
+  });
+
+  if (indexSelections.length > 0) {
+    const seen = new Set<number>();
+    const results: any[] = [];
+    indexSelections.forEach(idx => {
+      if (!Number.isInteger(idx) || idx < 0 || idx >= array.length) {
+        return;
+      }
+      if (!seen.has(idx)) {
+        seen.add(idx);
+        results.push(array[idx]);
+      }
+    });
+    return results;
+  }
+
+  return matchedItems;
+}
+
 function evaluateCall(node: CallNode, scope: Record<string, any>): any {
   const callee = evaluateAST(node.callee, scope);
   if (typeof callee !== 'function') {
@@ -662,7 +791,19 @@ function evaluateCall(node: CallNode, scope: Record<string, any>): any {
   return callee(...args);
 }
 
-function toSafeValue(value: any): any {
+function createArrayItemScope(scope: Record<string, any>, item: any, index: number): Record<string, any> {
+  const localScope = Object.create(scope);
+  if (item && typeof item === 'object') {
+    Object.assign(localScope, toSafeValue(item));
+  } else {
+    localScope.value = item;
+  }
+  localScope.$item = item;
+  localScope.$index = index;
+  return localScope;
+}
+
+function toSafeValue(value: any, depth = 0): any {
   if (value === null || value === undefined) {
     return value;
   }
@@ -671,13 +812,17 @@ function toSafeValue(value: any): any {
     return value;
   }
 
+  if (depth > 6) {
+    return '[MaxDepth]';
+  }
+
   if (Array.isArray(value)) {
-    return value.map(toSafeValue);
+    return value.map(entry => toSafeValue(entry, depth + 1));
   }
 
   const safeObject = Object.create(null) as Record<string, any>;
   for (const [key, val] of Object.entries(value)) {
-    safeObject[key] = toSafeValue(val);
+    safeObject[key] = toSafeValue(val, depth + 1);
   }
   return safeObject;
 }
@@ -686,10 +831,163 @@ function isValidIdentifier(key: string): boolean {
   return /^[$A-Z_][0-9A-Z_$]*$/i.test(key);
 }
 
-export class ExpressionEvaluator {
-  private cache = new Map<string, (scope: Record<string, any>) => any>();
+export type ExpressionJSONSchema = {
+  type?: string | string[];
+  properties?: Record<string, ExpressionJSONSchema>;
+  items?: ExpressionJSONSchema;
+  anyOf?: ExpressionJSONSchema[];
+  additionalProperties?: boolean;
+  examples?: any[];
+  format?: string;
+};
 
-  evaluate(expression: string, context: ExpressionEvaluationInput): any {
+export interface ExpressionValidationDiagnostic {
+  message: string;
+  path: string;
+  keyword?: string;
+  schemaPath?: string;
+  params?: Record<string, any>;
+}
+
+export interface ExpressionEvaluationOptions {
+  expectedResultSchema?: ExpressionJSONSchema;
+}
+
+export interface ExpressionEvaluationDetails {
+  value: any;
+  typeHint: ExpressionTypeHint;
+  contextSchema: ExpressionJSONSchema;
+  diagnostics: ExpressionValidationDiagnostic[];
+  valid: boolean;
+}
+
+const MAX_SCHEMA_DEPTH = 6;
+
+function buildSchemaForValue(value: any, depth = 0, seen: WeakSet<object> = new WeakSet()): ExpressionJSONSchema {
+  if (value === undefined) {
+    return { type: ['null'] };
+  }
+
+  if (value === null) {
+    return { type: 'null' };
+  }
+
+  if (value instanceof Date) {
+    return { type: 'string', format: 'date-time', examples: [value.toISOString()] } as ExpressionJSONSchema;
+  }
+
+  const valueType = typeof value;
+
+  if (valueType === 'string') {
+    return { type: 'string', examples: [value] };
+  }
+
+  if (valueType === 'number') {
+    return { type: 'number', examples: [value] };
+  }
+
+  if (valueType === 'boolean') {
+    return { type: 'boolean', examples: [value] };
+  }
+
+  if (Array.isArray(value)) {
+    if (depth >= MAX_SCHEMA_DEPTH || seen.has(value)) {
+      return { type: 'array' };
+    }
+    seen.add(value);
+    const itemSchemas = value.slice(0, 5).map(entry => buildSchemaForValue(entry, depth + 1, seen));
+    const uniqueSchemas: ExpressionJSONSchema[] = [];
+    const schemaKeys = new Set<string>();
+    for (const schema of itemSchemas) {
+      const key = JSON.stringify(schema);
+      if (!schemaKeys.has(key)) {
+        schemaKeys.add(key);
+        uniqueSchemas.push(schema);
+      }
+    }
+    if (uniqueSchemas.length === 0) {
+      return { type: 'array' };
+    }
+    if (uniqueSchemas.length === 1) {
+      return { type: 'array', items: uniqueSchemas[0] };
+    }
+    return { type: 'array', items: { anyOf: uniqueSchemas } };
+  }
+
+  if (valueType === 'object') {
+    if (depth >= MAX_SCHEMA_DEPTH || seen.has(value as object)) {
+      return { type: 'object', additionalProperties: true };
+    }
+    seen.add(value as object);
+    const properties: Record<string, ExpressionJSONSchema> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, any>)) {
+      properties[key] = buildSchemaForValue(entry, depth + 1, seen);
+    }
+    return { type: 'object', properties, additionalProperties: true };
+  }
+
+  return {};
+}
+
+function buildContextSchema(scope: Record<string, any>): ExpressionJSONSchema {
+  const contextShape = {
+    trigger: scope.trigger,
+    steps: scope.steps ?? scope.nodeOutputs,
+    nodeOutputs: scope.nodeOutputs,
+    current: scope.current,
+    vars: scope.vars,
+    workflow: scope.workflow,
+    context: scope.context,
+  };
+
+  return buildSchemaForValue(contextShape);
+}
+
+function resolveTriggerCandidate(context: ExpressionEvaluationInput): any {
+  if (context.trigger !== undefined) {
+    return context.trigger;
+  }
+
+  const rawSteps = context.steps ?? context.nodeOutputs;
+  if (rawSteps && typeof rawSteps === 'object') {
+    if ((rawSteps as Record<string, any>).trigger !== undefined) {
+      return (rawSteps as Record<string, any>).trigger;
+    }
+    for (const [nodeId, value] of Object.entries(rawSteps as Record<string, any>)) {
+      if (nodeId.toLowerCase().startsWith('trigger')) {
+        return value;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function mergeVariables(context: ExpressionEvaluationInput): Record<string, any> {
+  const merged: Record<string, any> = {};
+  const sources = [context.variables, context.vars];
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') {
+      continue;
+    }
+    for (const [key, value] of Object.entries(source)) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+export class ExpressionEvaluator {
+  private readonly cache = new Map<string, (scope: Record<string, any>) => any>();
+  private readonly ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true });
+  private readonly schemaValidatorCache = new Map<string, ValidateFunction>();
+
+  evaluate(expression: string, context: ExpressionEvaluationInput, options: ExpressionEvaluationOptions = {}): any {
+    const result = this.evaluateDetailed(expression, context, options);
+    return result.value;
+  }
+
+  evaluateDetailed(expression: string, context: ExpressionEvaluationInput, options: ExpressionEvaluationOptions = {}): ExpressionEvaluationDetails {
     if (!expression || typeof expression !== 'string') {
       throw new Error('Expression must be a non-empty string');
     }
@@ -713,11 +1011,28 @@ export class ExpressionEvaluator {
     const scope = this.createScope(context);
 
     try {
-      return compiled(scope);
+      const value = compiled(scope);
+      const contextSchema = buildContextSchema(scope);
+      const diagnostics = options.expectedResultSchema
+        ? this.validateAgainstSchema(value, options.expectedResultSchema)
+        : [];
+
+      return {
+        value,
+        typeHint: this.getTypeHint(value),
+        contextSchema,
+        diagnostics,
+        valid: diagnostics.length === 0,
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown evaluation error';
       throw new Error(`Expression evaluation error: ${message}`);
     }
+  }
+
+  getContextSchema(context: ExpressionEvaluationInput): ExpressionJSONSchema {
+    const scope = this.createScope(context);
+    return buildContextSchema(scope);
   }
 
   getTypeHint(value: any): ExpressionTypeHint {
@@ -755,9 +1070,23 @@ export class ExpressionEvaluator {
       scope[key] = value;
     }
 
-    scope.nodeOutputs = toSafeValue(context.nodeOutputs ?? {});
-    scope.outputs = scope.nodeOutputs;
-    scope.current = context.currentNodeId ? scope.nodeOutputs?.[context.currentNodeId] : undefined;
+    const rawSteps = context.steps ?? context.nodeOutputs ?? {};
+    const steps = toSafeValue(rawSteps);
+    scope.nodeOutputs = steps;
+    scope.outputs = steps;
+    scope.steps = steps;
+
+    const trigger = resolveTriggerCandidate(context);
+    if (trigger !== undefined) {
+      scope.trigger = toSafeValue(trigger);
+    }
+
+    scope.current = context.currentNodeId ? steps?.[context.currentNodeId] : undefined;
+    scope.workflow = Object.freeze({
+      id: context.workflowId,
+      executionId: context.executionId,
+      userId: context.userId,
+    });
     scope.context = Object.freeze({
       workflowId: context.workflowId,
       executionId: context.executionId,
@@ -765,15 +1094,52 @@ export class ExpressionEvaluator {
       currentNodeId: context.currentNodeId,
     });
 
-    if (context.vars) {
-      for (const [key, value] of Object.entries(context.vars)) {
+    const mergedVars = mergeVariables(context);
+    if (Object.keys(mergedVars).length > 0) {
+      const safeVars = toSafeValue(mergedVars);
+      scope.vars = safeVars;
+      scope.variables = safeVars;
+      for (const [key, value] of Object.entries(safeVars)) {
         if (isValidIdentifier(key)) {
-          scope[key] = toSafeValue(value);
+          scope[key] = value;
         }
       }
     }
 
     return scope;
+  }
+
+  private validateAgainstSchema(value: any, schema: ExpressionJSONSchema): ExpressionValidationDiagnostic[] {
+    try {
+      const validator = this.getValidator(schema);
+      const valid = validator(value);
+      if (valid) {
+        return [];
+      }
+
+      const errors = validator.errors ?? [];
+      return errors.map((error: ErrorObject): ExpressionValidationDiagnostic => ({
+        message: error.message ?? 'Schema validation failed',
+        path: error.instancePath || '',
+        keyword: error.keyword,
+        schemaPath: error.schemaPath,
+        params: error.params as Record<string, any>,
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to validate schema';
+      return [{ message, path: '' }];
+    }
+  }
+
+  private getValidator(schema: ExpressionJSONSchema): ValidateFunction {
+    const key = JSON.stringify(schema ?? {});
+    let validator = this.schemaValidatorCache.get(key);
+    if (!validator) {
+      const schemaClone = JSON.parse(key);
+      validator = this.ajv.compile(schemaClone);
+      this.schemaValidatorCache.set(key, validator);
+    }
+    return validator;
   }
 }
 
@@ -787,31 +1153,42 @@ export type ExpressionEvaluationContext = ExpressionEvaluationInput;
 
 export const SAMPLE_NODE_OUTPUTS = Object.freeze({
   trigger: {
-    email: {
-      subject: 'Quarterly Revenue Report',
-      from: 'finance@example.com',
-      to: ['leadership@example.com'],
-      body: 'Revenue increased by 18% compared to last quarter.',
+    opportunity: {
+      id: 'OPP-001',
+      amount: 5000,
+      owner: { name: 'Alice Johnson', email: 'alice@example.com' },
+      products: [
+        { name: 'Premium Support', tier: 'gold', price: 1200 },
+        { name: 'Analytics Add-on', tier: 'silver', price: 800 },
+      ],
     },
     metadata: {
       receivedAt: '2024-05-20T12:30:00.000Z',
-      attachments: 2,
+      source: 'Salesforce',
     },
   },
-  transform: {
-    summary: 'Revenue up 18%',
-    highlightedMetrics: ['revenue', 'growth'],
-    growthRate: 0.18,
-    totals: {
-      revenue: 1284000,
-      expenses: 934000,
+  salesforceCreateOpportunity: {
+    id: 'OPP-001',
+    stage: 'Prospecting',
+    amount: 5000,
+    probability: 0.45,
+    team: [{ name: 'Alice Johnson' }, { name: 'Marcus Lee' }],
+  },
+  enrichmentStep: {
+    multiplier: 1.2,
+    recommendations: [
+      { product: 'Premium Support', score: 0.92 },
+      { product: 'Analytics Add-on', score: 0.81 },
+    ],
+    metrics: {
+      upsellLikelihood: 0.67,
+      churnRisk: 0.18,
     },
   },
-  analytics: {
-    totalRevenue: 1284000,
-    expenses: 934000,
-    profit: 350000,
-    profitMargin: 0.272,
-    lastSync: '2024-05-19T16:45:00.000Z',
+  slackNotify: {
+    channel: '#sales',
+    ts: '1727548200.000200',
+    message: 'New opportunity created for Alice Johnson',
+    mentions: ['@alice', '@marcus'],
   },
 });
