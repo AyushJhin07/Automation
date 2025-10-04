@@ -365,12 +365,16 @@ export abstract class BaseAPIClient {
       try {
         // Add authentication headers
         const authHeaders = this.getAuthHeaders();
-        const requestHeaders = {
-          'Content-Type': 'application/json',
+        const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+        const requestHeaders: Record<string, string> = {
           'User-Agent': 'ScriptSpark-Automation/1.0',
           ...authHeaders,
           ...headers
         };
+
+        if (!isFormData && !('Content-Type' in requestHeaders)) {
+          requestHeaders['Content-Type'] = 'application/json';
+        }
 
         const requestPayload = this.cloneRequestPayload(data);
         const isWriteMethod = method === 'POST' || method === 'PUT';
@@ -493,6 +497,22 @@ export abstract class BaseAPIClient {
       return payload;
     }
 
+    if (typeof FormData !== 'undefined' && payload instanceof FormData) {
+      return payload;
+    }
+
+    if (typeof URLSearchParams !== 'undefined' && payload instanceof URLSearchParams) {
+      return payload;
+    }
+
+    if (typeof Blob !== 'undefined' && payload instanceof Blob) {
+      return payload;
+    }
+
+    if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
+      return payload;
+    }
+
     try {
       return JSON.parse(JSON.stringify(payload));
     } catch {
@@ -533,13 +553,29 @@ export abstract class BaseAPIClient {
     }
   }
 
-  private serializeRequestBody(payload: any): string | undefined {
+  private serializeRequestBody(payload: any): BodyInit | undefined {
     if (payload === undefined || payload === null) {
       return undefined;
     }
 
     if (typeof payload === 'string') {
       return payload;
+    }
+
+    if (typeof FormData !== 'undefined' && payload instanceof FormData) {
+      return payload as BodyInit;
+    }
+
+    if (typeof URLSearchParams !== 'undefined' && payload instanceof URLSearchParams) {
+      return payload as BodyInit;
+    }
+
+    if (typeof Blob !== 'undefined' && payload instanceof Blob) {
+      return payload as BodyInit;
+    }
+
+    if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
+      return payload as BodyInit;
     }
 
     return JSON.stringify(payload);

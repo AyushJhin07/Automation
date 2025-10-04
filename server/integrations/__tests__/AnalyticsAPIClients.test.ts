@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { PowerbiAPIClient } from '../PowerbiAPIClient.js';
+import { TableauAPIClient } from '../TableauAPIClient.js';
 import type { APIResponse } from '../BaseAPIClient.js';
 
 type MockResponse = {
@@ -132,9 +133,82 @@ async function testPowerbiRefreshPolling(): Promise<void> {
   assert.equal(pollRequestTwo.url, location);
 }
 
+async function testTableauPatAuthentication(): Promise<void> {
+  const requests = useMockFetch([
+    { body: '{"credentials":{"token":"tableau-token","site":{"id":"site-123","contentUrl":"default"}}}' },
+    { body: '{"sites":{"site":[{"id":"site-123"}]}}' }
+  ]);
+
+  const client = new TableauAPIClient({
+    serverUrl: 'https://example.online.tableau.com',
+    personalAccessTokenName: 'smoke-pat',
+    personalAccessTokenSecret: 'secret',
+    siteContentUrl: 'default'
+  } as any);
+
+  const response = await client.execute('test_connection', {});
+  assert.equal(response.success, true, 'Test connection should succeed with PAT credentials');
+
+  assert.equal(requests.length, 2, 'Sign-in and sites listing requests expected');
+
+  const signInRequest = requests[0];
+  assert.equal(
+    signInRequest.url,
+    'https://example.online.tableau.com/api/3.22/auth/signin',
+    'Sign-in should target the REST auth endpoint'
+  );
+  const signInBody = JSON.parse((signInRequest.init.body as string | undefined) ?? '{}');
+  assert.equal(signInBody.credentials.personalAccessTokenName, 'smoke-pat');
+  assert.equal(signInBody.credentials.personalAccessTokenSecret, 'secret');
+  assert.equal(signInBody.credentials.site.contentUrl, 'default');
+
+  const sitesRequest = requests[1];
+  assert.equal(sitesRequest.url, 'https://example.online.tableau.com/api/3.22/sites');
+  assert.equal(
+    sitesRequest.init.headers?.['X-Tableau-Auth'],
+    'tableau-token',
+    'Authenticated requests should include the Tableau session token'
+  );
+}
+
+async function testTableauListWorkbooksTargetsSite(): Promise<void> {
+  const requests = useMockFetch([
+    { body: '{"workbooks":{"workbook":[]}}' }
+  ]);
+
+  const client = new TableauAPIClient({
+    serverUrl: 'https://example.online.tableau.com',
+    accessToken: 'existing-token',
+    siteId: 'site-xyz'
+  } as any);
+
+  const response = await client.execute('get_workbooks', {
+    pageSize: 5,
+    pageNumber: 2,
+    filter: 'owner:eq:me'
+  });
+
+  assert.equal(response.success, true, 'Listing workbooks should succeed');
+  assert.equal(requests.length, 1, 'Only the workbook request should be issued');
+
+  const workbookRequest = requests[0];
+  assert.equal(
+    workbookRequest.url,
+    'https://example.online.tableau.com/api/3.22/sites/site-xyz/workbooks?pageSize=5&pageNumber=2&filter=owner%3Aeq%3Ame',
+    'Workbook listing should target the site-scoped endpoint with pagination parameters'
+  );
+  assert.equal(
+    workbookRequest.init.headers?.['X-Tableau-Auth'],
+    'existing-token',
+    'Workbook listing should include the provided access token'
+  );
+}
+
 try {
   await testPowerbiListDatasets();
   await testPowerbiRefreshPolling();
+  await testTableauPatAuthentication();
+  await testTableauListWorkbooksTargetsSite();
   console.log('Analytics API clients integration smoke tests passed.');
 } finally {
   global.fetch = originalFetch;
