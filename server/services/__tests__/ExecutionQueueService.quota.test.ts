@@ -1,14 +1,22 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'crypto';
 
-import { executionQueueService } from '../ExecutionQueueService.js';
-import { executionQuotaService, ExecutionQuotaExceededError } from '../ExecutionQuotaService.js';
-import { WorkflowRepository } from '../../workflow/WorkflowRepository.js';
-import { organizationService } from '../OrganizationService.js';
-import {
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+
+const { executionQueueService } = await import('../ExecutionQueueService.js');
+const {
+  executionQuotaService,
+  ExecutionQuotaExceededError,
+} = await import('../ExecutionQuotaService.js');
+const { WorkflowRepository } = await import('../../workflow/WorkflowRepository.js');
+const { organizationService } = await import('../OrganizationService.js');
+const {
   connectorConcurrencyService,
   ConnectorConcurrencyExceededError,
-} from '../ConnectorConcurrencyService.js';
+} = await import('../ConnectorConcurrencyService.js');
 
 const baseWorkflowId = 'quota-test-workflow';
 
