@@ -74,7 +74,7 @@ actions/triggers that the audit located in `registerHandler(s)` calls.
 ### Wave E – Data & Analytics
 | Connector | Audit status | Handlers detected | Primary next step |
 | --- | --- | --- | --- |
-| Databricks | Placeholder client with `api.example.com` base URL and no handlers. | 0/12 | Implement PAT-authenticated REST calls, add handlers, and register. |
+| Databricks | PAT-authenticated client wiring jobs and SQL endpoints. | 11/12 | Expand coverage for streaming triggers and warehouse catalog features. |
 | Snowflake | Placeholder client lacking handlers. | 0/11 | Implement key/token auth + SQL execution endpoints, then register. |
 | Tableau | Placeholder client with `api.example.com` base URL and no handlers. | 0/16 | Implement REST extract/report endpoints, add handlers, and register. |
 | Power BI | Placeholder client lacking handlers and referencing undefined `params`. | 0/19 | Implement Azure AD auth, dataset/report endpoints, and register. |

@@ -351,8 +351,47 @@
             "type": "number",
             "description": "Maximum concurrent runs"
           }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    {
+      "id": "execute_sql_statement",
+      "name": "Execute SQL Statement",
+      "description": "Execute a SQL statement against a Databricks SQL warehouse",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string",
+            "description": "SQL warehouse identifier"
+          },
+          "statement": {
+            "type": "string",
+            "description": "SQL statement to execute"
+          },
+          "catalog": {
+            "type": "string",
+            "description": "Optional catalog name"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Optional schema name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Named SQL statement parameters"
+          },
+          "waitTimeoutSeconds": {
+            "type": "number",
+            "description": "Seconds to wait for statement completion"
+          }
         },
-        "required": [],
+        "required": [
+          "warehouse_id",
+          "statement"
+        ],
         "additionalProperties": false
       }
     }

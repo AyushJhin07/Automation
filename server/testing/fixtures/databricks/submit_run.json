@@ -1,0 +1,52 @@
+{
+  "description": "Simulated Databricks job submission via jobs/runs/submit.",
+  "defaults": {
+    "credentials": {
+      "host": "https://adb-example.cloud.databricks.com",
+      "personalAccessToken": "dapi1234567890abcdef"
+    },
+    "notes": "Connector simulator fixture for Databricks job submission"
+  },
+  "params": {
+    "run_name": "Simulator Smoke Run",
+    "existing_cluster_id": "1234-567890-abcd123",
+    "notebook_task": {
+      "notebook_path": "/Shared/SmokeTest",
+      "base_parameters": {
+        "env": "ci"
+      }
+    }
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://adb-example.cloud.databricks.com/api/2.0/jobs/runs/submit",
+    "headers": {
+      "authorization": "Bearer dapi1234567890abcdef"
+    },
+    "body": {
+      "run_name": "Simulator Smoke Run",
+      "existing_cluster_id": "1234-567890-abcd123",
+      "notebook_task": {
+        "notebook_path": "/Shared/SmokeTest",
+        "base_parameters": {
+          "env": "ci"
+        }
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "run_id": 987654321
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "run_id": 987654321
+    }
+  }
+}
