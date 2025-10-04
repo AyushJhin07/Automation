@@ -8,7 +8,7 @@ import { and, asc, desc, eq, gte, gt, inArray, lt, lte, sql } from 'drizzle-orm'
 
 import { NodeGraph, GraphNode } from '../../shared/nodeGraphSchema';
 import type { WorkflowNodeMetadataSnapshot } from '../../shared/workflow/metadata';
-import { db, executionLogs, nodeLogs, nodeExecutionResults } from '../database/schema.js';
+import { db, executionLogs, nodeLogs, nodeExecutionResults, workflows } from '../database/schema.js';
 import { sanitizeLogPayload, appendTimelineEvent } from '../utils/executionLogRedaction';
 import { logAction } from '../utils/actionLog';
 import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
@@ -61,6 +61,7 @@ export interface WorkflowExecution {
   executionId: string;
   workflowId: string;
   workflowName: string;
+  organizationId?: string;
   userId?: string;
   status: 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | 'waiting';
   startTime: Date;
@@ -110,6 +111,7 @@ export interface ExecutionQuery {
   offset?: number;
   sortBy?: 'startTime' | 'duration' | 'status';
   sortOrder?: 'asc' | 'desc';
+  organizationId?: string;
 }
 
 export interface NodeExecutionQueryOptions {
@@ -147,7 +149,8 @@ interface ExecutionLogStore {
     workflow: NodeGraph,
     userId?: string,
     triggerType?: string,
-    triggerData?: any
+    triggerData?: any,
+    organizationId?: string
   ): Promise<WorkflowExecution>;
   startNodeExecution(
     executionId: string,
@@ -169,11 +172,11 @@ interface ExecutionLogStore {
   ): Promise<void>;
   completeExecution(executionId: string, finalOutput?: any, error?: string): Promise<void>;
   markExecutionWaiting(executionId: string, reason?: string, resumeAt?: Date): Promise<void>;
-  getExecution(executionId: string): Promise<WorkflowExecution | undefined>;
+  getExecution(executionId: string, organizationId?: string): Promise<WorkflowExecution | undefined>;
   queryExecutions(query?: ExecutionQuery): Promise<ExecutionQueryResult>;
   getNodeExecutions(executionId: string, options?: NodeExecutionQueryOptions): Promise<NodeExecutionQueryResult>;
-  getExecutionsByCorrelation(correlationId: string): Promise<WorkflowExecution[]>;
-  getExecutionStats(timeframe?: 'hour' | 'day' | 'week'): Promise<{
+  getExecutionsByCorrelation(correlationId: string, organizationId?: string): Promise<WorkflowExecution[]>;
+  getExecutionStats(timeframe?: 'hour' | 'day' | 'week', organizationId?: string): Promise<{
     totalExecutions: number;
     successfulExecutions: number;
     failedExecutions: number;
@@ -249,13 +252,15 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     workflow: NodeGraph,
     userId?: string,
     triggerType?: string,
-    triggerData?: any
+    triggerData?: any,
+    organizationId?: string
   ): Promise<WorkflowExecution> {
     const correlationId = generateCorrelationId();
     const execution: WorkflowExecution = {
       executionId,
       workflowId: workflow.id,
       workflowName: workflow.name,
+      organizationId,
       userId,
       status: 'pending',
       startTime: new Date(),
@@ -426,15 +431,22 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     }
   }
 
-  async getExecution(executionId: string): Promise<WorkflowExecution | undefined> {
+  async getExecution(executionId: string, organizationId?: string): Promise<WorkflowExecution | undefined> {
     const execution = this.executions.get(executionId);
     if (!execution) return undefined;
+    if (organizationId && execution.organizationId && execution.organizationId !== organizationId) {
+      return undefined;
+    }
     execution.nodeExecutions = this.nodeExecutions.get(executionId) || [];
     return execution;
   }
 
   async queryExecutions(query: ExecutionQuery = {}): Promise<ExecutionQueryResult> {
     let executions = Array.from(this.executions.values());
+
+    if (query.organizationId) {
+      executions = executions.filter((e) => e.organizationId === query.organizationId);
+    }
 
     if (query.executionId) {
       executions = executions.filter((e) => e.executionId === query.executionId);
@@ -516,12 +528,20 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     };
   }
 
-  async getExecutionsByCorrelation(correlationId: string): Promise<WorkflowExecution[]> {
+  async getExecutionsByCorrelation(correlationId: string, organizationId?: string): Promise<WorkflowExecution[]> {
     const executionIds = this.correlationIndex.get(correlationId) || [];
-    return executionIds.map((id) => this.executions.get(id)).filter(Boolean) as WorkflowExecution[];
+    const executions = executionIds
+      .map((id) => this.executions.get(id))
+      .filter((execution): execution is WorkflowExecution => Boolean(execution));
+
+    if (!organizationId) {
+      return executions;
+    }
+
+    return executions.filter((execution) => !execution.organizationId || execution.organizationId === organizationId);
   }
 
-  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day'): Promise<{
+  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day', organizationId?: string): Promise<{
     totalExecutions: number;
     successfulExecutions: number;
     failedExecutions: number;
@@ -538,7 +558,11 @@ class InMemoryExecutionLogStore implements ExecutionLogStore {
     }[timeframe];
 
     const cutoff = new Date(now.getTime() - timeframeMs);
-    const recentExecutions = Array.from(this.executions.values()).filter((e) => e.startTime >= cutoff);
+    let recentExecutions = Array.from(this.executions.values()).filter((e) => e.startTime >= cutoff);
+
+    if (organizationId) {
+      recentExecutions = recentExecutions.filter((execution) => !execution.organizationId || execution.organizationId === organizationId);
+    }
 
     const successful = recentExecutions.filter((e) => e.status === 'succeeded');
     const failed = recentExecutions.filter((e) => e.status === 'failed');
@@ -696,7 +720,8 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     workflow: NodeGraph,
     userId?: string,
     triggerType?: string,
-    triggerData?: any
+    triggerData?: any,
+    organizationId?: string
   ): Promise<WorkflowExecution> {
     const correlationId = generateCorrelationId();
     const now = new Date();
@@ -705,6 +730,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       executionId,
       workflowId: workflow.id,
       workflowName: workflow.name,
+      organizationId,
       userId,
       status: 'pending',
       startTime: now,
@@ -1081,15 +1107,17 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     await this.updateExecutionAggregates(executionId);
   }
 
-  async getExecution(executionId: string): Promise<WorkflowExecution | undefined> {
+  async getExecution(executionId: string, organizationId?: string): Promise<WorkflowExecution | undefined> {
     const database = this.getDb();
     if (!database) return undefined;
 
-    const executionRow = await this.getExecutionRow(executionId);
+    const executionRow = await this.getExecutionRow(executionId, organizationId);
     if (!executionRow) return undefined;
 
     const nodes = await this.fetchNodeExecutions(executionId);
-    return this.mapExecutionRow(executionRow, nodes);
+    const execution = this.mapExecutionRow(executionRow, nodes);
+    execution.organizationId = (executionRow as any).organizationId ?? execution.organizationId;
+    return execution;
   }
 
   async queryExecutions(query: ExecutionQuery = {}): Promise<ExecutionQueryResult> {
@@ -1117,6 +1145,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     if (query.dateTo) {
       conditions.push(lte(executionLogs.startTime, query.dateTo));
     }
+    if (query.organizationId) {
+      conditions.push(eq(workflows.organizationId, query.organizationId));
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -1133,8 +1164,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const offset = query.offset ?? 0;
 
     const rows = await database
-      .select()
+      .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
+      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
       .where(whereClause)
       .orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn))
       .limit(limit)
@@ -1143,10 +1175,11 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const [{ value: total = 0 } = { value: 0 }] = await database
       .select({ value: sql<number>`count(*)` })
       .from(executionLogs)
+      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
       .where(whereClause)
       .limit(1);
 
-    const executionIds = rows.map((row) => row.executionId);
+    const executionIds = rows.map((row) => row.execution.executionId);
     const nodeRows = executionIds.length
       ? await database
           .select()
@@ -1162,7 +1195,11 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       nodeMap.set(row.executionId, executionNodes);
     }
 
-    const executions = rows.map((row) => this.mapExecutionRow(row, nodeMap.get(row.executionId) ?? []));
+    const executions = rows.map((row) => {
+      const execution = this.mapExecutionRow(row.execution, nodeMap.get(row.execution.executionId) ?? []);
+      execution.organizationId = row.organizationId ?? execution.organizationId;
+      return execution;
+    });
 
     return {
       executions,
@@ -1210,17 +1247,22 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     };
   }
 
-  async getExecutionsByCorrelation(correlationId: string): Promise<WorkflowExecution[]> {
+  async getExecutionsByCorrelation(correlationId: string, organizationId?: string): Promise<WorkflowExecution[]> {
     const database = this.getDb();
     if (!database) return [];
 
     const rows = await database
-      .select()
+      .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
-      .where(eq(executionLogs.correlationId, correlationId))
+      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .where(
+        organizationId
+          ? and(eq(executionLogs.correlationId, correlationId), eq(workflows.organizationId, organizationId))
+          : eq(executionLogs.correlationId, correlationId)
+      )
       .orderBy(desc(executionLogs.startTime));
 
-    const executionIds = rows.map((row) => row.executionId);
+    const executionIds = rows.map((row) => row.execution.executionId);
     const nodeRows = executionIds.length
       ? await database
           .select()
@@ -1236,10 +1278,14 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       nodeMap.set(row.executionId, executionNodes);
     }
 
-    return rows.map((row) => this.mapExecutionRow(row, nodeMap.get(row.executionId) ?? []));
+    return rows.map((row) => {
+      const execution = this.mapExecutionRow(row.execution, nodeMap.get(row.execution.executionId) ?? []);
+      execution.organizationId = row.organizationId ?? execution.organizationId;
+      return execution;
+    });
   }
 
-  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day'): Promise<{
+  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day', organizationId?: string): Promise<{
     totalExecutions: number;
     successfulExecutions: number;
     failedExecutions: number;
@@ -1270,23 +1316,30 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const cutoff = new Date(Date.now() - timeframeMs);
 
     const rows = await database
-      .select()
+      .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
-      .where(gte(executionLogs.startTime, cutoff));
+      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .where(
+        organizationId
+          ? and(gte(executionLogs.startTime, cutoff), eq(workflows.organizationId, organizationId))
+          : gte(executionLogs.startTime, cutoff)
+      );
 
-    const totalExecutions = rows.length;
-    const successfulExecutions = rows.filter((row) => row.status === 'succeeded').length;
-    const failedExecutions = rows.filter((row) => row.status === 'failed').length;
+    const executions = rows.map((row) => ({ ...row.execution, organizationId: row.organizationId }));
 
-    const totalDuration = rows.reduce((sum, row) => sum + (row.durationMs ?? 0), 0);
+    const totalExecutions = executions.length;
+    const successfulExecutions = executions.filter((row) => row.status === 'succeeded').length;
+    const failedExecutions = executions.filter((row) => row.status === 'failed').length;
 
-    const totalCost = rows.reduce((sum, row) => {
+    const totalDuration = executions.reduce((sum, row) => sum + (row.durationMs ?? 0), 0);
+
+    const totalCost = executions.reduce((sum, row) => {
       const metadata = this.normalizeExecutionMetadata(row.metadata);
       return sum + (metadata.totalCostUSD || 0);
     }, 0);
 
     const workflowCounts = new Map<string, number>();
-    rows.forEach((row) => {
+    executions.forEach((row) => {
       workflowCounts.set(row.workflowId, (workflowCounts.get(row.workflowId) || 0) + 1);
     });
 
@@ -1479,17 +1532,29 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     };
   }
 
-  private async getExecutionRow(executionId: string): Promise<ExecutionLogRow | undefined> {
+  private async getExecutionRow(executionId: string, organizationId?: string): Promise<ExecutionLogRow | undefined> {
     const database = this.getDb();
     if (!database) return undefined;
 
     const rows = await database
-      .select()
+      .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
+      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
       .where(eq(executionLogs.executionId, executionId))
       .limit(1);
 
-    return rows[0];
+    const row = rows[0];
+    if (!row) {
+      return undefined;
+    }
+
+    if (organizationId && row.organizationId && row.organizationId !== organizationId) {
+      return undefined;
+    }
+
+    const executionRow = row.execution as ExecutionLogRow & { organizationId?: string | null };
+    executionRow.organizationId = row.organizationId ?? executionRow.organizationId ?? null;
+    return executionRow;
   }
 
   private async getNodeRow(executionId: string, nodeId: string): Promise<NodeLogRow | undefined> {
@@ -1525,6 +1590,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       executionId: row.executionId,
       workflowId: row.workflowId,
       workflowName: row.workflowName ?? row.workflowId,
+      organizationId: (row as any).organizationId ?? undefined,
       userId: row.userId ?? undefined,
       status: row.status as WorkflowExecution['status'],
       startTime: row.startTime ?? new Date(),
@@ -1678,9 +1744,10 @@ class RunExecutionManager {
     workflow: NodeGraph,
     userId?: string,
     triggerType?: string,
-    triggerData?: any
+    triggerData?: any,
+    organizationId?: string
   ): Promise<WorkflowExecution> {
-    return this.store.startExecution(executionId, workflow, userId, triggerType, triggerData);
+    return this.store.startExecution(executionId, workflow, userId, triggerType, triggerData, organizationId);
   }
 
   async startNodeExecution(
@@ -1718,8 +1785,8 @@ class RunExecutionManager {
     await this.store.markExecutionWaiting(executionId, reason, resumeAt);
   }
 
-  async getExecution(executionId: string): Promise<WorkflowExecution | undefined> {
-    return this.store.getExecution(executionId);
+  async getExecution(executionId: string, organizationId?: string): Promise<WorkflowExecution | undefined> {
+    return this.store.getExecution(executionId, organizationId);
   }
 
   async queryExecutions(query: ExecutionQuery = {}): Promise<ExecutionQueryResult> {
@@ -1733,12 +1800,12 @@ class RunExecutionManager {
     return this.store.getNodeExecutions(executionId, options);
   }
 
-  async getExecutionsByCorrelation(correlationId: string): Promise<WorkflowExecution[]> {
-    return this.store.getExecutionsByCorrelation(correlationId);
+  async getExecutionsByCorrelation(correlationId: string, organizationId?: string): Promise<WorkflowExecution[]> {
+    return this.store.getExecutionsByCorrelation(correlationId, organizationId);
   }
 
-  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day') {
-    return this.store.getExecutionStats(timeframe);
+  async getExecutionStats(timeframe: 'hour' | 'day' | 'week' = 'day', organizationId?: string) {
+    return this.store.getExecutionStats(timeframe, organizationId);
   }
 
   async cleanup(maxAge?: number): Promise<void> {

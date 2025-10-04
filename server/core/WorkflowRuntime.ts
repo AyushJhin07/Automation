@@ -149,7 +149,7 @@ export class WorkflowRuntime {
     }
 
     // Start execution tracking
-    await runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData);
+    await runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData, options.organizationId);
 
     console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
 

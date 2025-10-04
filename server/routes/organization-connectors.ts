@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requirePermission } from '../middleware/auth';
+import { authenticateToken, requirePermission, requireOrganizationContext } from '../middleware/auth';
 import { connectorRegistry } from '../ConnectorRegistry';
 import { connectorEntitlementService } from '../services/ConnectorEntitlementService';
 import { getErrorMessage } from '../types/common';
@@ -19,6 +19,7 @@ const ensureOrganizationContext = (req: any, organizationId: string): boolean =>
 router.get(
   '/:organizationId/connectors/entitlements',
   authenticateToken,
+  requireOrganizationContext(),
   requirePermission(MANAGE_CONNECTORS_PERMISSION),
   async (req, res) => {
     try {
@@ -74,6 +75,7 @@ router.get(
 router.patch(
   '/:organizationId/connectors/:connectorId',
   authenticateToken,
+  requireOrganizationContext(),
   requirePermission(MANAGE_CONNECTORS_PERMISSION),
   async (req, res) => {
     try {
