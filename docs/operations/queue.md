@@ -99,3 +99,41 @@ const detach = registerQueueTelemetry(executionQueue, executionEvents, {
 ```
 
 The factory exports typed job payloads (e.g. `workflow.execute`) so that enqueueing and worker processors receive type-safe payloads throughout the codebase.
+
+## Incident response polling
+
+Administrators can poll the execution infrastructure via `GET /api/admin/workers/status` when triaging queue incidents. The
+endpoint is protected by the standard admin token middleware and returns structured JSON suitable for dashboards or ad-hoc
+scripts. A sample response includes:
+
+```json
+{
+  "success": true,
+  "data": {
+    "timestamp": "2024-05-15T18:19:00.000Z",
+    "executionWorker": {
+      "started": true,
+      "queueDriver": "bullmq",
+      "metrics": {
+        "queueDepths": {
+          "workflow.execute.us": {
+            "waiting": 2,
+            "active": 1,
+            "total": 3
+          }
+        }
+      }
+    },
+    "scheduler": {
+      "preferredStrategy": "postgres",
+      "redis": {
+        "status": "ready"
+      }
+    }
+  }
+}
+```
+
+During an incident, query the endpoint at a low cadence (for example every 30–60 seconds) to watch queue depth, confirm that the
+execution worker remains started, and verify that the scheduler continues to acquire locks. Combine the payload with existing
+telemetry dashboards to quickly spot regional imbalances or lock contention without shelling into the worker containers.

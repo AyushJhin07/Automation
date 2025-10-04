@@ -60,6 +60,7 @@ import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
 import usageAdminRoutes from "./routes/usage";
+import { getSchedulerLockService } from './services/SchedulerLockService.js';
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -2137,7 +2138,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       console.log('🌱 Starting connector seeding via API...');
       const results = await connectorSeeder.seedAllConnectors();
-      
+
       res.json({
         success: true,
         data: results,
@@ -2148,6 +2149,24 @@ export async function registerRoutes(app: Express): Promise<void> {
         success: false,
         error: getErrorMessage(error)
       });
+    }
+  });
+
+  app.get('/api/admin/workers/status', authenticateToken, adminOnly, async (_req, res) => {
+    try {
+      const executionTelemetry = executionQueueService.getTelemetrySnapshot();
+      const schedulerTelemetry = getSchedulerLockService().getTelemetrySnapshot();
+
+      res.json({
+        success: true,
+        data: {
+          timestamp: new Date().toISOString(),
+          executionWorker: executionTelemetry,
+          scheduler: schedulerTelemetry,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
 

@@ -271,6 +271,15 @@ export function updateQueueDepthMetric<Name extends QueueName>(
   latestQueueDepths.set(queueName, stateCounts);
 }
 
+export function getQueueDepthSnapshot(): Record<string, QueueDepthByState> {
+  return Object.fromEntries(
+    Array.from(latestQueueDepths.entries()).map(([queueName, counts]) => [
+      queueName,
+      { ...counts },
+    ])
+  );
+}
+
 export function recordCrossRegionViolation(context: {
   subsystem: string;
   expectedRegion: OrganizationRegion;
