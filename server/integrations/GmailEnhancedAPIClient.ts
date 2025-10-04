@@ -38,7 +38,6 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Send a new email
    */
-  async send({ to: string, subject: string, bodyText?: string, bodyHtml?: string }: { to: string, subject: string, bodyText?: string, bodyHtml?: string }): Promise<any> {
+  async send(params: { to: string, subject: string, bodyText?: string, bodyHtml?: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/send', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Reply to an email thread
    */
-  async reply({ threadId: string, bodyText?: string, bodyHtml?: string }: { threadId: string, bodyText?: string, bodyHtml?: string }): Promise<any> {
+  async reply(params: { threadId: string, bodyText?: string, bodyHtml?: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/reply', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Forward an email
    */
-  async forward({ msgId: string, to: string }: { msgId: string, to: string }): Promise<any> {
+  async forward(params: { msgId: string, to: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/forward', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create an email draft
    */
-  async createDraft({ to: string, subject: string, body: string }: { to: string, subject: string, body: string }): Promise<any> {
+  async createDraft(params: { to: string, subject: string, body: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_draft', params);
       return this.handleResponse(response);
@@ -97,7 +96,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Send an existing draft
    */
-  async sendDraft({ draftId: string }: { draftId: string }): Promise<any> {
+  async sendDraft(params: { draftId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/send_draft', params);
       return this.handleResponse(response);
@@ -109,7 +108,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Add a label to a message
    */
-  async addLabel({ msgId: string, label: string }: { msgId: string, label: string }): Promise<any> {
+  async addLabel(params: { msgId: string, label: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/add_label', params);
       return this.handleResponse(response);
@@ -121,7 +120,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Remove a label from a message
    */
-  async removeLabel({ msgId: string, label: string }: { msgId: string, label: string }): Promise<any> {
+  async removeLabel(params: { msgId: string, label: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/remove_label', params);
       return this.handleResponse(response);
@@ -133,7 +132,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Mark a message as read
    */
-  async markRead({ msgId: string }: { msgId: string }): Promise<any> {
+  async markRead(params: { msgId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/mark_read', params);
       return this.handleResponse(response);
@@ -145,7 +144,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Mark a message as unread
    */
-  async markUnread({ msgId: string }: { msgId: string }): Promise<any> {
+  async markUnread(params: { msgId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/mark_unread', params);
       return this.handleResponse(response);
@@ -157,7 +156,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Batch modify multiple messages
    */
-  async batchModify({ messageIds: any[], add?: any[], remove?: any[] }: { messageIds: any[], add?: any[], remove?: any[] }): Promise<any> {
+  async batchModify(params: { messageIds: any[], add?: any[], remove?: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/batch_modify', params);
       return this.handleResponse(response);
@@ -170,7 +169,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a new email is received
    */
-  async pollNewEmail({ query?: string }: { query?: string }): Promise<any[]> {
+  async pollNewEmail(params: { query?: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/new_email', params);
       const data = this.handleResponse(response);
@@ -184,7 +183,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a specific label is added
    */
-  async pollLabelAdded({ label: string }: { label: string }): Promise<any[]> {
+  async pollLabelAdded(params: { label: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/label_added', params);
       const data = this.handleResponse(response);
@@ -198,7 +197,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when an email with attachment is received
    */
-  async pollAttachmentReceived({ minSizeKb?: number, query?: string }: { minSizeKb?: number, query?: string }): Promise<any[]> {
+  async pollAttachmentReceived(params: { minSizeKb?: number, query?: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/attachment_received', params);
       const data = this.handleResponse(response);
@@ -212,7 +211,7 @@ export class GmailEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when an email thread is updated
    */
-  async pollThreadUpdated({ query?: string }: { query?: string }): Promise<any[]> {
+  async pollThreadUpdated(params: { query?: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/thread_updated', params);
       const data = this.handleResponse(response);

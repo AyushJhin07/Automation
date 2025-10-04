@@ -925,9 +925,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Reload connectors from disk (dev utility)
-  app.post('/api/registry/reload', (req, res) => {
+  app.post('/api/registry/reload', async (req, res) => {
     try {
-      connectorRegistry.reload();
+      await connectorRegistry.reload();
       res.json({ success: true, message: 'Connector registry reloaded' });
     } catch (e) {
       res.status(500).json({ success: false, error: String(e) });
@@ -1272,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Refresh registry (reload from files)
   app.post('/api/registry/refresh', adminOnly, async (req, res) => {
     try {
-      connectorRegistry.refresh();
+      await connectorRegistry.refresh();
       const stats = connectorRegistry.getRegistryStats();
       res.json({ success: true, message: 'Registry refreshed', stats });
     } catch (error) {

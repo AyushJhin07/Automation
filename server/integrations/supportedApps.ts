@@ -79,23 +79,24 @@ function buildRegistryImplementations(): ConnectorImplementationEntry[] {
   return entries;
 }
 
-const IMPLEMENTATIONS: ConnectorImplementationEntry[] = [
-  ...buildRegistryImplementations(),
-  ...LOCAL_IMPLEMENTATIONS
-];
-
-const IMPLEMENTATION_MAP = new Map<string, ConnectorImplementationEntry>(
-  IMPLEMENTATIONS.map(entry => [entry.id, entry])
-);
-
-export const IMPLEMENTED_CONNECTOR_IDS = IMPLEMENTATIONS.map(entry => entry.id);
-export const IMPLEMENTED_CONNECTOR_SET = new Set<string>(IMPLEMENTED_CONNECTOR_IDS);
-export type ImplementedConnectorId = typeof IMPLEMENTED_CONNECTOR_IDS[number];
-
-export function getImplementedConnector(appId: string): ConnectorImplementationEntry | undefined {
-  return IMPLEMENTATION_MAP.get(appId);
+function computeImplementations(): ConnectorImplementationEntry[] {
+  return [...buildRegistryImplementations(), ...LOCAL_IMPLEMENTATIONS];
 }
 
 export function listImplementedConnectors(): ConnectorImplementationEntry[] {
-  return [...IMPLEMENTATION_MAP.values()];
+  return computeImplementations();
 }
+
+export function getImplementedConnector(appId: string): ConnectorImplementationEntry | undefined {
+  return computeImplementations().find(entry => entry.id === appId);
+}
+
+export function getImplementedConnectorIds(): string[] {
+  return computeImplementations().map(entry => entry.id);
+}
+
+export function getImplementedConnectorSet(): Set<string> {
+  return new Set(getImplementedConnectorIds());
+}
+
+export type ImplementedConnectorId = ReturnType<typeof getImplementedConnectorIds>[number];

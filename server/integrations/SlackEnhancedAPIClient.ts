@@ -38,7 +38,6 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/auth/test');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Post a message to a channel
    */
-  async postMessage({ channel: string, text: string, blocksJson?: Record<string, any> }: { channel: string, text: string, blocksJson?: Record<string, any> }): Promise<any> {
+  async postMessage(params: { channel: string, text: string, blocksJson?: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/post_message', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Reply to a message in a thread
    */
-  async replyInThread({ channel: string, threadTs: string, text: string }: { channel: string, threadTs: string, text: string }): Promise<any> {
+  async replyInThread(params: { channel: string, threadTs: string, text: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/reply_in_thread', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Update an existing message
    */
-  async updateMessage({ channel: string, ts: string, text: string }: { channel: string, ts: string, text: string }): Promise<any> {
+  async updateMessage(params: { channel: string, ts: string, text: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_message', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Delete a message
    */
-  async deleteMessage({ channel: string, ts: string }: { channel: string, ts: string }): Promise<any> {
+  async deleteMessage(params: { channel: string, ts: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/delete_message', params);
       return this.handleResponse(response);
@@ -97,7 +96,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Schedule a message for later
    */
-  async scheduleMessage({ channel: string, text: string, postAt: string }: { channel: string, text: string, postAt: string }): Promise<any> {
+  async scheduleMessage(params: { channel: string, text: string, postAt: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/schedule_message', params);
       return this.handleResponse(response);
@@ -109,7 +108,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Add a reaction to a message
    */
-  async addReaction({ channel: string, ts: string, name: string }: { channel: string, ts: string, name: string }): Promise<any> {
+  async addReaction(params: { channel: string, ts: string, name: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/add_reaction', params);
       return this.handleResponse(response);
@@ -121,7 +120,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Remove a reaction from a message
    */
-  async removeReaction({ channel: string, ts: string, name: string }: { channel: string, ts: string, name: string }): Promise<any> {
+  async removeReaction(params: { channel: string, ts: string, name: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/remove_reaction', params);
       return this.handleResponse(response);
@@ -133,7 +132,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Set the topic for a channel
    */
-  async setTopic({ channel: string, topic: string }: { channel: string, topic: string }): Promise<any> {
+  async setTopic(params: { channel: string, topic: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/set_topic', params);
       return this.handleResponse(response);
@@ -145,7 +144,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Set the purpose for a channel
    */
-  async setPurpose({ channel: string, purpose: string }: { channel: string, purpose: string }): Promise<any> {
+  async setPurpose(params: { channel: string, purpose: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/set_purpose', params);
       return this.handleResponse(response);
@@ -157,7 +156,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Invite a user to a channel
    */
-  async inviteUser({ channel: string, userId: string }: { channel: string, userId: string }): Promise<any> {
+  async inviteUser(params: { channel: string, userId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/invite_user', params);
       return this.handleResponse(response);
@@ -169,7 +168,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Remove a user from a channel
    */
-  async kickUser({ channel: string, userId: string }: { channel: string, userId: string }): Promise<any> {
+  async kickUser(params: { channel: string, userId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/kick_user', params);
       return this.handleResponse(response);
@@ -181,7 +180,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Upload a file to a channel
    */
-  async uploadFile({ channel: string, filename: string, base64: string }: { channel: string, filename: string, base64: string }): Promise<any> {
+  async uploadFile(params: { channel: string, filename: string, base64: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/upload_file', params);
       return this.handleResponse(response);
@@ -194,7 +193,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a message is posted
    */
-  async pollMessagePosted({ channel: string }: { channel: string }): Promise<any[]> {
+  async pollMessagePosted(params: { channel: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/message_posted', params);
       const data = this.handleResponse(response);
@@ -208,7 +207,7 @@ export class SlackEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a message is edited
    */
-  async pollMessageEdited({ channel: string }: { channel: string }): Promise<any[]> {
+  async pollMessageEdited(params: { channel: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/message_edited', params);
       const data = this.handleResponse(response);

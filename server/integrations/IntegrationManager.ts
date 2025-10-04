@@ -7,7 +7,7 @@ import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
 import { ShopifyAPIClient } from './ShopifyAPIClient';
 import { SlackAPIClient } from './SlackAPIClient';
-import { IMPLEMENTED_CONNECTOR_IDS } from './supportedApps';
+import { getImplementedConnectorIds } from './supportedApps';
 import { connectorRegistry } from '../ConnectorRegistry';
 import { genericExecutor } from './GenericExecutor';
 import { env } from '../env';
@@ -63,7 +63,7 @@ export interface IntegrationManagerOptions {
 
 export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
-  private supportedApps = new Set(IMPLEMENTED_CONNECTOR_IDS);
+  private supportedApps = new Set(getImplementedConnectorIds());
   private simulator?: ConnectorSimulator;
 
   constructor(options: IntegrationManagerOptions = {}) {

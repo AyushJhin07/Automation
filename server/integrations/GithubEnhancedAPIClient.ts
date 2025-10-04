@@ -38,7 +38,6 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create a new issue
    */
-  async createIssue({ repo: string, title: string, body?: string }: { repo: string, title: string, body?: string }): Promise<any> {
+  async createIssue(params: { repo: string, title: string, body?: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_issue', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Add a comment to an issue
    */
-  async commentIssue({ repo: string, issueNumber: number, body: string }: { repo: string, issueNumber: number, body: string }): Promise<any> {
+  async commentIssue(params: { repo: string, issueNumber: number, body: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/comment_issue', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create a new release
    */
-  async createRelease({ repo: string, tag: string, name?: string, body?: string }: { repo: string, tag: string, name?: string, body?: string }): Promise<any> {
+  async createRelease(params: { repo: string, tag: string, name?: string, body?: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_release', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Trigger a workflow dispatch event
    */
-  async dispatchWorkflow({ repo: string, workflowFile: string, ref: string, inputs?: Record<string, any> }: { repo: string, workflowFile: string, ref: string, inputs?: Record<string, any> }): Promise<any> {
+  async dispatchWorkflow(params: { repo: string, workflowFile: string, ref: string, inputs?: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/dispatch_workflow', params);
       return this.handleResponse(response);
@@ -97,7 +96,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Add labels to an issue
    */
-  async addLabel({ repo: string, issueNumber: number, labels: any[] }: { repo: string, issueNumber: number, labels: any[] }): Promise<any> {
+  async addLabel(params: { repo: string, issueNumber: number, labels: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/add_label', params);
       return this.handleResponse(response);
@@ -110,7 +109,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when an issue is opened
    */
-  async pollIssueOpened({ repo: string }: { repo: string }): Promise<any[]> {
+  async pollIssueOpened(params: { repo: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/issue_opened', params);
       const data = this.handleResponse(response);
@@ -124,7 +123,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when an issue is commented
    */
-  async pollIssueCommented({ repo: string }: { repo: string }): Promise<any[]> {
+  async pollIssueCommented(params: { repo: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/issue_commented', params);
       const data = this.handleResponse(response);
@@ -138,7 +137,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a pull request is opened
    */
-  async pollPullRequestOpened({ repo: string }: { repo: string }): Promise<any[]> {
+  async pollPullRequestOpened(params: { repo: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/pull_request_opened', params);
       const data = this.handleResponse(response);
@@ -152,7 +151,7 @@ export class GithubEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a release is published
    */
-  async pollReleasePublished({ repo: string }: { repo: string }): Promise<any[]> {
+  async pollReleasePublished(params: { repo: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/release_published', params);
       const data = this.handleResponse(response);

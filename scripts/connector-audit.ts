@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 import { ConnectorRegistry, connectorRegistry } from '../server/ConnectorRegistry';
 import ts from 'typescript';
 
+await connectorRegistry.init();
+
 type ConnectorStatus = 'stable' | 'experimental' | 'disabled';
 
 interface ClientAnalysisResult {
@@ -393,4 +395,3 @@ main().catch(error => {
   console.error('Connector audit failed:', error);
   process.exitCode = 1;
 });
-

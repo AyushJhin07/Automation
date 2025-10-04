@@ -35,7 +35,6 @@ export class GreenhouseAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -46,7 +45,7 @@ export class GreenhouseAPIClient extends BaseAPIClient {
   /**
    * Create a new candidate
    */
-  async createCandidate({ firstName: string, lastName: string, email: string, phone?: string }: { firstName: string, lastName: string, email: string, phone?: string }): Promise<any> {
+  async createCandidate(params: { firstName: string, lastName: string, email: string, phone?: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_candidate', params);
       return this.handleResponse(response);
@@ -58,7 +57,7 @@ export class GreenhouseAPIClient extends BaseAPIClient {
   /**
    * Update candidate information
    */
-  async updateCandidate({ candidateId: string, updates: Record<string, any> }: { candidateId: string, updates: Record<string, any> }): Promise<any> {
+  async updateCandidate(params: { candidateId: string, updates: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_candidate', params);
       return this.handleResponse(response);
@@ -70,7 +69,7 @@ export class GreenhouseAPIClient extends BaseAPIClient {
   /**
    * Move candidate to next stage
    */
-  async advanceStage({ applicationId: string, stageId: string }: { applicationId: string, stageId: string }): Promise<any> {
+  async advanceStage(params: { applicationId: string, stageId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/advance_stage', params);
       return this.handleResponse(response);
@@ -82,7 +81,7 @@ export class GreenhouseAPIClient extends BaseAPIClient {
   /**
    * Schedule an interview
    */
-  async scheduleInterview({ applicationId: string, interviewerId: string, startTime: string, endTime: string }: { applicationId: string, interviewerId: string, startTime: string, endTime: string }): Promise<any> {
+  async scheduleInterview(params: { applicationId: string, interviewerId: string, startTime: string, endTime: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/schedule_interview', params);
       return this.handleResponse(response);
@@ -94,7 +93,7 @@ export class GreenhouseAPIClient extends BaseAPIClient {
   /**
    * Add note to candidate
    */
-  async addNote({ candidateId: string, message: string }: { candidateId: string, message: string }): Promise<any> {
+  async addNote(params: { candidateId: string, message: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/add_note', params);
       return this.handleResponse(response);

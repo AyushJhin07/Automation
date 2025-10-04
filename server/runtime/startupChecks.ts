@@ -43,6 +43,12 @@ async function ensureConnectorCatalog(): Promise<void> {
 
   console.log(`✅ Startup check: parsed ${parsed} connector definitions from ${connectorDir}`);
 
+  // In constrained local/dev environments we may intentionally skip database validation
+  // to allow the API to boot without a live database connection.
+  if (process.env.SKIP_DB_VALIDATION === 'true') {
+    return;
+  }
+
   if (db) {
     try {
       const [{ value: storedCount }] = await db.select({ value: count() }).from(connectorDefinitions);

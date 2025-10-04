@@ -38,7 +38,6 @@ export class BasecampAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/user');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class BasecampAPIClient extends BaseAPIClient {
   /**
    * Create a new record in Basecamp
    */
-  async createRecord({ data: Record<string, any> }: { data: Record<string, any> }): Promise<any> {
+  async createRecord(params: { data: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_record', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class BasecampAPIClient extends BaseAPIClient {
   /**
    * Update an existing record in Basecamp
    */
-  async updateRecord({ id: string, data: Record<string, any> }: { id: string, data: Record<string, any> }): Promise<any> {
+  async updateRecord(params: { id: string, data: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_record', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class BasecampAPIClient extends BaseAPIClient {
   /**
    * Retrieve a record from Basecamp
    */
-  async getRecord({ id: string }: { id: string }): Promise<any> {
+  async getRecord(params: { id: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/get_record', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class BasecampAPIClient extends BaseAPIClient {
   /**
    * List records from Basecamp
    */
-  async listRecords({ limit?: number, filter?: Record<string, any> }: { limit?: number, filter?: Record<string, any> }): Promise<any> {
+  async listRecords(params: { limit?: number, filter?: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/list_records', params);
       return this.handleResponse(response);
@@ -97,7 +96,7 @@ export class BasecampAPIClient extends BaseAPIClient {
   /**
    * Delete a record from Basecamp
    */
-  async deleteRecord({ id: string }: { id: string }): Promise<any> {
+  async deleteRecord(params: { id: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/delete_record', params);
       return this.handleResponse(response);

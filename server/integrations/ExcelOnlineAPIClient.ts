@@ -38,7 +38,6 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Add a row to an Excel worksheet
    */
-  async addRow({ workbookId: string, worksheet: string, values: any[] }: { workbookId: string, worksheet: string, values: any[] }): Promise<any> {
+  async addRow(params: { workbookId: string, worksheet: string, values: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/add_row', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Update a row in an Excel worksheet
    */
-  async updateRow({ workbookId: string, worksheet: string, rowIndex: number, values: any[] }: { workbookId: string, worksheet: string, rowIndex: number, values: any[] }): Promise<any> {
+  async updateRow(params: { workbookId: string, worksheet: string, rowIndex: number, values: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_row', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Get values from a range in Excel
    */
-  async getRange({ workbookId: string, worksheet: string, rangeA1: string }: { workbookId: string, worksheet: string, rangeA1: string }): Promise<any> {
+  async getRange(params: { workbookId: string, worksheet: string, rangeA1: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/get_range', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Create a table in Excel
    */
-  async createTable({ workbookId: string, worksheet: string, rangeA1: string }: { workbookId: string, worksheet: string, rangeA1: string }): Promise<any> {
+  async createTable(params: { workbookId: string, worksheet: string, rangeA1: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_table', params);
       return this.handleResponse(response);
@@ -98,7 +97,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a row is added
    */
-  async pollRowAdded({ workbookId: string, worksheet: string }: { workbookId: string, worksheet: string }): Promise<any[]> {
+  async pollRowAdded(params: { workbookId: string, worksheet: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/row_added', params);
       const data = this.handleResponse(response);
@@ -112,7 +111,7 @@ export class ExcelOnlineAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a row is updated
    */
-  async pollRowUpdated({ workbookId: string, worksheet: string }: { workbookId: string, worksheet: string }): Promise<any[]> {
+  async pollRowUpdated(params: { workbookId: string, worksheet: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/row_updated', params);
       const data = this.handleResponse(response);

@@ -8,7 +8,8 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "npm run check:deps && npx drizzle-kit push && NODE_ENV=development tsx server/index.ts",
+    "dev": "npm run check:deps && NODE_ENV=development tsx server/index.ts",
+    "dev:alt": "SKIP_DB_VALIDATION=true DISABLE_VITE=true NODE_ENV=development DATABASE_URL=postgresql://user:pass@db.local/automation npm run build:server && node dist/index.js",
     "dev:fast": "npx drizzle-kit push && NODE_ENV=development tsx server/index.ts",
     "dev:api": "NODE_ENV=development tsx watch server/index.ts",
     "dev:worker": "NODE_ENV=development tsx watch server/workers/execution.ts",
@@ -164,7 +165,8 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
-    "vite": "^5.4.14"
+    "vite": "^5.4.14",
+    "vitest": "3.2.4"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

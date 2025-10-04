@@ -35,7 +35,6 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -46,7 +45,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create a new record in a table
    */
-  async createRecord({ baseId: string, table: string, fields: Record<string, any> }: { baseId: string, table: string, fields: Record<string, any> }): Promise<any> {
+  async createRecord(params: { baseId: string, table: string, fields: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_record', params);
       return this.handleResponse(response);
@@ -58,7 +57,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Update an existing record
    */
-  async updateRecord({ baseId: string, table: string, recordId: string, fields: Record<string, any> }: { baseId: string, table: string, recordId: string, fields: Record<string, any> }): Promise<any> {
+  async updateRecord(params: { baseId: string, table: string, recordId: string, fields: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_record', params);
       return this.handleResponse(response);
@@ -70,7 +69,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create or update a record based on a key field
    */
-  async upsertRecord({ baseId: string, table: string, keyField: string, fields: Record<string, any> }: { baseId: string, table: string, keyField: string, fields: Record<string, any> }): Promise<any> {
+  async upsertRecord(params: { baseId: string, table: string, keyField: string, fields: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/upsert_record', params);
       return this.handleResponse(response);
@@ -82,7 +81,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Bulk create or update multiple records
    */
-  async bulkUpsert({ baseId: string, table: string, records: any[] }: { baseId: string, table: string, records: any[] }): Promise<any> {
+  async bulkUpsert(params: { baseId: string, table: string, records: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/bulk_upsert', params);
       return this.handleResponse(response);
@@ -94,7 +93,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Delete a record
    */
-  async deleteRecord({ baseId: string, table: string, recordId: string }: { baseId: string, table: string, recordId: string }): Promise<any> {
+  async deleteRecord(params: { baseId: string, table: string, recordId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/delete_record', params);
       return this.handleResponse(response);
@@ -106,7 +105,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Find records with filters
    */
-  async findRecords({ baseId: string, table: string, filterFormula?: string, maxRecords?: number }: { baseId: string, table: string, filterFormula?: string, maxRecords?: number }): Promise<any> {
+  async findRecords(params: { baseId: string, table: string, filterFormula?: string, maxRecords?: number }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/find_records', params);
       return this.handleResponse(response);
@@ -119,7 +118,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a record is created
    */
-  async pollRecordCreated({ baseId: string, table: string }: { baseId: string, table: string }): Promise<any[]> {
+  async pollRecordCreated(params: { baseId: string, table: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/record_created', params);
       const data = this.handleResponse(response);
@@ -133,7 +132,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a record is updated
    */
-  async pollRecordUpdated({ baseId: string, table: string }: { baseId: string, table: string }): Promise<any[]> {
+  async pollRecordUpdated(params: { baseId: string, table: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/record_updated', params);
       const data = this.handleResponse(response);
@@ -147,7 +146,7 @@ export class AirtableEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a record is deleted
    */
-  async pollRecordDeleted({ baseId: string, table: string }: { baseId: string, table: string }): Promise<any[]> {
+  async pollRecordDeleted(params: { baseId: string, table: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/record_deleted', params);
       const data = this.handleResponse(response);

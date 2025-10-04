@@ -156,6 +156,7 @@ export class ConnectorRegistry {
   private integrationsPath: string | null = null;
   private apiClients: Map<string, APIClientConstructor> = new Map();
   private manifestMetadataCache: Map<string, ConnectorManifestMetadata> = new Map();
+  private initPromise: Promise<void> | null = null;
 
   private readonly pricingTierRank: Record<ConnectorPricingTier, number> = {
     free: 0,
@@ -183,8 +184,17 @@ export class ConnectorRegistry {
 
     console.log('[ConnectorRegistry] Using connector manifest:', this.connectorManifestPath);
     console.log('[ConnectorRegistry] Using connectorsPath:', this.connectorsPath);
+  }
 
-    this.initializeAPIClients();
+  public async init(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = this.initialize();
+    }
+    return this.initPromise;
+  }
+
+  private async initialize(): Promise<void> {
+    await this.initializeAPIClients();
     this.loadAllConnectors();
     this.enforceStartupParity();
   }
@@ -322,35 +332,12 @@ export class ConnectorRegistry {
     return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
   }
 
-  private importModuleSync(modulePath: string): Record<string, unknown> {
+  private async importModule(modulePath: string): Promise<Record<string, unknown>> {
     const url = pathToFileURL(modulePath).href;
-    const sab = new SharedArrayBuffer(4);
-    const view = new Int32Array(sab);
-    let result: Record<string, unknown> | null = null;
-    let error: unknown;
-
-    import(url)
-      .then(mod => {
-        result = mod as Record<string, unknown>;
-        Atomics.store(view, 0, 1);
-        Atomics.notify(view, 0);
-      })
-      .catch(err => {
-        error = err;
-        Atomics.store(view, 0, 1);
-        Atomics.notify(view, 0);
-      });
-
-    Atomics.wait(view, 0, 0);
-
-    if (error) {
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-
-    return result ?? {};
+    return (await import(url)) as Record<string, unknown>;
   }
 
-  private loadAPIClientConstructors(): Map<string, APIClientConstructor> {
+  private async loadAPIClientConstructors(): Promise<Map<string, APIClientConstructor>> {
     const constructors = new Map<string, APIClientConstructor>();
 
     if (!this.integrationsPath) {
@@ -424,7 +411,7 @@ export class ConnectorRegistry {
     }
 
     for (const [id, info] of candidateConstructors) {
-      const moduleExports = this.importModuleSync(info.absolutePath);
+      const moduleExports = await this.importModule(info.absolutePath);
       const exported = moduleExports[info.exportName];
       if (typeof exported !== 'function') {
         throw new Error(`[ConnectorRegistry] Expected ${info.exportName} to export a constructor from ${info.absolutePath}`);
@@ -439,7 +426,7 @@ export class ConnectorRegistry {
   /**
    * Initialize available API clients
    */
-  private initializeAPIClients(): void {
+  private async initializeAPIClients(): Promise<void> {
     this.apiClients.clear();
 
     if (!this.manifestEntries.length) {
@@ -447,7 +434,7 @@ export class ConnectorRegistry {
       return;
     }
 
-    const constructors = this.loadAPIClientConstructors();
+    const constructors = await this.loadAPIClientConstructors();
     constructors.forEach((ctor, appId) => {
       this.apiClients.set(appId, ctor);
     });
@@ -948,10 +935,10 @@ export class ConnectorRegistry {
   /**
    * Refresh registry (reload from files)
    */
-  public refresh(): void {
+  public async refresh(): Promise<void> {
     this.manifestEntries = this.loadConnectorManifest();
     this.connectorsPath = this.deriveConnectorsPath();
-    this.initializeAPIClients();
+    await this.initializeAPIClients();
     this.registry.clear();
     this.loadAllConnectors();
     this.enforceStartupParity();
@@ -986,8 +973,8 @@ export class ConnectorRegistry {
   /**
    * Reload connectors from disk (dev utility)
    */
-  public reload(): void {
-    this.refresh();
+  public async reload(): Promise<void> {
+    await this.refresh();
   }
 
   /**

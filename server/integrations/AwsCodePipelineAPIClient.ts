@@ -1,5 +1,6 @@
 import type {
   ActionTypeId,
+  CodePipelineClient,
   CodePipelineClientConfig,
   StageDeclaration
 } from './aws/stubs/codepipeline';
@@ -71,17 +72,19 @@ function sanitizeSessionToken(credentials: AwsCodePipelineCredentials): string |
   );
 }
 
-const {
-  CodePipelineClient,
-  CreatePipelineCommand,
-  GetPipelineStateCommand,
-  ListPipelinesCommand,
-  StartPipelineExecutionCommand,
-  StopPipelineExecutionCommand
-} = await loadCodePipelineSdk();
+type CodePipelineSdk = Awaited<ReturnType<typeof loadCodePipelineSdk>>;
+
+let codePipelineSdkPromise: Promise<CodePipelineSdk> | null = null;
+
+const getCodePipelineSdk = (): Promise<CodePipelineSdk> => {
+  if (!codePipelineSdkPromise) {
+    codePipelineSdkPromise = loadCodePipelineSdk();
+  }
+  return codePipelineSdkPromise;
+};
 
 export class AwsCodePipelineAPIClient extends BaseAPIClient {
-  private readonly client: CodePipelineClient;
+  private readonly sdkPromise: Promise<{ client: CodePipelineClient; module: CodePipelineSdk }>;
   private readonly region: string;
 
   constructor(credentials: AwsCodePipelineCredentials) {
@@ -113,7 +116,10 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
       }
     };
 
-    this.client = codePipelineClient ?? new CodePipelineClient(config);
+    this.sdkPromise = getCodePipelineSdk().then((module) => ({
+      client: (codePipelineClient ?? new module.CodePipelineClient(config)) as CodePipelineClient,
+      module: module as unknown,
+    }));
     this.region = region;
 
     this.registerHandlers({
@@ -131,7 +137,9 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
 
   public async testConnection(): Promise<APIResponse<any>> {
     try {
-      const response = await this.client.send(new ListPipelinesCommand({ MaxResults: 1 }));
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = (await client.send(new commands.ListPipelinesCommand({ MaxResults: 1 }))) as any;
       return {
         success: true,
         data: {
@@ -152,7 +160,9 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
       this.validateRequiredParams(params as Record<string, any>, ['name', 'role_arn', 'source_provider', 'repository']);
 
       const pipeline = this.buildPipelineDefinition(params);
-      const response = await this.client.send(new CreatePipelineCommand({ pipeline }));
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.CreatePipelineCommand({ pipeline }));
       return {
         success: true,
         data: response
@@ -169,7 +179,9 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
     try {
       this.validateRequiredParams(params as Record<string, any>, ['name']);
 
-      const response = await this.client.send(new StartPipelineExecutionCommand({
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.StartPipelineExecutionCommand({
         name: params.name
       }));
       return {
@@ -188,7 +200,9 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
     try {
       this.validateRequiredParams(params as Record<string, any>, ['name']);
 
-      const response = await this.client.send(new GetPipelineStateCommand({
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.GetPipelineStateCommand({
         name: params.name
       }));
       return {
@@ -207,7 +221,9 @@ export class AwsCodePipelineAPIClient extends BaseAPIClient {
     try {
       this.validateRequiredParams(params as Record<string, any>, ['name', 'execution_id']);
 
-      const response = await this.client.send(new StopPipelineExecutionCommand({
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.StopPipelineExecutionCommand({
         name: params.name,
         pipelineExecutionId: params.execution_id
       }));

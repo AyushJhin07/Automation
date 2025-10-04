@@ -1,4 +1,4 @@
-import type { CloudFormationClientConfig } from './aws/stubs/cloudformation';
+import type { CloudFormationClient, CloudFormationClientConfig } from './aws/stubs/cloudformation';
 
 import { loadCloudFormationSdk } from './aws/sdk-loader';
 
@@ -74,17 +74,19 @@ function sanitizeSessionToken(credentials: AwsCloudFormationCredentials): string
   );
 }
 
-const {
-  CloudFormationClient,
-  CreateStackCommand,
-  DeleteStackCommand,
-  DescribeStacksCommand,
-  ListStacksCommand,
-  UpdateStackCommand
-} = await loadCloudFormationSdk();
+type CloudFormationSdk = Awaited<ReturnType<typeof loadCloudFormationSdk>>;
+
+let cloudFormationSdkPromise: Promise<CloudFormationSdk> | null = null;
+
+const getCloudFormationSdk = (): Promise<CloudFormationSdk> => {
+  if (!cloudFormationSdkPromise) {
+    cloudFormationSdkPromise = loadCloudFormationSdk();
+  }
+  return cloudFormationSdkPromise;
+};
 
 export class AwsCloudFormationAPIClient extends BaseAPIClient {
-  private readonly client: CloudFormationClient;
+  private readonly sdkPromise: Promise<{ client: CloudFormationClient; module: CloudFormationSdk }>;
   private readonly region: string;
 
   constructor(credentials: AwsCloudFormationCredentials) {
@@ -116,7 +118,10 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
       }
     };
 
-    this.client = cloudFormationClient ?? new CloudFormationClient(config);
+    this.sdkPromise = getCloudFormationSdk().then((module) => ({
+      client: (cloudFormationClient ?? new module.CloudFormationClient(config)) as CloudFormationClient,
+      module: module as unknown,
+    }));
     this.region = region;
 
     this.registerHandlers({
@@ -134,7 +139,9 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
 
   public async testConnection(): Promise<APIResponse<any>> {
     try {
-      const response = await this.client.send(new ListStacksCommand({ MaxResults: 1 }));
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = (await client.send(new commands.ListStacksCommand({ MaxResults: 1 }))) as any;
       return {
         success: true,
         data: {
@@ -155,7 +162,9 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
       this.validateRequiredParams(params as Record<string, any>, ['stack_name']);
 
       const input = this.buildStackCommandInput(params);
-      const response = await this.client.send(new CreateStackCommand(input));
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.CreateStackCommand(input));
       return {
         success: true,
         data: response
@@ -173,7 +182,9 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
       this.validateRequiredParams(params as Record<string, any>, ['stack_name']);
 
       const input = this.buildStackCommandInput(params);
-      const response = await this.client.send(new UpdateStackCommand(input));
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.UpdateStackCommand(input));
       return {
         success: true,
         data: response
@@ -190,7 +201,9 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
     try {
       this.validateRequiredParams(params as Record<string, any>, ['stack_name']);
 
-      const response = await this.client.send(new DeleteStackCommand({
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = await client.send(new commands.DeleteStackCommand({
         StackName: params.stack_name
       }));
       return {
@@ -209,9 +222,11 @@ export class AwsCloudFormationAPIClient extends BaseAPIClient {
     try {
       this.validateRequiredParams(params as Record<string, any>, ['stack_name']);
 
-      const response = await this.client.send(new DescribeStacksCommand({
+      const { client, module } = await this.sdkPromise;
+      const commands = module as Record<string, any>;
+      const response = (await client.send(new commands.DescribeStacksCommand({
         StackName: params.stack_name
-      }));
+      }))) as any;
 
       const stack = response.Stacks?.[0];
       return {

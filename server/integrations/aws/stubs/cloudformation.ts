@@ -22,7 +22,7 @@ export class CloudFormationClient {
     this.config = config;
   }
 
-  async send(): Promise<never> {
+  async send(_command?: unknown): Promise<any> {
     throw new Error(
       'CloudFormationClient stub cannot execute commands. Install @aws-sdk/client-cloudformation to enable live operations.'
     );

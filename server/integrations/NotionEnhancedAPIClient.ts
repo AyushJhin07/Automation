@@ -38,7 +38,6 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
     try {
       const response = await this.makeRequest('GET', '/');
       return response.status === 200;
-      return true;
     } catch (error) {
       console.error(`❌ ${this.constructor.name} connection test failed:`, error);
       return false;
@@ -49,7 +48,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Update an existing page
    */
-  async updatePage({ pageId: string, properties: Record<string, any> }: { pageId: string, properties: Record<string, any> }): Promise<any> {
+  async updatePage(params: { pageId: string, properties: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_page', params);
       return this.handleResponse(response);
@@ -61,7 +60,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Archive a page
    */
-  async archivePage({ pageId: string }: { pageId: string }): Promise<any> {
+  async archivePage(params: { pageId: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/archive_page', params);
       return this.handleResponse(response);
@@ -73,7 +72,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Query a database with filters and sorts
    */
-  async queryDatabase({ databaseId: string, filter?: Record<string, any>, sorts?: any[] }: { databaseId: string, filter?: Record<string, any>, sorts?: any[] }): Promise<any> {
+  async queryDatabase(params: { databaseId: string, filter?: Record<string, any>, sorts?: any[] }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/query_database', params);
       return this.handleResponse(response);
@@ -85,7 +84,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Append a block to a page
    */
-  async appendBlock({ pageId: string, blockJson: Record<string, any> }: { pageId: string, blockJson: Record<string, any> }): Promise<any> {
+  async appendBlock(params: { pageId: string, blockJson: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/append_block', params);
       return this.handleResponse(response);
@@ -97,7 +96,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Create a new database
    */
-  async createDatabase({ parentPageId: string, schema: Record<string, any> }: { parentPageId: string, schema: Record<string, any> }): Promise<any> {
+  async createDatabase(params: { parentPageId: string, schema: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/create_database', params);
       return this.handleResponse(response);
@@ -109,7 +108,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Update database schema
    */
-  async updateDatabase({ databaseId: string, schema: Record<string, any> }: { databaseId: string, schema: Record<string, any> }): Promise<any> {
+  async updateDatabase(params: { databaseId: string, schema: Record<string, any> }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/update_database', params);
       return this.handleResponse(response);
@@ -121,7 +120,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Invite user to a page
    */
-  async inviteUser({ pageId: string, email: string, role: string }: { pageId: string, email: string, role: string }): Promise<any> {
+  async inviteUser(params: { pageId: string, email: string, role: string }): Promise<any> {
     try {
       const response = await this.makeRequest('POST', '/api/invite_user', params);
       return this.handleResponse(response);
@@ -134,7 +133,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a page is updated
    */
-  async pollPageUpdated({ databaseId: string }: { databaseId: string }): Promise<any[]> {
+  async pollPageUpdated(params: { databaseId: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/page_updated', params);
       const data = this.handleResponse(response);
@@ -148,7 +147,7 @@ export class NotionEnhancedAPIClient extends BaseAPIClient {
   /**
    * Poll for Triggered when a comment is added
    */
-  async pollCommentAdded({ pageId: string }: { pageId: string }): Promise<any[]> {
+  async pollCommentAdded(params: { pageId: string }): Promise<any[]> {
     try {
       const response = await this.makeRequest('GET', '/api/comment_added', params);
       const data = this.handleResponse(response);

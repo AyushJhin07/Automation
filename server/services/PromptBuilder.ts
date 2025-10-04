@@ -6,7 +6,7 @@
  */
 
 import { connectorRegistry } from "../ConnectorRegistry.js";
-import { IMPLEMENTED_CONNECTOR_IDS } from "../integrations/supportedApps";
+import { getImplementedConnectorIds } from "../integrations/supportedApps";
 
 export type PlannerMode = "gas-only" | "all";
 
@@ -22,7 +22,7 @@ function getGasOnlyApps() {
 function getAllAppsFromRegistry() {
   // registry already loaded at boot; expose everything the UI has
   const catalog = connectorRegistry.getNodeCatalog();
-  const implementedApps = new Set<string>(IMPLEMENTED_CONNECTOR_IDS.map((id) => normalizeAppId(id)));
+  const implementedApps = new Set<string>(getImplementedConnectorIds().map((id) => normalizeAppId(id)));
   const entries = Object.entries(catalog.connectors || {});
   return entries
     .filter(([entryId, c]: any) => c?.hasImplementation && implementedApps.has(normalizeAppId(entryId)))
@@ -134,7 +134,7 @@ export function getAllowlistForMode(mode: PlannerMode): Set<string> {
     return new Set(["gmail","sheets","time","core"]);
   }
   const allowlist = new Set<string>();
-  IMPLEMENTED_CONNECTOR_IDS.forEach((id) => allowlist.add(normalizeAppId(id)));
+  getImplementedConnectorIds().forEach((id) => allowlist.add(normalizeAppId(id)));
   allowlist.add("core");
   allowlist.add("built_in");
   allowlist.add("time");

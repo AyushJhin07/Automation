@@ -9,6 +9,8 @@ import type { APICredentials } from '../server/integrations/BaseAPIClient';
 import { ConnectorSimulator } from '../server/testing/ConnectorSimulator';
 import type { ConnectorSimulatorSmokePlan } from '../server/testing/ConnectorSimulator';
 
+await connectorRegistry.init();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT_DIR = resolve(__dirname, '..');

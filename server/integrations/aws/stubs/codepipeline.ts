@@ -46,7 +46,7 @@ export class CodePipelineClient {
     this.config = config;
   }
 
-  async send(): Promise<never> {
+  async send(_command?: unknown): Promise<any> {
     throw new Error(
       'CodePipelineClient stub cannot execute commands. Install @aws-sdk/client-codepipeline to enable live operations.'
     );
