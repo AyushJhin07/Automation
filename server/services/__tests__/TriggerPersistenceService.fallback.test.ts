@@ -48,6 +48,7 @@ async function runTriggerPersistenceFallbackIntegration(): Promise<void> {
     cursor: { page: '1' },
     backoffCount: 1,
     lastStatus: 'error',
+    region: 'us',
   } as const;
 
   await service.savePollingTrigger({ ...pollingTrigger });

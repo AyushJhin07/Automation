@@ -43,18 +43,26 @@ assert.ok(fetched, 'connection should be retrievable');
 assert.equal(fetched?.iv, storedRecords[0].iv, 'fetched connection exposes iv');
 assert.deepEqual(fetched?.credentials, originalCredentials, 'credentials should decrypt to original payload');
 assert.equal(fetched?.encryptionKeyId ?? null, null, 'fetched connection exposes encryptionKeyId metadata');
+assert.equal(fetched?.metadata?.secretsNamespace, 'us-secrets', 'fetched metadata includes secrets namespace');
+assert.equal(fetched?.metadata?.residency?.storageRegion, 'us', 'fetched metadata tracks residency region');
 
 const byProvider = await service.getConnectionByProvider('user-123', 'org-123', 'openai');
 assert.ok(byProvider, 'connection should be retrievable by provider');
 assert.equal(byProvider?.iv, storedRecords[0].iv, 'provider lookup exposes iv');
 assert.deepEqual(byProvider?.credentials, originalCredentials, 'provider lookup decrypts credentials');
 assert.equal(byProvider?.encryptionKeyId ?? null, null, 'provider lookup exposes encryptionKeyId');
+assert.equal(
+  byProvider?.metadata?.residency?.filePrefix,
+  'us/org_org-123',
+  'provider metadata tracks residency file prefix'
+);
 
 const allConnections = await service.getUserConnections('user-123', 'org-123', 'openai');
 assert.equal(allConnections.length, 1, 'user should have one connection after creation');
 assert.equal(allConnections[0].iv, storedRecords[0].iv, 'list entries expose iv');
 assert.deepEqual(allConnections[0].credentials, originalCredentials, 'list entries decrypt credentials');
 assert.equal(allConnections[0].encryptionKeyId ?? null, null, 'list entries expose encryptionKeyId');
+assert.equal(allConnections[0].metadata?.storagePrefix, 'us/org_org-123', 'list metadata includes storage prefix');
 
 await rm(tempDir, { recursive: true, force: true });
 delete process.env.CONNECTION_STORE_PATH;

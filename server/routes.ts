@@ -38,6 +38,7 @@ import { securityService } from "./services/SecurityService";
 import { integrationManager } from "./integrations/IntegrationManager";
 import { oauthManager } from "./oauth/OAuthManager";
 import { endToEndTester } from "./testing/EndToEndTester";
+import { complianceReportService } from "./services/ComplianceReportService.js";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
 import { webhookManager } from "./webhooks/WebhookManager";
@@ -100,6 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     id: org.id,
     name: org.name,
     domain: org.domain ?? null,
+    region: org.region ?? 'us',
     plan: org.plan,
     status: org.status,
     role: org.role,
@@ -434,6 +436,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeOrganizationId: active?.id ?? null,
       });
     } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.get('/api/organizations/:id/compliance/residency', authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const contextOrgId = (req as any)?.organizationId;
+
+      if (!contextOrgId || contextOrgId !== id) {
+        return res
+          .status(403)
+          .json({ success: false, error: 'Access denied for organization report' });
+      }
+
+      const report = await complianceReportService.getResidencyReport(id);
+      if (!report) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Residency report unavailable' });
+      }
+
+      res.json({ success: true, report });
+    } catch (error) {
+      console.error('❌ Failed to generate residency report:', getErrorMessage(error));
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });
@@ -2864,9 +2891,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(metadata || {}),
           organizationId,
           userId: (req as any)?.user?.id,
+          region: (req as any)?.organizationRegion,
         },
         organizationId,
         userId: (req as any)?.user?.id,
+        region: (req as any)?.organizationRegion,
       };
       
       await webhookManager.registerPollingTrigger(pollingTrigger);
@@ -2958,6 +2987,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata.userId = req.user!.id;
       }
 
+      metadata.organizationId = organizationId;
+      metadata.region = (req as any)?.organizationRegion;
+
       const id = `${appId}:${triggerId}:${workflowId}`;
       await webhookManager.registerPollingTrigger({
         id,
@@ -2969,7 +3001,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextPoll: new Date(now.getTime() + intervalSec * 1000),
         nextPollAt: new Date(now.getTime() + intervalSec * 1000),
         isActive: true,
-        metadata
+        metadata,
+        organizationId,
+        userId: req.user?.id,
+        region: (req as any)?.organizationRegion,
       });
 
       res.json({ success: true, data: { id, appId, triggerId, interval: intervalSec } });
@@ -6550,6 +6585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         triggerType,
         triggerData,
         organizationId,
+        region: (req as any)?.organizationRegion,
       });
       res.json({ success: true, executionId });
     } catch (error) {

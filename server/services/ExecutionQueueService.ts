@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
-import { db, workflowTimers } from '../database/schema.js';
+import { db, workflowTimers, type DataRegion } from '../database/schema.js';
 import {
   createQueue,
   createQueueEvents,
@@ -13,6 +13,7 @@ import {
   type QueueEvents,
   type Worker,
   type WorkflowExecuteJobPayload,
+  type QueueName,
 } from '../queue/index.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
@@ -25,10 +26,12 @@ type QueueRunRequest = {
   triggerType?: string;
   triggerData?: Record<string, any> | null;
   organizationId: string;
+  region: DataRegion;
 };
 
 class ExecutionQueueService {
   private static instance: ExecutionQueueService;
+  private static readonly DEFAULT_REGION: DataRegion = 'us';
   private readonly concurrency: number;
   private readonly tenantConcurrency: number;
   private readonly maxRetries: number;
@@ -41,14 +44,19 @@ class ExecutionQueueService {
   private readonly heartbeatPersistIntervalMs: number;
   private started = false;
   private shutdownPromise: Promise<void> | null = null;
-  private queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
-  private worker: Worker<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
+  private readonly queueCache = new Map<
+    string,
+    Queue<WorkflowExecuteJobPayload, unknown, QueueName>
+  >();
+  private queue: Queue<WorkflowExecuteJobPayload, unknown, QueueName> | null = null;
+  private worker: Worker<WorkflowExecuteJobPayload, unknown, QueueName> | null = null;
   private queueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
   private readonly activeLeases = new Map<
     string,
     { metadata: Record<string, any>; organizationId: string; lastPersistedAt: number }
   >();
+  private readonly workerRegion: DataRegion;
 
   private constructor() {
     const configuredConcurrency = Number.parseInt(
@@ -106,6 +114,8 @@ class ExecutionQueueService {
         10
       )
     );
+
+    this.workerRegion = this.normalizeRegion(process.env.WORKER_REGION);
   }
 
   public static getInstance(): ExecutionQueueService {
@@ -119,18 +129,69 @@ class ExecutionQueueService {
     return Boolean(db);
   }
 
+  private normalizeRegion(value?: string | null): DataRegion {
+    if (!value) {
+      return ExecutionQueueService.DEFAULT_REGION;
+    }
+
+    const normalized = value.toLowerCase();
+    if (normalized === 'eu' || normalized === 'europe') {
+      return 'eu';
+    }
+    if (normalized === 'asia' || normalized === 'apac' || normalized === 'ap') {
+      return 'asia';
+    }
+    return 'us';
+  }
+
+  private resolveRegion(region?: DataRegion | string | null): DataRegion {
+    if (!region) {
+      return ExecutionQueueService.DEFAULT_REGION;
+    }
+    return typeof region === 'string' ? this.normalizeRegion(region) : region;
+  }
+
+  private buildQueueName(region: DataRegion): QueueName {
+    return `workflow.execute:${region}`;
+  }
+
   private computeBackoff(attempt: number): number {
     const exponent = Math.pow(2, Math.max(0, attempt - 1));
     const jitter = Math.floor(Math.random() * this.baseRetryDelayMs * 0.2);
     return Math.min(exponent * this.baseRetryDelayMs + jitter, this.maxRetryDelayMs);
   }
 
+  private ensureQueue(region: DataRegion): Queue<WorkflowExecuteJobPayload, unknown, QueueName> {
+    const normalized = this.resolveRegion(region);
+    const queueName = this.buildQueueName(normalized);
+    const existing = this.queueCache.get(queueName);
+    if (existing) {
+      return existing;
+    }
+
+    const queue = createQueue(queueName as QueueName, {
+      defaultJobOptions: {
+        attempts: this.maxRetries + 1,
+        backoff: { type: 'execution-backoff' },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+      settings: {
+        backoffStrategies: {
+          'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+        },
+      },
+    });
+
+    this.queueCache.set(queueName, queue);
+    return queue;
+  }
+
   private async withQueueOperation<T>(
-    operation: (
-      queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>
-    ) => Promise<T>
+    region: DataRegion,
+    operation: (queue: Queue<WorkflowExecuteJobPayload, unknown, QueueName>) => Promise<T>
   ): Promise<T> {
-    const queue = this.ensureQueue();
+    const queue = this.ensureQueue(region);
     try {
       return await operation(queue);
     } catch (error) {
@@ -138,12 +199,13 @@ class ExecutionQueueService {
       if (!switched) {
         throw error;
       }
-      const fallbackQueue = this.ensureQueue();
+      const fallbackQueue = this.ensureQueue(region);
       return operation(fallbackQueue);
     }
   }
 
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
+    const region = this.resolveRegion(req.region);
     const execution = await WorkflowRepository.createWorkflowExecution({
       workflowId: req.workflowId,
       userId: req.userId,
@@ -151,7 +213,12 @@ class ExecutionQueueService {
       status: 'queued',
       triggerType: req.triggerType ?? 'manual',
       triggerData: req.triggerData ?? null,
-      metadata: { queuedAt: new Date().toISOString(), attemptsMade: 0, retryCount: 0 },
+      metadata: {
+        queuedAt: new Date().toISOString(),
+        attemptsMade: 0,
+        retryCount: 0,
+        region,
+      },
     });
 
     if (!this.isDbEnabled()) {
@@ -159,13 +226,14 @@ class ExecutionQueueService {
     }
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(region, (queue) =>
         queue.add(
           'workflow.execute',
           {
             executionId: execution.id,
             workflowId: req.workflowId,
             organizationId: req.organizationId,
+            region,
             userId: req.userId,
             triggerType: req.triggerType ?? 'manual',
             triggerData: req.triggerData ?? null,
@@ -206,21 +274,24 @@ class ExecutionQueueService {
     resumeState: WorkflowResumeState;
     initialData: any;
     triggerType?: string;
+    region: DataRegion;
   }): Promise<void> {
     if (!this.isDbEnabled()) {
       return;
     }
 
     const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
+    const region = this.resolveRegion(params.region);
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(region, (queue) =>
         queue.add(
           'workflow.execute',
           {
             executionId: params.executionId,
             workflowId: params.workflowId,
             organizationId: params.organizationId,
+            region,
             userId: params.userId,
             triggerType: params.triggerType ?? 'timer',
             resumeState: params.resumeState,
@@ -256,9 +327,12 @@ class ExecutionQueueService {
       return;
     }
 
-    const queue = this.ensureQueue();
+    const queueRegion = this.workerRegion;
+    const queueName = this.buildQueueName(queueRegion);
+    const queue = this.ensureQueue(queueRegion);
+    this.queue = queue;
     if (!this.queueEvents) {
-      this.queueEvents = createQueueEvents('workflow.execute');
+      this.queueEvents = createQueueEvents(queueName);
     }
 
     if (!this.telemetryCleanup) {
@@ -271,7 +345,7 @@ class ExecutionQueueService {
     }
 
     this.worker = registerQueueWorker(
-      'workflow.execute',
+      queueName,
       async (job) => this.process(job),
       {
         concurrency: this.concurrency,
@@ -282,8 +356,8 @@ class ExecutionQueueService {
         heartbeatIntervalMs: this.heartbeatIntervalMs,
         heartbeatTimeoutMs: this.heartbeatTimeoutMs,
         onHeartbeat: async (
-          _job: Job<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>,
-          context: QueueWorkerHeartbeatContext<'workflow.execute'>
+          _job: Job<WorkflowExecuteJobPayload, unknown, QueueName>,
+          context: QueueWorkerHeartbeatContext<QueueName>
         ) => {
           const payload = _job.data;
           const executionId = payload.executionId;
@@ -343,7 +417,7 @@ class ExecutionQueueService {
     this.started = true;
 
     console.log(
-      `🧵 ExecutionQueueService started (concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
+      `🧵 ExecutionQueueService started (region=${queueRegion}, concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
     );
   }
 
@@ -446,6 +520,7 @@ class ExecutionQueueService {
     }
 
     this.queue = null;
+    this.queueCache.clear();
 
     if (wasStarted) {
       this.start();
@@ -457,6 +532,13 @@ class ExecutionQueueService {
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
     const startedAt = Date.now();
     const { executionId, workflowId, organizationId, userId } = job.data;
+    const jobRegion = this.resolveRegion(job.data.region);
+    if (jobRegion !== this.workerRegion) {
+      console.warn(
+        `⚠️ ExecutionQueueService received job ${executionId} for region ${jobRegion} on worker region ${this.workerRegion}. Skipping.`
+      );
+      return;
+    }
     const resumeState = (job.data.resumeState ?? null) as WorkflowResumeState | null;
     const timerId = job.data.timerId ?? null;
     const executionRecord = await WorkflowRepository.getExecutionById(executionId, organizationId);
@@ -531,6 +613,7 @@ class ExecutionQueueService {
         organizationId,
         triggerType: trigger,
         resumeState,
+        region: jobRegion,
       });
 
       if (timerId) {

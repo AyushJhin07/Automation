@@ -51,12 +51,30 @@ assert.equal(
   testResult.message,
   'test error message captured during failed test'
 );
+assert.equal(connection?.metadata?.storageRegion, 'us', 'connection metadata includes storage region');
+assert.equal(
+  connection?.metadata?.residency?.filePrefix,
+  `us/org_${request.organizationId}`,
+  'connection metadata tracks residency file prefix'
+);
+assert.equal(
+  connection?.metadata?.residency?.logPrefix,
+  `us.org.${request.organizationId}`,
+  'connection metadata tracks residency log prefix'
+);
+assert.equal(
+  connection?.metadata?.residency?.secretsNamespace,
+  'us-secrets',
+  'connection metadata tracks residency secrets namespace'
+);
 
 const fetched = await service.getConnection(connectionId, request.userId, request.organizationId);
 assert.ok(fetched, 'connection can be fetched by id');
 assert.equal(fetched?.type, request.type, 'fetched connection preserves type');
 assert.equal(fetched?.testStatus, 'failed', 'fetched connection includes test status');
 assert.equal(fetched?.testError, testResult.message, 'fetched connection includes test error');
+assert.equal(fetched?.metadata?.storagePrefix, `us/org_${request.organizationId}`, 'fetched metadata includes storage prefix');
+assert.equal(fetched?.metadata?.logPrefix, `us.org.${request.organizationId}`, 'fetched metadata includes log prefix');
 
 // Verify expiring OAuth tokens are refreshed transparently
 const oauthModule = await import('../../oauth/OAuthManager.js');

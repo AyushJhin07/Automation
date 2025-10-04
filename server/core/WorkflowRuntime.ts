@@ -20,7 +20,7 @@ import {
   collectSecretStrings,
   SandboxPolicyViolationError,
 } from '../runtime/NodeSandbox';
-import { db, workflowTimers } from '../database/schema.js';
+import { db, workflowTimers, type DataRegion } from '../database/schema.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
 const DEFAULT_NODE_TIMEOUT_MS = 30_000;
@@ -32,6 +32,7 @@ export interface WorkflowRuntimeOptions {
   organizationId?: string;
   triggerType?: string;
   resumeState?: WorkflowResumeState | null;
+  region?: DataRegion;
 }
 
 interface NormalizedRuntimeOptions {
@@ -60,6 +61,7 @@ export interface ExecutionContext {
   executionId: string;
   initialData?: any;
   organizationId?: string;
+  region?: DataRegion;
 }
 
 export interface ExecutionResult {
@@ -101,6 +103,7 @@ export class WorkflowRuntime {
     const resumeState = options.resumeState ?? null;
     const executionId = options.executionId ?? `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const triggerType = options.triggerType ?? (resumeState ? 'resume' : 'manual');
+    const region: DataRegion = options.region ?? 'us';
 
     const context: ExecutionContext = {
       outputs: resumeState?.nodeOutputs ? { ...resumeState.nodeOutputs } : {},
@@ -111,6 +114,7 @@ export class WorkflowRuntime {
       executionId,
       initialData,
       organizationId: options.organizationId,
+      region,
     };
 
     const runtimeOptions = this.normalizeOptions(options);
@@ -520,6 +524,7 @@ export class WorkflowRuntime {
 
     try {
       const resumeAt = new Date(Date.now() + params.delayMs);
+      const region: DataRegion = params.context.region ?? 'us';
       const payload: WorkflowTimerPayload = {
         workflowId: params.graph.id,
         organizationId: params.context.organizationId,
@@ -539,6 +544,7 @@ export class WorkflowRuntime {
           nodeId: params.node.id,
           delayMs: params.delayMs,
         },
+        region,
       };
 
       const [created] = await db
@@ -550,6 +556,7 @@ export class WorkflowRuntime {
           status: 'pending',
           attempts: 0,
           lastError: null,
+          region,
         })
         .returning({ id: workflowTimers.id });
 

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getPermissionsForRole, Permission } from '../../configs/rbac';
 import { authService, AuthOrganization } from '../services/AuthService';
 import {
+  DataRegion,
   OrganizationPlan,
   OrganizationStatus,
   OrganizationLimits,
@@ -32,6 +33,7 @@ declare global {
         organizationStatus?: OrganizationStatus;
         organizationLimits?: OrganizationLimits;
         organizationUsage?: OrganizationUsageMetrics;
+        organizationRegion?: DataRegion;
         activeOrganization?: AuthOrganization;
         organizations?: AuthOrganization[];
         permissions?: Permission[];
@@ -42,6 +44,7 @@ declare global {
       organizationStatus?: OrganizationStatus;
       organizationLimits?: OrganizationLimits;
       organizationUsage?: OrganizationUsageMetrics;
+      organizationRegion?: DataRegion;
       permissions?: Permission[];
     }
   }
@@ -83,10 +86,12 @@ const buildDevUser = () => {
       storageUsed: 0,
       usersActive: 1,
     },
+    organizationRegion: 'us',
     activeOrganization: {
       id: 'dev-org',
       name: 'Developer Workspace',
       domain: null,
+      region: 'us',
       plan: 'enterprise',
       status: 'active',
       role: 'owner',
@@ -204,6 +209,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         req.organizationStatus = user.organizationStatus;
         req.organizationLimits = user.organizationLimits;
         req.organizationUsage = user.organizationUsage;
+        req.organizationRegion = user.organizationRegion as DataRegion | undefined;
         req.permissions = permissions;
         setRequestUser(user.id);
       }
@@ -216,6 +222,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.organizationRegion = devUser.organizationRegion as DataRegion;
       req.permissions = permissions;
       setRequestUser(devUser.id);
     }
@@ -231,6 +238,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.organizationRegion = devUser.organizationRegion as DataRegion;
       req.permissions = permissions;
       setRequestUser(devUser.id);
       next();

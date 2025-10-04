@@ -17,6 +17,7 @@ import {
 import { relations } from 'drizzle-orm';
 import type { WorkflowTimerPayload } from '../types/workflowTimers';
 
+export type DataRegion = 'us' | 'eu' | 'asia';
 export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
 export type OrganizationStatus = 'active' | 'suspended' | 'trial' | 'churned';
 
@@ -134,6 +135,7 @@ export const organizations = pgTable(
     name: text('name').notNull(),
     domain: text('domain'),
     subdomain: text('subdomain').notNull(),
+    region: text('region').notNull().default('us'),
     plan: text('plan').notNull().default('starter'),
     status: text('status').notNull().default('trial'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -157,6 +159,7 @@ export const organizations = pgTable(
     subdomainIdx: uniqueIndex('organizations_subdomain_idx').on(table.subdomain),
     planIdx: index('organizations_plan_idx').on(table.plan),
     statusIdx: index('organizations_status_idx').on(table.status),
+    regionIdx: index('organizations_region_idx').on(table.region),
     createdAtIdx: index('organizations_created_at_idx').on(table.createdAt),
   })
 );
@@ -258,6 +261,7 @@ export const tenantIsolations = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
+    region: text('region').notNull().default('us'),
     dataNamespace: text('data_namespace').notNull(),
     storagePrefix: text('storage_prefix').notNull(),
     cachePrefix: text('cache_prefix').notNull(),
@@ -268,6 +272,7 @@ export const tenantIsolations = pgTable(
   },
   (table) => ({
     organizationIsolationIdx: uniqueIndex('tenant_isolations_org_idx').on(table.organizationId),
+    regionIdx: index('tenant_isolations_region_idx').on(table.region),
   })
 );
 
@@ -367,6 +372,19 @@ export const connections = pgTable(
         dailyLimit?: number;
       };
       customSettings?: Record<string, any>;
+      storageRegion?: DataRegion;
+      storagePrefix?: string;
+      logPrefix?: string;
+      secretsNamespace?: string;
+      dataResidency?: DataRegion;
+      residency?: {
+        region: DataRegion;
+        storageRegion: DataRegion;
+        dataResidency: DataRegion;
+        secretsNamespace: string;
+        filePrefix: string;
+        logPrefix: string;
+      };
     }>(),
   },
   (table) => ({
@@ -736,10 +754,12 @@ export const workflowTimers = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastError: text('last_error'),
+    region: text('region').notNull().default('us'),
   },
   (table) => ({
     resumeAtIdx: index('workflow_timers_resume_at_idx').on(table.resumeAt),
     statusIdx: index('workflow_timers_status_idx').on(table.status),
+    regionIdx: index('workflow_timers_region_idx').on(table.region),
     executionIdx: index('workflow_timers_execution_idx').on(table.executionId),
   })
 );
@@ -1184,6 +1204,7 @@ export const pollingTriggers = pgTable(
     nextPoll: timestamp('next_poll').notNull(),
     nextPollAt: timestamp('next_poll_at').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
+    region: text('region').notNull().default('us'),
     dedupeKey: text('dedupe_key'),
     metadata: json('metadata').$type<Record<string, any>>(),
     cursor: json('cursor').$type<Record<string, any> | null>(),
@@ -1198,6 +1219,7 @@ export const pollingTriggers = pgTable(
     nextPollIdx: index('polling_triggers_next_poll_idx').on(table.nextPoll),
     nextPollAtIdx: index('polling_triggers_next_poll_at_idx').on(table.nextPollAt),
     activeIdx: index('polling_triggers_active_idx').on(table.isActive),
+    regionIdx: index('polling_triggers_region_idx').on(table.region),
   })
 );
 
@@ -1213,6 +1235,7 @@ export const workflowTriggers = pgTable(
     endpoint: text('endpoint'),
     secret: text('secret'),
     metadata: json('metadata').$type<Record<string, any>>(),
+    region: text('region').notNull().default('us'),
     dedupeState: json('dedupe_state').$type<{ tokens?: string[]; updatedAt?: string }>(),
     isActive: boolean('is_active').default(true).notNull(),
     lastSyncedAt: timestamp('last_synced_at'),
@@ -1224,6 +1247,7 @@ export const workflowTriggers = pgTable(
     appTriggerIdx: index('workflow_triggers_app_trigger_idx').on(table.appId, table.triggerId),
     typeIdx: index('workflow_triggers_type_idx').on(table.type),
     activeIdx: index('workflow_triggers_active_idx').on(table.isActive),
+    regionIdx: index('workflow_triggers_region_idx').on(table.region),
   })
 );
 

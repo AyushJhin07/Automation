@@ -7,6 +7,8 @@ import {
   connectionScopedTokens,
   db,
   organizations,
+  tenantIsolations,
+  type DataRegion,
   type OrganizationSecuritySettings,
 } from '../database/schema';
 import { encryptionRotationService } from './EncryptionRotationService';
@@ -157,6 +159,17 @@ export interface ScopedTokenRedeemResult {
   usedAt: Date;
 }
 
+const DEFAULT_REGION: DataRegion = 'us';
+
+interface OrganizationResidencyContext {
+  region: DataRegion;
+  dataResidency: DataRegion;
+  storageRegion: DataRegion;
+  storagePrefix: string;
+  logPrefix: string;
+  secretsNamespace: string;
+}
+
 
 interface FileConnectionRecord {
   id: string;
@@ -189,6 +202,8 @@ export class ConnectionService {
   private readonly refreshThresholdMs: number;
   private readonly dynamicOptionCache: Map<string, Map<string, DynamicOptionCacheEntry>> = new Map();
   private readonly organizationSecurityCache = new Map<string, { settings: OrganizationSecuritySettings; expiresAt: number }>();
+  private readonly organizationResidencyCache = new Map<string, { context: OrganizationResidencyContext; expiresAt: number }>();
+  private readonly residencyCacheTtlMs: number;
   private readonly networkAccessAuditLog: NetworkAccessAuditEntry[] = [];
   private readonly networkAuditLogLimit = 500;
 
@@ -202,6 +217,13 @@ export class ConnectionService {
     const threshold = Number(process.env.OAUTH_REFRESH_THRESHOLD_MS);
     const defaultThreshold = 5 * 60 * 1000; // 5 minutes
     this.refreshThresholdMs = Number.isFinite(threshold) && threshold >= 0 ? threshold : defaultThreshold;
+
+    const residencyCacheTtl = Number(process.env.CONNECTION_REGION_CACHE_TTL_MS);
+    const defaultResidencyTtl = 5 * 60 * 1000;
+    this.residencyCacheTtlMs =
+      Number.isFinite(residencyCacheTtl) && residencyCacheTtl > 0
+        ? residencyCacheTtl
+        : defaultResidencyTtl;
 
     if (!this.db) {
       if (this.allowFileStore) {
@@ -244,19 +266,24 @@ export class ConnectionService {
     await fs.mkdir(dir, { recursive: true });
   }
 
-  private async readFileStore(): Promise<FileConnectionRecord[]> {
+  private async readFileStore(organizationId?: string): Promise<FileConnectionRecord[]> {
     try {
       const raw = await fs.readFile(this.fileStorePath, 'utf8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed as FileConnectionRecord[];
+      let records = Array.isArray(parsed) ? (parsed as FileConnectionRecord[]) : [];
+      if (organizationId) {
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        if (normalized !== records) {
+          await this.writeFileStore(normalized);
+          records = normalized;
+        }
       }
-      return [];
+      return records;
     } catch (error: any) {
       if (error?.code === 'ENOENT') {
         return [];
       }
-      console.error('❌ Failed to read connection file store:', error);
+      console.error('❌ Failed to read connection file store:', getErrorMessage(error));
       throw error;
     }
   }
@@ -300,11 +327,15 @@ export class ConnectionService {
     organizationId: string
   ): Promise<DecryptedConnection | null> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) => conn.id === connectionId && conn.organizationId === organizationId && conn.isActive
       );
-      return record ? this.toDecryptedConnection(record) : null;
+      if (!record) {
+        return null;
+      }
+      const metadata = await this.enrichMetadataWithRegion(organizationId, record.metadata);
+      return this.toDecryptedConnection({ ...record, metadata });
     }
 
     this.ensureDb();
@@ -327,6 +358,7 @@ export class ConnectionService {
       row.iv,
       row.encryptionKeyId
     );
+    const metadata = await this.enrichMetadataWithRegion(organizationId, row.metadata);
 
     return {
       id: row.id,
@@ -338,7 +370,7 @@ export class ConnectionService {
       iv: row.iv,
       encryptionKeyId: row.encryptionKeyId ?? null,
       credentials,
-      metadata: row.metadata,
+      metadata,
       isActive: row.isActive,
       lastTested: row.lastTested,
       testStatus: row.testStatus,
@@ -377,6 +409,187 @@ export class ConnectionService {
       }
     }
     return Array.from(new Set(normalized));
+  }
+
+  private normalizeRegion(value?: string | null): DataRegion {
+    if (!value) {
+      return DEFAULT_REGION;
+    }
+
+    const normalized = String(value).toLowerCase();
+    if (normalized === 'eu' || normalized === 'europe') {
+      return 'eu';
+    }
+    if (normalized === 'asia' || normalized === 'apac' || normalized === 'ap') {
+      return 'asia';
+    }
+    return 'us';
+  }
+
+  private buildDefaultResidencyContext(organizationId: string): OrganizationResidencyContext {
+    const region = DEFAULT_REGION;
+    return {
+      region,
+      dataResidency: region,
+      storageRegion: region,
+      storagePrefix: `${region}/org_${organizationId}`,
+      logPrefix: `${region}.org.${organizationId}`,
+      secretsNamespace: `${region}-secrets`,
+    };
+  }
+
+  private applyResidencyMetadata(
+    metadata: Record<string, any> | undefined | null,
+    context: OrganizationResidencyContext
+  ): Record<string, any> {
+    const base = metadata && typeof metadata === 'object' ? metadata : undefined;
+    const currentResidency =
+      base && typeof base.residency === 'object' ? (base.residency as Record<string, any>) : undefined;
+
+    const desiredResidency = {
+      ...(currentResidency ?? {}),
+      region: context.region,
+      dataResidency: context.dataResidency,
+      storageRegion: context.storageRegion,
+      secretsNamespace: context.secretsNamespace,
+      filePrefix: context.storagePrefix,
+      logPrefix: context.logPrefix,
+    };
+
+    const needsUpdate =
+      !base ||
+      base.storageRegion !== context.storageRegion ||
+      base.storagePrefix !== context.storagePrefix ||
+      base.logPrefix !== context.logPrefix ||
+      base.secretsNamespace !== context.secretsNamespace ||
+      base.dataResidency !== context.dataResidency ||
+      !currentResidency ||
+      currentResidency.region !== desiredResidency.region ||
+      currentResidency.dataResidency !== desiredResidency.dataResidency ||
+      currentResidency.storageRegion !== desiredResidency.storageRegion ||
+      currentResidency.secretsNamespace !== desiredResidency.secretsNamespace ||
+      currentResidency.filePrefix !== desiredResidency.filePrefix ||
+      currentResidency.logPrefix !== desiredResidency.logPrefix;
+
+    if (!needsUpdate && base) {
+      return base;
+    }
+
+    const next: Record<string, any> = { ...(base ?? {}) };
+    next.storageRegion = context.storageRegion;
+    next.storagePrefix = context.storagePrefix;
+    next.logPrefix = context.logPrefix;
+    next.secretsNamespace = context.secretsNamespace;
+    next.dataResidency = context.dataResidency;
+    next.residency = desiredResidency;
+    return next;
+  }
+
+  private async ensureResidencyForRecords(
+    records: FileConnectionRecord[],
+    organizationId: string
+  ): Promise<FileConnectionRecord[]> {
+    if (!organizationId) {
+      return records;
+    }
+
+    const hasRecordsForOrg = records.some((record) => record.organizationId === organizationId);
+    if (!hasRecordsForOrg) {
+      return records;
+    }
+
+    const context = await this.resolveOrganizationRegion(organizationId);
+    let mutated = false;
+    const updated = records.map((record) => {
+      if (record.organizationId !== organizationId) {
+        return record;
+      }
+      const metadata = this.applyResidencyMetadata(record.metadata, context);
+      if (metadata !== record.metadata) {
+        mutated = true;
+        return { ...record, metadata };
+      }
+      return record;
+    });
+
+    return mutated ? updated : records;
+  }
+
+  private async resolveOrganizationRegion(organizationId: string): Promise<OrganizationResidencyContext> {
+    const cached = this.organizationResidencyCache.get(organizationId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.context;
+    }
+
+    if (!this.db) {
+      return this.buildDefaultResidencyContext(organizationId);
+    }
+
+    try {
+      const [row] = await this.db
+        .select({
+          id: organizations.id,
+          region: organizations.region,
+          compliance: organizations.compliance,
+          isolationRegion: tenantIsolations.region,
+          storagePrefix: tenantIsolations.storagePrefix,
+          logPrefix: tenantIsolations.logPrefix,
+        })
+        .from(organizations)
+        .leftJoin(tenantIsolations, eq(tenantIsolations.organizationId, organizations.id))
+        .where(eq(organizations.id, organizationId))
+        .limit(1);
+
+      if (!row) {
+        return this.buildDefaultResidencyContext(organizationId);
+      }
+
+      const organizationRegion = this.normalizeRegion(row.region as string | null | undefined);
+      const complianceResidencyRaw = (row.compliance as { dataResidency?: string } | null | undefined)?.dataResidency;
+      const complianceResidency =
+        complianceResidencyRaw && complianceResidencyRaw !== 'global'
+          ? this.normalizeRegion(complianceResidencyRaw)
+          : organizationRegion;
+      const isolationRegionRaw = row.isolationRegion as string | null | undefined;
+      const storageRegion = isolationRegionRaw
+        ? this.normalizeRegion(isolationRegionRaw)
+        : complianceResidency;
+
+      const storagePrefix =
+        typeof row.storagePrefix === 'string' && row.storagePrefix.length > 0
+          ? (row.storagePrefix as string)
+          : `${storageRegion}/org_${organizationId}`;
+      const logPrefix =
+        typeof row.logPrefix === 'string' && row.logPrefix.length > 0
+          ? (row.logPrefix as string)
+          : `${storageRegion}.org.${organizationId}`;
+      const context: OrganizationResidencyContext = {
+        region: organizationRegion,
+        dataResidency: complianceResidency,
+        storageRegion,
+        storagePrefix,
+        logPrefix,
+        secretsNamespace: `${storageRegion}-secrets`,
+      };
+
+      this.organizationResidencyCache.set(organizationId, {
+        context,
+        expiresAt: Date.now() + this.residencyCacheTtlMs,
+      });
+
+      return context;
+    } catch (error) {
+      console.error('Failed to resolve organization region:', getErrorMessage(error));
+      return this.buildDefaultResidencyContext(organizationId);
+    }
+  }
+
+  private async enrichMetadataWithRegion(
+    organizationId: string,
+    metadata: Record<string, any> | null | undefined
+  ): Promise<Record<string, any>> {
+    const context = await this.resolveOrganizationRegion(organizationId);
+    return this.applyResidencyMetadata(metadata ?? {}, context);
   }
 
   private supportsScopedTokens(metadata: Record<string, any> | undefined | null): boolean {
@@ -723,12 +936,13 @@ export class ConnectionService {
   ): Promise<DecryptedConnection> {
     const baseCredentials = this.stripCredentialCallbacks(connection.credentials);
     const mergedCredentials = { ...baseCredentials, ...tokens };
-    const metadata = this.buildRefreshedMetadata(connection.metadata, tokens);
+    const refreshedMetadata = this.buildRefreshedMetadata(connection.metadata, tokens);
+    const metadata = await this.enrichMetadataWithRegion(connection.organizationId, refreshedMetadata);
     const encrypted = this.encryptCredentials(mergedCredentials);
     const updatedAt = new Date();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(connection.organizationId);
       const index = records.findIndex(
         (record) =>
           record.id === connection.id &&
@@ -747,7 +961,8 @@ export class ConnectionService {
           metadata,
           updatedAt: updatedAt.toISOString(),
         };
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, connection.organizationId);
+        await this.writeFileStore(normalized);
       }
     } else {
       this.ensureDb();
@@ -798,11 +1013,12 @@ export class ConnectionService {
 
     // Encrypt credentials
     const encrypted = this.encryptCredentials(request.credentials);
+    const metadata = await this.enrichMetadataWithRegion(request.organizationId, request.metadata ?? {});
 
     const normalizedProvider = request.provider.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(request.organizationId);
       const nowIso = new Date().toISOString();
       const record: FileConnectionRecord = {
         id: randomUUID(),
@@ -814,13 +1030,14 @@ export class ConnectionService {
         encryptedCredentials: encrypted.encryptedData,
         iv: encrypted.iv,
         encryptionKeyId: encrypted.keyId ?? null,
-        metadata: request.metadata || {},
+        metadata,
         isActive: true,
         createdAt: nowIso,
         updatedAt: nowIso,
       };
       records.push(record);
-      await this.writeFileStore(records);
+      const normalizedRecords = await this.ensureResidencyForRecords(records, request.organizationId);
+      await this.writeFileStore(normalizedRecords);
       console.log(`✅ Connection created (file store): ${record.id}`);
       return record.id;
     }
@@ -835,7 +1052,7 @@ export class ConnectionService {
       encryptedCredentials: encrypted.encryptedData,
       iv: encrypted.iv,
       encryptionKeyId: encrypted.keyId ?? null,
-      metadata: request.metadata || {},
+      metadata,
       isActive: true,
     }).returning({ id: connections.id });
 
@@ -852,7 +1069,7 @@ export class ConnectionService {
     organizationId: string
   ): Promise<DecryptedConnection | null> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) =>
           conn.id === connectionId &&
@@ -860,7 +1077,11 @@ export class ConnectionService {
           conn.organizationId === organizationId &&
           conn.isActive
       );
-      return record ? this.toDecryptedConnection(record) : null;
+      if (!record) {
+        return null;
+      }
+      const metadata = await this.enrichMetadataWithRegion(organizationId, record.metadata);
+      return this.toDecryptedConnection({ ...record, metadata });
     }
 
     this.ensureDb();
@@ -883,6 +1104,7 @@ export class ConnectionService {
       connection.iv,
       connection.encryptionKeyId
     );
+    const metadata = await this.enrichMetadataWithRegion(organizationId, connection.metadata);
 
     return {
       id: connection.id,
@@ -894,7 +1116,7 @@ export class ConnectionService {
       iv: connection.iv,
       encryptionKeyId: connection.encryptionKeyId ?? null,
       credentials,
-      metadata: connection.metadata,
+      metadata,
       isActive: connection.isActive,
       lastTested: connection.lastTested,
       testStatus: connection.testStatus,
@@ -932,15 +1154,19 @@ export class ConnectionService {
     const normalizedProvider = provider?.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
-      return records
-        .filter((conn) =>
-          conn.userId === userId &&
-          conn.organizationId === organizationId &&
-          conn.isActive &&
-          (!normalizedProvider || conn.provider === normalizedProvider)
-        )
-        .map((record) => this.toDecryptedConnection(record));
+      const records = await this.readFileStore(organizationId);
+      const filtered = records.filter((conn) =>
+        conn.userId === userId &&
+        conn.organizationId === organizationId &&
+        conn.isActive &&
+        (!normalizedProvider || conn.provider === normalizedProvider)
+      );
+      return Promise.all(
+        filtered.map(async (record) => {
+          const metadata = await this.enrichMetadataWithRegion(organizationId, record.metadata);
+          return this.toDecryptedConnection({ ...record, metadata });
+        })
+      );
     }
 
     const whereConditions = [
@@ -960,32 +1186,35 @@ export class ConnectionService {
       .where(and(...whereConditions))
       .orderBy(connections.createdAt);
 
-    return userConnections.map(connection => {
-      const credentials = EncryptionService.decryptCredentials(
-        connection.encryptedCredentials,
-        connection.iv,
-        connection.encryptionKeyId
-      );
+    return Promise.all(
+      userConnections.map(async (connection) => {
+        const credentials = EncryptionService.decryptCredentials(
+          connection.encryptedCredentials,
+          connection.iv,
+          connection.encryptionKeyId
+        );
+        const metadata = await this.enrichMetadataWithRegion(organizationId, connection.metadata);
 
-      return {
-        id: connection.id,
-        userId: connection.userId,
-        organizationId: connection.organizationId,
-        name: connection.name,
-        provider: connection.provider,
-        type: connection.type,
-        iv: connection.iv,
-        encryptionKeyId: connection.encryptionKeyId ?? null,
-        credentials,
-        metadata: connection.metadata,
-        isActive: connection.isActive,
-        lastTested: connection.lastTested,
-        testStatus: connection.testStatus,
-        testError: connection.testError,
-        createdAt: connection.createdAt,
-        updatedAt: connection.updatedAt,
-      };
-    });
+        return {
+          id: connection.id,
+          userId: connection.userId,
+          organizationId: connection.organizationId,
+          name: connection.name,
+          provider: connection.provider,
+          type: connection.type,
+          iv: connection.iv,
+          encryptionKeyId: connection.encryptionKeyId ?? null,
+          credentials,
+          metadata,
+          isActive: connection.isActive,
+          lastTested: connection.lastTested,
+          testStatus: connection.testStatus,
+          testError: connection.testError,
+          createdAt: connection.createdAt,
+          updatedAt: connection.updatedAt,
+        };
+      })
+    );
   }
 
   public async getConnectionByProvider(
@@ -996,7 +1225,7 @@ export class ConnectionService {
     const normalizedProvider = provider.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) =>
           conn.userId === userId &&
@@ -1004,7 +1233,11 @@ export class ConnectionService {
           conn.provider === normalizedProvider &&
           conn.isActive
       );
-      return record ? this.toDecryptedConnection(record) : null;
+      if (!record) {
+        return null;
+      }
+      const metadata = await this.enrichMetadataWithRegion(organizationId, record.metadata);
+      return this.toDecryptedConnection({ ...record, metadata });
     }
 
     const [connection] = await this.db
@@ -1027,6 +1260,7 @@ export class ConnectionService {
       connection.iv,
       connection.encryptionKeyId
     );
+    const metadata = await this.enrichMetadataWithRegion(organizationId, connection.metadata);
 
     return {
       id: connection.id,
@@ -1038,7 +1272,7 @@ export class ConnectionService {
       iv: connection.iv,
       encryptionKeyId: connection.encryptionKeyId ?? null,
       credentials,
-      metadata: connection.metadata,
+      metadata,
       isActive: connection.isActive,
       lastTested: connection.lastTested,
       testStatus: connection.testStatus,
@@ -1259,7 +1493,18 @@ export class ConnectionService {
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
-      const eligible = records
+      const uniqueOrgIds = Array.from(new Set(records.map((record) => record.organizationId)));
+      let normalizedRecords = records;
+      for (const orgId of uniqueOrgIds) {
+        const next = await this.ensureResidencyForRecords(normalizedRecords, orgId);
+        if (next !== normalizedRecords) {
+          normalizedRecords = next;
+        }
+      }
+      if (normalizedRecords !== records) {
+        await this.writeFileStore(normalizedRecords);
+      }
+      const eligible = normalizedRecords
         .filter((record) =>
           record.isActive &&
           Boolean(record.metadata?.refreshToken) &&
@@ -1341,14 +1586,15 @@ export class ConnectionService {
     errorMsg?: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const idx = records.findIndex(
         r => r.id === connectionId && r.userId === userId && r.organizationId === organizationId
       );
       if (idx >= 0) {
         records[idx].lastUsed = new Date().toISOString();
         if (!ok && errorMsg) records[idx].lastError = errorMsg;
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        await this.writeFileStore(normalized);
       }
       return;
     }
@@ -1411,15 +1657,16 @@ export class ConnectionService {
     };
     const encrypted = this.encryptCredentials(credentialsPayload);
     const nowIso = new Date().toISOString();
-    const metadata = {
+    const metadataBase = {
       ...(options.metadata || {}),
       refreshToken: Boolean(tokens.refreshToken),
       expiresAt: tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : undefined,
       userInfo,
     };
+    const metadata = await this.enrichMetadataWithRegion(organizationId, metadataBase);
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const existingIndex = records.findIndex((conn) => {
         if (requestedConnectionId) {
           return (
@@ -1450,7 +1697,8 @@ export class ConnectionService {
           isActive: true,
         };
         records[existingIndex] = updated;
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        await this.writeFileStore(normalized);
         console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
         this.invalidateDynamicOptionCache(updated.id);
         return updated.id;
@@ -1472,7 +1720,8 @@ export class ConnectionService {
         updatedAt: nowIso,
       };
       records.push(record);
-      await this.writeFileStore(records);
+      const normalized = await this.ensureResidencyForRecords(records, organizationId);
+      await this.writeFileStore(normalized);
       console.log(`✅ Stored connection (${normalizedProvider}:${connectionName}) for ${userId}`);
       return record.id;
     }
@@ -1806,7 +2055,7 @@ export class ConnectionService {
     message: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) => conn.id === connectionId && conn.organizationId === organizationId
       );
@@ -1818,7 +2067,8 @@ export class ConnectionService {
           testError: success ? undefined : message,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        await this.writeFileStore(normalized);
       }
       return;
     }
@@ -1852,7 +2102,12 @@ export class ConnectionService {
     };
 
     if (updates.name) updateData.name = updates.name;
-    if (updates.metadata) updateData.metadata = updates.metadata;
+    if (updates.metadata !== undefined) {
+      updateData.metadata = await this.enrichMetadataWithRegion(
+        organizationId,
+        updates.metadata ?? {}
+      );
+    }
 
     if (updates.credentials) {
       const encrypted = this.encryptCredentials(updates.credentials);
@@ -1862,7 +2117,7 @@ export class ConnectionService {
     }
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) =>
           conn.id === connectionId &&
@@ -1880,7 +2135,8 @@ export class ConnectionService {
           encryptionKeyId: updateData.encryptionKeyId ?? existing.encryptionKeyId ?? null,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        await this.writeFileStore(normalized);
       }
       this.invalidateDynamicOptionCache(connectionId);
       return;
@@ -1907,7 +2163,7 @@ export class ConnectionService {
     organizationId: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) =>
           conn.id === connectionId &&
@@ -1920,7 +2176,8 @@ export class ConnectionService {
           isActive: false,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        const normalized = await this.ensureResidencyForRecords(records, organizationId);
+        await this.writeFileStore(normalized);
       }
       this.invalidateDynamicOptionCache(connectionId);
       return;

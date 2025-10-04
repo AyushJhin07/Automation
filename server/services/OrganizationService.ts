@@ -8,6 +8,7 @@ import {
   organizationInvites,
   organizationQuotas,
   tenantIsolations,
+  DataRegion,
   OrganizationPlan,
   OrganizationStatus,
   OrganizationLimits,
@@ -24,6 +25,7 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   domain: string | null;
+  region: DataRegion;
   plan: OrganizationPlan;
   status: OrganizationStatus;
   role: string;
@@ -47,6 +49,7 @@ export interface CreateOrganizationOptions {
   name?: string;
   domain?: string | null;
   plan?: OrganizationPlan;
+  region?: DataRegion;
 }
 
 export interface InviteMemberInput {
@@ -96,6 +99,8 @@ export class OrganizationService {
     enterprise: { maxWorkflows: 500, maxExecutions: 250000, maxUsers: 250, maxStorage: 100 * 1024 },
     enterprise_plus: { maxWorkflows: 1000, maxExecutions: 1000000, maxUsers: 1000, maxStorage: 500 * 1024 },
   };
+
+  private readonly DEFAULT_REGION: DataRegion = 'us';
 
   private readonly PLAN_FEATURES: Record<OrganizationPlan, OrganizationFeatureFlags> = {
     starter: {
@@ -219,6 +224,7 @@ export class OrganizationService {
     }
 
     const plan: OrganizationPlan = options.plan ?? 'starter';
+    const region: DataRegion = options.region ?? this.DEFAULT_REGION;
     const limits = this.PLAN_LIMITS[plan];
     const features = this.PLAN_FEATURES[plan];
 
@@ -228,12 +234,18 @@ export class OrganizationService {
 
     const billingPeriodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+    const compliance = {
+      ...this.DEFAULT_COMPLIANCE,
+      dataResidency: region,
+    } satisfies OrganizationComplianceSettings;
+
     const [organization] = await db
       .insert(organizations)
       .values({
         name,
         domain,
         subdomain: this.generateSubdomain(name),
+        region,
         plan,
         status: 'trial',
         trialEndsAt: billingPeriodEnd,
@@ -256,7 +268,7 @@ export class OrganizationService {
           companyName: name,
           supportEmail: domain ? `support@${domain}` : 'support@example.com',
         },
-        compliance: this.DEFAULT_COMPLIANCE,
+        compliance,
       })
       .returning();
 
@@ -302,13 +314,15 @@ export class OrganizationService {
         },
       });
 
+    const sanitizedId = organization.id.replace(/-/g, '');
     await db.insert(tenantIsolations).values({
       organizationId: organization.id,
-      dataNamespace: `org_${organization.id.replace(/-/g, '')}`,
-      storagePrefix: `org_${organization.id}`,
-      cachePrefix: `org:${organization.id}`,
-      logPrefix: `org.${organization.id}`,
-      metricsPrefix: `org.${organization.id}`,
+      region,
+      dataNamespace: `${region}_org_${sanitizedId}`,
+      storagePrefix: `${region}/org_${organization.id}`,
+      cachePrefix: `${region}:org:${organization.id}`,
+      logPrefix: `${region}.org.${organization.id}`,
+      metricsPrefix: `${region}.org.${organization.id}`,
     });
 
     await db.insert(organizationQuotas).values({
@@ -328,6 +342,7 @@ export class OrganizationService {
       id: organization.id,
       name: organization.name,
       domain: organization.domain,
+      region: organization.region as DataRegion,
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
       role: membership.role,
@@ -737,6 +752,7 @@ export class OrganizationService {
       id: organization.id,
       name: organization.name,
       domain: organization.domain,
+      region: organization.region as DataRegion,
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
       role: membership.role,

@@ -3,6 +3,7 @@ import {
   users,
   sessions,
   db,
+  DataRegion,
   OrganizationPlan,
   OrganizationStatus,
   OrganizationLimits,
@@ -57,6 +58,7 @@ export interface AuthUser {
   organizationStatus?: OrganizationStatus;
   organizationLimits?: OrganizationLimits;
   organizationUsage?: OrganizationUsageMetrics;
+  organizationRegion?: DataRegion;
   activeOrganization?: AuthOrganization;
   organizations?: AuthOrganization[];
   permissions?: Permission[];
@@ -66,6 +68,7 @@ export interface AuthOrganization {
   id: string;
   name: string;
   domain: string | null;
+  region: DataRegion;
   plan: OrganizationPlan;
   status: OrganizationStatus;
   role: string;
@@ -513,6 +516,7 @@ export class AuthService {
       id: context.id,
       name: context.name,
       domain: context.domain,
+      region: context.region,
       plan: context.plan,
       status: context.status,
       role: context.role,
@@ -570,6 +574,7 @@ export class AuthService {
       organizationRole: activeOrganization?.role,
       organizationPlan: activeOrganization?.plan,
       organizationStatus: activeOrganization?.status,
+      organizationRegion: activeOrganization?.region,
       organizationLimits: activeOrganization?.limits,
       organizationUsage: activeOrganization?.usage,
       activeOrganization,

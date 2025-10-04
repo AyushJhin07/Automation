@@ -12,6 +12,8 @@ export interface WorkflowTimerMetadata {
   delayMs: number;
 }
 
+import type { DataRegion } from '../database/schema';
+
 export interface WorkflowTimerPayload {
   workflowId: string;
   organizationId?: string;
@@ -21,4 +23,5 @@ export interface WorkflowTimerPayload {
   resumeState: WorkflowResumeState;
   triggerType?: string;
   metadata: WorkflowTimerMetadata;
+  region: DataRegion;
 }

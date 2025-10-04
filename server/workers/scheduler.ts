@@ -1,16 +1,34 @@
 import { env } from '../env';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { triggerPersistenceService } from '../services/TriggerPersistenceService.js';
+import type { DataRegion } from '../database/schema';
 import { WebhookManager } from '../webhooks/WebhookManager.js';
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 25;
+
+function normalizeRegion(value?: string | null): DataRegion {
+  if (!value) {
+    return 'us';
+  }
+  const normalized = value.toLowerCase();
+  if (normalized === 'eu' || normalized === 'europe') {
+    return 'eu';
+  }
+  if (normalized === 'asia' || normalized === 'apac' || normalized === 'ap') {
+    return 'asia';
+  }
+  return 'us';
+}
+
+const WORKER_REGION: DataRegion = normalizeRegion(process.env.WORKER_REGION);
 
 async function runSchedulerCycle(batchSize: number): Promise<void> {
   const now = new Date();
   const dueTriggers = await triggerPersistenceService.claimDuePollingTriggers({
     limit: batchSize,
     now,
+    region: WORKER_REGION,
   });
 
   if (dueTriggers.length === 0) {

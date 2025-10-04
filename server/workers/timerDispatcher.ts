@@ -2,7 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { and, eq, lte, sql } from 'drizzle-orm';
 
-import { db, workflowTimers } from '../database/schema.js';
+import { db, workflowTimers, type DataRegion } from '../database/schema.js';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { getErrorMessage } from '../types/common.js';
 import type { WorkflowTimerPayload } from '../types/workflowTimers';
@@ -11,13 +11,29 @@ const POLL_INTERVAL_MS = Math.max(500, Number.parseInt(process.env.WORKFLOW_TIME
 const DISPATCH_BATCH_SIZE = Math.max(1, Number.parseInt(process.env.WORKFLOW_TIMER_DISPATCH_BATCH ?? '25', 10));
 const RETRY_DELAY_MS = Math.max(5000, Number.parseInt(process.env.WORKFLOW_TIMER_RETRY_DELAY_MS ?? '30000', 10));
 
+function normalizeRegion(value?: string | null): DataRegion {
+  if (!value) {
+    return 'us';
+  }
+  const normalized = value.toLowerCase();
+  if (normalized === 'eu' || normalized === 'europe') {
+    return 'eu';
+  }
+  if (normalized === 'asia' || normalized === 'apac' || normalized === 'ap') {
+    return 'asia';
+  }
+  return 'us';
+}
+
+const WORKER_REGION: DataRegion = normalizeRegion(process.env.WORKER_REGION);
+
 interface ClaimedTimer {
   id: string;
   executionId: string;
   payload: WorkflowTimerPayload;
 }
 
-async function claimDueTimers(limit: number): Promise<ClaimedTimer[]> {
+async function claimDueTimers(limit: number, region: DataRegion): Promise<ClaimedTimer[]> {
   if (!db) {
     return [];
   }
@@ -32,7 +48,13 @@ async function claimDueTimers(limit: number): Promise<ClaimedTimer[]> {
       status: workflowTimers.status,
     })
     .from(workflowTimers)
-    .where(and(eq(workflowTimers.status, 'pending'), lte(workflowTimers.resumeAt, now)))
+    .where(
+      and(
+        eq(workflowTimers.status, 'pending'),
+        lte(workflowTimers.resumeAt, now),
+        eq(workflowTimers.region, region)
+      )
+    )
     .orderBy(workflowTimers.resumeAt)
     .limit(limit);
 
@@ -48,7 +70,13 @@ async function claimDueTimers(limit: number): Promise<ClaimedTimer[]> {
         dispatchedAt: claimTime,
         attempts: sql`${workflowTimers.attempts} + 1`,
       })
-      .where(and(eq(workflowTimers.id, timer.id), eq(workflowTimers.status, 'pending')))
+      .where(
+        and(
+          eq(workflowTimers.id, timer.id),
+          eq(workflowTimers.status, 'pending'),
+          eq(workflowTimers.region, region)
+        )
+      )
       .returning({
         id: workflowTimers.id,
         executionId: workflowTimers.executionId,
@@ -114,6 +142,15 @@ async function dispatchTimer(timer: ClaimedTimer): Promise<void> {
     return;
   }
 
+  const payloadRegion = normalizeRegion(payload.region);
+  if (payloadRegion !== WORKER_REGION) {
+    console.warn(
+      `⚠️ Timer ${timer.id} is scoped to region ${payloadRegion} but worker is configured for ${WORKER_REGION}. Releasing.`
+    );
+    await releaseTimer(timer.id, 'region_mismatch');
+    return;
+  }
+
   try {
     await executionQueueService.enqueueResume({
       timerId: timer.id,
@@ -124,6 +161,7 @@ async function dispatchTimer(timer: ClaimedTimer): Promise<void> {
       resumeState: payload.resumeState,
       initialData: payload.initialData,
       triggerType: payload.triggerType ?? 'timer',
+      region: payloadRegion,
     });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
@@ -155,7 +193,7 @@ async function runDispatcher(): Promise<void> {
 
   while (!shuttingDown) {
     try {
-      const timers = await claimDueTimers(DISPATCH_BATCH_SIZE);
+      const timers = await claimDueTimers(DISPATCH_BATCH_SIZE, WORKER_REGION);
       if (timers.length === 0) {
         await delay(POLL_INTERVAL_MS);
         continue;

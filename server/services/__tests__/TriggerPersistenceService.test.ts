@@ -57,13 +57,14 @@ async function runTriggerPersistenceUnitTests(): Promise<void> {
     triggerId: 'poll.trigger',
     interval: 45,
     nextPoll: dueAt,
-    nextPollAt: dueAt,
-    isActive: true,
-    metadata: { scenario: 'unit-test' },
-    cursor: { page: '1' },
-    backoffCount: 3,
-    lastStatus: 'error',
-  } as const;
+  nextPollAt: dueAt,
+  isActive: true,
+  metadata: { scenario: 'unit-test' },
+  cursor: { page: '1' },
+  backoffCount: 3,
+  lastStatus: 'error',
+  region: 'us',
+} as const;
 
   await service.savePollingTrigger({ ...pollingTrigger });
   const [stored] = await service.loadPollingTriggers();
@@ -72,7 +73,7 @@ async function runTriggerPersistenceUnitTests(): Promise<void> {
   assert.equal(stored?.backoffCount, pollingTrigger.backoffCount, 'backoff count should persist');
   assert.equal(stored?.lastStatus, pollingTrigger.lastStatus, 'last status should persist');
 
-  const claimed = await service.claimDuePollingTriggers({ now, limit: 1 });
+  const claimed = await service.claimDuePollingTriggers({ now, limit: 1, region: 'us' });
   assert.equal(claimed.length, 1, 'due polling trigger should be claimed');
 
   const expectedIntervalSeconds = service.computePollingIntervalWithBackoff(

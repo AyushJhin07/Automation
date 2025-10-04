@@ -4,6 +4,7 @@
 import { getErrorMessage } from '../types/common';
 import { createHash } from 'crypto';
 import { TriggerPersistenceService, triggerPersistenceService } from '../services/TriggerPersistenceService';
+import type { DataRegion } from '../database/schema';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from './types';
 import { connectorRegistry } from '../ConnectorRegistry';
 import type { APICredentials } from '../integrations/BaseAPIClient';
@@ -22,6 +23,7 @@ type QueueService = {
     triggerType?: string;
     triggerData?: Record<string, any> | null;
     organizationId: string;
+    region: DataRegion;
   }) => Promise<{ executionId: string }>;
 };
 
@@ -44,6 +46,7 @@ export class WebhookManager {
   private readonly defaultReplayToleranceMs: number;
   private connectionServicePromise?: Promise<ConnectionService | null>;
   private initializationError?: string;
+  private readonly defaultRegion: DataRegion = 'us';
 
   private static readonly MAX_DEDUPE_TOKENS = TriggerPersistenceService.DEFAULT_MAX_DEDUPE_TOKENS;
   private static readonly DEFAULT_REPLAY_TOLERANCE_SECONDS = 15 * 60; // 15 minutes
@@ -85,14 +88,66 @@ export class WebhookManager {
     this.defaultReplayToleranceMs = this.resolveReplayToleranceMs();
   }
 
+  private resolveRegion(value?: unknown): DataRegion {
+    if (!value) {
+      return this.defaultRegion;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.toLowerCase();
+      if (normalized === 'eu' || normalized === 'europe') {
+        return 'eu';
+      }
+      if (normalized === 'asia' || normalized === 'apac' || normalized === 'ap') {
+        return 'asia';
+      }
+      return 'us';
+    }
+
+    return this.defaultRegion;
+  }
+
+  private resolveEventRegion(event: TriggerEvent): DataRegion {
+    if (event.region) {
+      return this.resolveRegion(event.region);
+    }
+
+    if (event.source === 'polling') {
+      const triggerId = event.webhookId.startsWith('poll-')
+        ? event.webhookId.slice(5)
+        : event.webhookId;
+      const trigger = this.pollingTriggers.get(triggerId);
+      if (trigger?.region) {
+        return this.resolveRegion(trigger.region);
+      }
+    }
+
+    const webhook = this.activeWebhooks.get(event.webhookId);
+    if (webhook?.region) {
+      return this.resolveRegion(webhook.region);
+    }
+
+    if (webhook?.metadata?.region) {
+      return this.resolveRegion((webhook.metadata as any).region);
+    }
+
+    return this.defaultRegion;
+  }
+
   private normalizePollingTrigger(trigger: PollingTrigger): PollingTrigger {
     const nextPoll = trigger.nextPoll instanceof Date ? trigger.nextPoll : new Date(trigger.nextPoll);
     const nextPollAtSource = trigger.nextPollAt ?? nextPoll;
     const nextPollAt = nextPollAtSource instanceof Date ? nextPollAtSource : new Date(nextPollAtSource);
+    const region = this.resolveRegion(trigger.region ?? trigger.metadata?.region);
     return {
       ...trigger,
       nextPoll,
       nextPollAt,
+      region,
+      metadata: {
+        ...(trigger.metadata ?? {}),
+        region,
+      },
     };
   }
 
@@ -490,13 +545,16 @@ export class WebhookManager {
       if (trigger.userId && !normalizedMetadata.userId) {
         normalizedMetadata.userId = trigger.userId;
       }
+      const region = this.resolveRegion(trigger.region ?? normalizedMetadata.region);
+      normalizedMetadata.region = region;
 
       const webhookTrigger: WebhookTrigger = {
         ...trigger,
         metadata: normalizedMetadata,
         id: webhookId,
         endpoint,
-        isActive: true
+        isActive: true,
+        region,
       };
 
       this.activeWebhooks.set(webhookId, webhookTrigger);
@@ -555,6 +613,7 @@ export class WebhookManager {
         source: 'webhook',
         organizationId,
         userId,
+        region: this.resolveRegion(webhook.region ?? (webhook.metadata as any)?.region),
       };
 
       const defaultSignature =
@@ -796,6 +855,7 @@ export class WebhookManager {
             source: 'polling',
             organizationId,
             userId,
+            region: trigger.region,
           };
 
           const replayWindowSeconds = this.resolvePollingReplayWindowSeconds(trigger);
@@ -1031,6 +1091,8 @@ export class WebhookManager {
   ): Promise<boolean> {
     let logId: string | null = options.logId ?? null;
     try {
+      const region = this.resolveEventRegion(event);
+      event.region = region;
       if (!logId) {
         logId = await this.persistence.logWebhookEvent(event);
         if (logId) {
@@ -1066,6 +1128,7 @@ export class WebhookManager {
           source: event.source,
         },
         organizationId: event.organizationId,
+        region,
       });
 
       event.processed = true;

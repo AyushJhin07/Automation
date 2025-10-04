@@ -9,12 +9,14 @@ import type {
   WorkerOptions,
 } from 'bullmq';
 
+import type { DataRegion } from '../database/schema';
 import type { WorkflowResumeState } from '../types/workflowTimers';
 
 export type WorkflowExecuteJobPayload = {
   workflowId: string;
   executionId: string;
   organizationId: string;
+  region: DataRegion;
   userId?: string;
   triggerType: string;
   triggerData?: Record<string, unknown> | null;
@@ -29,9 +31,17 @@ export interface JobPayloads {
   'encryption.rotate': { jobId: string };
 }
 
-export type QueueName = keyof JobPayloads;
+type BaseQueueName = keyof JobPayloads;
 
-export type JobPayload<Name extends QueueName> = JobPayloads[Name];
+export type QueueName = BaseQueueName | `${BaseQueueName}:${string}`;
+
+export type JobPayload<Name extends QueueName> = Name extends `${infer Base}:${string}`
+  ? Base extends BaseQueueName
+    ? JobPayloads[Base]
+    : never
+  : Name extends BaseQueueName
+  ? JobPayloads[Name]
+  : never;
 
 export type QueueJobCounts<Name extends QueueName> = Awaited<
   ReturnType<Queue<JobPayload<Name>, unknown, Name>['getJobCounts']>
