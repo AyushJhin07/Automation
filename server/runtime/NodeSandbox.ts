@@ -17,6 +17,11 @@ import {
 import { WorkerSandboxExecutor } from './WorkerSandboxExecutor';
 import { ProcessSandboxExecutor } from './ProcessSandboxExecutor';
 import { connectionService } from '../services/ConnectionService.js';
+import type {
+  OrganizationNetworkAllowlist,
+  OrganizationNetworkPolicy,
+} from '../services/ConnectionService.js';
+import { connectorRegistry } from '../ConnectorRegistry.js';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ENV_CPU_LIMIT_MS = Number(process.env.SANDBOX_MAX_CPU_MS);
@@ -25,6 +30,119 @@ const ENV_CPU_QUOTA_MS = Number(process.env.SANDBOX_CPU_QUOTA_MS);
 const ENV_CGROUP_ROOT = process.env.SANDBOX_CGROUP_ROOT;
 const ENV_HEARTBEAT_INTERVAL_MS = Number(process.env.SANDBOX_HEARTBEAT_INTERVAL_MS);
 const ENV_HEARTBEAT_TIMEOUT_MS = Number(process.env.SANDBOX_HEARTBEAT_TIMEOUT_MS);
+
+const normalizeNetworkValues = (values: unknown): string[] => {
+  if (!values) {
+    return [];
+  }
+
+  const source = Array.isArray(values)
+    ? values
+    : typeof values === 'string'
+      ? values.split(/[,\n]/)
+      : [];
+
+  const normalized = new Set<string>();
+  for (const entry of source) {
+    if (typeof entry !== 'string') {
+      continue;
+    }
+    const trimmed = entry.trim().toLowerCase();
+    if (!trimmed) {
+      continue;
+    }
+    normalized.add(trimmed);
+  }
+  return Array.from(normalized);
+};
+
+const mergeNetworkLists = (
+  ...lists: Array<OrganizationNetworkAllowlist | null | undefined>
+): OrganizationNetworkAllowlist => {
+  const domains = new Set<string>();
+  const ipRanges = new Set<string>();
+
+  for (const list of lists) {
+    if (!list) {
+      continue;
+    }
+    for (const domain of normalizeNetworkValues(list.domains)) {
+      domains.add(domain);
+    }
+    for (const range of normalizeNetworkValues(list.ipRanges)) {
+      ipRanges.add(range);
+    }
+  }
+
+  return {
+    domains: Array.from(domains),
+    ipRanges: Array.from(ipRanges),
+  };
+};
+
+const toSandboxList = (list: OrganizationNetworkAllowlist): SandboxNetworkAllowlist => ({
+  domains: [...list.domains],
+  ipRanges: [...list.ipRanges],
+});
+
+const extractConnectorId = (params: any, context: any): string | undefined => {
+  const candidates: unknown[] = [];
+
+  const push = (value: unknown) => {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      candidates.push(value.trim());
+    }
+  };
+
+  const metadata = context?.metadata ?? {};
+  push(metadata.connectorId);
+  push(metadata.appId);
+  push(metadata.app);
+  push(metadata.provider);
+
+  push(context?.connectorId);
+  push(context?.appId);
+  push(context?.app);
+
+  push(params?.appId);
+  push(params?.app);
+  push(params?.connectorId);
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim().toLowerCase();
+    }
+  }
+  return undefined;
+};
+
+const getConnectorRequiredNetwork = (
+  connectorId: string | undefined
+): OrganizationNetworkAllowlist | null => {
+  if (!connectorId) {
+    return null;
+  }
+
+  try {
+    const definition = connectorRegistry.getConnectorDefinition(connectorId);
+    const required = (definition as any)?.network?.requiredOutbound;
+    if (!required || typeof required !== 'object') {
+      return null;
+    }
+
+    const domains = normalizeNetworkValues((required as any).domains);
+    const ipRanges = normalizeNetworkValues((required as any).ipRanges);
+
+    if (domains.length === 0 && ipRanges.length === 0) {
+      return null;
+    }
+
+    return { domains, ipRanges };
+  } catch (error) {
+    console.warn('[NodeSandbox] Failed to resolve connector network requirements', connectorId, error);
+    return null;
+  }
+};
 
 export interface SandboxExecutionOptions {
   code: string;
@@ -147,22 +265,29 @@ export class NodeSandbox {
           ? (context as any).userId
           : undefined;
 
-        const allowlist = organizationId
-          ? await connectionService.getOrganizationNetworkAllowlist(organizationId)
-          : null;
+        const basePolicy: OrganizationNetworkPolicy = await connectionService.getOrganizationNetworkPolicy(
+          organizationId
+        );
+        const connectorId = extractConnectorId(params, context);
+        const connectorRequirements = getConnectorRequiredNetwork(connectorId);
+        const mergedAllowlist = mergeNetworkLists(basePolicy.allowlist, connectorRequirements);
+        const effectivePolicy: OrganizationNetworkPolicy = {
+          allowlist: mergedAllowlist,
+          denylist: mergeNetworkLists(basePolicy.denylist),
+        };
 
-        const networkPolicy = allowlist
-          ? {
-              allowlist,
-              audit: {
-                organizationId,
-                executionId,
-                nodeId,
-                connectionId,
-                userId,
-              },
-            }
-          : null;
+        const networkPolicy = {
+          allowlist: toSandboxList(effectivePolicy.allowlist),
+          denylist: toSandboxList(effectivePolicy.denylist),
+          required: connectorRequirements ? toSandboxList(connectorRequirements) : null,
+          audit: {
+            organizationId,
+            executionId,
+            nodeId,
+            connectionId,
+            userId,
+          },
+        } as const;
 
         const executorOptions: SandboxExecutorRunOptions = {
           code,
@@ -180,6 +305,12 @@ export class NodeSandbox {
             policyEvents.push(event);
             if (event.type === 'network-denied') {
               try {
+                const policyDetails = {
+                  allowlist: event.allowlist ? { ...event.allowlist } : networkPolicy.allowlist,
+                  denylist: event.denylist ? { ...event.denylist } : networkPolicy.denylist,
+                  required: event.required ? { ...event.required } : networkPolicy.required ?? undefined,
+                  source: 'sandbox',
+                };
                 connectionService.recordDeniedNetworkAccess({
                   organizationId,
                   connectionId,
@@ -187,7 +318,7 @@ export class NodeSandbox {
                   attemptedHost: event.host,
                   attemptedUrl: event.url,
                   reason: event.reason,
-                  allowlist: allowlist ?? undefined,
+                  policy: policyDetails,
                 });
               } catch (recordError) {
                 console.warn('[Sandbox] Failed to record denied network access', recordError);

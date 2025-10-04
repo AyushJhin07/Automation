@@ -84,7 +84,14 @@ export interface ConnectorDefinition {
     reset?: string[];
     retryAfter?: string[];
   };
-  
+
+  network?: {
+    requiredOutbound?: {
+      domains?: string[];
+      ipRanges?: string[];
+    };
+  };
+
   // Metadata
   isActive: boolean;
   isVerified: boolean;

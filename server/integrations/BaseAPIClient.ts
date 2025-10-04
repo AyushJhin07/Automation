@@ -5,7 +5,12 @@ import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import { isIP } from 'node:net';
 import { createHash } from 'node:crypto';
-import type { ConnectionService, OrganizationNetworkAllowlist } from '../services/ConnectionService';
+import type {
+  ConnectionService,
+  OrganizationNetworkAllowlist,
+  OrganizationNetworkPolicy,
+  OrganizationNetworkDenylist,
+} from '../services/ConnectionService';
 import { updateConnectorRateBudgetMetric } from '../observability/index.js';
 import { rateLimiter, type RateLimitRules } from './RateLimiter';
 import { retryManager } from '../core/RetryManager.js';
@@ -49,6 +54,7 @@ export interface APICredentials {
   __connectionId?: string;
   __userId?: string;
   __organizationNetworkAllowlist?: OrganizationNetworkAllowlist;
+  __organizationNetworkPolicy?: OrganizationNetworkPolicy;
   [key: string]: any;
 }
 
@@ -573,37 +579,65 @@ export abstract class BaseAPIClient {
       .toLowerCase();
   }
 
-  private getNetworkAllowlist(): OrganizationNetworkAllowlist | null {
+  private getNetworkPolicy(): OrganizationNetworkPolicy | null {
+    const normalize = (
+      list?: OrganizationNetworkAllowlist | OrganizationNetworkDenylist | null
+    ): OrganizationNetworkAllowlist => {
+      if (!list) {
+        return { domains: [], ipRanges: [] };
+      }
+
+      const normalizeValues = (values?: string[]): string[] => {
+        if (!Array.isArray(values)) {
+          return [];
+        }
+
+        const cleaned = values
+          .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : String(value ?? '').trim().toLowerCase()))
+          .filter((value) => value.length > 0);
+
+        return Array.from(new Set(cleaned));
+      };
+
+      return {
+        domains: normalizeValues(list.domains),
+        ipRanges: normalizeValues(list.ipRanges),
+      };
+    };
+
+    const policy = this.credentials.__organizationNetworkPolicy;
+    if (policy) {
+      return {
+        allowlist: normalize(policy.allowlist),
+        denylist: normalize(policy.denylist),
+      };
+    }
+
     const allowlist = this.credentials.__organizationNetworkAllowlist;
     if (!allowlist) {
       return null;
     }
 
-    const normalize = (values?: string[]): string[] => {
-      if (!Array.isArray(values)) {
-        return [];
-      }
-      const cleaned = values
-        .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : String(value ?? '').trim().toLowerCase()))
-        .filter((value) => value.length > 0);
-      return Array.from(new Set(cleaned));
-    };
-
     return {
-      domains: normalize(allowlist.domains),
-      ipRanges: normalize(allowlist.ipRanges),
+      allowlist: normalize(allowlist),
+      denylist: { domains: [], ipRanges: [] },
     };
   }
 
   private async assertHostAllowed(url: string): Promise<void> {
-    const allowlist = this.getNetworkAllowlist();
-    if (!allowlist) {
+    const policy = this.getNetworkPolicy();
+    if (!policy) {
       return;
     }
 
-    const hasDomainRules = allowlist.domains.length > 0;
-    const hasIpRules = allowlist.ipRanges.length > 0;
-    if (!hasDomainRules && !hasIpRules) {
+    const allowlist = policy.allowlist;
+    const denylist = policy.denylist;
+    const hasAllowDomainRules = allowlist.domains.length > 0;
+    const hasAllowIpRules = allowlist.ipRanges.length > 0;
+    const hasDenyDomainRules = denylist.domains.length > 0;
+    const hasDenyIpRules = denylist.ipRanges.length > 0;
+
+    if (!hasAllowDomainRules && !hasAllowIpRules && !hasDenyDomainRules && !hasDenyIpRules) {
       return;
     }
 
@@ -617,30 +651,60 @@ export abstract class BaseAPIClient {
       return;
     }
 
-    const hostnameAllowed = hasDomainRules && this.isHostnameAllowed(hostname, allowlist.domains);
-    const ipAllowed = hasIpRules && this.isIpAllowed(hostname, allowlist.ipRanges);
-
-    if (hostnameAllowed || ipAllowed) {
-      return;
-    }
-
     const attemptedHost = port ? `${hostname}:${port}` : hostname;
     const organizationId = this.credentials.__organizationId;
     const connectionId = this.credentials.__connectionId;
     const userId = this.credentials.__userId;
 
-    const service = await getConnectionService();
-    service?.recordDeniedNetworkAccess({
-      organizationId,
-      connectionId,
-      userId,
-      attemptedHost,
-      attemptedUrl: url,
-      reason: 'host_not_allowlisted',
-      allowlist,
-    });
+    const hostnameDenied =
+      (hasDenyDomainRules && this.isHostnameAllowed(hostname, denylist.domains)) ||
+      (hasDenyIpRules && this.isIpAllowed(hostname, denylist.ipRanges));
 
-    throw new Error(`Network request blocked: ${attemptedHost} is not allowlisted for this organization`);
+    if (hostnameDenied) {
+      const service = await getConnectionService();
+      service?.recordDeniedNetworkAccess({
+        organizationId,
+        connectionId,
+        userId,
+        attemptedHost,
+        attemptedUrl: url,
+        reason: 'host_denied',
+        policy: {
+          allowlist,
+          denylist,
+          source: 'connector_client',
+        },
+      });
+
+      throw new Error(`Network request blocked: ${attemptedHost} is explicitly denied for this organization`);
+    }
+
+    const hostnameAllowed =
+      (hasAllowDomainRules && this.isHostnameAllowed(hostname, allowlist.domains)) ||
+      (hasAllowIpRules && this.isIpAllowed(hostname, allowlist.ipRanges));
+
+    if (hasAllowDomainRules || hasAllowIpRules) {
+      if (hostnameAllowed) {
+        return;
+      }
+
+      const service = await getConnectionService();
+      service?.recordDeniedNetworkAccess({
+        organizationId,
+        connectionId,
+        userId,
+        attemptedHost,
+        attemptedUrl: url,
+        reason: 'host_not_allowlisted',
+        policy: {
+          allowlist,
+          denylist,
+          source: 'connector_client',
+        },
+      });
+
+      throw new Error(`Network request blocked: ${attemptedHost} is not allowlisted for this organization`);
+    }
   }
 
   private isHostnameAllowed(hostname: string, domains: string[]): boolean {

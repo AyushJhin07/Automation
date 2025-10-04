@@ -43,6 +43,8 @@ export interface SandboxNetworkAllowlist {
 
 export interface SandboxNetworkPolicy {
   allowlist: SandboxNetworkAllowlist | null;
+  denylist?: SandboxNetworkAllowlist | null;
+  required?: SandboxNetworkAllowlist | null;
   audit?: {
     organizationId?: string;
     executionId?: string;
@@ -59,6 +61,8 @@ export type SandboxPolicyEvent =
       url: string;
       reason: string;
       allowlist?: SandboxNetworkAllowlist | null;
+      denylist?: SandboxNetworkAllowlist | null;
+      required?: SandboxNetworkAllowlist | null;
       audit?: SandboxNetworkPolicy['audit'];
     }
   | {
@@ -227,7 +231,7 @@ export function formatLog(args: any[]): string {
     .join(' ');
 }
 
-const networkPolicyHelpersSource = `function normalizeAllowlistInput(values) {
+const networkPolicyHelpersSource = `function normalizeNetworkList(values) {
   if (!Array.isArray(values)) {
     return [];
   }
@@ -499,8 +503,24 @@ const networkPolicy = (() => {
   const allowlistSource = rawNetworkPolicy.allowlist;
   const allowlist = allowlistSource && typeof allowlistSource === 'object'
     ? {
-        domains: normalizeAllowlistInput(allowlistSource.domains),
-        ipRanges: normalizeAllowlistInput(allowlistSource.ipRanges)
+        domains: normalizeNetworkList(allowlistSource.domains),
+        ipRanges: normalizeNetworkList(allowlistSource.ipRanges)
+      }
+    : null;
+
+  const denylistSource = rawNetworkPolicy.denylist;
+  const denylist = denylistSource && typeof denylistSource === 'object'
+    ? {
+        domains: normalizeNetworkList(denylistSource.domains),
+        ipRanges: normalizeNetworkList(denylistSource.ipRanges)
+      }
+    : null;
+
+  const requiredSource = rawNetworkPolicy.required;
+  const required = requiredSource && typeof requiredSource === 'object'
+    ? {
+        domains: normalizeNetworkList(requiredSource.domains),
+        ipRanges: normalizeNetworkList(requiredSource.ipRanges)
       }
     : null;
 
@@ -515,7 +535,7 @@ const networkPolicy = (() => {
       }
     : null;
 
-  return { allowlist, audit };
+  return { allowlist, denylist, required, audit };
 })();
 
 const redactionSecrets = Array.isArray(secrets) ? secrets.filter((value) => typeof value === 'string' && value.length > 0) : [];
@@ -592,12 +612,18 @@ const resolveRequestUrl = (input, init) => {
 };
 
 const enforceNetworkPolicy = async (url) => {
-  if (!networkPolicy || !networkPolicy.allowlist) {
+  if (!networkPolicy) {
     return;
   }
 
   const allowlist = networkPolicy.allowlist;
-  if (!allowlist || (allowlist.domains.length === 0 && allowlist.ipRanges.length === 0)) {
+  const denylist = networkPolicy.denylist;
+  const required = networkPolicy.required;
+
+  const hasAllowRules = allowlist && (allowlist.domains.length > 0 || allowlist.ipRanges.length > 0);
+  const hasDenyRules = denylist && (denylist.domains.length > 0 || denylist.ipRanges.length > 0);
+
+  if (!hasAllowRules && !hasDenyRules) {
     return;
   }
 
@@ -612,26 +638,51 @@ const enforceNetworkPolicy = async (url) => {
   const port = parsed.port || '';
   const hostWithPort = port ? hostname + ':' + port : hostname;
 
-  const domainAllowed = allowlist.domains.length > 0 && isHostnameAllowed(hostname, allowlist.domains);
-  const ipAllowed = allowlist.ipRanges.length > 0 && isIpAllowed(hostname, allowlist.ipRanges);
+  const domainDenied = hasDenyRules && denylist && denylist.domains.length > 0 && isHostnameAllowed(hostname, denylist.domains);
+  const ipDenied = hasDenyRules && denylist && denylist.ipRanges.length > 0 && isIpAllowed(hostname, denylist.ipRanges);
 
-  if (domainAllowed || ipAllowed) {
-    return;
+  if (domainDenied || ipDenied) {
+    sendMessage({
+      type: 'policy_violation',
+      event: {
+        type: 'network-denied',
+        host: hostWithPort,
+        url: parsed.href,
+        reason: 'host_denied',
+        allowlist: allowlist || null,
+        denylist: denylist || null,
+        required: required || null,
+        audit: networkPolicy.audit || null
+      }
+    });
+
+    throw new Error('Network request blocked: ' + hostWithPort + ' is explicitly denied for this organization');
   }
 
-  sendMessage({
-    type: 'policy_violation',
-    event: {
-      type: 'network-denied',
-      host: hostWithPort,
-      url: parsed.href,
-      reason: 'host_not_allowlisted',
-      allowlist,
-      audit: networkPolicy.audit || null
-    }
-  });
+  if (hasAllowRules && allowlist) {
+    const domainAllowed = allowlist.domains.length > 0 && isHostnameAllowed(hostname, allowlist.domains);
+    const ipAllowed = allowlist.ipRanges.length > 0 && isIpAllowed(hostname, allowlist.ipRanges);
 
-  throw new Error('Network request blocked: ' + hostWithPort + ' is not allowlisted for this organization');
+    if (domainAllowed || ipAllowed) {
+      return;
+    }
+
+    sendMessage({
+      type: 'policy_violation',
+      event: {
+        type: 'network-denied',
+        host: hostWithPort,
+        url: parsed.href,
+        reason: 'host_not_allowlisted',
+        allowlist,
+        denylist: denylist || null,
+        required: required || null,
+        audit: networkPolicy.audit || null
+      }
+    });
+
+    throw new Error('Network request blocked: ' + hostWithPort + ' is not allowlisted for this organization');
+  }
 };
 
 const createSandboxFetch = (originalFetch) => {

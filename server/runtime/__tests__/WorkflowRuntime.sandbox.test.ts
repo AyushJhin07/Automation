@@ -84,10 +84,16 @@ const runtime = new WorkflowRuntime();
     secrets: [],
   };
 
-  const originalAllowlist = connectionService.getOrganizationNetworkAllowlist.bind(connectionService);
-  connectionService.getOrganizationNetworkAllowlist = async () => ({
-    domains: ['allowed.example.com'],
-    ipRanges: [],
+  const originalPolicy = connectionService.getOrganizationNetworkPolicy.bind(connectionService);
+  connectionService.getOrganizationNetworkPolicy = async () => ({
+    allowlist: {
+      domains: ['allowed.example.com'],
+      ipRanges: [],
+    },
+    denylist: {
+      domains: [],
+      ipRanges: [],
+    },
   });
 
   try {
@@ -98,7 +104,58 @@ const runtime = new WorkflowRuntime();
     assert.equal(result.success, false, 'network policy violation should fail execution');
     assert.ok(result.error && result.error.includes('Network request blocked'), 'error should indicate network block');
   } finally {
-    connectionService.getOrganizationNetworkAllowlist = originalAllowlist;
+    connectionService.getOrganizationNetworkPolicy = originalPolicy;
+  }
+}
+
+{
+  const networkGraph = {
+    id: 'sandbox-graph-platform-network',
+    name: 'Sandbox Graph Platform Network Policy',
+    version: 1,
+    nodes: [
+      {
+        id: 'sandbox-node-platform-network',
+        type: 'action.sandbox.network',
+        label: 'Sandbox Platform Network',
+        params: {},
+        data: {
+          label: 'Sandbox Network',
+          runtime: {
+            entryPoint: 'run',
+            code: `export async function run({ fetch }) {
+  await fetch('https://blocked-platform.example.com/data');
+  return { ok: true };
+}`,
+          },
+        },
+      },
+    ],
+    edges: [],
+    scopes: [],
+    secrets: [],
+  };
+
+  connectionService.setPlatformNetworkPolicyForTesting({
+    allowlist: {
+      domains: ['allowed-platform.example.com'],
+      ipRanges: [],
+    },
+    denylist: {
+      domains: [],
+      ipRanges: [],
+    },
+  });
+
+  try {
+    const result = await runtime.executeWorkflow(networkGraph as any, {}, 'sandbox-user', {
+      organizationId: 'org-default-policy',
+    });
+
+    assert.equal(result.success, false, 'platform network policy violation should fail execution');
+    assert.ok(result.error && result.error.includes('Network request blocked'), 'error should indicate network block');
+  } finally {
+    connectionService.setPlatformNetworkPolicyForTesting(null);
   }
 }
 
