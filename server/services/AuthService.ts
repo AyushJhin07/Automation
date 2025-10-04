@@ -7,6 +7,7 @@ import {
   OrganizationStatus,
   OrganizationLimits,
   OrganizationUsageMetrics,
+  OrganizationRegion,
 } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
 import { JWTPayload } from '../types/common';
@@ -57,6 +58,7 @@ export interface AuthUser {
   organizationStatus?: OrganizationStatus;
   organizationLimits?: OrganizationLimits;
   organizationUsage?: OrganizationUsageMetrics;
+  organizationRegion?: OrganizationRegion;
   activeOrganization?: AuthOrganization;
   organizations?: AuthOrganization[];
   permissions?: Permission[];
@@ -66,6 +68,7 @@ export interface AuthOrganization {
   id: string;
   name: string;
   domain: string | null;
+  region: OrganizationRegion;
   plan: OrganizationPlan;
   status: OrganizationStatus;
   role: string;
@@ -513,6 +516,7 @@ export class AuthService {
       id: context.id,
       name: context.name,
       domain: context.domain,
+      region: context.region,
       plan: context.plan,
       status: context.status,
       role: context.role,
@@ -572,6 +576,7 @@ export class AuthService {
       organizationStatus: activeOrganization?.status,
       organizationLimits: activeOrganization?.limits,
       organizationUsage: activeOrganization?.usage,
+      organizationRegion: activeOrganization?.region,
       activeOrganization,
       organizations: organizationSummaries,
       permissions: organizationPermissions,

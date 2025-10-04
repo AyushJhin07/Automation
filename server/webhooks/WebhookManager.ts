@@ -14,6 +14,13 @@ import {
   type WebhookVerificationResult,
 } from './WebhookVerifier';
 import { recordWebhookDedupeHit, recordWebhookDedupeMiss } from '../observability/index.js';
+import { organizationService } from '../services/OrganizationService.js';
+import {
+  resolveWorkerRegion,
+  normalizeRegion as normalizeRegionValue,
+  isWildcardRegion,
+  defaultRegion,
+} from '../utils/region.js';
 
 type QueueService = {
   enqueue: (request: {
@@ -44,6 +51,10 @@ export class WebhookManager {
   private readonly defaultReplayToleranceMs: number;
   private connectionServicePromise?: Promise<ConnectionService | null>;
   private initializationError?: string;
+  private readonly workerRegion: string;
+  private readonly normalizedWorkerRegion: string;
+  private readonly workerRegionWildcard: boolean;
+  private readonly regionResolutionFailures = new Set<string>();
 
   private static readonly MAX_DEDUPE_TOKENS = TriggerPersistenceService.DEFAULT_MAX_DEDUPE_TOKENS;
   private static readonly DEFAULT_REPLAY_TOLERANCE_SECONDS = 15 * 60; // 15 minutes
@@ -83,17 +94,35 @@ export class WebhookManager {
   private constructor() {
     this.ready = this.initializeFromPersistence();
     this.defaultReplayToleranceMs = this.resolveReplayToleranceMs();
+    this.workerRegion = resolveWorkerRegion();
+    this.normalizedWorkerRegion = normalizeRegionValue(this.workerRegion);
+    this.workerRegionWildcard = isWildcardRegion(this.normalizedWorkerRegion);
   }
 
   private normalizePollingTrigger(trigger: PollingTrigger): PollingTrigger {
     const nextPoll = trigger.nextPoll instanceof Date ? trigger.nextPoll : new Date(trigger.nextPoll);
     const nextPollAtSource = trigger.nextPollAt ?? nextPoll;
     const nextPollAt = nextPollAtSource instanceof Date ? nextPollAtSource : new Date(nextPollAtSource);
+    const metadata = trigger.metadata ?? {};
+    const organizationId = trigger.organizationId ?? (metadata as any).organizationId;
+    const region = trigger.region ?? (metadata as any).region;
     return {
       ...trigger,
       nextPoll,
       nextPollAt,
+      organizationId,
+      region,
     };
+  }
+
+  private shouldProcessRegion(region?: string | null): boolean {
+    if (this.workerRegionWildcard) {
+      return true;
+    }
+    if (!region) {
+      return false;
+    }
+    return normalizeRegionValue(region) === this.normalizedWorkerRegion;
   }
 
   private async initializeFromPersistence(): Promise<void> {
@@ -764,6 +793,50 @@ export class WebhookManager {
 
       await this.persistence.updatePollingRuntimeState(trigger.id, { lastPoll: trigger.lastPoll, nextPollAt: trigger.nextPollAt });
 
+      const metadata = trigger.metadata ?? {};
+      const organizationId = trigger.organizationId ?? (metadata as any).organizationId ?? null;
+      if (!organizationId) {
+        console.warn(`⚠️ Missing organization context for polling trigger ${trigger.id}`);
+        return;
+      }
+
+      let normalizedTriggerRegion: string = trigger.region
+        ? normalizeRegionValue(trigger.region)
+        : '';
+
+      if (!normalizedTriggerRegion) {
+        try {
+          const orgRegion = await organizationService.getOrganizationRegion(organizationId);
+          normalizedTriggerRegion = normalizeRegionValue(orgRegion);
+        } catch (error) {
+          if (!this.regionResolutionFailures.has(organizationId)) {
+            console.warn(
+              `⚠️ Unable to resolve region for polling trigger ${trigger.id}; defaulting to ${defaultRegion}:`,
+              getErrorMessage(error)
+            );
+            this.regionResolutionFailures.add(organizationId);
+          }
+          normalizedTriggerRegion = defaultRegion;
+        }
+      }
+
+      if (!this.shouldProcessRegion(normalizedTriggerRegion)) {
+        if (!this.workerRegionWildcard) {
+          console.debug(
+            `⏭️ Skipping polling trigger ${trigger.id} in region ${normalizedTriggerRegion} (worker=${this.normalizedWorkerRegion})`
+          );
+        }
+        return;
+      }
+
+      trigger.organizationId = organizationId;
+      trigger.region = normalizedTriggerRegion;
+      trigger.metadata = {
+        ...metadata,
+        organizationId,
+        region: normalizedTriggerRegion,
+      };
+
       // Execute the specific polling logic based on app and trigger
       const results = await this.executeAppSpecificPoll(trigger);
 
@@ -772,17 +845,7 @@ export class WebhookManager {
 
         // Process each result as a trigger event
         for (const result of results) {
-          const organizationId =
-            (trigger.metadata && (trigger.metadata as any).organizationId) ||
-            trigger.organizationId;
-          if (!organizationId) {
-            console.warn(`⚠️ Missing organization context for polling trigger ${trigger.id}`);
-            continue;
-          }
-
-          const userId =
-            (trigger.metadata && (trigger.metadata as any).userId) ||
-            trigger.userId;
+          const userId = (trigger.metadata && (trigger.metadata as any).userId) || trigger.userId;
 
           const event: TriggerEvent = {
             webhookId: `poll-${trigger.id}`,

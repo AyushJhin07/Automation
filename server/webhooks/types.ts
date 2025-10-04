@@ -44,4 +44,6 @@ export interface PollingTrigger {
   cursor?: Record<string, any> | null;
   backoffCount?: number;
   lastStatus?: string | null;
+  organizationId?: string;
+  region?: string;
 }

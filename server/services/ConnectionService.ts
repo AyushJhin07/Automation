@@ -19,6 +19,7 @@ import { env } from '../env';
 import { genericExecutor } from '../integrations/GenericExecutor';
 import type { DynamicOptionHandlerContext, DynamicOptionResult } from '../integrations/BaseAPIClient';
 import { normalizeDynamicOptionPath } from '../../common/connectorDynamicOptions.js';
+import { organizationService } from './OrganizationService';
 
 type OAuthTokenRefresher = {
   refreshToken(userId: string, organizationId: string, providerId: string): Promise<OAuthTokens>;
@@ -179,11 +180,19 @@ interface FileConnectionRecord {
   updatedAt: string;
 }
 
+export interface ConnectionStorageDescriptor {
+  backend: 'database' | 'file';
+  region: string;
+  location: string;
+  scope: 'connections';
+  metadata?: Record<string, any>;
+}
+
 export class ConnectionService {
   private db: any;
   private readonly useFileStore: boolean;
   private readonly allowFileStore: boolean;
-  private readonly fileStorePath: string;
+  private readonly fileStoreBasePath: string;
   private oauthManagerOverride?: OAuthTokenRefresher;
   private cachedOAuthManager?: OAuthTokenRefresher;
   private readonly refreshThresholdMs: number;
@@ -195,8 +204,8 @@ export class ConnectionService {
   constructor() {
     this.db = db;
     this.allowFileStore = process.env.ALLOW_FILE_CONNECTION_STORE === 'true';
-    this.fileStorePath = path.resolve(
-      process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
+    this.fileStoreBasePath = path.resolve(
+      process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections')
     );
 
     const threshold = Number(process.env.OAUTH_REFRESH_THRESHOLD_MS);
@@ -207,7 +216,7 @@ export class ConnectionService {
       if (this.allowFileStore) {
         const mode = process.env.NODE_ENV ?? 'development';
         console.warn(
-          `⚠️ ConnectionService: DATABASE_URL not set. Using encrypted file store at ${this.fileStorePath} (mode=${mode}).`
+          `⚠️ ConnectionService: DATABASE_URL not set. Using encrypted file store under ${this.fileStoreBasePath} (mode=${mode}, per-region isolation).`
         );
       } else {
         throw new Error(
@@ -239,14 +248,49 @@ export class ConnectionService {
     }
   }
 
-  private async ensureFileStoreDir(): Promise<void> {
-    const dir = path.dirname(this.fileStorePath);
-    await fs.mkdir(dir, { recursive: true });
+  private async resolveFileStorePath(organizationId: string): Promise<{ region: string; filePath: string }> {
+    const region = await organizationService.getOrganizationRegion(organizationId);
+    const normalizedRegion = region;
+    const filePath = path.join(this.fileStoreBasePath, normalizedRegion, 'connections.json');
+    return { region: normalizedRegion, filePath };
   }
 
-  private async readFileStore(): Promise<FileConnectionRecord[]> {
+  public async describeStorageLocation(organizationId: string): Promise<ConnectionStorageDescriptor> {
+    if (this.useFileStore) {
+      const { region, filePath } = await this.resolveFileStorePath(organizationId);
+      return {
+        backend: 'file',
+        region,
+        location: filePath,
+        scope: 'connections',
+        metadata: { encrypted: true },
+      };
+    }
+
+    const region = await organizationService.getOrganizationRegion(organizationId);
+    return {
+      backend: 'database',
+      region,
+      location: 'database:connections',
+      scope: 'connections',
+      metadata: { encrypted: true },
+    };
+  }
+
+  private async ensureFileStoreDir(organizationId: string): Promise<string> {
+    const { filePath } = await this.resolveFileStorePath(organizationId);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    return filePath;
+  }
+
+  private async readFileStore(organizationId?: string): Promise<FileConnectionRecord[]> {
+    if (!organizationId) {
+      return this.readAllFileStoreRecords();
+    }
+
+    const { filePath } = await this.resolveFileStorePath(organizationId);
     try {
-      const raw = await fs.readFile(this.fileStorePath, 'utf8');
+      const raw = await fs.readFile(filePath, 'utf8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return parsed as FileConnectionRecord[];
@@ -256,14 +300,52 @@ export class ConnectionService {
       if (error?.code === 'ENOENT') {
         return [];
       }
-      console.error('❌ Failed to read connection file store:', error);
+      console.error(`❌ Failed to read connection file store (${filePath}):`, error);
       throw error;
     }
   }
 
-  private async writeFileStore(records: FileConnectionRecord[]): Promise<void> {
-    await this.ensureFileStoreDir();
-    await fs.writeFile(this.fileStorePath, JSON.stringify(records, null, 2), 'utf8');
+  private async writeFileStore(
+    organizationId: string,
+    records: FileConnectionRecord[]
+  ): Promise<void> {
+    const filePath = await this.ensureFileStoreDir(organizationId);
+    await fs.writeFile(filePath, JSON.stringify(records, null, 2), 'utf8');
+  }
+
+  private async readAllFileStoreRecords(): Promise<FileConnectionRecord[]> {
+    try {
+      const entries = await fs.readdir(this.fileStoreBasePath, { withFileTypes: true });
+      const aggregated: FileConnectionRecord[] = [];
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        const filePath = path.join(this.fileStoreBasePath, entry.name, 'connections.json');
+        try {
+          const raw = await fs.readFile(filePath, 'utf8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            aggregated.push(...(parsed as FileConnectionRecord[]));
+          }
+        } catch (error: any) {
+          if (error?.code === 'ENOENT') {
+            continue;
+          }
+          console.warn(`⚠️ Skipping corrupted connection file store (${filePath}):`, error);
+        }
+      }
+
+      return aggregated;
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        return [];
+      }
+      console.error('❌ Failed to enumerate connection file stores:', error);
+      throw error;
+    }
   }
 
   private toDecryptedConnection(record: FileConnectionRecord): DecryptedConnection {
@@ -300,7 +382,7 @@ export class ConnectionService {
     organizationId: string
   ): Promise<DecryptedConnection | null> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) => conn.id === connectionId && conn.organizationId === organizationId && conn.isActive
       );
@@ -728,7 +810,7 @@ export class ConnectionService {
     const updatedAt = new Date();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(connection.organizationId);
       const index = records.findIndex(
         (record) =>
           record.id === connection.id &&
@@ -747,7 +829,7 @@ export class ConnectionService {
           metadata,
           updatedAt: updatedAt.toISOString(),
         };
-        await this.writeFileStore(records);
+        await this.writeFileStore(connection.organizationId, records);
       }
     } else {
       this.ensureDb();
@@ -802,7 +884,7 @@ export class ConnectionService {
     const normalizedProvider = request.provider.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(request.organizationId);
       const nowIso = new Date().toISOString();
       const record: FileConnectionRecord = {
         id: randomUUID(),
@@ -820,7 +902,7 @@ export class ConnectionService {
         updatedAt: nowIso,
       };
       records.push(record);
-      await this.writeFileStore(records);
+      await this.writeFileStore(request.organizationId, records);
       console.log(`✅ Connection created (file store): ${record.id}`);
       return record.id;
     }
@@ -852,7 +934,7 @@ export class ConnectionService {
     organizationId: string
   ): Promise<DecryptedConnection | null> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) =>
           conn.id === connectionId &&
@@ -932,7 +1014,7 @@ export class ConnectionService {
     const normalizedProvider = provider?.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       return records
         .filter((conn) =>
           conn.userId === userId &&
@@ -996,7 +1078,7 @@ export class ConnectionService {
     const normalizedProvider = provider.toLowerCase();
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const record = records.find(
         (conn) =>
           conn.userId === userId &&
@@ -1341,14 +1423,14 @@ export class ConnectionService {
     errorMsg?: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const idx = records.findIndex(
         r => r.id === connectionId && r.userId === userId && r.organizationId === organizationId
       );
       if (idx >= 0) {
         records[idx].lastUsed = new Date().toISOString();
         if (!ok && errorMsg) records[idx].lastError = errorMsg;
-        await this.writeFileStore(records);
+        await this.writeFileStore(organizationId, records);
       }
       return;
     }
@@ -1419,7 +1501,7 @@ export class ConnectionService {
     };
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const existingIndex = records.findIndex((conn) => {
         if (requestedConnectionId) {
           return (
@@ -1450,7 +1532,7 @@ export class ConnectionService {
           isActive: true,
         };
         records[existingIndex] = updated;
-        await this.writeFileStore(records);
+        await this.writeFileStore(organizationId, records);
         console.log(`🔄 Updated connection (${normalizedProvider}:${connectionName}) for ${userId}`);
         this.invalidateDynamicOptionCache(updated.id);
         return updated.id;
@@ -1472,7 +1554,7 @@ export class ConnectionService {
         updatedAt: nowIso,
       };
       records.push(record);
-      await this.writeFileStore(records);
+      await this.writeFileStore(organizationId, records);
       console.log(`✅ Stored connection (${normalizedProvider}:${connectionName}) for ${userId}`);
       return record.id;
     }
@@ -1806,7 +1888,7 @@ export class ConnectionService {
     message: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) => conn.id === connectionId && conn.organizationId === organizationId
       );
@@ -1818,7 +1900,7 @@ export class ConnectionService {
           testError: success ? undefined : message,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        await this.writeFileStore(organizationId, records);
       }
       return;
     }
@@ -1862,7 +1944,7 @@ export class ConnectionService {
     }
 
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) =>
           conn.id === connectionId &&
@@ -1880,7 +1962,7 @@ export class ConnectionService {
           encryptionKeyId: updateData.encryptionKeyId ?? existing.encryptionKeyId ?? null,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        await this.writeFileStore(organizationId, records);
       }
       this.invalidateDynamicOptionCache(connectionId);
       return;
@@ -1907,7 +1989,7 @@ export class ConnectionService {
     organizationId: string
   ): Promise<void> {
     if (this.useFileStore) {
-      const records = await this.readFileStore();
+      const records = await this.readFileStore(organizationId);
       const index = records.findIndex(
         (conn) =>
           conn.id === connectionId &&
@@ -1920,7 +2002,7 @@ export class ConnectionService {
           isActive: false,
           updatedAt: new Date().toISOString(),
         };
-        await this.writeFileStore(records);
+        await this.writeFileStore(organizationId, records);
       }
       this.invalidateDynamicOptionCache(connectionId);
       return;

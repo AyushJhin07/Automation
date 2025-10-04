@@ -14,6 +14,7 @@ import {
   type Worker,
   type WorkflowExecuteJobPayload,
 } from '../queue/index.js';
+import type { WorkflowQueueName } from '../queue/types.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 import { updateQueueDepthMetric } from '../observability/index.js';
@@ -24,6 +25,7 @@ import {
   type ExecutionQuotaCounters,
 } from './ExecutionQuotaService.js';
 import type { Job } from 'bullmq';
+import { normalizeRegion as normalizeRegionValue, resolveWorkerRegion, resolveWorkflowQueueName } from '../utils/region.js';
 
 type QueueRunRequest = {
   workflowId: string;
@@ -47,10 +49,15 @@ class ExecutionQueueService {
   private readonly heartbeatPersistIntervalMs: number;
   private started = false;
   private shutdownPromise: Promise<void> | null = null;
-  private queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
-  private worker: Worker<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> | null = null;
+  private readonly queueByName = new Map<
+    WorkflowQueueName,
+    Queue<WorkflowExecuteJobPayload, unknown, WorkflowQueueName>
+  >();
+  private worker: Worker<WorkflowExecuteJobPayload, unknown, WorkflowQueueName> | null = null;
   private queueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
+  private readonly workerRegion: string;
+  private readonly workerQueueName: WorkflowQueueName;
   private readonly activeLeases = new Map<
     string,
     { metadata: Record<string, any>; organizationId: string; lastPersistedAt: number }
@@ -112,6 +119,9 @@ class ExecutionQueueService {
         10
       )
     );
+
+    this.workerRegion = resolveWorkerRegion();
+    this.workerQueueName = resolveWorkflowQueueName(this.workerRegion);
   }
 
   public static getInstance(): ExecutionQueueService {
@@ -132,11 +142,12 @@ class ExecutionQueueService {
   }
 
   private async withQueueOperation<T>(
+    region: string,
     operation: (
-      queue: Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>
+      queue: Queue<WorkflowExecuteJobPayload, unknown, WorkflowQueueName>
     ) => Promise<T>
   ): Promise<T> {
-    const queue = this.ensureQueue();
+    const queue = this.ensureQueue(region);
     try {
       return await operation(queue);
     } catch (error) {
@@ -144,7 +155,7 @@ class ExecutionQueueService {
       if (!switched) {
         throw error;
       }
-      const fallbackQueue = this.ensureQueue();
+      const fallbackQueue = this.ensureQueue(region);
       return operation(fallbackQueue);
     }
   }
@@ -182,6 +193,7 @@ class ExecutionQueueService {
 
   public async enqueue(req: QueueRunRequest): Promise<{ executionId: string }> {
     const quotaProfile = await organizationService.getExecutionQuotaProfile(req.organizationId);
+    const region = normalizeRegionValue(quotaProfile.region);
 
     const admission = await executionQuotaService.reserveAdmission(req.organizationId, {
       maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
@@ -192,6 +204,7 @@ class ExecutionQueueService {
       queuedAt: new Date().toISOString(),
       attemptsMade: 0,
       retryCount: 0,
+      region,
       quota: {
         runningBeforeEnqueue: admission.state.running,
         executionsInWindow: admission.state.windowCount,
@@ -277,7 +290,7 @@ class ExecutionQueueService {
     }
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(region, (queue) =>
         queue.add(
           'workflow.execute',
           {
@@ -287,6 +300,7 @@ class ExecutionQueueService {
             userId: req.userId,
             triggerType: req.triggerType ?? 'manual',
             triggerData: req.triggerData ?? null,
+            region,
           },
           {
             jobId: execution.id,
@@ -342,10 +356,13 @@ class ExecutionQueueService {
       return;
     }
 
+    const region = normalizeRegionValue(
+      await organizationService.getOrganizationRegion(params.organizationId)
+    );
     const jobId = `${params.executionId}:${params.timerId ?? Date.now().toString(36)}`;
 
     try {
-      await this.withQueueOperation((queue) =>
+      await this.withQueueOperation(region, (queue) =>
         queue.add(
           'workflow.execute',
           {
@@ -357,6 +374,7 @@ class ExecutionQueueService {
             resumeState: params.resumeState,
             initialData: params.initialData,
             timerId: params.timerId,
+            region,
           },
           {
             jobId,
@@ -387,9 +405,9 @@ class ExecutionQueueService {
       return;
     }
 
-    const queue = this.ensureQueue();
+    const queue = this.ensureQueue(this.workerRegion);
     if (!this.queueEvents) {
-      this.queueEvents = createQueueEvents('workflow.execute');
+      this.queueEvents = createQueueEvents(this.workerQueueName);
     }
 
     if (!this.telemetryCleanup) {
@@ -402,7 +420,7 @@ class ExecutionQueueService {
     }
 
     this.worker = registerQueueWorker(
-      'workflow.execute',
+      this.workerQueueName,
       async (job) => this.process(job),
       {
         concurrency: this.concurrency,
@@ -413,8 +431,8 @@ class ExecutionQueueService {
         heartbeatIntervalMs: this.heartbeatIntervalMs,
         heartbeatTimeoutMs: this.heartbeatTimeoutMs,
         onHeartbeat: async (
-          _job: Job<WorkflowExecuteJobPayload, unknown, 'workflow.execute'>,
-          context: QueueWorkerHeartbeatContext<'workflow.execute'>
+          _job: Job<WorkflowExecuteJobPayload, unknown, WorkflowQueueName>,
+          context: QueueWorkerHeartbeatContext<WorkflowQueueName>
         ) => {
           const payload = _job.data;
           const executionId = payload.executionId;
@@ -474,7 +492,7 @@ class ExecutionQueueService {
     this.started = true;
 
     console.log(
-      `🧵 ExecutionQueueService started (concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
+      `🧵 ExecutionQueueService started (region=${this.workerRegion}, concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
     );
   }
 
@@ -530,30 +548,36 @@ class ExecutionQueueService {
 
       this.started = false;
       this.shutdownPromise = null;
-      this.queue = null;
+      this.queueByName.clear();
     })();
 
     return this.shutdownPromise;
   }
 
-  private ensureQueue(): Queue<WorkflowExecuteJobPayload, unknown, 'workflow.execute'> {
-    if (!this.queue) {
-      this.queue = createQueue('workflow.execute', {
-        defaultJobOptions: {
-          attempts: this.maxRetries + 1,
-          backoff: { type: 'execution-backoff' },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-        settings: {
-          backoffStrategies: {
-            'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
-          },
-        },
-      });
+  private ensureQueue(region: string): Queue<WorkflowExecuteJobPayload, unknown, WorkflowQueueName> {
+    const normalizedRegion = normalizeRegionValue(region);
+    const queueName = resolveWorkflowQueueName(normalizedRegion);
+    const existing = this.queueByName.get(queueName);
+    if (existing) {
+      return existing;
     }
 
-    return this.queue;
+    const queue = createQueue(queueName, {
+      defaultJobOptions: {
+        attempts: this.maxRetries + 1,
+        backoff: { type: 'execution-backoff' },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+      settings: {
+        backoffStrategies: {
+          'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+        },
+      },
+    });
+
+    this.queueByName.set(queueName, queue);
+    return queue;
   }
 
   private async handleQueueFallback(error: unknown): Promise<boolean> {
@@ -575,8 +599,6 @@ class ExecutionQueueService {
         getErrorMessage(shutdownError)
       );
     }
-
-    this.queue = null;
 
     if (wasStarted) {
       this.start();
@@ -602,6 +624,9 @@ class ExecutionQueueService {
       attemptsMade: attemptNumber,
       retryCount: Math.max(0, attemptNumber - 1),
     } as Record<string, any>;
+    if (!runningMetadata.region) {
+      runningMetadata.region = job.data.region ?? this.workerRegion;
+    }
     if ('lastError' in runningMetadata) {
       delete runningMetadata.lastError;
     }

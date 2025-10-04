@@ -16,6 +16,7 @@ import {
   OrganizationSecuritySettings,
   OrganizationBranding,
   OrganizationComplianceSettings,
+  OrganizationRegion,
   users,
 } from '../database/schema';
 import { OrgRole } from '../../configs/rbac';
@@ -24,6 +25,7 @@ export interface OrganizationSummary {
   id: string;
   name: string;
   domain: string | null;
+  region: OrganizationRegion;
   plan: OrganizationPlan;
   status: OrganizationStatus;
   role: string;
@@ -43,10 +45,20 @@ export interface OrganizationContext extends OrganizationSummary {
   compliance: OrganizationComplianceSettings;
 }
 
+export interface OrganizationProfile {
+  id: string;
+  name: string;
+  region: OrganizationRegion;
+  plan: OrganizationPlan;
+  status: OrganizationStatus;
+  compliance: OrganizationComplianceSettings;
+}
+
 export interface CreateOrganizationOptions {
   name?: string;
   domain?: string | null;
   plan?: OrganizationPlan;
+  region?: OrganizationRegion;
 }
 
 export interface InviteMemberInput {
@@ -191,6 +203,13 @@ export class OrganizationService {
     retentionPolicyDays: 2555,
   };
 
+  private readonly DEFAULT_REGION: OrganizationRegion = this.normalizeRegion(
+    process.env.DEFAULT_ORGANIZATION_REGION ?? this.DEFAULT_COMPLIANCE.dataResidency
+  );
+
+  private readonly regionCache = new Map<string, { region: OrganizationRegion; expiresAt: number }>();
+  private readonly REGION_CACHE_TTL_MS = 5 * 60 * 1000;
+
   private normalizeSecuritySettings(
     security?: OrganizationSecuritySettings | null
   ): OrganizationSecuritySettings {
@@ -238,6 +257,83 @@ export class OrganizationService {
     );
   }
 
+  private normalizeRegion(region?: string | null): OrganizationRegion {
+    if (typeof region === 'string') {
+      const trimmed = region.trim();
+      if (trimmed.length > 0) {
+        return trimmed.toLowerCase() as OrganizationRegion;
+      }
+    }
+    return this.DEFAULT_REGION;
+  }
+
+  public getDefaultRegion(): OrganizationRegion {
+    return this.DEFAULT_REGION;
+  }
+
+  public async getOrganizationRegion(organizationId: string): Promise<OrganizationRegion> {
+    const cached = this.regionCache.get(organizationId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.region;
+    }
+
+    if (!db) {
+      return this.DEFAULT_REGION;
+    }
+
+    const [row] = await db
+      .select({ region: organizations.region })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    const resolved = this.normalizeRegion(row?.region);
+    this.regionCache.set(organizationId, {
+      region: resolved,
+      expiresAt: Date.now() + this.REGION_CACHE_TTL_MS,
+    });
+
+    return resolved;
+  }
+
+  public async getOrganizationProfile(organizationId: string): Promise<OrganizationProfile | null> {
+    if (!db) {
+      return null;
+    }
+
+    const [row] = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        region: organizations.region,
+        plan: organizations.plan,
+        status: organizations.status,
+        compliance: organizations.compliance,
+      })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    if (!row) {
+      return null;
+    }
+
+    const normalizedRegion = this.normalizeRegion(row.region);
+    this.regionCache.set(organizationId, {
+      region: normalizedRegion,
+      expiresAt: Date.now() + this.REGION_CACHE_TTL_MS,
+    });
+
+    return {
+      id: row.id,
+      name: row.name,
+      region: normalizedRegion,
+      plan: row.plan as OrganizationPlan,
+      status: row.status as OrganizationStatus,
+      compliance: row.compliance as OrganizationComplianceSettings,
+    };
+  }
+
   public async createOrganizationForUser(
     user: { id: string; email: string; name?: string | null },
     options: CreateOrganizationOptions = {}
@@ -249,6 +345,7 @@ export class OrganizationService {
     const plan: OrganizationPlan = options.plan ?? 'starter';
     const limits = this.PLAN_LIMITS[plan];
     const features = this.PLAN_FEATURES[plan];
+    const region = this.normalizeRegion(options.region ?? this.DEFAULT_REGION);
 
     const now = new Date();
     const domain = options.domain ?? user.email.split('@')[1] ?? null;
@@ -262,6 +359,7 @@ export class OrganizationService {
         name,
         domain,
         subdomain: this.generateSubdomain(name),
+        region,
         plan,
         status: 'trial',
         trialEndsAt: billingPeriodEnd,
@@ -284,9 +382,17 @@ export class OrganizationService {
           companyName: name,
           supportEmail: domain ? `support@${domain}` : 'support@example.com',
         },
-        compliance: this.DEFAULT_COMPLIANCE,
+        compliance: {
+          ...this.DEFAULT_COMPLIANCE,
+          dataResidency: region,
+        },
       })
       .returning();
+
+    this.regionCache.set(organization.id, {
+      region,
+      expiresAt: Date.now() + this.REGION_CACHE_TTL_MS,
+    });
 
     const [membership] = await db
       .insert(organizationMembers)
@@ -330,13 +436,14 @@ export class OrganizationService {
         },
       });
 
+    const normalizedOrgId = organization.id.replace(/-/g, '');
     await db.insert(tenantIsolations).values({
       organizationId: organization.id,
-      dataNamespace: `org_${organization.id.replace(/-/g, '')}`,
-      storagePrefix: `org_${organization.id}`,
-      cachePrefix: `org:${organization.id}`,
-      logPrefix: `org.${organization.id}`,
-      metricsPrefix: `org.${organization.id}`,
+      dataNamespace: `org_${normalizedOrgId}`,
+      storagePrefix: `${region}/org_${organization.id}`,
+      cachePrefix: `${region}:org:${organization.id}`,
+      logPrefix: `${region}.org.${organization.id}`,
+      metricsPrefix: `${region}.org.${organization.id}`,
     });
 
     await db.insert(organizationQuotas).values({
@@ -358,6 +465,7 @@ export class OrganizationService {
       id: organization.id,
       name: organization.name,
       domain: organization.domain,
+      region,
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
       role: membership.role,
@@ -746,12 +854,18 @@ export class OrganizationService {
 
   public async getExecutionQuotaProfile(
     organizationId: string
-  ): Promise<{ limits: OrganizationLimits; usage: OrganizationUsageMetrics; plan: OrganizationPlan }> {
+  ): Promise<{
+    limits: OrganizationLimits;
+    usage: OrganizationUsageMetrics;
+    plan: OrganizationPlan;
+    region: OrganizationRegion;
+  }> {
     if (!db) {
       return {
         limits: this.PLAN_LIMITS.starter,
         usage: this.normalizeUsage(null),
         plan: 'starter',
+        region: this.DEFAULT_REGION,
       };
     }
 
@@ -771,6 +885,7 @@ export class OrganizationService {
       plan,
       limits: this.mergeLimitsWithDefaults(plan, row.quota?.limits as Partial<OrganizationLimits> | null),
       usage: this.normalizeUsage(row.quota?.usage as OrganizationUsageMetrics | null),
+      region: this.normalizeRegion(row.organization.region),
     };
   }
 
@@ -848,6 +963,7 @@ export class OrganizationService {
       id: organization.id,
       name: organization.name,
       domain: organization.domain,
+      region: this.normalizeRegion(organization.region),
       plan: organization.plan as OrganizationPlan,
       status: organization.status as OrganizationStatus,
       role: membership.role,

@@ -6,6 +6,7 @@ import {
   OrganizationStatus,
   OrganizationLimits,
   OrganizationUsageMetrics,
+  OrganizationRegion,
 } from '../database/schema';
 import { setRequestUser } from '../utils/ExecutionContext';
 
@@ -35,6 +36,7 @@ declare global {
         activeOrganization?: AuthOrganization;
         organizations?: AuthOrganization[];
         permissions?: Permission[];
+        organizationRegion?: OrganizationRegion;
       };
       organizationId?: string;
       organizationRole?: string;
@@ -42,6 +44,7 @@ declare global {
       organizationStatus?: OrganizationStatus;
       organizationLimits?: OrganizationLimits;
       organizationUsage?: OrganizationUsageMetrics;
+      organizationRegion?: OrganizationRegion;
       permissions?: Permission[];
     }
   }
@@ -83,10 +86,12 @@ const buildDevUser = () => {
       storageUsed: 0,
       usersActive: 1,
     },
+    organizationRegion: 'us',
     activeOrganization: {
       id: 'dev-org',
       name: 'Developer Workspace',
       domain: null,
+      region: 'us',
       plan: 'enterprise',
       status: 'active',
       role: 'owner',
@@ -133,11 +138,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         req.user = { ...devUser, permissions };
         req.organizationId = devUser.organizationId;
         req.organizationRole = devUser.organizationRole;
-        req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
-        req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
-        req.organizationLimits = devUser.organizationLimits;
-        req.organizationUsage = devUser.organizationUsage;
-        req.permissions = permissions;
+    req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
+    req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
+    req.organizationLimits = devUser.organizationLimits;
+    req.organizationUsage = devUser.organizationUsage;
+    req.organizationRegion = devUser.organizationRegion as OrganizationRegion;
+    req.permissions = permissions;
         setRequestUser(devUser.id);
         return next();
       }
@@ -166,6 +172,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     req.organizationStatus = user.organizationStatus;
     req.organizationLimits = user.organizationLimits;
     req.organizationUsage = user.organizationUsage;
+    req.organizationRegion = user.organizationRegion;
     req.permissions = permissions;
     setRequestUser(user.id);
     next();
@@ -204,6 +211,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         req.organizationStatus = user.organizationStatus;
         req.organizationLimits = user.organizationLimits;
         req.organizationUsage = user.organizationUsage;
+        req.organizationRegion = user.organizationRegion;
         req.permissions = permissions;
         setRequestUser(user.id);
       }
@@ -216,6 +224,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.organizationRegion = devUser.organizationRegion as OrganizationRegion;
       req.permissions = permissions;
       setRequestUser(devUser.id);
     }
@@ -231,6 +240,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
       req.organizationLimits = devUser.organizationLimits;
       req.organizationUsage = devUser.organizationUsage;
+      req.organizationRegion = devUser.organizationRegion as OrganizationRegion;
       req.permissions = permissions;
       setRequestUser(devUser.id);
       next();

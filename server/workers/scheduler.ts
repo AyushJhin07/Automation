@@ -2,15 +2,19 @@ import { env } from '../env';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
 import { triggerPersistenceService } from '../services/TriggerPersistenceService.js';
 import { WebhookManager } from '../webhooks/WebhookManager.js';
+import { resolveWorkerRegion } from '../utils/region.js';
 
 const DEFAULT_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_SIZE = 25;
+
+const workerRegion = resolveWorkerRegion();
 
 async function runSchedulerCycle(batchSize: number): Promise<void> {
   const now = new Date();
   const dueTriggers = await triggerPersistenceService.claimDuePollingTriggers({
     limit: batchSize,
     now,
+    region: workerRegion,
   });
 
   if (dueTriggers.length === 0) {
@@ -33,7 +37,7 @@ async function runSchedulerCycle(batchSize: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log('🕒 Starting polling scheduler worker');
+  console.log(`🕒 Starting polling scheduler worker (region=${workerRegion})`);
   console.log('🌍 Worker environment:', env.NODE_ENV);
 
   WebhookManager.configureQueueService(executionQueueService);

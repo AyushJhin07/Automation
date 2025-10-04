@@ -53,6 +53,8 @@ import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
 import type { OrganizationLimits } from './database/schema.js';
+import { normalizeRegion } from './utils/region.js';
+import { complianceReportingService } from './services/ComplianceReportingService.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
@@ -435,6 +437,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeOrganization: active,
         activeOrganizationId: active?.id ?? null,
       });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  app.get('/api/organizations/:id/residency', authenticateToken, async (req, res) => {
+    try {
+      const organizationId = req.params.id;
+      if (!organizationId) {
+        return res.status(400).json({ success: false, error: 'Organization id is required' });
+      }
+
+      const userOrganizations = req.user?.organizations ?? [];
+      const membership = userOrganizations.find((org) => org.id === organizationId);
+      if (!membership) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
+      const report = await complianceReportingService.getOrganizationResidencyReport(organizationId);
+      res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
@@ -1176,7 +1198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 1000));
       const { readExecutions } = await import('./services/ExecutionAuditService.js');
-      const entries = readExecutions(limit);
+      const requestedRegion = typeof req.query.region === 'string' ? req.query.region : undefined;
+      const entries = readExecutions(limit, requestedRegion ?? (req as any)?.organizationRegion);
       res.json({ success: true, entries });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
@@ -2840,6 +2863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id, appId, triggerId, workflowId, interval, dedupeKey, metadata } = req.body;
       const organizationId = (req as any)?.organizationId;
       const organizationStatus = (req as any)?.organizationStatus;
+      const organizationRegion = normalizeRegion((req as any)?.organizationRegion);
 
       if (!id || !appId || !triggerId || !workflowId || !interval) {
         return res.status(400).json({
@@ -2866,9 +2890,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(metadata || {}),
           organizationId,
           userId: (req as any)?.user?.id,
+          region: organizationRegion,
         },
         organizationId,
         userId: (req as any)?.user?.id,
+        region: organizationRegion,
       };
       
       await webhookManager.registerPollingTrigger(pollingTrigger);

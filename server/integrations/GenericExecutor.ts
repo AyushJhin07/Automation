@@ -5,6 +5,7 @@ import { normalizeListResponse } from './Normalizers';
 import { rateLimiter, type RateLimitRules } from './RateLimiter';
 import { recordExecution } from '../services/ExecutionAuditService';
 import { getRequestContext } from '../utils/ExecutionContext';
+import { organizationService } from '../services/OrganizationService';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
@@ -257,6 +258,18 @@ export class GenericExecutor {
     const backoffEvents: BackoffEvent[] = [];
     let totalRateLimiterWaitMs = 0;
     let totalRateLimiterAttempts = 0;
+    const organizationId = credentials.__organizationId ?? null;
+    let organizationRegion: string | null = null;
+    if (organizationId) {
+      try {
+        organizationRegion = await organizationService.getOrganizationRegion(organizationId);
+      } catch (error) {
+        console.debug(
+          `⚠️ Failed to resolve region for organization ${organizationId} during generic execution:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
     try {
       let reqBody: any = undefined;
       let reqHeaders = { ...headers } as Record<string, string>;
@@ -403,7 +416,9 @@ export class GenericExecutor {
         functionId,
         durationMs: Date.now() - reqStart,
         success: true,
-        meta: executionMeta
+        meta: executionMeta,
+        organizationId,
+        region: organizationRegion,
       });
       return { success: true, data: payload };
     } catch (error: any) {
@@ -426,7 +441,9 @@ export class GenericExecutor {
         durationMs: Date.now() - reqStart,
         success: false,
         error: error?.message || String(error),
-        meta: Object.keys(executionMeta).length ? executionMeta : undefined
+        meta: Object.keys(executionMeta).length ? executionMeta : undefined,
+        organizationId,
+        region: organizationRegion,
       });
       return { success: false, error: error?.message || String(error) };
     }

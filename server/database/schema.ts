@@ -74,11 +74,13 @@ export interface OrganizationBranding {
   supportEmail: string;
 }
 
+export type OrganizationRegion = 'us' | 'eu' | 'asia' | 'global' | (string & {});
+
 export interface OrganizationComplianceSettings {
   gdprEnabled: boolean;
   hipaaCompliant: boolean;
   soc2Type2: boolean;
-  dataResidency: 'us' | 'eu' | 'asia' | 'global';
+  dataResidency: OrganizationRegion;
   retentionPolicyDays: number;
 }
 
@@ -138,6 +140,7 @@ export const organizations = pgTable(
     name: text('name').notNull(),
     domain: text('domain'),
     subdomain: text('subdomain').notNull(),
+    region: text('region').notNull().default('us'),
     plan: text('plan').notNull().default('starter'),
     status: text('status').notNull().default('trial'),
     createdAt: timestamp('created_at').defaultNow().notNull(),

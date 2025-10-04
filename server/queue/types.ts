@@ -22,12 +22,20 @@ export type WorkflowExecuteJobPayload = {
   resumeState?: WorkflowResumeState | null;
   initialData?: any;
   timerId?: string | null;
+  region?: string;
 };
 
-export interface JobPayloads {
-  'workflow.execute': WorkflowExecuteJobPayload;
+export type WorkflowQueueName = 'workflow.execute' | `workflow.execute.${string}`;
+
+type WorkflowJobPayloads = {
+  [Name in WorkflowQueueName]: WorkflowExecuteJobPayload;
+};
+
+type BaseJobPayloads = {
   'encryption.rotate': { jobId: string };
-}
+};
+
+export type JobPayloads = WorkflowJobPayloads & BaseJobPayloads;
 
 export type QueueName = keyof JobPayloads;
 

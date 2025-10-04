@@ -10,6 +10,7 @@ import {
 import { ensureDatabaseReady, isDatabaseAvailable } from '../database/status.js';
 import type { PollingTrigger, TriggerEvent, WebhookTrigger } from '../webhooks/types';
 import { getErrorMessage } from '../types/common';
+import { defaultRegion, normalizeRegion as normalizeRegionValue, isWildcardRegion } from '../utils/region.js';
 
 void ensureDatabaseReady();
 
@@ -519,14 +520,27 @@ export class TriggerPersistenceService {
     }));
   }
 
-  public async claimDuePollingTriggers(options: { limit?: number; now?: Date } = {}): Promise<PollingTrigger[]> {
+  public async claimDuePollingTriggers(
+    options: { limit?: number; now?: Date; region?: string } = {}
+  ): Promise<PollingTrigger[]> {
     const database = this.requireDatabase('claimDuePollingTriggers');
     const now = options.now ?? new Date();
     const limit = Math.max(1, Math.min(100, options.limit ?? 25));
+    const normalizedRegion = options.region ? normalizeRegionValue(options.region) : null;
+
+    const matchesRegion = (trigger: PollingTrigger): boolean => {
+      if (!normalizedRegion || isWildcardRegion(normalizedRegion)) {
+        return true;
+      }
+      const triggerRegion = trigger.region ? normalizeRegionValue(trigger.region) : defaultRegion;
+      return triggerRegion === normalizedRegion;
+    };
 
     if (typeof (database as any).claimDuePollingTriggers === 'function') {
-      const rows = await (database as any).claimDuePollingTriggers({ now, limit });
-      return rows.map((row: any) => this.mapPollingTriggerRow(row));
+      const rows = await (database as any).claimDuePollingTriggers({ now, limit, region: normalizedRegion });
+      return rows
+        .map((row: any) => this.mapPollingTriggerRow(row))
+        .filter((trigger: PollingTrigger) => matchesRegion(trigger));
     }
 
     if (!database.transaction) {
@@ -536,6 +550,7 @@ export class TriggerPersistenceService {
         .where(eq(pollingTriggers.isActive, true));
       const mapped = rows
         .map((row: any) => this.mapPollingTriggerRow(row))
+        .filter((row) => matchesRegion(row))
         .filter((row) => row.nextPollAt <= now)
         .sort((a, b) => a.nextPollAt.getTime() - b.nextPollAt.getTime())
         .slice(0, limit);
@@ -585,7 +600,7 @@ export class TriggerPersistenceService {
         );
       }
 
-      return claimed;
+      return claimed.filter((trigger) => matchesRegion(trigger));
     });
   }
 
@@ -638,6 +653,11 @@ export class TriggerPersistenceService {
 
   public async savePollingTrigger(trigger: PollingTrigger): Promise<void> {
     const database = this.requireDatabase('savePollingTrigger');
+    const metadata = {
+      ...(trigger.metadata ?? {}),
+      ...(trigger.organizationId ? { organizationId: trigger.organizationId } : {}),
+      ...(trigger.region ? { region: trigger.region } : {}),
+    };
     const record = {
       id: trigger.id,
       workflowId: trigger.workflowId,
@@ -649,7 +669,7 @@ export class TriggerPersistenceService {
       nextPollAt: trigger.nextPollAt ?? trigger.nextPoll,
       isActive: trigger.isActive,
       dedupeKey: trigger.dedupeKey ?? null,
-      metadata: trigger.metadata ?? {},
+      metadata,
       cursor: trigger.cursor ?? null,
       backoffCount: trigger.backoffCount ?? 0,
       lastStatus: trigger.lastStatus ?? null,
@@ -663,7 +683,7 @@ export class TriggerPersistenceService {
         type: 'polling',
         appId: trigger.appId,
         triggerId: trigger.triggerId,
-        metadata: trigger.metadata ?? {},
+        metadata,
         isActive: trigger.isActive,
       });
       return;
@@ -683,19 +703,19 @@ export class TriggerPersistenceService {
           set: {
             workflowId: trigger.workflowId,
             appId: trigger.appId,
-            triggerId: trigger.triggerId,
-            interval: trigger.interval,
-            lastPoll: trigger.lastPoll ?? null,
-            nextPoll: trigger.nextPoll,
-            nextPollAt: trigger.nextPollAt ?? trigger.nextPoll,
-            isActive: trigger.isActive,
-            dedupeKey: trigger.dedupeKey ?? null,
-            metadata: trigger.metadata ?? {},
-            cursor: trigger.cursor ?? null,
-            backoffCount: trigger.backoffCount ?? 0,
-            lastStatus: trigger.lastStatus ?? null,
-            updatedAt: now,
-          },
+          triggerId: trigger.triggerId,
+          interval: trigger.interval,
+          lastPoll: trigger.lastPoll ?? null,
+          nextPoll: trigger.nextPoll,
+          nextPollAt: trigger.nextPollAt ?? trigger.nextPoll,
+          isActive: trigger.isActive,
+          dedupeKey: trigger.dedupeKey ?? null,
+          metadata,
+          cursor: trigger.cursor ?? null,
+          backoffCount: trigger.backoffCount ?? 0,
+          lastStatus: trigger.lastStatus ?? null,
+          updatedAt: now,
+        },
         });
 
       await database
@@ -706,7 +726,7 @@ export class TriggerPersistenceService {
           type: 'polling',
           appId: trigger.appId,
           triggerId: trigger.triggerId,
-          metadata: trigger.metadata ?? {},
+          metadata,
           isActive: trigger.isActive,
           updatedAt: now,
         })
@@ -717,7 +737,7 @@ export class TriggerPersistenceService {
             type: 'polling',
             appId: trigger.appId,
             triggerId: trigger.triggerId,
-            metadata: trigger.metadata ?? {},
+            metadata,
             isActive: trigger.isActive,
             updatedAt: now,
           },
@@ -1183,6 +1203,9 @@ export class TriggerPersistenceService {
   }
 
   private mapPollingTriggerRow(row: any): PollingTrigger {
+    const metadata = (row.metadata ?? {}) as Record<string, any>;
+    const organizationId = metadata.organizationId ?? metadata.organization_id ?? null;
+    const region = metadata.region ?? null;
     return {
       id: row.id,
       workflowId: row.workflowId,
@@ -1198,10 +1221,12 @@ export class TriggerPersistenceService {
         : new Date(Date.now() + row.interval * 1000),
       isActive: row.isActive,
       dedupeKey: row.dedupeKey ?? undefined,
-      metadata: row.metadata ?? {},
+      metadata,
       cursor: row.cursor ?? null,
       backoffCount: Number(row.backoffCount ?? row.backoff_count ?? 0),
       lastStatus: row.lastStatus ?? row.last_status ?? null,
+      organizationId: typeof organizationId === 'string' ? organizationId : undefined,
+      region: typeof region === 'string' ? region : undefined,
     };
   }
 
