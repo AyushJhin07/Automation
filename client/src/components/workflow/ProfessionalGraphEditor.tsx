@@ -49,7 +49,7 @@ import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
 import { specToReactFlow } from '../../graph/transform';
 import type { WorkflowDiffSummary } from '../../../../common/workflow-types';
-import { 
+import {
   Plus,
   Play,
   Save,
@@ -95,11 +95,16 @@ import {
   CheckCircle2,
   Link
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
 import { useAuthStore } from '@/store/authStore';
+import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
+import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
+import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -115,9 +120,17 @@ interface NodeTemplate {
 }
 
 // Icon mapping for different applications (deduplicated)
-const appIconsMap: Record<string, any> = {
-  // Built-in
+const appIconsMap: Record<string, LucideIcon> = {
+  // Built-in defaults
+  'default': Zap,
+  'core': AppWindow,
   'built_in': AppWindow,
+  'built-in': AppWindow,
+  'time': Clock,
+  'time-trigger': Clock,
+  'http': Globe,
+  'http-request': Globe,
+  'webhook': Link,
   
   // Google Workspace
   'gmail': Mail,
@@ -273,9 +286,7 @@ const appIconsMap: Record<string, any> = {
   'coupa': DollarSign,
   'navan': MapPin,
   'sap-ariba': Database,
-  'zoom-enhanced': Video,
-  
-  'default': Zap
+  'zoom-enhanced': Video
 };
 
 type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
@@ -302,8 +313,70 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
 };
 
 
-const getAppIcon = (appName: string) => {
-  return appIconsMap[appName.toLowerCase()] || appIconsMap.default;
+const normalizedIconMap: Record<string, LucideIcon> = {};
+Object.entries(appIconsMap).forEach(([key, Icon]) => {
+  const normalizedKey = normalizeConnectorId(key);
+  if (!normalizedIconMap[normalizedKey]) {
+    normalizedIconMap[normalizedKey] = Icon;
+  }
+});
+
+const lucideIconCache: Record<string, LucideIcon | null> = {};
+
+const buildIconNameCandidates = (value: string): string[] => {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  const lower = trimmed.toLowerCase();
+  const parts = lower.split(/[-_\s]+/);
+  const pascal = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+  const title = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  const condensed = parts.join('');
+  const candidates = new Set<string>();
+
+  [pascal, title, trimmed, lower, condensed, pascal.toUpperCase()].forEach((candidate) => {
+    if (candidate) {
+      candidates.add(candidate);
+    }
+  });
+
+  return Array.from(candidates);
+};
+
+const getLucideIconByName = (iconName: string): LucideIcon | undefined => {
+  const cacheKey = iconName.toLowerCase();
+  if (cacheKey in lucideIconCache) {
+    const cached = lucideIconCache[cacheKey];
+    return cached ?? undefined;
+  }
+
+  const iconsRecord = LucideIcons as Record<string, LucideIcon>;
+  for (const candidate of buildIconNameCandidates(iconName)) {
+    const icon = iconsRecord[candidate];
+    if (icon) {
+      lucideIconCache[cacheKey] = icon;
+      return icon;
+    }
+  }
+
+  lucideIconCache[cacheKey] = null;
+  return undefined;
+};
+
+const resolveConnectorIcon = (appId: string, iconName?: string): LucideIcon => {
+  if (iconName) {
+    const dynamicIcon = getLucideIconByName(iconName);
+    if (dynamicIcon) {
+      return dynamicIcon;
+    }
+    const normalizedIcon = normalizeConnectorId(iconName);
+    if (normalizedIcon && normalizedIconMap[normalizedIcon]) {
+      return normalizedIconMap[normalizedIcon];
+    }
+  }
+
+  const normalizedAppId = normalizeConnectorId(appId);
+  return normalizedIconMap[normalizedAppId] ?? normalizedIconMap['default'];
 };
 
 // Get app color based on category
@@ -802,11 +875,11 @@ function getGradientForApp(appId: string) {
  * 3D Gradient Glass Brand Icon Component
  * Real brand icons with 3D glass effect, gradient background, and hover zoom animation
  */
-const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<string, any> }> = ({ appId, appName, appIcons }) => {
-  const Icon = appIcons[appId] || appIcons.default;
+const BrandIcon: React.FC<{ appId: string; appName: string; iconName?: string }> = ({ appId, appName, iconName }) => {
+  const Icon = resolveConnectorIcon(appId, iconName);
 
   return (
-    <div className="group relative">
+    <div className="group relative" data-testid={`app-icon-${appId}`}>
       <div
         className={clsx(
           "w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100/20 to-slate-300/20 backdrop-blur",
@@ -825,7 +898,7 @@ const BrandIcon: React.FC<{ appId: string; appName: string; appIcons: Record<str
           className="w-6 h-6 object-contain drop-shadow"
         />
         {/* Fallback to lucide icon */}
-        {Icon && <Icon className="absolute w-5 h-5 text-white/90" />}
+        {Icon && <Icon className="absolute w-5 h-5 text-white/90" data-testid={`app-icon-lucide-${appId}`} />}
       </div>
     </div>
   );
@@ -836,9 +909,10 @@ interface NodeSidebarProps {
   onAddNode: (nodeType: string, nodeData: any) => void;
   catalog: any | null;
   loading?: boolean;
+  connectorDefinitions?: ConnectorDefinitionMap | null;
 }
 
-export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: NodeSidebarProps) => {
+export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, connectorDefinitions }: NodeSidebarProps) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -859,9 +933,10 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: Nod
     appId: string;                         // "gmail"
     appName: string;                       // "Gmail"
     category: string;                      // "Email"
-    icon?: any;                            // lucide fallback
+    iconName?: string;
     actions: NodeTpl[];
     triggers: NodeTpl[];
+    color?: string;
     release?: {
       semver?: string;
       status?: string;
@@ -891,13 +966,20 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: Nod
   useEffect(() => {
     const nextApps: Record<string, AppGroup> = {};
     const catSet = new Set<string>();
+    const definitions = connectorDefinitions ?? null;
+
+    const resolveDefinition = (appId: string) => {
+      if (!definitions) return null;
+      const normalizedId = normalizeConnectorId(appId);
+      return definitions[normalizedId] ?? null;
+    };
 
     const builtInId = 'built_in';
     nextApps[builtInId] = {
       appId: builtInId,
-      appName: 'Built-in',
+      appName: 'Built-in Tools',
       category: 'Built-in',
-      icon: appIconsMap[builtInId],
+      iconName: builtInId,
       actions: [
         {
           id: 'action-http-request',
@@ -956,11 +1038,14 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: Nod
         if (!def?.hasImplementation) {
           continue;
         }
-        const appName = def.name || appId;
-        const category = def.category || 'Business Apps';
-        catSet.add(category);
+        const definition = resolveDefinition(appId);
+        const appName = definition?.name || def.name || appId;
+        const category = definition?.category || def.category || 'Business Apps';
+        if (category) {
+          catSet.add(category);
+        }
 
-        const Icon = appIconsMap[appId] || appIconsMap.default;
+        const iconName = definition?.icon || def.icon || appId;
 
         const actions: NodeTpl[] = (def.actions || []).map((a: any) => ({
           id: `action-${appId}-${a.id}`,
@@ -984,18 +1069,19 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: Nod
           appId,
           appName,
           category,
-          icon: Icon,
+          iconName,
           actions,
           triggers,
-          release: def.release,
-          lifecycle: def.lifecycle,
+          release: definition?.release ?? def.release,
+          lifecycle: definition?.lifecycle ?? def.lifecycle,
+          color: definition?.color ?? def.color,
         };
       }
     }
 
     setApps(nextApps);
     setCategories(['all', ...Array.from(catSet).sort()]);
-  }, [catalog]);
+  }, [catalog, connectorDefinitions]);
 
   // -------- Filtering logic --------
   const search = searchTerm.trim().toLowerCase();
@@ -1116,10 +1202,15 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading }: Nod
         ) : (
           <Accordion type="single" collapsible className="space-y-2">
             {filteredAppList.map((app) => (
-              <AccordionItem key={app.appId} value={app.appId} className="border border-gray-200 rounded-xl bg-white shadow-sm">
+              <AccordionItem
+                key={app.appId}
+                value={app.appId}
+                className="border border-gray-200 rounded-xl bg-white shadow-sm"
+                data-testid={`app-card-${app.appId}`}
+              >
                 <AccordionTrigger className="px-3 py-2 hover:no-underline">
                   <div className="flex items-center gap-3">
-                    <BrandIcon appId={app.appId} appName={app.appName} appIcons={appIconsMap} />
+                    <BrandIcon appId={app.appId} appName={app.appName} iconName={app.iconName} />
                     <div className="flex flex-col text-left">
                       <span className="text-gray-900 font-medium">{app.appName}</span>
                       <span className="text-xs text-gray-500">{app.category}</span>
@@ -1338,6 +1429,7 @@ const GraphEditorContent = () => {
   const logout = useAuthStore((state) => state.logout);
   const [catalog, setCatalog] = useState<any | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const { data: connectorDefinitions, loading: connectorDefinitionsLoading } = useConnectorDefinitions();
   const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
   const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
@@ -2351,7 +2443,12 @@ const GraphEditorContent = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <NodeSidebar onAddNode={onAddNode} catalog={catalog} loading={catalogLoading} />
+      <NodeSidebar
+        onAddNode={onAddNode}
+        catalog={catalog}
+        loading={catalogLoading || connectorDefinitionsLoading}
+        connectorDefinitions={connectorDefinitions}
+      />
       
       {/* Main Graph Area */}
       <div className="flex-1 relative">
