@@ -1,0 +1,12 @@
+{
+  "description": "Connector simulator defaults for Workday smoke scenarios.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-workday-access-token",
+      "refreshToken": "simulated-workday-refresh-token",
+      "clientId": "simulated-workday-client-id",
+      "clientSecret": "simulated-workday-client-secret"
+    },
+    "notes": "Workday smoke tests rely on offline fixtures in CI."
+  }
+}

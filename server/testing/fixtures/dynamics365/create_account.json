@@ -1,0 +1,47 @@
+{
+  "description": "Simulated Dynamics 365 create_account action.",
+  "notes": "Represents creating a basic account record via the CRM API.",
+  "type": "action",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-dynamics365-access-token",
+      "instanceUrl": "https://contoso.crm.dynamics.com"
+    }
+  },
+  "params": {
+    "name": "Connector Simulator Test Account",
+    "websiteurl": "https://example.invalid",
+    "telephone1": "+1-555-0100",
+    "emailaddress1": "smoke-test@example.invalid"
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://contoso.crm.dynamics.com/api/data/v9.2/accounts",
+    "headers": {
+      "OData-Version": "4.0",
+      "OData-MaxVersion": "4.0",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer simulated-dynamics365-access-token"
+    },
+    "body": {
+      "name": "Connector Simulator Test Account",
+      "websiteurl": "https://example.invalid",
+      "telephone1": "+1-555-0100",
+      "emailaddress1": "smoke-test@example.invalid"
+    }
+  },
+  "response": {
+    "status": 204,
+    "headers": {
+      "OData-EntityId": "https://contoso.crm.dynamics.com/api/data/v9.2/accounts(00000000-0000-0000-0000-000000000001)"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "accountId": "00000000-0000-0000-0000-000000000001",
+      "name": "Connector Simulator Test Account",
+      "status": "created"
+    }
+  }
+}

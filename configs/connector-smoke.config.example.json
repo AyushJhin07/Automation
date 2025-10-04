@@ -49,5 +49,57 @@
     ],
     "skip": true,
     "notes": "Remove skip and supply a test workspace channel to exercise the Slack action."
+  },
+  "dynamics365": {
+    "credentials": {
+      "accessToken": "YOUR_DYNAMICS365_ACCESS_TOKEN",
+      "instanceUrl": "https://your-org.crm.dynamics.com"
+    },
+    "actions": [
+      {
+        "id": "create_account",
+        "parameters": {
+          "name": "Automation Smoke Test Account",
+          "websiteurl": "https://example.invalid",
+          "emailaddress1": "automation@example.invalid"
+        }
+      }
+    ],
+    "notes": "Provide a valid OAuth access token and organization URL when running against a live Dynamics 365 sandbox."
+  },
+  "workday": {
+    "credentials": {
+      "accessToken": "YOUR_WORKDAY_ACCESS_TOKEN",
+      "refreshToken": "YOUR_WORKDAY_REFRESH_TOKEN",
+      "clientId": "YOUR_WORKDAY_CLIENT_ID",
+      "clientSecret": "YOUR_WORKDAY_CLIENT_SECRET"
+    },
+    "actions": [
+      {
+        "id": "search_workers",
+        "parameters": {
+          "searchTerm": "Automation",
+          "limit": 1
+        }
+      }
+    ],
+    "notes": "Set Workday OAuth credentials to call the tenant API; otherwise rely on the simulator fixtures in CI."
+  },
+  "databricks": {
+    "credentials": {
+      "accessToken": "dapiYOUR_DATABRICKS_TOKEN"
+    },
+    "additionalConfig": {
+      "workspaceUrl": "https://adb-1234567890.0.azuredatabricks.net"
+    },
+    "actions": [
+      {
+        "id": "list_clusters",
+        "parameters": {
+          "can_use_client": "NOTEBOOK"
+        }
+      }
+    ],
+    "notes": "Populate the personal access token and workspace URL before running against an actual Databricks environment."
   }
 }

@@ -1,0 +1,53 @@
+{
+  "description": "Simulated Workday search_workers action returning a minimal worker list.",
+  "type": "action",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-workday-access-token"
+    }
+  },
+  "params": {
+    "searchTerm": "Sim",
+    "limit": 1
+  },
+  "request": {
+    "method": "GET",
+    "url": "https://wd5-impl-services1.workday.com/ccx/api/v1/workers",
+    "headers": {
+      "Authorization": "Bearer simulated-workday-access-token"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "workers": [
+        {
+          "id": "SIM-0001",
+          "name": "Simulated Worker",
+          "title": "QA Analyst",
+          "department": "Engineering",
+          "email": "sim.worker@example.invalid"
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "workers": [
+        {
+          "id": "SIM-0001",
+          "name": "Simulated Worker",
+          "title": "QA Analyst",
+          "department": "Engineering",
+          "email": "sim.worker@example.invalid"
+        }
+      ],
+      "count": 1
+    }
+  }
+}

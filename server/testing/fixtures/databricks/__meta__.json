@@ -1,0 +1,12 @@
+{
+  "description": "Connector simulator defaults for Databricks smoke tests.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "dapi-simulated-databricks-token"
+    },
+    "additionalConfig": {
+      "workspaceUrl": "https://adb-1234567890.0.azuredatabricks.net"
+    },
+    "notes": "Databricks smoke scenarios execute against offline fixtures."
+  }
+}
