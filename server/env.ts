@@ -78,6 +78,7 @@ export const env = {
   PROMETHEUS_METRICS_PORT: Number.parseInt(process.env.PROMETHEUS_METRICS_PORT ?? '9464', 10),
   PROMETHEUS_METRICS_HOST: process.env.PROMETHEUS_METRICS_HOST ?? '0.0.0.0',
   PROMETHEUS_METRICS_ENDPOINT: process.env.PROMETHEUS_METRICS_ENDPOINT ?? '/metrics',
+  EXECUTION_AUDIT_RETENTION_DAYS: Number.parseInt(process.env.EXECUTION_AUDIT_RETENTION_DAYS ?? '30', 10),
 } as const;
 
 export const FLAGS = {

@@ -1,7 +1,8 @@
-import { logs, SeverityNumber } from '@opentelemetry/api-logs';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 
 import { db, executionAuditLogs } from '../database/schema.js';
+import { env } from '../env';
+import { logAction } from '../utils/actionLog.js';
 
 type AuditEntry = {
   id: number;
@@ -35,39 +36,75 @@ type ReadExecutionsOptions = {
   success?: boolean;
 };
 
-const auditLogger = logs.getLogger('automation.execution.audit', '1.0.0');
+const RETENTION_DAYS = Math.max(0, Number.isFinite(env.EXECUTION_AUDIT_RETENTION_DAYS)
+  ? Number(env.EXECUTION_AUDIT_RETENTION_DAYS)
+  : 30);
+const RETENTION_SWEEP_INTERVAL_MS = 1000 * 60 * 60; // hourly
 
-function sanitizeAttributes(entry: RecordExecutionInput): Record<string, string | number | boolean> {
-  const attributes: Record<string, string | number | boolean> = {
-    'request.id': entry.requestId,
-    'app.id': entry.appId,
-    'function.id': entry.functionId,
-    'execution.duration_ms': Math.max(0, Math.floor(entry.durationMs)),
-    'execution.success': entry.success,
-  };
+let lastRetentionSweep = 0;
 
-  if (entry.userId) {
-    attributes['user.id'] = entry.userId;
+async function enforceRetention(): Promise<void> {
+  if (!db || RETENTION_DAYS <= 0) {
+    return;
   }
 
-  return attributes;
+  const now = Date.now();
+  if (now - lastRetentionSweep < RETENTION_SWEEP_INTERVAL_MS) {
+    return;
+  }
+
+  const cutoff = new Date(now - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+  try {
+    await db.delete(executionAuditLogs).where(lt(executionAuditLogs.createdAt, cutoff));
+    logAction(
+      {
+        type: 'execution.audit.retention',
+        component: 'execution.audit',
+        message: `Pruned execution audit events older than ${RETENTION_DAYS} days`,
+        cutoff: cutoff.toISOString(),
+        retentionDays: RETENTION_DAYS,
+      },
+      {
+        severity: 'debug',
+        scope: 'automation.execution.audit',
+        timestamp: new Date(now),
+      },
+    );
+  } catch (error) {
+    console.warn('⚠️ Failed to enforce execution audit retention policy', error);
+  } finally {
+    lastRetentionSweep = now;
+  }
 }
 
 export async function recordExecution(entry: RecordExecutionInput): Promise<void> {
   const createdAt = new Date();
   const durationMs = Math.max(0, Math.floor(entry.durationMs));
 
-  try {
-    auditLogger.emit({
-      severityNumber: entry.success ? SeverityNumber.INFO : SeverityNumber.ERROR,
-      severityText: entry.success ? 'INFO' : 'ERROR',
-      body: entry.success ? 'Connector execution completed successfully' : entry.error ?? 'Connector execution failed',
-      attributes: sanitizeAttributes(entry),
-      timestamp: createdAt.getTime(),
-    });
-  } catch (error) {
-    console.warn('⚠️ Failed to emit OpenTelemetry audit log', (error as Error)?.message ?? error);
-  }
+  logAction(
+    {
+      type: 'execution.audit',
+      component: 'execution.audit',
+      message: entry.success
+        ? 'Connector execution completed successfully'
+        : entry.error ?? 'Connector execution failed',
+      outcome: entry.success ? 'success' : 'failure',
+      requestId: entry.requestId,
+      userId: entry.userId ?? undefined,
+      appId: entry.appId,
+      functionId: entry.functionId,
+      'execution.duration_ms': durationMs,
+      success: entry.success,
+      error: entry.error ?? undefined,
+      meta: entry.meta ?? undefined,
+    },
+    {
+      severity: entry.success ? 'info' : 'error',
+      scope: 'automation.execution.audit',
+      timestamp: createdAt,
+    },
+  );
 
   if (!db) {
     if (process.env.NODE_ENV !== 'test') {
@@ -91,6 +128,8 @@ export async function recordExecution(entry: RecordExecutionInput): Promise<void
   } catch (error) {
     console.error('❌ Failed to persist execution audit entry', error);
   }
+
+  await enforceRetention();
 }
 
 export async function readExecutions(options: ReadExecutionsOptions = {}): Promise<AuditEntry[]> {
