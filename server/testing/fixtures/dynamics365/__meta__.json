@@ -1,0 +1,10 @@
+{
+  "description": "Connector simulator defaults for Microsoft Dynamics 365 smoke coverage.",
+  "defaults": {
+    "credentials": {
+      "accessToken": "simulated-dynamics365-access-token",
+      "instanceUrl": "https://contoso.crm.dynamics.com"
+    },
+    "notes": "Using offline fixtures for Dynamics 365 smoke tests."
+  }
+}

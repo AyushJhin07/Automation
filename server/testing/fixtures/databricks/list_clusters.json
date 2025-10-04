@@ -1,0 +1,54 @@
+{
+  "description": "Simulated Databricks list_clusters action showing a single workspace cluster.",
+  "type": "action",
+  "defaults": {
+    "credentials": {
+      "accessToken": "dapi-simulated-databricks-token"
+    },
+    "additionalConfig": {
+      "workspaceUrl": "https://adb-1234567890.0.azuredatabricks.net"
+    }
+  },
+  "params": {
+    "can_use_client": "NOTEBOOK"
+  },
+  "request": {
+    "method": "GET",
+    "url": "https://adb-1234567890.0.azuredatabricks.net/api/2.0/clusters/list",
+    "headers": {
+      "Authorization": "Bearer dapi-simulated-databricks-token"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "clusters": [
+        {
+          "cluster_id": "sim-cluster-1",
+          "cluster_name": "simulated-shared-cluster",
+          "state": "RUNNING",
+          "spark_version": "13.3.x-scala2.12",
+          "node_type_id": "Standard_DS3_v2"
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "clusters": [
+        {
+          "cluster_id": "sim-cluster-1",
+          "cluster_name": "simulated-shared-cluster",
+          "state": "RUNNING",
+          "spark_version": "13.3.x-scala2.12",
+          "node_type_id": "Standard_DS3_v2"
+        }
+      ],
+      "count": 1
+    }
+  }
+}
