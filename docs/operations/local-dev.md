@@ -37,7 +37,7 @@ The compose file starts Postgres, Redis, Jaeger, and three Node.js processes bou
 | postgres   | `postgres`             | `5432`        | Workflow metadata + trigger storage |
 | redis      | `redis-server`         | `6379`        | BullMQ queue backend |
 | jaeger     | all-in-one collector   | `16686`, `4318` | Trace UI + OTLP HTTP ingest |
-| api        | `npm run dev:api`      | `5000`        | HTTP API with hot reload |
+| api        | `npm run dev:api`      | `5000`        | HTTP + Vite frontend dev server |
 | worker     | `npm run dev:worker`   | _internal_    | Workflow execution worker |
 | scheduler  | `npm run dev:scheduler`| _internal_    | Polling trigger scheduler |
 
@@ -58,7 +58,7 @@ export QUEUE_REDIS_PORT=6379
 export QUEUE_REDIS_DB=0
 ```
 
-With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API to consume queued jobs.
+With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. The `npm run dev:stack` helper launches the API, scheduler, execution worker, and encryption rotation worker together and keeps their lifecycles in sync.
 
 ## Observability
 
