@@ -1,5 +1,12 @@
 import { authStore } from '@/store/authStore';
 
+export interface ConnectorActionSummary {
+  id: string;
+  name: string;
+  description?: string;
+  params?: Record<string, any>;
+}
+
 export interface ConnectorDefinitionSummary {
   id: string;
   name: string;
@@ -11,9 +18,11 @@ export interface ConnectorDefinitionSummary {
   availability?: string;
   release?: Record<string, any> | null;
   lifecycle?: Record<string, any> | null;
-  actions?: Array<Record<string, any>>;
-  triggers?: Array<Record<string, any>>;
+  actions?: ConnectorActionSummary[];
+  triggers?: ConnectorActionSummary[];
   hasImplementation?: boolean;
+  authentication?: { type?: string; config?: Record<string, any> } | null;
+  scopes?: string[];
 }
 
 export type ConnectorDefinitionMap = Record<string, ConnectorDefinitionSummary>;
@@ -46,6 +55,69 @@ const buildHeaders = (): HeadersInit => {
   return headers;
 };
 
+const clonePlainObject = <T = Record<string, any>>(value: any): T | undefined => {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  return { ...(value as Record<string, any>) } as T;
+};
+
+const normalizeFunctionList = (list: any): ConnectorActionSummary[] => {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  const result: ConnectorActionSummary[] = [];
+
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const actionId = entry.id ?? entry.slug ?? entry.operationId;
+    if (!actionId) continue;
+
+    result.push({
+      id: String(actionId),
+      name: String(entry.name ?? entry.displayName ?? actionId),
+      description: typeof entry.description === 'string' ? entry.description : undefined,
+      params: clonePlainObject(entry.params ?? entry.parameters ?? entry.schema ?? {}),
+    });
+  }
+
+  return result;
+};
+
+const extractScopes = (payload: any): string[] | undefined => {
+  const scopes = new Set<string>();
+
+  const addScopes = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    for (const entry of value) {
+      if (typeof entry === 'string' && entry.trim().length > 0) {
+        scopes.add(entry.trim());
+      }
+    }
+  };
+
+  addScopes(payload?.scopes);
+  addScopes(payload?.authentication?.config?.scopes);
+
+  return scopes.size > 0 ? Array.from(scopes) : undefined;
+};
+
+const cloneAuthentication = (auth: any): { type?: string; config?: Record<string, any> } | null => {
+  if (!auth || typeof auth !== 'object') {
+    return null;
+  }
+
+  const cloned: { type?: string; config?: Record<string, any> } = {};
+  if (typeof auth.type === 'string') {
+    cloned.type = auth.type;
+  }
+  if (auth.config && typeof auth.config === 'object') {
+    cloned.config = { ...(auth.config as Record<string, any>) };
+  }
+  return cloned;
+};
+
 const normalizeConnectorPayload = (raw: any): ConnectorDefinitionMap => {
   const map: ConnectorDefinitionMap = {};
 
@@ -68,9 +140,11 @@ const normalizeConnectorPayload = (raw: any): ConnectorDefinitionMap => {
       availability: payload.availability ?? payload.status,
       release: payload.release ?? null,
       lifecycle: payload.lifecycle ?? null,
-      actions: Array.isArray(payload.actions) ? payload.actions : [],
-      triggers: Array.isArray(payload.triggers) ? payload.triggers : [],
+      actions: normalizeFunctionList(payload.actions),
+      triggers: normalizeFunctionList(payload.triggers),
       hasImplementation: payload.hasImplementation ?? payload.implemented ?? true,
+      authentication: cloneAuthentication(payload.authentication),
+      scopes: extractScopes(payload),
     };
 
     map[normalizedId] = base;

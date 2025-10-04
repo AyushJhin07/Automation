@@ -65,6 +65,11 @@ cd automation-platform
 ./scripts/deploy-production.sh
 ```
 
+### **✅ Baseline Sanity Check**
+
+- Run `npx tsx server/workflow/__tests__/WorkflowRuntime.gmail.integration.test.ts` to exercise the Gmail OAuth → connection storage → workflow runtime → provider simulator loop end-to-end.
+- This ensures the send-email pipeline—our default demo flow—is healthy before customer walk-throughs or release sign-off.
+
 ---
 
 ## **📚 DOCUMENTATION**

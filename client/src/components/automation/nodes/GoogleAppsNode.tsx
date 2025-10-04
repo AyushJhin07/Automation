@@ -193,6 +193,25 @@ export function GoogleAppsNode({ data, id }: NodeProps<GoogleAppsNodeData>) {
                             ))}
                           </SelectContent>
                         </Select>
+                      ) : param.type === 'boolean' ? (
+                        <Select
+                          onValueChange={(value) => handleConfigChange(param.name, value === 'true')}
+                          value={
+                            functionConfig[param.name] === undefined
+                              ? undefined
+                              : functionConfig[param.name]
+                              ? 'true'
+                              : 'false'
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${param.name}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">True</SelectItem>
+                            <SelectItem value="false">False</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : param.type === 'textarea' ? (
                         <Textarea
                           id={param.name}

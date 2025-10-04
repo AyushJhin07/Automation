@@ -2,7 +2,7 @@ export interface AppFunction {
   id: string;
   name: string;
   description: string;
-  category: 'MVP' | 'Advanced';
+  category?: string;
   parameters: {
     name: string;
     type: 'text' | 'select' | 'textarea' | 'number' | 'boolean';
