@@ -1,0 +1,89 @@
+{
+  "description": "Simulated Opsgenie list_alerts action returning the most recent incidents.",
+  "defaults": {
+    "credentials": {
+      "apiKey": "simulated-opsgenie-api-key"
+    }
+  },
+  "params": {
+    "limit": 5,
+    "sort": "updatedAt",
+    "order": "desc"
+  },
+  "request": {
+    "method": "GET",
+    "url": "https://api.opsgenie.com/v2/alerts?limit=5&order=desc&sort=updatedAt",
+    "headers": {
+      "authorization": "GenieKey simulated-opsgenie-api-key"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "data": [
+        {
+          "id": "3f9e9a5e-1e9a-4f5c-bdc0-sim",
+          "tinyId": "101",
+          "alias": "connector-simulator-alert",
+          "message": "Connector simulator alert",
+          "status": "open",
+          "acknowledged": false,
+          "isSeen": false,
+          "tags": [
+            "simulator",
+            "smoke"
+          ],
+          "snoozed": false,
+          "count": 1,
+          "lastOccurredAt": "2024-01-01T12:00:00Z",
+          "createdAt": "2024-01-01T12:00:00Z",
+          "updatedAt": "2024-01-01T12:05:00Z",
+          "source": "connector-simulator",
+          "priority": "P3"
+        }
+      ],
+      "paging": {
+        "next": null,
+        "prev": null
+      },
+      "took": 0.08,
+      "requestId": "sim-request-list-alerts"
+    }
+  },
+  "result": {
+    "success": true,
+    "data": {
+      "data": [
+        {
+          "id": "3f9e9a5e-1e9a-4f5c-bdc0-sim",
+          "tinyId": "101",
+          "alias": "connector-simulator-alert",
+          "message": "Connector simulator alert",
+          "status": "open",
+          "acknowledged": false,
+          "isSeen": false,
+          "tags": [
+            "simulator",
+            "smoke"
+          ],
+          "snoozed": false,
+          "count": 1,
+          "lastOccurredAt": "2024-01-01T12:00:00Z",
+          "createdAt": "2024-01-01T12:00:00Z",
+          "updatedAt": "2024-01-01T12:05:00Z",
+          "source": "connector-simulator",
+          "priority": "P3"
+        }
+      ],
+      "paging": {
+        "next": null,
+        "prev": null
+      },
+      "took": 0.08,
+      "requestId": "sim-request-list-alerts"
+    }
+  }
+}
