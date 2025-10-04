@@ -24,6 +24,10 @@ import {
   ExecutionQuotaExceededError,
   type ExecutionQuotaCounters,
 } from './ExecutionQuotaService.js';
+import {
+  connectorConcurrencyService,
+  ConnectorConcurrencyExceededError,
+} from './ConnectorConcurrencyService.js';
 import type { Job } from 'bullmq';
 
 type QueueRunRequest = {
@@ -213,26 +217,93 @@ class ExecutionQueueService {
     const region = await organizationService.getOrganizationRegion(req.organizationId);
     const queueName = this.getQueueName(region);
 
+    const workflowRecord = await WorkflowRepository.getWorkflowById(req.workflowId, req.organizationId);
+    if (!workflowRecord || !workflowRecord.graph) {
+      throw new Error(`Workflow ${req.workflowId} not found or missing graph for organization ${req.organizationId}`);
+    }
+
+    const connectors = connectorConcurrencyService.extractConnectorsFromGraph(
+      (workflowRecord.graph as any) ?? null
+    );
+
+    const capacityCheck = await connectorConcurrencyService.checkCapacity({
+      organizationId: req.organizationId,
+      connectors,
+      planLimits: quotaProfile.limits,
+    });
+
+    const baseMetadata: Record<string, any> = {
+      queuedAt: new Date().toISOString(),
+      attemptsMade: 0,
+      retryCount: 0,
+      connectors,
+      connectorConcurrency: {
+        connectors,
+      },
+      residency: {
+        region,
+      },
+    };
+
+    if (!capacityCheck.allowed) {
+      const violation = capacityCheck.violation;
+      baseMetadata.connectorConcurrency = {
+        connectors: capacityCheck.connectors,
+        violation,
+      };
+
+      const execution = await WorkflowRepository.createWorkflowExecution({
+        workflowId: req.workflowId,
+        userId: req.userId,
+        organizationId: req.organizationId,
+        status: 'failed',
+        triggerType: req.triggerType ?? 'manual',
+        triggerData: req.triggerData ?? null,
+        metadata: baseMetadata,
+      });
+
+      const concurrencyError = new ConnectorConcurrencyExceededError({
+        connectorId: violation.connectorId,
+        scope: violation.scope,
+        limit: violation.limit,
+        active: violation.active,
+        organizationId: req.organizationId,
+        executionId: execution.id,
+      });
+
+      await WorkflowRepository.updateWorkflowExecution(
+        execution.id,
+        {
+          status: 'failed',
+          completedAt: new Date(),
+          duration: 0,
+          errorDetails: {
+            error: concurrencyError.message,
+            connectorId: violation.connectorId,
+            scope: violation.scope,
+            limit: violation.limit,
+            active: violation.active,
+          },
+          metadata: baseMetadata,
+        },
+        req.organizationId
+      );
+
+      throw concurrencyError;
+    }
+
     const admission = await executionQuotaService.reserveAdmission(req.organizationId, {
       maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
       maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
     });
 
-    const baseMetadata = {
-      queuedAt: new Date().toISOString(),
-      attemptsMade: 0,
-      retryCount: 0,
-      quota: {
-        runningBeforeEnqueue: admission.state.running,
-        executionsInWindow: admission.state.windowCount,
-        windowStart: new Date(admission.state.windowStartMs).toISOString(),
-        maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
-        maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
-      },
-      residency: {
-        region,
-      },
-    } as Record<string, any>;
+    baseMetadata.quota = {
+      runningBeforeEnqueue: admission.state.running,
+      executionsInWindow: admission.state.windowCount,
+      windowStart: new Date(admission.state.windowStartMs).toISOString(),
+      maxConcurrentExecutions: quotaProfile.limits.maxConcurrentExecutions,
+      maxExecutionsPerMinute: quotaProfile.limits.maxExecutionsPerMinute,
+    };
 
     if (!admission.allowed) {
       const execution = await WorkflowRepository.createWorkflowExecution({
@@ -320,6 +391,7 @@ class ExecutionQueueService {
             userId: req.userId,
             triggerType: req.triggerType ?? 'manual',
             triggerData: req.triggerData ?? null,
+            connectors,
             region,
           },
           {
@@ -658,6 +730,29 @@ class ExecutionQueueService {
     const attemptNumber = job.attemptsMade + 1;
     const maxAttempts = job.opts.attempts ?? this.maxRetries + 1;
 
+    const connectorSet = new Set<string>();
+    if (Array.isArray(job.data.connectors)) {
+      for (const candidate of job.data.connectors) {
+        if (typeof candidate === 'string') {
+          const normalized = candidate.trim();
+          if (normalized) {
+            connectorSet.add(normalized);
+          }
+        }
+      }
+    }
+    if (Array.isArray(baseMetadata.connectors)) {
+      for (const candidate of baseMetadata.connectors as unknown[]) {
+        if (typeof candidate === 'string') {
+          const normalized = candidate.trim();
+          if (normalized) {
+            connectorSet.add(normalized);
+          }
+        }
+      }
+    }
+    const connectorsForExecution = Array.from(connectorSet);
+
     const runningMetadata = {
       ...baseMetadata,
       attemptsMade: attemptNumber,
@@ -671,6 +766,13 @@ class ExecutionQueueService {
     }
     if ('lease' in runningMetadata) {
       delete runningMetadata.lease;
+    }
+
+    if (connectorsForExecution.length > 0) {
+      runningMetadata.connectorConcurrency = {
+        ...(runningMetadata.connectorConcurrency ?? {}),
+        connectors: connectorsForExecution,
+      } as Record<string, any>;
     }
 
     runningMetadata.residency = {
@@ -694,6 +796,7 @@ class ExecutionQueueService {
     } as Record<string, any>;
 
     let runningSlotAcquired = false;
+    let connectorSlotsAcquired = false;
     let runningSlotState: ExecutionQuotaCounters | null = null;
 
     try {
@@ -734,15 +837,29 @@ class ExecutionQueueService {
         } as Record<string, any>;
       }
 
+      if (connectorsForExecution.length > 0) {
+        await connectorConcurrencyService.registerExecution({
+          executionId,
+          organizationId,
+          connectors: connectorsForExecution,
+        });
+        connectorSlotsAcquired = true;
+        runningMetadata.connectorConcurrency = {
+          ...(runningMetadata.connectorConcurrency ?? {}),
+          connectors: connectorsForExecution,
+          running: true,
+        } as Record<string, any>;
+      }
+
       await WorkflowRepository.updateWorkflowExecution(
         executionId,
         {
           status: 'running',
           startedAt: new Date(),
           completedAt: null,
-        duration: null,
-        metadata: runningMetadata,
-      },
+          duration: null,
+          metadata: runningMetadata,
+        },
         organizationId
       );
 
@@ -859,6 +976,18 @@ class ExecutionQueueService {
         } as Record<string, any>;
       }
 
+      if (error instanceof ConnectorConcurrencyExceededError) {
+        failureMetadata.connectorConcurrency = {
+          ...(failureMetadata.connectorConcurrency ?? {}),
+          violation: {
+            connectorId: error.connectorId,
+            scope: error.scope,
+            limit: error.limit,
+            active: error.active,
+          },
+        } as Record<string, any>;
+      }
+
       const remainingAttempts = Math.max(0, maxAttempts - attemptNumber);
 
       if (remainingAttempts > 0) {
@@ -899,6 +1028,14 @@ class ExecutionQueueService {
 
       throw error;
     } finally {
+      if (connectorSlotsAcquired) {
+        await connectorConcurrencyService.releaseExecution(executionId).catch((error) => {
+          console.warn(
+            `Failed to release connector concurrency slots for execution ${executionId}:`,
+            getErrorMessage(error)
+          );
+        });
+      }
       if (runningSlotAcquired) {
         await executionQuotaService.releaseRunningSlot(organizationId).catch((error) => {
           console.warn(

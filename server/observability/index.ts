@@ -140,6 +140,20 @@ const connectorRateResetGauge = meter.createObservableGauge('connector_rate_budg
 });
 const latestRateBudgets = new Map<string, RateBudgetSnapshot>();
 
+type ConnectorConcurrencySnapshot = {
+  connectorId: string;
+  organizationId: string | null;
+  scope: 'global' | 'organization';
+  active: number;
+  limit?: number;
+};
+
+const connectorConcurrencyGauge = meter.createObservableGauge('connector_concurrency_active', {
+  description: 'Active connector concurrency slots in use',
+  unit: '1',
+});
+const latestConnectorConcurrency = new Map<string, ConnectorConcurrencySnapshot>();
+
 meter.addBatchObservableCallback((observableResult) => {
   for (const [queueName, counts] of latestQueueDepths.entries()) {
     const { total = 0, ...states } = counts;
@@ -175,7 +189,21 @@ meter.addBatchObservableCallback((observableResult) => {
       observableResult.observe(connectorRateResetGauge, seconds, attributes);
     }
   }
-}, [queueDepthGauge, connectorRateRemainingGauge, connectorRateLimitGauge, connectorRateResetGauge]);
+  for (const snapshot of latestConnectorConcurrency.values()) {
+    const attributes = sanitizeAttributes({
+      connector_id: snapshot.connectorId,
+      organization_id: snapshot.organizationId ?? 'global',
+      scope: snapshot.scope,
+    });
+    observableResult.observe(connectorConcurrencyGauge, snapshot.active, attributes);
+  }
+}, [
+  queueDepthGauge,
+  connectorRateRemainingGauge,
+  connectorRateLimitGauge,
+  connectorRateResetGauge,
+  connectorConcurrencyGauge,
+]);
 
 function sanitizeAttributes(attributes: Record<string, unknown>): MetricAttributes {
   const sanitized: MetricAttributes = {};
@@ -246,6 +274,33 @@ export function updateConnectorRateBudgetMetric(snapshot: RateBudgetSnapshot): v
     remaining: snapshot.remaining,
     limit: snapshot.limit,
     resetMs: snapshot.resetMs,
+  });
+}
+
+interface ConnectorConcurrencyMetricInput {
+  connectorId: string;
+  organizationId: string | null;
+  scope: 'global' | 'organization';
+  active: number;
+  limit?: number;
+}
+
+export function updateConnectorConcurrencyMetric(snapshot: ConnectorConcurrencyMetricInput): void {
+  const connectorId = snapshot.connectorId || 'unknown';
+  const organizationId = snapshot.scope === 'global' ? 'global' : snapshot.organizationId ?? 'global';
+  const key = `${connectorId}::${snapshot.scope}::${organizationId}`;
+
+  if (snapshot.active <= 0) {
+    latestConnectorConcurrency.delete(key);
+    return;
+  }
+
+  latestConnectorConcurrency.set(key, {
+    connectorId,
+    organizationId: snapshot.scope === 'global' ? null : snapshot.organizationId ?? null,
+    scope: snapshot.scope,
+    active: snapshot.active,
+    limit: snapshot.limit,
   });
 }
 

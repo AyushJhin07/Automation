@@ -26,6 +26,7 @@ export type WorkflowExecuteJobPayload = {
   initialData?: any;
   timerId?: string | null;
   region: OrganizationRegion;
+  connectors?: string[];
 };
 
 export interface JobPayloads extends Record<ExecutionQueueName, WorkflowExecuteJobPayload> {

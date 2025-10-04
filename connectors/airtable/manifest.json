@@ -9,5 +9,9 @@
     "deprecated": false,
     "hidden": false,
     "featured": false
+  },
+  "concurrency": {
+    "global": 4,
+    "perOrganization": 2
   }
 }

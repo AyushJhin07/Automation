@@ -122,6 +122,7 @@ export class OrganizationService {
       maxStorage: 1024,
       maxConcurrentExecutions: 1,
       maxExecutionsPerMinute: 30,
+      connectorConcurrency: { default: 1 },
     },
     starter: {
       maxWorkflows: 25,
@@ -130,6 +131,7 @@ export class OrganizationService {
       maxStorage: 5 * 1024,
       maxConcurrentExecutions: 2,
       maxExecutionsPerMinute: 60,
+      connectorConcurrency: { default: 2 },
     },
     pro: {
       maxWorkflows: 75,
@@ -138,6 +140,7 @@ export class OrganizationService {
       maxStorage: 20 * 1024,
       maxConcurrentExecutions: 6,
       maxExecutionsPerMinute: 180,
+      connectorConcurrency: { default: 3 },
     },
     professional: {
       maxWorkflows: 100,
@@ -146,6 +149,7 @@ export class OrganizationService {
       maxStorage: 25 * 1024,
       maxConcurrentExecutions: 10,
       maxExecutionsPerMinute: 300,
+      connectorConcurrency: { default: 5 },
     },
     enterprise: {
       maxWorkflows: 500,
@@ -154,6 +158,7 @@ export class OrganizationService {
       maxStorage: 100 * 1024,
       maxConcurrentExecutions: 25,
       maxExecutionsPerMinute: 1200,
+      connectorConcurrency: { default: 8 },
     },
     enterprise_plus: {
       maxWorkflows: 1000,
@@ -162,6 +167,7 @@ export class OrganizationService {
       maxStorage: 500 * 1024,
       maxConcurrentExecutions: 50,
       maxExecutionsPerMinute: 3000,
+      connectorConcurrency: { default: 12 },
     },
   };
 
@@ -1039,6 +1045,10 @@ export class OrganizationService {
     return {
       ...defaults,
       ...normalized,
+      connectorConcurrency: {
+        ...(defaults.connectorConcurrency ?? {}),
+        ...(normalized.connectorConcurrency ?? {}),
+      },
       maxConcurrentExecutions:
         Math.max(1, normalized?.maxConcurrentExecutions ?? defaults.maxConcurrentExecutions),
       maxExecutionsPerMinute:
