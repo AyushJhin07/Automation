@@ -16,6 +16,7 @@ This guide covers the quickest path to booting the platform locally with Docker 
    ```
    This script backfills strong random values for `ENCRYPTION_MASTER_KEY` and `JWT_SECRET`, matching the minimum length enforced by `EncryptionService`.
 3. Edit `.env.development` to match your local setup. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
+   The runtime now records whether a key came from AWS Secrets Manager, a local `.env` file, or the deterministic development fallback—check the admin-only `GET /api/health/credentials` endpoint when you need to confirm which secrets are active.
 
 4. If your local database has not yet been migrated to the envelope-encryption schema, enable the development fallback for OAuth tokens:
 

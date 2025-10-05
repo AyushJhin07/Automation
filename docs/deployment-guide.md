@@ -4,6 +4,7 @@
   - GENERIC_EXECUTOR_ENABLED: set true in non-prod to exercise connectors via JSON definitions.
 - Environment
   - Configure OAuth client IDs/secrets in deployment environment; never commit .env.
+  - Prefer managed secrets: set `SECRET_MANAGER_PROVIDER=aws` and populate AWS Secrets Manager as described in [operations/secret-management](./operations/secret-management.md).
   - Ensure DATABASE_URL is set for persistence.
 - Rate limits
   - See GET /api/status/rate-limits for derived vendor limits; adjust reverse proxy if needed.

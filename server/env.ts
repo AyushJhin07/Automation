@@ -4,6 +4,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { hostname } from 'node:os';
 import { resolve } from 'node:path';
+import {
+  loadManagedSecrets,
+  recordEnvironmentSecret,
+  recordGeneratedSecret,
+} from './secrets/SecretManager';
 
 // Load .env and .env.local files (if present)
 dotenv.config();
@@ -17,9 +22,31 @@ if (!process.env.NODE_ENV) {
 }
 
 const environment = process.env.NODE_ENV;
-console.log(`🌍 Environment: ${environment}`);
+
+try {
+  const managed = await loadManagedSecrets();
+  if (managed.loaded && managed.keys.length > 0) {
+    console.info(
+      `🔐 Loaded ${managed.keys.length} managed secret${managed.keys.length === 1 ? '' : 's'} from ${managed.provider}`,
+    );
+  }
+} catch (error) {
+  if (environment === 'production') {
+    throw error;
+  }
+  console.warn(
+    `⚠️ Managed secret loading failed (${(error as Error).message}). Falling back to local env values.`,
+  );
+}
 
 const requiredVariables = ['DATABASE_URL', 'ENCRYPTION_MASTER_KEY', 'JWT_SECRET'] as const;
+const trackedOptionalSecrets = [
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'CLAUDE_API_KEY',
+  'GOOGLE_API_KEY',
+  'GEMINI_API_KEY',
+];
 
 function isMissing(value: string | undefined): boolean {
   return !value || value.trim().length === 0;
@@ -76,6 +103,7 @@ for (const key of missingVariables) {
   const generated = deriveDeterministicSecret(key);
   process.env[key] = generated;
   generatedValues[key] = generated;
+  recordGeneratedSecret(key);
 }
 
 if (Object.keys(generatedValues).length > 0) {
@@ -88,6 +116,12 @@ if (stillMissing.length > 0) {
     `Missing required environment variables: ${stillMissing.join(', ')}. ` +
       `Set them in your environment or ${envLocalPath}.`
   );
+}
+
+for (const key of [...requiredVariables, ...trackedOptionalSecrets]) {
+  if (!isMissing(process.env[key])) {
+    recordEnvironmentSecret(key);
+  }
 }
 
 // Export environment variables for easy access
