@@ -44,7 +44,8 @@
     "smoke:e2e": "node scripts/e2e-smoke.js",
     "smoke:connectors": "tsx scripts/connector-smoke.ts",
     "ci:smoke": "tsx scripts/connector-smoke.ts --use-simulator",
-    "seed:encryption-key": "tsx scripts/seed-encryption-key.ts"
+    "seed:encryption-key": "tsx scripts/seed-encryption-key.ts",
+    "observability:check": "tsx scripts/observability-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.676.0",

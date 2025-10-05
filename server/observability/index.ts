@@ -624,7 +624,8 @@ function createMetricReader(): PeriodicExportingMetricReader | PrometheusExporte
 }
 
 function createLogExporter(): LogRecordExporter | null {
-  const exporterType = env.OBSERVABILITY_LOG_EXPORTER?.toLowerCase?.() ?? 'otlp';
+  const exporterType =
+    env.OBSERVABILITY_LOG_EXPORTER?.toLowerCase?.() ?? env.OTEL_LOGS_EXPORTER?.toLowerCase?.() ?? 'otlp';
 
   if (exporterType === 'none') {
     return null;
@@ -687,6 +688,8 @@ function resolveDiagLevel(): DiagLogLevel {
   return env.NODE_ENV === 'development' ? DiagLogLevel.INFO : DiagLogLevel.ERROR;
 }
 
+let bootstrapPromise: Promise<void> | null = null;
+
 if (OBSERVABILITY_ENABLED) {
   const logLevel = resolveDiagLevel();
   diag.setLogger(new DiagConsoleLogger(), logLevel);
@@ -717,14 +720,21 @@ if (OBSERVABILITY_ENABLED) {
 
   const sdk = new NodeSDK(sdkConfig);
 
-  sdk
-    .start()
-    .then(() => {
-      console.log('📈 OpenTelemetry instrumentation initialized');
-    })
-    .catch((error) => {
-      console.error('❌ Failed to start OpenTelemetry SDK', error);
-    });
+  let resolveBootstrap: (() => void) | undefined;
+  let rejectBootstrap: ((error: unknown) => void) | undefined;
+  bootstrapPromise = new Promise<void>((resolve, reject) => {
+    resolveBootstrap = resolve;
+    rejectBootstrap = reject;
+  });
+
+  try {
+    sdk.start();
+    console.log('📈 OpenTelemetry instrumentation initialized');
+    resolveBootstrap?.();
+  } catch (error) {
+    rejectBootstrap?.(error);
+    console.error('❌ Failed to start OpenTelemetry SDK', error);
+  }
 
   const shutdown = async (signal: NodeJS.Signals) => {
     try {
@@ -747,6 +757,7 @@ if (OBSERVABILITY_ENABLED) {
 }
 
 export const observabilityEnabled = OBSERVABILITY_ENABLED;
+export const observabilityBootstrap = bootstrapPromise;
 
 export function getLogger(name: string, version = '1.0.0') {
   return logs.getLogger(name, version);
