@@ -851,6 +851,7 @@ export interface ExpressionValidationDiagnostic {
 
 export interface ExpressionEvaluationOptions {
   expectedResultSchema?: ExpressionJSONSchema;
+  scopeOverrides?: unknown;
 }
 
 export interface ExpressionEvaluationDetails {
@@ -1008,7 +1009,8 @@ export class ExpressionEvaluator {
       }
     }
 
-    const scope = this.createScope(context);
+    const baseScope = this.createScope(context);
+    const scope = this.applyScopeOverrides(baseScope, options.scopeOverrides);
 
     try {
       const value = compiled(scope);
@@ -1109,6 +1111,40 @@ export class ExpressionEvaluator {
     return scope;
   }
 
+  private applyScopeOverrides(
+    baseScope: Record<string, any>,
+    overrides: unknown
+  ): Record<string, any> {
+    if (overrides === undefined) {
+      return baseScope;
+    }
+
+    const scope = Object.create(baseScope);
+
+    if (overrides === null) {
+      scope.$value = null;
+      scope.$ = null;
+      scope.value = null;
+      return scope;
+    }
+
+    if (typeof overrides === 'object') {
+      const safeOverrides = toSafeValue(overrides);
+      if (safeOverrides && typeof safeOverrides === 'object') {
+        Object.assign(scope, safeOverrides);
+      }
+      scope.$value = safeOverrides;
+      scope.$ = safeOverrides;
+      scope.value = safeOverrides;
+      return scope;
+    }
+
+    scope.$value = overrides;
+    scope.$ = overrides;
+    scope.value = overrides;
+    return scope;
+  }
+
   private validateAgainstSchema(value: any, schema: ExpressionJSONSchema): ExpressionValidationDiagnostic[] {
     try {
       const validator = this.getValidator(schema);
@@ -1150,6 +1186,14 @@ export function getExpressionTypeHint(value: any): ExpressionTypeHint {
 }
 
 export type ExpressionEvaluationContext = ExpressionEvaluationInput;
+
+export function evaluateContextExpression(
+  expression: string,
+  context: ExpressionEvaluationContext,
+  scopeOverrides?: unknown
+): any {
+  return expressionEvaluator.evaluate(expression, context, { scopeOverrides });
+}
 
 export const SAMPLE_NODE_OUTPUTS = Object.freeze({
   trigger: {
