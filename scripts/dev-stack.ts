@@ -9,6 +9,13 @@ type ManagedProcess = {
   child: ChildProcess;
 };
 
+class QueueReadinessError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'QueueReadinessError';
+  }
+}
+
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const scriptsToRun = ['dev:api', 'dev:scheduler', 'dev:worker', 'dev:rotation'];
 const managedProcesses: ManagedProcess[] = [];
@@ -56,6 +63,10 @@ function setupSignalHandlers() {
 
   process.on('SIGINT', () => shutdownHandler('SIGINT'));
   process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
+}
+
+async function delay(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
@@ -132,6 +143,13 @@ async function main() {
     });
   });
 
+  monitorApiReadiness().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`API readiness check failed: ${message}`);
+    exitCode = exitCode || 1;
+    terminateAll();
+  });
+
   await Promise.all(exitPromises);
 }
 
@@ -201,6 +219,94 @@ async function ensureRedisIsReachable() {
       terminateAll();
       process.exit(process.exitCode ?? 1);
     }
+  }
+}
+
+async function monitorApiReadiness(): Promise<void> {
+  const host = process.env.HOST ?? '127.0.0.1';
+  const port = process.env.PORT ?? '5000';
+  const origin = process.env.DEV_STACK_API_ORIGIN ?? `http://${host}:${port}`;
+  const readinessPath = process.env.DEV_STACK_READY_PATH ?? '/api/production/ready';
+
+  let readinessUrl: URL;
+  try {
+    readinessUrl = new URL(readinessPath, origin);
+  } catch (error) {
+    const explanation = error instanceof Error ? error.message : String(error);
+    throw new Error(`Unable to construct readiness URL: ${explanation}`);
+  }
+
+  const parsedTimeout = Number.parseInt(process.env.DEV_STACK_READY_TIMEOUT_MS ?? '60000', 10);
+  const parsedInterval = Number.parseInt(process.env.DEV_STACK_READY_INTERVAL_MS ?? '2000', 10);
+  const timeoutMs = Number.isFinite(parsedTimeout) ? parsedTimeout : 60000;
+  const intervalMs = Number.isFinite(parsedInterval) ? parsedInterval : 2000;
+  const startedAt = Date.now();
+  let lastError: Error | null = null;
+
+  log(`Waiting for API readiness at ${readinessUrl.toString()}...`);
+
+  while (!shuttingDown) {
+    const elapsed = Date.now() - startedAt;
+    if (elapsed > timeoutMs) {
+      const finalReason = lastError ? ` Last error: ${lastError.message}` : '';
+      throw new Error(`Timed out waiting for API readiness after ${timeoutMs}ms.${finalReason}`);
+    }
+
+    try {
+      const response = await fetch(readinessUrl, {
+        headers: {
+          accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        log(
+          `Readiness probe responded with ${response.status} ${response.statusText}. Waiting for HTTP 200...`
+        );
+      } else {
+        const body: any = await response.json();
+        const checks = body?.checks ?? {};
+        const queueReady = typeof checks.queue === 'boolean'
+          ? checks.queue
+          : typeof checks.queueDetails === 'object' && checks.queueDetails !== null
+            ? checks.queueDetails.status === 'pass' && checks.queueDetails.durable !== false
+            : false;
+
+        if (!queueReady) {
+          const queueDetails = checks.queueDetails ?? checks.queue ?? {};
+          const queueMessage = typeof queueDetails?.message === 'string'
+            ? queueDetails.message
+            : 'Queue readiness reported as false by /ready endpoint.';
+          throw new QueueReadinessError(queueMessage);
+        }
+
+        if (body.ready === true) {
+          log(`API readiness confirmed. (${readinessUrl.toString()})`);
+          return;
+        }
+
+        const failingChecks = Object.entries(checks)
+          .filter(([key, value]) => key !== 'queueDetails' && value === false)
+          .map(([key]) => key);
+
+        if (failingChecks.length > 0) {
+          log(`API not ready yet. Waiting on: ${failingChecks.join(', ')}.`);
+        } else {
+          log('API readiness endpoint returned ready=false. Waiting and retrying...');
+        }
+      }
+
+      lastError = null;
+    } catch (error) {
+      if (error instanceof QueueReadinessError) {
+        throw error;
+      }
+
+      lastError = error instanceof Error ? error : new Error(String(error));
+      log(`Readiness probe unavailable (${lastError.message}). Retrying...`);
+    }
+
+    await delay(intervalMs);
   }
 }
 

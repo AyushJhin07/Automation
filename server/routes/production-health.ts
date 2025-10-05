@@ -43,7 +43,7 @@ interface HealthCheck {
 }
 
 // Comprehensive health check endpoint
-router.get('/health', async (req, res) => {
+router.get(['/health', '/production/health'], async (req, res) => {
   const startTime = Date.now();
 
   try {
@@ -103,7 +103,7 @@ router.get('/health', async (req, res) => {
 });
 
 // Detailed system metrics
-router.get('/metrics', async (req, res) => {
+router.get(['/metrics', '/production/metrics'], async (req, res) => {
   try {
     const metrics = {
       system: {
@@ -141,15 +141,16 @@ router.get('/metrics', async (req, res) => {
 });
 
 // Readiness probe (for Kubernetes)
-router.get('/ready', async (req, res) => {
+router.get(['/ready', '/production/ready'], async (req, res) => {
   try {
     // Quick checks for readiness
     const queueHealth = await checkQueueHealth();
+    const queueReady = queueHealth.status === 'pass' && queueHealth.durable;
     const checks = {
       llm: LLMProviderService.getProviderStatus().configured,
       environment: process.env.NODE_ENV === 'production',
       dependencies: true, // Would check actual dependencies
-      queue: queueHealth.status === 'pass' && queueHealth.durable,
+      queue: queueReady,
     };
 
     const ready = Object.values(checks).every(check => check);
@@ -158,7 +159,7 @@ router.get('/ready', async (req, res) => {
       ready,
       checks: {
         ...checks,
-        queue: queueHealth,
+        queueDetails: queueHealth,
       },
       timestamp: new Date().toISOString()
     });
@@ -171,7 +172,7 @@ router.get('/ready', async (req, res) => {
 });
 
 // Liveness probe (for Kubernetes)
-router.get('/live', (req, res) => {
+router.get(['/live', '/production/live'], (req, res) => {
   res.json({
     alive: true,
     timestamp: new Date().toISOString(),
@@ -179,7 +180,7 @@ router.get('/live', (req, res) => {
   });
 });
 
-router.get('/queue/heartbeat', (req, res) => {
+router.get(['/queue/heartbeat', '/production/queue/heartbeat'], (req, res) => {
   const snapshot = executionQueueService.getTelemetrySnapshot();
   const queueHealth = snapshot.queueHealth;
   const queueDepths = snapshot.metrics.queueDepths;
