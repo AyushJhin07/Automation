@@ -11,7 +11,7 @@ This roadmap details the phased approach for wiring every catalog connector end-
 ## Phase 1 – Communications & Marketing
 - Implement typed API clients for messaging, conferencing, and marketing tools (Twilio, SendGrid, Mailgun, Mailchimp, Zoom, Teams, RingCentral, Webex, etc.).
 - Register the new constructors inside the manifest introduced in Phase 0 to avoid growing switch statements.
-- Map workflow action IDs to the corresponding client methods through `IntegrationManager.executeFunctionOnClient`.
+- Map workflow action IDs to registered handler methods so `ConnectorFramework`-backed modules surface every operation to the runtime dispatcher.
 - Add integration tests that inject credentials and assert representative actions succeed using mocked HTTP responses.
 
 ## Phase 2 – CRM & Sales Automation

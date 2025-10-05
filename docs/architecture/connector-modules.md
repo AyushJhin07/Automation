@@ -23,23 +23,24 @@ registered handler maps in a contract-compliant module object.【F:shared/connec
 
 ## Runtime integration
 
-`IntegrationManager` now builds and caches modules for every connected
-application. Modules are created by combining definition metadata from the
-`ConnectorRegistry` with the handler registrations exposed by the concrete
-client. Parameters are validated against the module's operation schemas using an
-AJV instance before delegating to the underlying client. Failed schema
-compilation is logged as a warning but does not block execution. When an unknown
-operation is requested the manager falls back to the generic executor (when
-enabled).【F:server/integrations/IntegrationManager.ts†L360-L458】【F:server/integrations/IntegrationManager.ts†L618-L833】
+`IntegrationManager` now asks the `ConnectorFramework` to hydrate a module for
+every connected application. The framework merges catalog metadata with the
+handlers registered on the concrete client and returns a `ConnectorModule`
+object plus normalized rate-limit rules. The manager caches the module per
+connection, validates inputs against the module's JSON schemas, and routes every
+operation through `module.execute`. Because the executor ultimately delegates to
+`BaseAPIClient.execute`, every call automatically benefits from the shared HTTP
+transport, retries, and rate-limiting middleware. Unknown operations continue to
+fall back to the generic executor when enabled.【F:server/connectors/ConnectorFramework.ts†L320-L430】【F:server/integrations/IntegrationManager.ts†L248-L364】
 
 ## Tooling support
 
-The connector CLI generator now scaffolds module exports alongside the legacy
-API client class. Generated clients import the shared contract types and expose
-`<ConnectorName>Module`, returning the wrapped module via `toConnectorModule`
-with the connector's authentication metadata baked in. This ensures new
-connectors automatically participate in the contract without hand-written glue
-code.【F:scripts/generateAPIClients.ts†L63-L118】
+The connector CLI generator scaffolds module exports alongside the API client
+class so new connectors satisfy the contract immediately. Generated clients
+import the shared contract types, register handlers, and expose
+`<ConnectorName>Module` via `toConnectorModule`, including authentication
+metadata and catalog-derived operations. No additional wiring is required for
+IntegrationManager to consume the new connector.【F:scripts/generateAPIClients.ts†L63-L136】
 
 ## Migration guidance
 
