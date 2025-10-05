@@ -20,8 +20,9 @@ import type {
   OrganizationNetworkDenylist,
 } from '../services/ConnectionService';
 import { updateConnectorRateBudgetMetric } from '../observability/index.js';
-import { rateLimiter, type RateLimitRules } from './RateLimiter';
+import { type RateLimitRules } from './RateLimiter';
 import { retryManager } from '../core/RetryManager.js';
+import { httpTransport } from './HttpTransport';
 
 let cachedConnectionService: ConnectionService | null | undefined;
 
@@ -387,206 +388,145 @@ export abstract class BaseAPIClient {
     const organizationId = this.credentials.__organizationId ?? null;
     const responseType = options.responseType ?? 'json';
     const maxAttempts = Math.max(1, options.retry?.maxAttempts ?? 3);
-    let lastFailure: APIResponse<T> | null = null;
+    let metadata: RateLimitMetadata | null = null;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      let releaseLimiter: (() => void) | undefined;
-      let requestUrl = '';
-      let requestHeaders: Record<string, string> = {};
-      let requestPayload: any;
-      let metadata: RateLimitMetadata | null = null;
+    try {
+      const url = this.buildRequestUrl(endpoint);
+      await this.assertHostAllowed(url);
 
-      try {
-        const url = this.buildRequestUrl(endpoint);
-        await this.assertHostAllowed(url);
+      const authHeaders = this.getAuthHeaders();
+      const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+      const requestHeaders: Record<string, string> = {
+        'User-Agent': 'ScriptSpark-Automation/1.0',
+        ...authHeaders,
+        ...headers,
+      };
 
-        const limiterResult = await rateLimiter.acquire({
+      if (!isFormData && !('Content-Type' in requestHeaders)) {
+        requestHeaders['Content-Type'] = 'application/json';
+      }
+
+      let requestPayload = this.cloneRequestPayload(data);
+      let requestUrl = url;
+      const isWriteMethod = method === 'POST' || method === 'PUT' || method === 'PATCH';
+      const providerId = this.connectorId ?? this.deriveConnectorId();
+      const idempotencyFormat = providerId ? PROVIDER_IDEMPOTENCY_FORMATS[providerId] : undefined;
+      const idempotencyKey = this.resolveIdempotencyKey();
+      const context = this.getRequestContext();
+
+      if (isWriteMethod && idempotencyFormat && idempotencyKey) {
+        if (idempotencyFormat.header) {
+          requestHeaders[idempotencyFormat.header] = idempotencyKey;
+        }
+        if (idempotencyFormat.bodyPath) {
+          this.applyIdempotencyValue(requestPayload, idempotencyFormat.bodyPath, idempotencyKey);
+        }
+        if (idempotencyFormat.queryParam) {
+          requestUrl = this.appendQueryParam(requestUrl, idempotencyFormat.queryParam, idempotencyKey);
+        }
+      } else if (isWriteMethod && context?.executionId && context?.nodeId) {
+        const hashPayload = requestPayload ?? data;
+        const requestHash = this.computeRequestHash(method, requestUrl, hashPayload);
+        retryManager.registerRequestHash(context.executionId, context.nodeId, requestHash);
+      }
+
+      if (this.rateLimitInfo && this.isRateLimited()) {
+        const waitTime = this.rateLimitInfo.resetTime - Date.now();
+        if (waitTime > 0) {
+          await this.sleep(waitTime);
+        }
+      }
+
+      const prepareBody = () => {
+        if (requestPayload === undefined || requestPayload === null) {
+          return undefined;
+        }
+        return this.serializeRequestBody(this.cloneRequestPayload(requestPayload));
+      };
+
+      const transportResult = await httpTransport.request({
+        url: requestUrl,
+        method,
+        headers: requestHeaders,
+        rawBody: requestPayload,
+        prepareBody,
+        rateLimit: {
           connectorId,
           connectionId,
           organizationId,
-          rules: this.connectorRateLimits,
-        });
+          rules: this.connectorRateLimits ?? null,
+          bucketScope: this.connectorRateLimits?.bucketScope,
+          policyScope: 'connector',
+        },
+        retry: { maxAttempts },
+        onResponse: async ({ response, request }) => {
+          metadata = this.updateRateLimitInfo(response.headers);
+          await this.runResponseMiddleware({
+            response,
+            request: {
+              method: request.method,
+              url: request.url,
+              headers: request.headers,
+              body: request.body ?? requestPayload,
+              init: request.init,
+            },
+            connectorId: this.connectorId,
+            connectionId,
+            organizationId,
+            rateLimits: this.connectorRateLimits ?? null,
+            rateLimitMetadata: metadata,
+          });
+          return { retryAfterMs: this.getRetryAfterDelay(response, metadata) };
+        },
+      });
 
-        this.lastRateLimitWaitMs = limiterResult.waitMs;
-        this.lastRateLimitAttempts = limiterResult.attempts;
-        releaseLimiter = limiterResult.release;
+      this.lastRateLimitWaitMs = transportResult.rateLimiter.waitMs;
+      this.lastRateLimitAttempts = transportResult.rateLimiter.attempts;
 
-        const authHeaders = this.getAuthHeaders();
-        const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
-        requestHeaders = {
-          'User-Agent': 'ScriptSpark-Automation/1.0',
-          ...authHeaders,
-          ...headers,
-        };
+      const response = transportResult.response;
 
-        if (!isFormData && !('Content-Type' in requestHeaders)) {
-          requestHeaders['Content-Type'] = 'application/json';
-        }
+      let rawBody: any = null;
+      let textBody: string | null = null;
 
-        requestPayload = this.cloneRequestPayload(data);
-        const isWriteMethod = method === 'POST' || method === 'PUT' || method === 'PATCH';
-        const providerId = this.connectorId ?? this.deriveConnectorId();
-        const idempotencyFormat = providerId ? PROVIDER_IDEMPOTENCY_FORMATS[providerId] : undefined;
-        const idempotencyKey = this.resolveIdempotencyKey();
-        const context = this.getRequestContext();
-        requestUrl = url;
-
-        if (isWriteMethod && idempotencyFormat && idempotencyKey) {
-          if (idempotencyFormat.header) {
-            requestHeaders[idempotencyFormat.header] = idempotencyKey;
-          }
-          if (idempotencyFormat.bodyPath) {
-            this.applyIdempotencyValue(requestPayload, idempotencyFormat.bodyPath, idempotencyKey);
-          }
-          if (idempotencyFormat.queryParam) {
-            requestUrl = this.appendQueryParam(requestUrl, idempotencyFormat.queryParam, idempotencyKey);
-          }
-        } else if (isWriteMethod && context?.executionId && context?.nodeId) {
-          const hashPayload = requestPayload ?? data;
-          const requestHash = this.computeRequestHash(method, requestUrl, hashPayload);
-          retryManager.registerRequestHash(context.executionId, context.nodeId, requestHash);
-        }
-
-        if (this.rateLimitInfo && this.isRateLimited()) {
-          const waitTime = this.rateLimitInfo.resetTime - Date.now();
-          if (waitTime > 0) {
-            await this.sleep(waitTime);
-          }
-        }
-
-        const requestOptions: RequestInit = {
-          method,
-          headers: requestHeaders,
-          body: this.serializeRequestBody(requestPayload),
-        };
-
-        const response = await fetch(requestUrl, requestOptions);
-        metadata = this.updateRateLimitInfo(response.headers);
-
-        await this.runResponseMiddleware({
-          response,
-          request: {
-            method,
-            url: requestUrl,
-            headers: requestHeaders,
-            body: requestPayload,
-            init: requestOptions,
-          },
-          connectorId: this.connectorId,
-          connectionId,
-          organizationId,
-          rateLimits: this.connectorRateLimits ?? null,
-          rateLimitMetadata: metadata,
-        });
-
-        let rawBody: any = null;
-        let textBody: string | null = null;
-
-        if (responseType === 'arrayBuffer') {
-          rawBody = await response.arrayBuffer();
-        } else {
-          textBody = await response.text();
-          if (responseType === 'json') {
-            try {
-              rawBody = textBody ? JSON.parse(textBody) : null;
-            } catch {
-              rawBody = textBody;
-            }
-          } else {
+      if (responseType === 'arrayBuffer') {
+        rawBody = await response.arrayBuffer();
+      } else {
+        textBody = await response.text();
+        if (responseType === 'json') {
+          try {
+            rawBody = textBody ? JSON.parse(textBody) : null;
+          } catch {
             rawBody = textBody;
           }
+        } else {
+          rawBody = textBody;
         }
+      }
 
-        if (!response.ok) {
-          const failure: APIResponse<T> = {
-            success: false,
-            error: this.describeHttpError(response.status, response.statusText, rawBody ?? textBody),
-            statusCode: response.status,
-            data: rawBody ?? undefined,
-            headers: Object.fromEntries(response.headers.entries()),
-          };
-          lastFailure = failure;
-
-          const decision = retryManager.getHttpRetryDecision({
-            attempt,
-            maxAttempts,
-            statusCode: response.status,
-            retryAfterMs: this.getRetryAfterDelay(response, metadata),
-            connectorId,
-            connectionId: connectionId ?? undefined,
-            organizationId: organizationId ?? undefined,
-          });
-
-          if (decision.penaltyMs && decision.penaltyMs > 0) {
-            rateLimiter.schedulePenalty({
-              connectorId,
-              connectionId,
-              organizationId,
-              waitMs: decision.penaltyMs,
-              scope: decision.penaltyScope,
-            });
-          }
-
-          if (decision.shouldRetry && attempt < maxAttempts) {
-            await this.sleep(decision.waitMs);
-            continue;
-          }
-
-          return failure;
-        }
-
-        const parsedData = options.parser ? options.parser(rawBody, response) : (rawBody as T);
+      if (!response.ok) {
         return {
-          success: true,
-          data: parsedData,
+          success: false,
+          error: this.describeHttpError(response.status, response.statusText, rawBody ?? textBody),
           statusCode: response.status,
+          data: rawBody ?? undefined,
           headers: Object.fromEntries(response.headers.entries()),
         };
-      } catch (error) {
-        const failure: APIResponse<T> = {
-          success: false,
-          error: getErrorMessage(error),
-          statusCode: 0,
-        };
-        lastFailure = failure;
-
-        const decision = retryManager.getHttpRetryDecision({
-          attempt,
-          maxAttempts,
-          error: error instanceof Error ? error : new Error(getErrorMessage(error)),
-          connectorId,
-          connectionId: connectionId ?? undefined,
-          organizationId: organizationId ?? undefined,
-        });
-
-        if (decision.shouldRetry && attempt < maxAttempts) {
-          if (decision.penaltyMs && decision.penaltyMs > 0) {
-            rateLimiter.schedulePenalty({
-              connectorId,
-              connectionId,
-              organizationId,
-              waitMs: decision.penaltyMs,
-              scope: decision.penaltyScope,
-            });
-          }
-
-          await this.sleep(decision.waitMs);
-          continue;
-        }
-
-        return failure;
-      } finally {
-        releaseLimiter?.();
       }
-    }
 
-    return (
-      lastFailure ?? {
+      const parsedData = options.parser ? options.parser(rawBody, response) : (rawBody as T);
+      return {
+        success: true,
+        data: parsedData,
+        statusCode: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+      };
+    } catch (error) {
+      return {
         success: false,
-        error: 'Request failed without yielding a response.',
+        error: getErrorMessage(error),
         statusCode: 0,
-      }
-    );
+      };
+    }
   }
 
   private buildRequestUrl(endpoint: string): string {
@@ -619,19 +559,27 @@ export abstract class BaseAPIClient {
     }
 
     if (typeof FormData !== 'undefined' && payload instanceof FormData) {
-      return payload;
+      const clone = new FormData();
+      for (const [key, value] of payload.entries()) {
+        clone.append(key, value as FormDataEntryValue);
+      }
+      return clone;
     }
 
     if (typeof URLSearchParams !== 'undefined' && payload instanceof URLSearchParams) {
-      return payload;
+      return new URLSearchParams(payload as any);
     }
 
     if (typeof Blob !== 'undefined' && payload instanceof Blob) {
-      return payload;
+      return payload.slice(0, payload.size, payload.type);
     }
 
-    if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
-      return payload;
+    if (payload instanceof ArrayBuffer) {
+      return payload.slice(0);
+    }
+
+    if (ArrayBuffer.isView(payload)) {
+      return payload.slice ? payload.slice() : new (payload.constructor as any)(payload as any);
     }
 
     try {

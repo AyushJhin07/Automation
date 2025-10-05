@@ -2,9 +2,10 @@ import type { APICredentials, APIResponse } from './BaseAPIClient';
 import { connectorRegistry } from '../ConnectorRegistry';
 import { validateParams } from './RequestValidator';
 import { normalizeListResponse } from './Normalizers';
-import { rateLimiter, type RateLimitRules } from './RateLimiter';
+import { type RateLimitRules } from './RateLimiter';
 import { recordExecution } from '../services/ExecutionAuditService';
 import { getRequestContext } from '../utils/ExecutionContext';
+import { httpTransport } from './HttpTransport';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
@@ -257,95 +258,72 @@ export class GenericExecutor {
     const backoffEvents: BackoffEvent[] = [];
     let totalRateLimiterWaitMs = 0;
     let totalRateLimiterAttempts = 0;
+    const organizationId = credentials.__organizationId ?? null;
     try {
-      let reqBody: any = undefined;
-      let reqHeaders = { ...headers } as Record<string, string>;
+      const reqHeaders = { ...headers } as Record<string, string>;
+
       if (body !== undefined) {
         if (format === 'json') {
-          reqBody = JSON.stringify(body);
           reqHeaders['Content-Type'] = reqHeaders['Content-Type'] || 'application/json';
         } else if (format === 'form') {
-          const usp = new URLSearchParams();
-          Object.entries(body).forEach(([k, v]) => usp.append(k, Array.isArray(v) ? v.join(',') : String(v)));
-          reqBody = usp as any;
           reqHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
         } else if (format === 'multipart') {
-          const fd = new FormData();
-          Object.entries(body).forEach(([k, v]) => fd.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v)));
-          reqBody = fd as any;
-          // Let fetch set multipart boundary header automatically
           delete (reqHeaders as any)['Content-Type'];
         }
       }
 
-      // Basic retry for transient errors and rate limits
       const maxRetries = 2;
-      let attempt = 0;
-      let resp: Response | null = null;
-      let lastErr: any = null;
-      while (attempt <= maxRetries) {
-        try {
-          const limiterResult = await rateLimiter.acquire({
-            connectorId: appId,
-            connectionId,
-            organizationId: credentials.__organizationId,
-            rules: effectiveRateLimits,
-          });
-          try {
-            if (limiterResult.waitMs > 0 || limiterResult.enforced) {
-              backoffEvents.push({
-                type: 'rate_limiter',
-                waitMs: limiterResult.waitMs,
-                attempt,
-                reason: 'token_bucket',
-                limiterAttempts: limiterResult.attempts,
-              });
-            }
-            totalRateLimiterWaitMs += limiterResult.waitMs;
-            totalRateLimiterAttempts += limiterResult.attempts;
-            resp = await fetch(finalUrl, {
-              method,
-              headers: reqHeaders,
-              body: reqBody
-            } as any);
-          } finally {
-            limiterResult.release?.();
+      const maxAttempts = maxRetries + 1;
+
+      const transportResult = await httpTransport.request({
+        url: finalUrl,
+        method,
+        headers: reqHeaders,
+        rawBody: body,
+        prepareBody: () => {
+          if (body === undefined) {
+            return undefined;
           }
-          if (resp.status === 429 || (resp.status >= 500 && resp.status <= 599)) {
-            // Backoff then retry
-            const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
-            if (wait > 0) {
-              backoffEvents.push({
-                type: 'http_retry',
-                waitMs: wait,
-                attempt,
-                reason: resp.status === 429 ? 'http_429' : `http_${resp.status}`,
-                statusCode: resp.status,
-              });
-            }
-            await new Promise(r => setTimeout(r, wait));
-            attempt++;
-            continue;
+          if (format === 'json') {
+            return JSON.stringify(body);
           }
-          break;
-        } catch (e) {
-          lastErr = e;
-          const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
-          if (wait > 0) {
-            backoffEvents.push({
-              type: 'network_retry',
-              waitMs: wait,
-              attempt,
-              reason: (e as any)?.name || 'network_error',
-            });
+          if (format === 'form') {
+            const usp = new URLSearchParams();
+            Object.entries(body).forEach(([k, v]) => usp.append(k, Array.isArray(v) ? v.join(',') : String(v)));
+            return usp;
           }
-          await new Promise(r => setTimeout(r, wait));
-          attempt++;
-        }
+          if (format === 'multipart') {
+            const fd = new FormData();
+            Object.entries(body).forEach(([k, v]) =>
+              fd.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v))
+            );
+            return fd as any;
+          }
+          return body as any;
+        },
+        rateLimit: {
+          connectorId: appId,
+          connectionId,
+          organizationId,
+          rules: effectiveRateLimits ?? null,
+          bucketScope: effectiveRateLimits?.bucketScope,
+          policyScope: operationRateLimits ? 'operation' : 'connector',
+          policyName: operationRateLimits ? `operation:${functionId}` : undefined,
+        },
+        retry: { maxAttempts },
+        onResponse: async ({ response }) => {
+          const retryAfterMs = this.parseRetryAfter(response.headers.get('retry-after'));
+          return { retryAfterMs };
+        },
+      });
+
+      totalRateLimiterWaitMs += transportResult.rateLimiter.waitMs;
+      totalRateLimiterAttempts += transportResult.rateLimiter.attempts;
+      if (transportResult.backoffEvents.length > 0) {
+        backoffEvents.push(...transportResult.backoffEvents);
       }
-      if (!resp) {
-        throw lastErr || new Error('Network error');
-      }
+
+      const resp = transportResult.response;
 
       const text = await resp.text();
       let data: any;
@@ -381,7 +359,7 @@ export class GenericExecutor {
       const payload = normalized ? { meta: normalized.meta, items: normalized.items } : (meta && Object.keys(meta).length ? { meta, ...data } : data);
       const ctx = getRequestContext();
       const executionMeta: Record<string, any> = {
-        rateLimited: attempt > 0 || totalRateLimiterAttempts > 0,
+        rateLimited: transportResult.attempts > 1 || totalRateLimiterAttempts > 0,
       };
 
       if (totalRateLimiterAttempts > 0) {
@@ -557,6 +535,27 @@ export class GenericExecutor {
       }
     }
     return { success: false, error: message, data };
+  }
+
+  private parseRetryAfter(value: string | null): number | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const seconds = Number(value);
+    if (!Number.isNaN(seconds) && Number.isFinite(seconds)) {
+      return Math.max(0, seconds * 1000);
+    }
+
+    const timestamp = Date.parse(value);
+    if (!Number.isNaN(timestamp)) {
+      const delta = timestamp - Date.now();
+      if (delta > 0) {
+        return delta;
+      }
+    }
+
+    return undefined;
   }
 }
 
