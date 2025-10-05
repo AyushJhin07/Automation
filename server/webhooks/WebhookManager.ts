@@ -1539,6 +1539,18 @@ export class WebhookManager {
     return Array.from(this.activeWebhooks.values());
   }
 
+  listPollingTriggers(): PollingTrigger[] {
+    return Array.from(this.pollingTriggers.values()).map((trigger) => this.normalizePollingTrigger(trigger));
+  }
+
+  getWorkerRegion(): OrganizationRegion {
+    return this.workerRegion;
+  }
+
+  getSupportedRegions(): OrganizationRegion[] {
+    return Array.from(this.supportedRegions);
+  }
+
   /**
    * Deactivate webhook
    */
