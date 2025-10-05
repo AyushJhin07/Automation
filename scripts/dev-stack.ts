@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { setTimeout as delay } from 'node:timers/promises';
 import process from 'node:process';
 import IORedis from 'ioredis';
 
@@ -63,6 +64,8 @@ async function main() {
 
   await ensureRedisIsReachable();
 
+  const readinessMonitor = monitorReadiness();
+
   const exitPromises = scriptsToRun.map((script) => {
     return new Promise<void>((resolve) => {
       const childEnv = { ...process.env };
@@ -123,7 +126,112 @@ async function main() {
     });
   });
 
+  exitPromises.push(
+    readinessMonitor.catch((error) => {
+      if (!shuttingDown) {
+        const message = error instanceof Error ? error.message : String(error);
+        log(`[readiness] Monitor failed: ${message}`);
+        exitCode = exitCode || 1;
+        terminateAll();
+      }
+      throw error;
+    })
+  );
+
   await Promise.all(exitPromises);
+}
+
+function resolveReadinessUrl(): string {
+  if (process.env.DEV_STACK_READY_URL) {
+    return process.env.DEV_STACK_READY_URL;
+  }
+
+  const host = process.env.DEV_STACK_READY_HOST ?? '127.0.0.1';
+  const port =
+    process.env.DEV_STACK_READY_PORT ??
+    process.env.PORT ??
+    process.env.npm_package_config_port ??
+    '5000';
+
+  const pathname = process.env.DEV_STACK_READY_PATH ?? '/api/production/ready';
+  const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+
+  return `http://${host}:${port}${normalizedPath}`;
+}
+
+async function monitorReadiness(): Promise<void> {
+  if (process.env.SKIP_DEV_STACK_READINESS === 'true') {
+    log('[readiness] Monitor disabled via SKIP_DEV_STACK_READINESS=true.');
+    return;
+  }
+
+  const url = resolveReadinessUrl();
+  const pollIntervalMs = Number.parseInt(process.env.DEV_STACK_READY_INTERVAL_MS ?? '5000', 10);
+  const startupTimeoutMs = Number.parseInt(process.env.DEV_STACK_READY_STARTUP_TIMEOUT_MS ?? '60000', 10);
+  const fetchTimeoutMs = Math.max(2000, Math.min(pollIntervalMs - 500, 10000));
+  const startedAt = Date.now();
+  let warnedAboutStartupDelay = false;
+
+  log(`[readiness] Polling ${url} every ${pollIntervalMs}ms...`);
+
+  while (!shuttingDown) {
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(fetchTimeoutMs),
+        headers: {
+          'user-agent': 'dev-stack-readiness-monitor',
+          accept: 'application/json',
+        },
+      });
+
+      const text = await response.text();
+      let payload: any = null;
+
+      try {
+        payload = text.length > 0 ? JSON.parse(text) : null;
+      } catch (error) {
+        log(`[readiness] Received non-JSON response (${response.status}): ${text.slice(0, 120)}${
+          text.length > 120 ? '…' : ''
+        }`);
+      }
+
+      if (!payload || typeof payload !== 'object') {
+        if (response.status >= 500) {
+          log(`[readiness] ${url} returned ${response.status}. Continuing to poll.`);
+        }
+      } else {
+        const queueHealth = payload.checks?.queue;
+        const queueReady =
+          queueHealth && queueHealth.status === 'pass' && queueHealth.durable !== false;
+
+        if (!queueReady) {
+          const reason = queueHealth?.message ?? 'queue is not ready';
+          log(`[readiness] Queue reported unhealthy: ${reason}`);
+          exitCode = exitCode || 1;
+          terminateAll();
+          throw new Error(`Queue readiness failed: ${reason}`);
+        }
+
+        if (payload.ready === true) {
+          log('[readiness] API reports ready with a healthy queue.');
+          return;
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log(`[readiness] Polling error: ${message}`);
+    }
+
+    if (!warnedAboutStartupDelay && Date.now() - startedAt >= startupTimeoutMs) {
+      log(
+        `[readiness] API has not reported ready after ${Math.round(startupTimeoutMs / 1000)}s. ` +
+          'If this is expected (e.g., debugging), set SKIP_DEV_STACK_READINESS=true.'
+      );
+      warnedAboutStartupDelay = true;
+    }
+
+    await delay(pollIntervalMs);
+  }
 }
 
 async function ensureRedisIsReachable() {
