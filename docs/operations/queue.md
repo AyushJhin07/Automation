@@ -62,7 +62,7 @@ For predictable queue behaviour, launch production processes in the following or
 4. `npm run start:timers`
 
 Starting the scheduler before the worker is acceptable, but the worker must be online before queue
-backlog grows. The [`/api/health/queue/heartbeat`](../../server/routes/production-health.ts) probe
+backlog grows. The [`/api/production/queue/heartbeat`](../../server/routes/production-health.ts) probe
 confirms that the worker heartbeat is current and the queue depth is draining.
 
 If you prefer to co-locate everything inside the API process for a lightweight environment, export
@@ -107,7 +107,7 @@ When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS
 
 ## Queue health & readiness
 
-Worker processes call `assertQueueIsReady` during startup and exit immediately if the BullMQ connection cannot be established. The `/api/health` endpoint now reports the queue status, latency, and durability, while `/api/health/ready` returns `503` whenever Redis is unreachable or the queue is running in in-memory mode. Use these probes in Kubernetes or container orchestrators to ensure the workers only receive traffic when the queue is durable.
+Worker processes call `assertQueueIsReady` during startup and exit immediately if the BullMQ connection cannot be established. The `/api/production/health` endpoint reports the queue status, latency, and durability, while `/api/production/ready` returns `503` whenever Redis is unreachable or the queue is running in in-memory mode. Use these probes in Kubernetes or container orchestrators to ensure the workers only receive traffic when the queue is durable.
 
 ## Telemetry & metrics helpers
 

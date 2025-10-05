@@ -144,21 +144,20 @@ router.get('/ready', async (req, res) => {
   try {
     // Quick checks for readiness
     const queueHealth = await checkQueueHealth();
+    const queueReady = queueHealth.status === 'pass' && queueHealth.durable;
     const checks = {
       llm: LLMProviderService.getProviderStatus().configured,
       environment: process.env.NODE_ENV === 'production',
       dependencies: true, // Would check actual dependencies
-      queue: queueHealth.status === 'pass' && queueHealth.durable,
+      queue: queueReady,
     };
 
-    const ready = Object.values(checks).every(check => check);
+    const ready = Object.values(checks).every((check) => Boolean(check));
 
     res.status(ready ? 200 : 503).json({
       ready,
-      checks: {
-        ...checks,
-        queue: queueHealth,
-      },
+      checks,
+      queueHealth,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

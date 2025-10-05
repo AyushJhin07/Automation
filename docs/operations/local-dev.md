@@ -60,7 +60,7 @@ export QUEUE_REDIS_DB=0
 
 The defaults in `.env.example` mirror these values so host-based processes connect to `localhost`. When you run inside the Compose network, override `QUEUE_REDIS_HOST` to `redis` (the service name) or whichever hostname your containers should reach.
 
-With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. The readiness probe at `http://localhost:5000/api/health/ready` returns `503` if Redis is unreachable or the queue is running in in-memory mode, making it easy to verify durability before exercising workflows.【F:server/routes/production-health.ts†L35-L103】 The `npm run dev:stack` helper launches the API, scheduler, execution worker, and encryption rotation worker together and keeps their lifecycles in sync.
+With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. The production readiness probe at `http://localhost:5000/api/production/ready` returns `503` if Redis is unreachable or the queue is running in in-memory mode, making it easy to verify durability before exercising workflows.【F:server/routes/production-health.ts†L35-L117】 The `npm run dev:stack` helper launches the API, scheduler, execution worker, and encryption rotation worker together, polling `/api/production/ready` during boot so it exits immediately if the queue check reports `queue: false`.【F:scripts/dev-stack.ts†L17-L170】
 
 ## Observability
 

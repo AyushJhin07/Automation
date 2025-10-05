@@ -260,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   );
   
   // PRODUCTION: Health monitoring and metrics routes
-  app.use('/api', productionHealthRoutes);
+  app.use('/api/production', productionHealthRoutes);
   
   // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
   app.use('/api/flows', flowRoutes);

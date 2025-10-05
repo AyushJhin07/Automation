@@ -11,6 +11,7 @@ type ManagedProcess = {
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const scriptsToRun = ['dev:api', 'dev:scheduler', 'dev:worker', 'dev:rotation'];
+const [primaryScript, ...dependentScripts] = scriptsToRun;
 const managedProcesses: ManagedProcess[] = [];
 
 let shuttingDown = false;
@@ -63,8 +64,15 @@ async function main() {
 
   await ensureRedisIsReachable();
 
-  const exitPromises = scriptsToRun.map((script) => {
-    return new Promise<void>((resolve) => {
+  if (!primaryScript) {
+    log('No scripts configured to run. Exiting.');
+    return;
+  }
+
+  const exitPromises: Promise<void>[] = [];
+
+  const startScript = (script: string): Promise<void> => {
+    const promise = new Promise<void>((resolve) => {
       const child = spawn(npmCommand, ['run', script], {
         stdio: 'inherit',
         env: { ...process.env },
@@ -113,7 +121,20 @@ async function main() {
         finish();
       });
     });
-  });
+
+    exitPromises.push(promise);
+    return promise;
+  };
+
+  startScript(primaryScript);
+
+  await waitForQueueReadiness();
+
+  if (!shuttingDown) {
+    for (const script of dependentScripts) {
+      startScript(script);
+    }
+  }
 
   await Promise.all(exitPromises);
 }
@@ -149,6 +170,74 @@ async function ensureRedisIsReachable() {
       process.exit(process.exitCode ?? 1);
     }
   }
+}
+
+async function waitForQueueReadiness() {
+  const intervalMs = Number.parseInt(process.env.DEV_STACK_READY_INTERVAL_MS ?? '1000', 10);
+  const maxAttempts = Number.parseInt(process.env.DEV_STACK_READY_ATTEMPTS ?? '30', 10);
+  const fallbackPort = Number.parseInt(process.env.PORT ?? '5000', 10);
+  const readinessHost = process.env.DEV_STACK_READY_HOST ?? '127.0.0.1';
+  const readinessUrl =
+    process.env.DEV_STACK_READY_URL ?? `http://${readinessHost}:${Number.isFinite(fallbackPort) ? fallbackPort : 5000}/api/production/ready`;
+
+  log(`Polling ${readinessUrl} for queue readiness (max ${maxAttempts} attempts)...`);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (shuttingDown) {
+      return;
+    }
+
+    try {
+      const response = await fetch(readinessUrl, {
+        headers: { Accept: 'application/json' },
+      });
+      const text = await response.text();
+
+      let body: any = null;
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          log(`Attempt ${attempt}: received non-JSON readiness payload: ${text.slice(0, 120)}...`);
+        }
+      }
+
+      const queueReady = typeof body?.checks?.queue === 'boolean' ? body.checks.queue : undefined;
+      const queueMessage = body?.queueHealth?.message ?? body?.error ?? null;
+
+      if (queueReady === false) {
+        log('API readiness reported queue=false. The queue is not durable or Redis is unavailable.');
+        if (queueMessage) {
+          log(`Queue diagnostic: ${queueMessage}`);
+        }
+        log(`Shutting down dev stack. See docs/operations/monitoring.md for recovery steps.`);
+        exitCode = exitCode || 1;
+        terminateAll();
+        process.exit(exitCode);
+      }
+
+      if (queueReady) {
+        const readinessState = body?.ready ? 'ready' : 'degraded (non-production environment)';
+        log(`Queue health confirmed (${readinessState}). Continuing startup.`);
+        return;
+      }
+
+      log(
+        `Attempt ${attempt}/${maxAttempts}: API not reporting queue readiness yet (HTTP ${response.status}). ` +
+          `Retrying in ${intervalMs}ms...`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log(`Attempt ${attempt}/${maxAttempts}: failed to query readiness (${message}). Retrying in ${intervalMs}ms...`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  log(`Timed out waiting for API readiness after ${maxAttempts} attempts. Shutting down dev stack.`);
+  exitCode = exitCode || 1;
+  terminateAll();
+  process.exit(exitCode);
 }
 
 main()
