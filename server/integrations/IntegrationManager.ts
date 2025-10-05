@@ -255,19 +255,18 @@ export class IntegrationManager {
         };
       }
 
-      let rateLimitRules: RateLimitRules | null = null;
+      let moduleBuild: { module: ConnectorModule; rateLimits: RateLimitRules | null } | null = null;
       try {
-        const frameworkDefinition = await connectorFramework.getConnector(appKey);
-        if (frameworkDefinition) {
-          rateLimitRules = connectorFramework.buildRateLimitRules(frameworkDefinition);
-        }
+        moduleBuild = await connectorFramework.buildConnectorModule({
+          connectorId: appKey,
+          client,
+          definition,
+        });
       } catch (frameworkError) {
-        console.warn('[IntegrationManager] Failed to hydrate connector definition from framework:', frameworkError);
+        console.warn('[IntegrationManager] Failed to build connector module from framework:', frameworkError);
       }
 
-      if (!rateLimitRules) {
-        rateLimitRules = this.normalizeRegistryRateLimits(definition?.rateLimits);
-      }
+      const rateLimitRules = moduleBuild?.rateLimits ?? this.normalizeRegistryRateLimits(definition?.rateLimits);
 
       client.setConnectorContext(appKey, config.connectionId, rateLimitRules);
 
@@ -281,7 +280,7 @@ export class IntegrationManager {
       }
 
       this.clients.set(clientKey, client);
-      const module = this.createConnectorModule(appKey, client, definition);
+      const module = moduleBuild?.module ?? this.createConnectorModule(appKey, client, definition);
       this.setConnectorModule(clientKey, module);
 
       return {
@@ -412,7 +411,7 @@ export class IntegrationManager {
         client.updateCredentials(params.credentials);
       }
 
-      const module = this.getOrCreateConnectorModule(appKey, clientKey, client);
+      const module = await this.getOrCreateConnectorModule(appKey, clientKey, client);
       const validation = this.validateModuleOperation(
         clientKey,
         module,
@@ -652,18 +651,30 @@ export class IntegrationManager {
     };
   }
 
-  private getOrCreateConnectorModule(
+  private async getOrCreateConnectorModule(
     appKey: string,
     clientKey: string,
     client: BaseAPIClient,
-  ): ConnectorModule {
+  ): Promise<ConnectorModule> {
     const cached = this.connectorModules.get(clientKey);
     if (cached) {
       return cached;
     }
 
     const definition = connectorRegistry.getConnectorDefinition(appKey);
-    const module = this.createConnectorModule(appKey, client, definition);
+    let moduleBuild: { module: ConnectorModule; rateLimits: RateLimitRules | null } | null = null;
+
+    try {
+      moduleBuild = await connectorFramework.buildConnectorModule({
+        connectorId: appKey,
+        client,
+        definition,
+      });
+    } catch (error) {
+      console.warn('[IntegrationManager] Failed to build connector module:', error);
+    }
+
+    const module = moduleBuild?.module ?? this.createConnectorModule(appKey, client, definition);
     this.setConnectorModule(clientKey, module);
     return module;
   }
@@ -689,13 +700,7 @@ export class IntegrationManager {
       inputSchema: this.buildModuleInputSchema(operations),
       operations,
       executor: async (input) => {
-        const executeOnClient = () =>
-          this.executeFunctionOnClient(
-            client,
-            appKey,
-            input.operationId,
-            input.input ?? {}
-          );
+        const executeOnClient = () => client.execute(input.operationId, input.input ?? {});
 
         const context = input.metadata;
         const response = context
@@ -971,71 +976,6 @@ export class IntegrationManager {
   /**
    * Execute function on specific API client
    */
-  private async executeFunctionOnClient(
-    client: BaseAPIClient,
-    appKey: string,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    // Try generic client-side execution first if available
-    const maybeExec = (client as any).execute as (id: string, params: any) => Promise<APIResponse<any>>;
-    if (typeof maybeExec === 'function') {
-      try {
-        const genericResult = await maybeExec.call(client, functionId, parameters);
-        if (genericResult && genericResult.success !== undefined) {
-          // Fallback only when the handler is unknown; otherwise honor generic result
-          if (!(genericResult.success === false && typeof genericResult.error === 'string' && genericResult.error.startsWith('Unknown function handler:'))) {
-            return genericResult;
-          }
-        }
-      } catch (_err) {
-        // ignore and fall through to specific app handlers
-      }
-    }
-    
-    // Gmail functions
-    if (appKey === 'gmail' && client instanceof GmailAPIClient) {
-      return this.executeGmailFunction(client, functionId, parameters);
-    }
-
-    // Shopify functions
-    if (appKey === 'shopify' && client instanceof ShopifyAPIClient) {
-      return this.executeShopifyFunction(client, functionId, parameters);
-    }
-
-    // Slack functions
-    if (appKey === 'slack' && client instanceof SlackAPIClient) {
-      return this.executeSlackFunction(client, functionId, parameters);
-    }
-
-    // Notion functions
-    if (appKey === 'notion' && client instanceof NotionAPIClient) {
-      return this.executeNotionFunction(client, functionId, parameters);
-    }
-
-    // Airtable functions
-    if (appKey === 'airtable' && client instanceof AirtableAPIClient) {
-      return this.executeAirtableFunction(client, functionId, parameters);
-    }
-
-    // Sheets functions
-    if (appKey === 'sheets' && client instanceof LocalSheetsAPIClient) {
-      return this.executeSheetsFunction(client, functionId, parameters);
-    }
-
-    // Time utility functions
-    if (appKey === 'time' && client instanceof LocalTimeAPIClient) {
-      return this.executeTimeFunction(client, functionId, parameters);
-    }
-
-    // TODO: Add other application function executions
-
-    return {
-      success: false,
-      error: `Function ${functionId} not implemented for ${appKey}`
-    };
-  }
-
   private buildClientRequestContext(
     params: FunctionExecutionParams
   ): { executionId?: string; nodeId?: string; idempotencyKey?: string } | undefined {
@@ -1054,233 +994,6 @@ export class IntegrationManager {
     };
   }
 
-  private async executeSheetsFunction(
-    client: LocalSheetsAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'append_row':
-      case 'appendrow':
-      case 'appendrows':
-        return client.appendRow(parameters);
-
-      case 'test_connection':
-        return client.testConnection();
-
-      default:
-        return {
-          success: false,
-          error: `Unknown Sheets function: ${functionId}`
-        };
-    }
-  }
-
-  private async executeTimeFunction(
-    client: LocalTimeAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'delay':
-      case 'wait':
-      case 'sleep':
-        return client.delay(parameters);
-
-      case 'test_connection':
-        return client.testConnection();
-
-      default:
-        return {
-          success: false,
-          error: `Unknown Time function: ${functionId}`
-        };
-    }
-  }
-
-  /**
-   * Execute Gmail-specific functions
-   */
-  private async executeGmailFunction(
-    client: GmailAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'send_email':
-        return client.sendEmail(parameters);
-      case 'reply_to_email':
-        return client.replyToEmail(parameters);
-      case 'forward_email':
-        return client.forwardEmail(parameters);
-      case 'search_emails':
-        return client.searchEmails(parameters);
-      case 'get_emails_by_label':
-        return client.getEmailsByLabel(parameters);
-      case 'get_unread_emails':
-        return client.getUnreadEmails(parameters);
-      case 'add_label':
-        return client.addLabel(parameters);
-      case 'remove_label':
-        return client.removeLabel(parameters);
-      case 'create_label':
-        return client.createLabel(parameters);
-      case 'mark_as_read':
-        return client.markAsRead(parameters);
-      case 'mark_as_unread':
-        return client.markAsUnread(parameters);
-      case 'archive_email':
-        return client.archiveEmail(parameters);
-      case 'delete_email':
-        return client.deleteEmail(parameters);
-      default:
-        return {
-          success: false,
-          error: `Unknown Gmail function: ${functionId}`
-        };
-    }
-  }
-
-  /**
-   * Execute Shopify-specific functions
-   */
-  private async executeShopifyFunction(
-    client: ShopifyAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'create_product':
-        return client.createProduct(parameters);
-      case 'update_product':
-        return client.updateProduct(parameters);
-      case 'get_products':
-        return client.getProducts(parameters);
-      case 'delete_product':
-        return client.deleteProduct(parameters);
-      case 'get_orders':
-        return client.getOrders(parameters);
-      case 'update_order':
-        return client.updateOrder(parameters);
-      case 'fulfill_order':
-        return client.fulfillOrder(parameters);
-      case 'create_customer':
-        return client.createCustomer(parameters);
-      case 'update_customer':
-        return client.updateCustomer(parameters);
-      case 'search_customers':
-        return client.searchCustomers(parameters);
-      case 'update_inventory':
-        return client.updateInventory(parameters);
-      default:
-        return {
-          success: false,
-          error: `Unknown Shopify function: ${functionId}`
-        };
-    }
-  }
-
-  private async executeSlackFunction(
-    client: SlackAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'test_connection':
-        return client.testConnection();
-      case 'send_message':
-        return client.sendMessage(parameters);
-      case 'create_channel':
-        return client.createChannel(parameters);
-      case 'invite_to_channel': {
-        const users = Array.isArray(parameters.users)
-          ? parameters.users.join(',')
-          : parameters.users;
-        return client.inviteToChannel({ ...parameters, users });
-      }
-      case 'upload_file':
-        return client.uploadFile(parameters);
-      case 'get_channel_info':
-        return client.getChannelInfo(parameters);
-      case 'list_channels':
-        return client.listChannels(parameters);
-      case 'get_user_info':
-        return client.getUserInfo(parameters);
-      case 'list_users':
-        return client.listUsers(parameters);
-      case 'add_reaction':
-        return client.addReaction(parameters);
-      case 'remove_reaction':
-        return client.removeReaction(parameters);
-      case 'schedule_message':
-        return client.scheduleMessage(parameters);
-      default:
-        return {
-          success: false,
-          error: `Unknown Slack function: ${functionId}`
-        };
-    }
-  }
-
-  private async executeNotionFunction(
-    client: NotionAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'test_connection':
-        return client.testConnection();
-      case 'create_page':
-        return client.createPage(parameters);
-      case 'update_page':
-        return client.updatePage(parameters);
-      case 'get_page':
-        return client.getPage(parameters);
-      case 'create_database_entry':
-        return client.createDatabaseEntry(parameters);
-      case 'query_database':
-        return client.queryDatabase(parameters);
-      case 'append_block_children':
-        return client.appendBlockChildren(parameters);
-      case 'update_block':
-        return client.updateBlock(parameters);
-      case 'get_block_children':
-        return client.getBlockChildren(parameters);
-      default:
-        return {
-          success: false,
-          error: `Unknown Notion function: ${functionId}`
-        };
-    }
-  }
-
-  private async executeAirtableFunction(
-    client: AirtableAPIClient,
-    functionId: string,
-    parameters: Record<string, any>
-  ): Promise<APIResponse<any>> {
-    switch (functionId) {
-      case 'test_connection':
-        return client.testConnection();
-      case 'create_record':
-        return client.createRecord(parameters);
-      case 'update_record':
-        return client.updateRecord(parameters);
-      case 'get_record':
-        return client.getRecord(parameters);
-      case 'delete_record':
-        return client.deleteRecord(parameters);
-      case 'list_records':
-        return client.listRecords(parameters);
-      default:
-        return {
-          success: false,
-          error: `Unknown Airtable function: ${functionId}`
-        };
-    }
-  }
-
-  // TODO: Add execution methods for other applications as they are implemented
 }
 
 // Export singleton instance

@@ -2,6 +2,11 @@ import { eq, like, and } from 'drizzle-orm';
 import { connectorDefinitions, db } from '../database/schema';
 import type { BaseAPIClient } from '../integrations/BaseAPIClient';
 import type { RateLimitRules } from '../integrations/RateLimiter';
+import type {
+  ConnectorModule,
+  ConnectorOperationContract,
+  ConnectorJSONSchema,
+} from '../../shared/connectors/module';
 
 export type ConnectorLifecycleStatus = 'alpha' | 'beta' | 'stable' | 'deprecated' | 'sunset';
 
@@ -337,6 +342,175 @@ export class ConnectorFramework {
     const rules = this.buildRateLimitRules(connector);
     client.setConnectorContext(connector.slug, options.connectionId ?? undefined, rules);
     return client;
+  }
+
+  public async buildConnectorModule(options: {
+    connectorId: string;
+    client: BaseAPIClient;
+    definition?: any;
+  }): Promise<{ module: ConnectorModule; rateLimits: RateLimitRules | null }> {
+    const { connectorId, client } = options;
+    const frameworkDefinition = await this.getConnector(connectorId);
+    const definition = frameworkDefinition ?? options.definition ?? null;
+
+    const operations = this.buildModuleOperations(definition);
+    const module = client.toConnectorModule({
+      id: connectorId,
+      name: definition?.name ?? connectorId,
+      description: definition?.description,
+      auth: this.buildAuthContract(definition),
+      inputSchema: this.buildModuleInputSchema(operations),
+      operations,
+    });
+
+    const rateLimits = frameworkDefinition
+      ? this.buildRateLimitRules(frameworkDefinition)
+      : this.extractFallbackRateLimits(definition);
+
+    return { module, rateLimits };
+  }
+
+  private buildAuthContract(definition: any): { type: string; metadata?: Record<string, any> } {
+    if (!definition) {
+      return { type: 'custom' };
+    }
+
+    if (definition.authType) {
+      return {
+        type: definition.authType ?? 'custom',
+        metadata: definition.authConfig ?? undefined,
+      };
+    }
+
+    if (definition.authentication) {
+      return {
+        type: definition.authentication.type ?? 'custom',
+        metadata: definition.authentication.config ?? undefined,
+      };
+    }
+
+    return { type: 'custom' };
+  }
+
+  private buildModuleOperations(definition: any): Record<string, ConnectorOperationContract> {
+    if (!definition) {
+      return {};
+    }
+
+    const operations: Record<string, ConnectorOperationContract> = {};
+
+    const addOperations = (items: any, type: ConnectorOperationContract['type']) => {
+      if (!Array.isArray(items)) {
+        return;
+      }
+
+      for (const item of items) {
+        if (!item || typeof item !== 'object' || !item.id) {
+          continue;
+        }
+
+        const id = String(item.id);
+        operations[id] = {
+          id,
+          type,
+          name: typeof item.name === 'string' ? item.name : undefined,
+          description: typeof item.description === 'string' ? item.description : undefined,
+          inputSchema: this.extractSchema(item.parameters ?? item.requestSchema),
+          outputSchema: this.extractSchema(item.responseSchema ?? item.outputSchema),
+          metadata: this.buildOperationMetadata(item),
+        };
+      }
+    };
+
+    addOperations(definition.actions, 'action');
+    addOperations(definition.triggers, 'trigger');
+
+    return operations;
+  }
+
+  private extractSchema(schema: any): ConnectorJSONSchema | undefined {
+    if (!schema || typeof schema !== 'object') {
+      return undefined;
+    }
+    return schema as ConnectorJSONSchema;
+  }
+
+  private buildOperationMetadata(operation: any): Record<string, any> | undefined {
+    if (!operation || typeof operation !== 'object') {
+      return undefined;
+    }
+
+    const metadata: Record<string, any> = {};
+
+    if (operation.endpoint) metadata.endpoint = operation.endpoint;
+    if (operation.method) metadata.method = operation.method;
+    if (operation.examples) metadata.examples = operation.examples;
+    if (operation.rateLimits) metadata.rateLimits = operation.rateLimits;
+
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
+  }
+
+  private buildModuleInputSchema(
+    operations: Record<string, ConnectorOperationContract>,
+  ): ConnectorJSONSchema {
+    const operationIds = Object.keys(operations);
+    return {
+      type: 'object',
+      properties: {
+        operationId: operationIds.length
+          ? { type: 'string', enum: operationIds }
+          : { type: 'string' },
+        parameters: { type: 'object', additionalProperties: true },
+      },
+      required: ['operationId', 'parameters'],
+      additionalProperties: true,
+    };
+  }
+
+  private extractFallbackRateLimits(definition: any): RateLimitRules | null {
+    if (!definition || !definition.rateLimits) {
+      return null;
+    }
+
+    const rules: RateLimitRules = {};
+    const rateLimits = definition.rateLimits;
+    const secondCandidates: number[] = [];
+
+    if (typeof rateLimits.requestsPerSecond === 'number' && rateLimits.requestsPerSecond > 0) {
+      secondCandidates.push(rateLimits.requestsPerSecond);
+    }
+    if (typeof rateLimits.requestsPerMinute === 'number' && rateLimits.requestsPerMinute > 0) {
+      secondCandidates.push(rateLimits.requestsPerMinute / 60);
+      rules.requestsPerMinute = rateLimits.requestsPerMinute;
+    }
+    if (typeof rateLimits.requestsPerHour === 'number' && rateLimits.requestsPerHour > 0) {
+      secondCandidates.push(rateLimits.requestsPerHour / 3600);
+    }
+    if (typeof rateLimits.requestsPerDay === 'number' && rateLimits.requestsPerDay > 0) {
+      secondCandidates.push(rateLimits.requestsPerDay / 86_400);
+    }
+
+    if (rateLimits.headers) {
+      rules.rateHeaders = {
+        limit: rateLimits.headers.limit,
+        remaining: rateLimits.headers.remaining,
+        reset: rateLimits.headers.reset,
+        retryAfter: rateLimits.headers.retryAfter,
+      };
+    }
+
+    if (rateLimits.burstLimit) {
+      rules.burst = rateLimits.burstLimit;
+    }
+
+    if (secondCandidates.length > 0) {
+      const filtered = secondCandidates.filter(value => Number.isFinite(value) && value > 0);
+      if (filtered.length > 0) {
+        rules.requestsPerSecond = Math.min(...filtered);
+      }
+    }
+
+    return Object.keys(rules).length > 0 ? rules : null;
   }
 
   /**
