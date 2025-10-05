@@ -114,6 +114,12 @@ interface DuplicateEventSummary {
   error: string;
 }
 
+interface StepExecutionDetails {
+  logs: string[];
+  stdout?: string | null;
+  diagnostics?: Record<string, any> | null;
+}
+
 interface RunViewerProps {
   executionId?: string;
   workflowId?: string;
@@ -153,6 +159,8 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [auditEvents, setAuditEvents] = useState<ExecutionAuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [stepDetails, setStepDetails] = useState<Record<string, StepExecutionDetails>>({});
+  const [stepDetailsError, setStepDetailsError] = useState<string | null>(null);
 
   // Load executions
   useEffect(() => {
@@ -294,6 +302,102 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     loadAuditEvents();
   }, [loadAuditEvents]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadExecutionDetails = async () => {
+      if (!selectedExecution?.executionId) {
+        if (!cancelled) {
+          setStepDetails({});
+          setStepDetailsError(null);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/executions/${selectedExecution.executionId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to load execution details (${response.status})`);
+        }
+
+        const payload = await response.json();
+        if (!payload?.success || !payload.execution) {
+          throw new Error(payload?.error ?? 'Failed to load execution details');
+        }
+
+        const steps = Array.isArray(payload.execution.steps) ? payload.execution.steps : [];
+        const mapped: Record<string, StepExecutionDetails> = {};
+
+        for (const rawStep of steps) {
+          if (!rawStep || typeof rawStep !== 'object') {
+            continue;
+          }
+
+          const stepRecord = rawStep as Record<string, any>;
+          const nodeId = stepRecord.nodeId ? String(stepRecord.nodeId) : '';
+          if (!nodeId) {
+            continue;
+          }
+
+          const rawLogs = stepRecord.logs;
+          const logs: string[] = [];
+          if (Array.isArray(rawLogs)) {
+            for (const entry of rawLogs) {
+              if (entry === null || entry === undefined) {
+                continue;
+              }
+              logs.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+            }
+          } else if (rawLogs !== null && rawLogs !== undefined) {
+            logs.push(typeof rawLogs === 'string' ? rawLogs : JSON.stringify(rawLogs));
+          }
+
+          const output = stepRecord.output ?? null;
+          const stdoutSource =
+            output && typeof output === 'object'
+              ? (output as Record<string, any>).stdout ?? null
+              : null;
+          let stdout: string | null = null;
+          if (Array.isArray(stdoutSource)) {
+            stdout = stdoutSource
+              .filter((value) => value !== null && value !== undefined)
+              .map((value) => String(value))
+              .join('\n');
+          } else if (typeof stdoutSource === 'string') {
+            stdout = stdoutSource;
+          } else if (stdoutSource !== null && stdoutSource !== undefined) {
+            stdout = JSON.stringify(stdoutSource);
+          }
+
+          mapped[nodeId] = {
+            logs,
+            stdout: stdout ?? null,
+            diagnostics: stepRecord.diagnostics ?? null,
+          };
+        }
+
+        if (!cancelled) {
+          setStepDetails(mapped);
+          setStepDetailsError(null);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : 'Failed to load execution details';
+        setStepDetails({});
+        setStepDetailsError(message);
+      }
+    };
+
+    void loadExecutionDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExecution?.executionId]);
+
   const loadExecutions = async () => {
     setLoading(true);
     try {
@@ -357,6 +461,8 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     }
     setExpandedNodes(newExpanded);
   };
+
+  const selectedNodeDetails = selectedNode ? stepDetails[selectedNode.nodeId] : undefined;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -714,11 +820,18 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                       </ul>
                     </div>
                   )}
-                  {selectedExecution.nodeExecutions.map((node, index) => (
-                    <div
-                      key={node.nodeId}
-                      className="border border-slate-200 rounded-lg overflow-hidden"
-                    >
+                  {stepDetailsError && (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                      {stepDetailsError}
+                    </div>
+                  )}
+                  {selectedExecution.nodeExecutions.map((node, index) => {
+                    const nodeDetails = stepDetails[node.nodeId];
+                    return (
+                      <div
+                        key={node.nodeId}
+                        className="border border-slate-200 rounded-lg overflow-hidden"
+                      >
                         {/* Node Header */}
                         <div
                           onClick={() => toggleNodeExpansion(node.nodeId)}
@@ -812,7 +925,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Input/Output Preview */}
                             <div className="grid grid-cols-2 gap-4">
                               {node.input && (
@@ -823,7 +936,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                   </div>
                                 </div>
                               )}
-                              
+
                               {node.output && (
                                 <div>
                                   <div className="text-sm font-medium text-gray-700 mb-2">Output</div>
@@ -833,7 +946,36 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                 </div>
                               )}
                             </div>
-                            
+
+                            {nodeDetails?.logs && nodeDetails.logs.length > 0 && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Execution Logs</div>
+                                <div className="bg-slate-900 text-slate-100 rounded border border-slate-700 text-xs font-mono max-h-40 overflow-y-auto p-3 space-y-1">
+                                  {nodeDetails.logs.map((entry, logIndex) => (
+                                    <div key={logIndex}>{entry}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {nodeDetails?.stdout && nodeDetails.stdout.length > 0 && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Stdout</div>
+                                <pre className="bg-gray-900 text-green-200 rounded border border-gray-700 text-xs font-mono max-h-40 overflow-y-auto whitespace-pre-wrap p-3">
+                                  {nodeDetails.stdout}
+                                </pre>
+                              </div>
+                            )}
+
+                            {nodeDetails?.diagnostics && Object.keys(nodeDetails.diagnostics).length > 0 && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Diagnostic Metadata</div>
+                                <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-48 overflow-y-auto">
+                                  <JsonViewer data={nodeDetails.diagnostics} />
+                                </div>
+                              </div>
+                            )}
+
                             {/* Error Details */}
                             {node.error && (
                               <div>
@@ -846,7 +988,8 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                  })}
                   </div>
                 </CardContent>
               </Card>
@@ -901,7 +1044,36 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
+                  {selectedNodeDetails?.logs && selectedNodeDetails.logs.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Execution Logs</div>
+                      <div className="mt-2 bg-slate-900 text-slate-100 rounded border border-slate-700 text-xs font-mono max-h-48 overflow-y-auto p-3 space-y-1">
+                        {selectedNodeDetails.logs.map((entry, idx) => (
+                          <div key={idx}>{entry}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedNodeDetails?.stdout && selectedNodeDetails.stdout.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Stdout</div>
+                      <pre className="mt-2 bg-gray-900 text-green-200 rounded border border-gray-700 text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap p-3">
+                        {selectedNodeDetails.stdout}
+                      </pre>
+                    </div>
+                  )}
+
+                  {selectedNodeDetails?.diagnostics && Object.keys(selectedNodeDetails.diagnostics).length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Diagnostic Metadata</div>
+                      <div className="mt-2 bg-gray-50 p-3 rounded border text-xs font-mono max-h-56 overflow-y-auto">
+                        <JsonViewer data={selectedNodeDetails.diagnostics} />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Full Input/Output */}
                   <div>
                     <div className="flex items-center justify-between">

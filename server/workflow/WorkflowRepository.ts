@@ -7,6 +7,7 @@ import {
   users,
   workflows,
   workflowExecutions,
+  workflowExecutionSteps,
   workflowVersions,
   workflowDeployments,
   type workflows as workflowsTable,
@@ -32,6 +33,7 @@ type WorkflowVersionRow = typeof workflowVersionsTable.$inferSelect;
 type WorkflowVersionInsert = typeof workflowVersionsTable.$inferInsert;
 type WorkflowDeploymentRow = typeof workflowDeploymentsTable.$inferSelect;
 type WorkflowDeploymentInsert = typeof workflowDeploymentsTable.$inferInsert;
+type WorkflowExecutionStepRow = typeof workflowExecutionSteps.$inferSelect;
 
 export interface WorkflowRecord extends WorkflowRow {
   latestVersionId: string;
@@ -129,7 +131,9 @@ interface MemoryWorkflowRecord extends WorkflowRow {
   graph: Record<string, any>;
 }
 
-interface MemoryExecutionRecord extends WorkflowExecutionRow {}
+interface MemoryExecutionRecord extends WorkflowExecutionRow {
+  steps?: WorkflowExecutionStepRow[];
+}
 
 interface MemoryWorkflowVersionRecord extends WorkflowVersionRow {
   graph: Record<string, any>;
@@ -332,6 +336,7 @@ export class WorkflowRepository {
       dataProcessed: 0,
       cost: 0,
       metadata: input.metadata ?? null,
+      steps: [],
     } as MemoryExecutionRecord;
   }
 
@@ -1825,7 +1830,7 @@ export class WorkflowRepository {
   public static async getExecutionById(
     id: string,
     organizationId: string,
-  ): Promise<WorkflowExecutionRow | null> {
+  ): Promise<(WorkflowExecutionRow & { steps?: WorkflowExecutionStepRow[] }) | null> {
     if (!id) {
       return null;
     }
@@ -1835,7 +1840,10 @@ export class WorkflowRepository {
       if (!record || record.organizationId !== organizationId) {
         return null;
       }
-      return record;
+      return {
+        ...record,
+        steps: record.steps ?? [],
+      };
     }
 
     const result = await db
@@ -1844,7 +1852,20 @@ export class WorkflowRepository {
       .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
       .limit(1);
 
-    return result.length > 0 ? result[0] : null;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const steps = await db
+      .select()
+      .from(workflowExecutionSteps)
+      .where(eq(workflowExecutionSteps.executionId, id))
+      .orderBy(workflowExecutionSteps.queuedAt);
+
+    return {
+      ...result[0],
+      steps,
+    };
   }
 
   public static async getWorkflowMetrics() {

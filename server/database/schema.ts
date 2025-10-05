@@ -758,6 +758,8 @@ export const workflowExecutionSteps = pgTable(
     resumeState: jsonb('resume_state').$type<WorkflowResumeState | null>().default(null),
     waitUntil: timestamp('wait_until'),
     metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+    logs: jsonb('logs').$type<any | null>().default(null),
+    diagnostics: jsonb('diagnostics').$type<Record<string, any> | null>().default(null),
   },
   (table) => ({
     executionNodeIdx: uniqueIndex('workflow_execution_steps_execution_node_idx').on(

@@ -1422,6 +1422,14 @@ class ExecutionQueueService {
       }
 
       const stepOutput = result.nodeOutputs?.[nodeId] ?? null;
+      const stepLogs =
+        stepOutput && typeof stepOutput === 'object' && 'logs' in stepOutput
+          ? (stepOutput as Record<string, any>).logs ?? null
+          : null;
+      const stepDiagnostics =
+        stepOutput && typeof stepOutput === 'object' && 'diagnostics' in stepOutput
+          ? (stepOutput as Record<string, any>).diagnostics ?? null
+          : null;
       await WorkflowExecutionStepRepository.markCompleted({
         stepId,
         output: stepOutput,
@@ -1430,6 +1438,8 @@ class ExecutionQueueService {
           executionTime: result.executionTime,
           attempt: attemptNumber,
         },
+        logs: stepLogs ?? null,
+        diagnostics: (stepDiagnostics as Record<string, any> | null) ?? null,
       });
       await WorkflowExecutionStepRepository.clearResumeState(stepId);
 
@@ -1506,12 +1516,25 @@ class ExecutionQueueService {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       const finalFailure = attemptNumber >= maxAttempts;
+      const failureLogs =
+        error && typeof error === 'object'
+          ? (error as Record<string, any>)?.logs ?? (error as Record<string, any>)?.details?.logs ?? null
+          : null;
+      const failureDiagnostics =
+        error && typeof error === 'object'
+          ?
+              ((error as Record<string, any>)?.diagnostics ??
+                (error as Record<string, any>)?.details?.diagnostics ??
+                null)
+          : null;
 
       await WorkflowExecutionStepRepository.markFailed({
         stepId,
         error: { error: errorMessage },
         metadata: { attempt: attemptNumber },
         finalFailure,
+        logs: failureLogs ?? null,
+        diagnostics: (failureDiagnostics as Record<string, any> | null) ?? null,
       });
 
       if (finalFailure) {
