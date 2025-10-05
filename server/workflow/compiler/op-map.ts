@@ -83,7 +83,7 @@ export function getCompilerOpMap(): Record<string, any> {
   return AUGMENTED_REAL_OPS;
 }
 
-type RuntimeHandler = (client: BaseAPIClient, params?: Record<string, any>) => Promise<APIResponse<any>>;
+type RuntimeHandler = (client: BaseAPIClient, params?: any) => Promise<APIResponse<any>>;
 
 function assertClientInstance<T extends BaseAPIClient>(client: BaseAPIClient, ctor: new (...args: any[]) => T): T {
   if (!(client instanceof ctor)) {

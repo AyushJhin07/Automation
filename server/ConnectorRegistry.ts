@@ -6,6 +6,10 @@ import { join, resolve, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
+import {
+  computeConnectorOperationCoverage,
+  type ConnectorOperationCoverageSummary,
+} from './workflow/compiler/op-coverage.js';
 import type { ConnectorDynamicOptionConfig } from '../common/connectorDynamicOptions.js';
 import { extractDynamicOptionsFromConnector, normalizeDynamicOptionPath } from '../common/connectorDynamicOptions.js';
 import type { OrganizationPlan } from './database/schema';
@@ -133,6 +137,7 @@ interface ConnectorRegistryEntry {
   pricingTier: ConnectorPricingTier;
   status: ConnectorStatusFlags;
   concurrency?: ConnectorConcurrencyMetadata;
+  operationCoverage: ConnectorOperationCoverageSummary;
 }
 
 interface ConnectorFilterOptions {
@@ -222,25 +227,17 @@ export class ConnectorRegistry {
     let totalOps = 0;
 
     for (const c of connectors) {
-      let appReal = 0;
-      const allOps = [...(c.actions || []), ...(c.triggers || [])];
-      for (const op of allOps) {
-        totalOps++;
-        // Try multiple key formats to match compiler
-        const keys = [
-          `${c.id}.${op.id}`,
-          `action.${c.id}:${op.id}`,
-          `trigger.${c.id}:${op.id}`,
-          `action.${c.id}.${op.id}`,
-          `trigger.${c.id}.${op.id}`
-        ];
-        
-        if (keys.some(key => opMap[key])) {
-          appReal++;
-          realOps++;
-        }
+      const connectorId = typeof c.id === 'string' ? c.id : '';
+      if (!connectorId) {
+        continue;
       }
-      byApp[c.id] = appReal;
+      const coverage = computeConnectorOperationCoverage(
+        { id: connectorId, actions: c.actions, triggers: c.triggers },
+        opMap
+      );
+      totalOps += coverage.total;
+      realOps += coverage.implemented;
+      byApp[connectorId] = coverage.implemented;
     }
 
     const appsWithRealOps = Object.values(byApp).filter(n => n > 0).length;
@@ -448,6 +445,8 @@ export class ConnectorRegistry {
     this.manifestMetadataCache.clear();
     let loaded = 0;
     const entries = this.manifestEntries;
+    const compilerOpMap = getCompilerOpMap();
+    const coverageDemotions: Array<{ id: string; missing: string[] }> = [];
 
     for (const manifestEntry of entries) {
       try {
@@ -455,18 +454,33 @@ export class ConnectorRegistry {
         const appId = manifestEntry.normalizedId;
         const dynamicOptions = extractDynamicOptionsFromConnector(def);
         const hasRegisteredClient = this.apiClients.has(appId);
+        const coverage = computeConnectorOperationCoverage(
+          { id: appId, actions: def.actions, triggers: def.triggers },
+          compilerOpMap
+        );
         const manifestMetadata = this.loadConnectorMetadata(
           manifestEntry,
           def.description || def.name || manifestEntry.id,
           typeof def.availability === 'string' ? def.availability as ConnectorAvailability : 'experimental'
         );
-        const availability = this.resolveAvailability(
+        let availability = this.resolveAvailability(
           appId,
           def,
           hasRegisteredClient,
           manifestMetadata.availabilityOverride
         );
-        const hasImplementation = availability === 'stable' && hasRegisteredClient;
+        if (
+          availability === 'stable' &&
+          coverage.total > 0 &&
+          coverage.implemented < coverage.total
+        ) {
+          coverageDemotions.push({ id: appId, missing: [...coverage.missing] });
+          availability = 'experimental';
+        }
+        const hasImplementation =
+          availability === 'stable' &&
+          hasRegisteredClient &&
+          (coverage.total === 0 || coverage.implemented === coverage.total);
         const status = this.applyAvailabilityToStatus(manifestMetadata.status, availability);
         const normalizedDefinition: ConnectorDefinition = {
           ...def,
@@ -480,7 +494,7 @@ export class ConnectorRegistry {
           definition: normalizedDefinition,
           apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
           hasImplementation,
-          functionCount: (def.actions?.length || 0) + (def.triggers?.length || 0),
+          functionCount: coverage.total,
           categories: [def.category],
           availability,
           dynamicOptions,
@@ -488,6 +502,7 @@ export class ConnectorRegistry {
           pricingTier: manifestMetadata.pricingTier,
           status,
           concurrency: manifestMetadata.concurrency,
+          operationCoverage: coverage,
         };
         this.registry.set(appId, entry);
         loaded++;
@@ -496,6 +511,20 @@ export class ConnectorRegistry {
       }
     }
     console.log(`[ConnectorRegistry] Loaded ${loaded}/${entries.length} connector JSON files from manifest`);
+
+    if (coverageDemotions.length > 0) {
+      const previewItems = coverageDemotions
+        .slice(0, 10)
+        .map(item => {
+          const details = item.missing.length > 0 ? item.missing.join(', ') : 'no implemented ops';
+          return `${item.id}: ${details}`;
+        });
+      const suffix = coverageDemotions.length > 10 ? '; …' : '';
+      const previewText = previewItems.length > 0 ? ` Examples: ${previewItems.join('; ')}${suffix}` : '';
+      console.warn(
+        `[ConnectorRegistry] Demoted ${coverageDemotions.length} connector(s) to experimental due to missing compiler implementations.${previewText}`
+      );
+    }
     
     // ChatGPT Fix: Accurate implementation counting after loading
     try {
@@ -736,6 +765,7 @@ export class ConnectorRegistry {
     manifest?: ConnectorManifestMetadata;
     labels: string[];
     displayName?: string;
+    operationCoverage: ConnectorOperationCoverageSummary;
   }>> {
     const { organizationId, entitlementOverrides, ...rest } = options;
     let overridesMap = entitlementOverrides;
@@ -764,6 +794,7 @@ export class ConnectorRegistry {
       manifest: entry.manifest,
       labels: entry.manifest?.labels ?? [],
       displayName: entry.manifest?.displayName,
+      operationCoverage: entry.operationCoverage,
     }));
   }
 
