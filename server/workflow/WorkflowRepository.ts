@@ -7,6 +7,7 @@ import {
   users,
   workflows,
   workflowExecutions,
+  workflowExecutionSteps,
   workflowVersions,
   workflowDeployments,
   type workflows as workflowsTable,
@@ -1867,7 +1868,47 @@ export class WorkflowRepository {
       .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, requiredOrganizationId)))
       .limit(1);
 
-    return result.length > 0 ? result[0] : null;
+    if (result.length === 0) {
+      return null;
+    }
+
+    const execution = result[0];
+
+    const stepRows = await db
+      .select({
+        nodeId: workflowExecutionSteps.nodeId,
+        output: workflowExecutionSteps.output,
+        logs: workflowExecutionSteps.logs,
+        diagnostics: workflowExecutionSteps.diagnostics,
+      })
+      .from(workflowExecutionSteps)
+      .where(eq(workflowExecutionSteps.executionId, id));
+
+    if (stepRows.length > 0) {
+      const existingResults = execution.nodeResults;
+      const normalized: Record<string, any> = {};
+
+      if (existingResults && typeof existingResults === 'object' && !Array.isArray(existingResults)) {
+        for (const [nodeId, value] of Object.entries(existingResults)) {
+          normalized[nodeId] =
+            value && typeof value === 'object' && !Array.isArray(value)
+              ? { ...value }
+              : { output: value };
+        }
+      }
+
+      for (const step of stepRows) {
+        const current = (normalized[step.nodeId] ?? {}) as Record<string, any>;
+        current.output = step.output ?? current.output ?? null;
+        current.logs = step.logs ?? null;
+        current.diagnostics = step.diagnostics ?? null;
+        normalized[step.nodeId] = current;
+      }
+
+      execution.nodeResults = normalized as Record<string, any>;
+    }
+
+    return execution;
   }
 
   public static async getWorkflowMetrics() {

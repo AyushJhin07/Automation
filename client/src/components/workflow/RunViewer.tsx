@@ -114,6 +114,13 @@ interface DuplicateEventSummary {
   error: string;
 }
 
+interface NodeExecutionDetail {
+  output: any;
+  stdout: string | null;
+  logs: any[];
+  diagnostics: Record<string, any> | null;
+}
+
 interface RunViewerProps {
   executionId?: string;
   workflowId?: string;
@@ -141,6 +148,9 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeExecution | null>(null);
+  const [nodeDetails, setNodeDetails] = useState<Record<string, NodeExecutionDetail>>({});
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -265,6 +275,95 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     loadVerificationFailures();
   }, [selectedExecution]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedExecution) {
+      setNodeDetails({});
+      setDetailsError(null);
+      setDetailsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadExecutionDetails = async () => {
+      setDetailsLoading(true);
+      setDetailsError(null);
+      try {
+        const response = await fetch(`/api/executions/${selectedExecution.executionId}`);
+        const data = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response.ok && data.success && data.execution?.nodeResults) {
+          const normalized: Record<string, NodeExecutionDetail> = {};
+          const entries = data.execution.nodeResults as Record<string, any>;
+
+          for (const [nodeId, rawValue] of Object.entries(entries)) {
+            const value =
+              rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)
+                ? (rawValue as Record<string, any>)
+                : { output: rawValue };
+
+            const outputValue =
+              value.output !== undefined ? value.output : rawValue ?? null;
+
+            const stdoutValue =
+              typeof value.stdout === 'string'
+                ? value.stdout
+                : outputValue && typeof outputValue === 'object' && !Array.isArray(outputValue) && typeof (outputValue as any).stdout === 'string'
+                ? (outputValue as any).stdout
+                : null;
+
+            const rawLogs = value.logs;
+            const logsArray: any[] = Array.isArray(rawLogs)
+              ? rawLogs
+              : rawLogs !== null && rawLogs !== undefined
+              ? [rawLogs]
+              : [];
+
+            const diagnosticsValue =
+              value.diagnostics && typeof value.diagnostics === 'object' && !Array.isArray(value.diagnostics)
+                ? (value.diagnostics as Record<string, any>)
+                : null;
+
+            normalized[nodeId] = {
+              output: outputValue ?? null,
+              stdout: stdoutValue,
+              logs: logsArray,
+              diagnostics: diagnosticsValue,
+            };
+          }
+
+          setNodeDetails(normalized);
+          setDetailsError(null);
+        } else {
+          setNodeDetails({});
+          setDetailsError(data.error ?? 'Failed to load execution details');
+        }
+      } catch (error) {
+        console.error('Failed to load execution details:', error);
+        if (!cancelled) {
+          setNodeDetails({});
+          setDetailsError('Failed to load execution details');
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailsLoading(false);
+        }
+      }
+    };
+
+    loadExecutionDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExecution]);
+
   const loadAuditEvents = useCallback(async () => {
     setAuditLoading(true);
     try {
@@ -301,7 +400,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       if (initialExecutionId) params.set('executionId', initialExecutionId);
       if (initialWorkflowId) params.set('workflowId', initialWorkflowId);
       if (statusFilter !== 'all') params.set('status', statusFilter);
-      
+
       const response = await fetch(`/api/executions?${params}`);
       const data = await response.json();
       
@@ -320,6 +419,18 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       setLoading(false);
     }
   };
+
+  const selectedNodeDetail = selectedNode ? nodeDetails[selectedNode.nodeId] ?? null : null;
+  const inspectorOutput = selectedNodeDetail?.output ?? selectedNode?.output ?? null;
+  const inspectorOutputIsObject =
+    inspectorOutput && typeof inspectorOutput === 'object' && !Array.isArray(inspectorOutput);
+  const inspectorStdout =
+    selectedNodeDetail?.stdout ??
+    (inspectorOutputIsObject && typeof (inspectorOutput as any).stdout === 'string'
+      ? (inspectorOutput as any).stdout
+      : null);
+  const inspectorLogs = Array.isArray(selectedNodeDetail?.logs) ? selectedNodeDetail?.logs : [];
+  const inspectorDiagnostics = selectedNodeDetail?.diagnostics ?? null;
 
   const retryExecution = async (executionId: string) => {
     try {
@@ -714,11 +825,24 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                       </ul>
                     </div>
                   )}
-                  {selectedExecution.nodeExecutions.map((node, index) => (
-                    <div
-                      key={node.nodeId}
-                      className="border border-slate-200 rounded-lg overflow-hidden"
-                    >
+                  {selectedExecution.nodeExecutions.map((node, index) => {
+                    const detail = nodeDetails[node.nodeId] ?? null;
+                    const detailOutput = detail?.output ?? node.output ?? null;
+                    const outputIsObject =
+                      detailOutput && typeof detailOutput === 'object' && !Array.isArray(detailOutput);
+                    const detailStdout =
+                      detail?.stdout ??
+                      (outputIsObject && typeof (detailOutput as any).stdout === 'string'
+                        ? (detailOutput as any).stdout
+                        : null);
+                    const detailLogs = detail?.logs ?? [];
+                    const detailDiagnostics = detail?.diagnostics ?? null;
+
+                    return (
+                      <div
+                        key={node.nodeId ?? index}
+                        className="border border-slate-200 rounded-lg overflow-hidden"
+                      >
                         {/* Node Header */}
                         <div
                           onClick={() => toggleNodeExpansion(node.nodeId)}
@@ -756,7 +880,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Expanded Node Details */}
                         {expandedNodes.has(node.nodeId) && (
                           <div className="p-4 space-y-4">
@@ -783,11 +907,11 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                   Retry
                                 </Button>
                               )}
-                              
+
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => copyToClipboard(JSON.stringify(node.output, null, 2))}
+                                onClick={() => copyToClipboard(JSON.stringify(detailOutput, null, 2))}
                                 className="text-gray-600"
                               >
                                 <Copy className="w-4 h-4 mr-1" />
@@ -823,17 +947,48 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                   </div>
                                 </div>
                               )}
-                              
-                              {node.output && (
+
+                              {detailOutput !== null && detailOutput !== undefined && (
                                 <div>
                                   <div className="text-sm font-medium text-gray-700 mb-2">Output</div>
                                   <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-32 overflow-y-auto">
-                                    <JsonViewer data={node.output} />
+                                    <JsonViewer data={detailOutput} />
                                   </div>
                                 </div>
                               )}
                             </div>
-                            
+
+                            {detailStdout && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Stdout</div>
+                                <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                  {detailStdout}
+                                </div>
+                              </div>
+                            )}
+
+                            {Array.isArray(detailLogs) && detailLogs.length > 0 && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Logs</div>
+                                <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-32 overflow-y-auto space-y-1">
+                                  {detailLogs.map((entry: any, logIndex: number) => (
+                                    <div key={logIndex} className="whitespace-pre-wrap">
+                                      {String(entry)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {detailDiagnostics && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-700 mb-2">Diagnostics</div>
+                                <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-32 overflow-y-auto">
+                                  <JsonViewer data={detailDiagnostics} />
+                                </div>
+                              </div>
+                            )}
+
                             {/* Error Details */}
                             {node.error && (
                               <div>
@@ -846,10 +1001,11 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
             </div>
 
             {/* Node Inspector Panel */}
@@ -902,6 +1058,16 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                     </div>
                   )}
                   
+                  {detailsError && (
+                    <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                      {detailsError}
+                    </div>
+                  )}
+
+                  {detailsLoading && !detailsError && (
+                    <div className="text-sm text-gray-500">Loading execution details…</div>
+                  )}
+
                   {/* Full Input/Output */}
                   <div>
                     <div className="flex items-center justify-between">
@@ -914,7 +1080,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                         {showJsonView ? 'Tree View' : 'JSON View'}
                       </Button>
                     </div>
-                    
+
                     <div className="mt-2 space-y-4">
                       {selectedNode.input && (
                         <div>
@@ -928,18 +1094,70 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                           </div>
                         </div>
                       )}
-                      
-                      {selectedNode.output && (
+
+                      {inspectorOutput !== null && inspectorOutput !== undefined && (
                         <div>
                           <div className="text-xs font-medium text-gray-500 mb-1">Output</div>
                           <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-64 overflow-y-auto">
                             {showJsonView ? (
-                              <pre>{JSON.stringify(selectedNode.output, null, 2)}</pre>
+                              <pre>{JSON.stringify(inspectorOutput, null, 2)}</pre>
                             ) : (
-                              <JsonViewer data={selectedNode.output} />
+                              <JsonViewer data={inspectorOutput} />
                             )}
                           </div>
                         </div>
+                      )}
+
+                      {inspectorStdout && (
+                        <div>
+                          <div className="text-xs font-medium text-gray-500 mb-1">Stdout</div>
+                          <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">
+                            {inspectorStdout}
+                          </div>
+                        </div>
+                      )}
+
+                      {inspectorLogs.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-gray-500 mb-1">Logs</div>
+                          <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-64 overflow-y-auto space-y-1">
+                            {inspectorLogs.map((entry: any, logIndex: number) => (
+                              <div key={logIndex} className="whitespace-pre-wrap">
+                                {String(entry)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {inspectorDiagnostics && (
+                        <div>
+                          <div className="text-xs font-medium text-gray-500 mb-1">Diagnostics</div>
+                          <div className="bg-gray-50 p-3 rounded border text-xs font-mono max-h-64 overflow-y-auto">
+                            {showJsonView ? (
+                              <pre>{JSON.stringify(inspectorDiagnostics, null, 2)}</pre>
+                            ) : (
+                              <JsonViewer data={inspectorDiagnostics} />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Execution Timeline</div>
+                    <div className="mt-2 space-y-2 text-xs">
+                      {selectedNode.timeline.length > 0 ? (
+                        selectedNode.timeline.map((event, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-gray-500">{event?.timestamp || `Event ${idx + 1}`}:</span>
+                            <span>{event?.message || event?.status || 'Updated'}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-gray-500">Timeline data not available.</div>
                       )}
                     </div>
                   </div>

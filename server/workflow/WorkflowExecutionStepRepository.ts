@@ -43,6 +43,8 @@ interface MarkStepCompletedParams {
   output: any;
   deterministicKeys?: Record<string, any> | null;
   metadata?: Record<string, any> | null;
+  logs?: any | null;
+  diagnostics?: Record<string, any> | null;
 }
 
 interface MarkStepFailedParams {
@@ -50,6 +52,8 @@ interface MarkStepFailedParams {
   error: Record<string, any> | null;
   metadata?: Record<string, any> | null;
   finalFailure?: boolean;
+  logs?: any | null;
+  diagnostics?: Record<string, any> | null;
 }
 
 interface MarkStepWaitingParams {
@@ -87,6 +91,8 @@ export class WorkflowExecutionStepRepository {
         input: null,
         output: null,
         error: null,
+        logs: null,
+        diagnostics: null,
         deterministicKeys: null,
         resumeState: null,
         waitUntil: null,
@@ -241,6 +247,8 @@ export class WorkflowExecutionStepRepository {
         output: params.output ?? null,
         deterministicKeys: params.deterministicKeys ?? null,
         metadata: params.metadata ?? null,
+        logs: params.logs ?? null,
+        diagnostics: params.diagnostics ?? null,
         error: null,
         waitUntil: null,
         resumeState: null,
@@ -260,6 +268,8 @@ export class WorkflowExecutionStepRepository {
         updatedAt: new Date(),
         error: params.error ?? null,
         metadata: params.metadata ?? null,
+        logs: params.logs ?? null,
+        diagnostics: params.diagnostics ?? null,
         waitUntil: null,
         resumeState: null,
       })
