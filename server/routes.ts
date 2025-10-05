@@ -21,7 +21,7 @@ import workflowVersionRoutes from "./routes/workflow-versions.js";
 import productionHealthRoutes from "./routes/production-health.js";
 import flowRoutes from "./routes/flows.js";
 import oauthRoutes from "./routes/oauth";
-import executionRoutes from "./routes/executions.js";
+import executionRoutes, { executionResumeRouter } from "./routes/executions.js";
 import runExplorerRoutes from "./routes/run-explorer.js";
 import expressionRoutes from "./routes/expressions.js";
 import webhookAdminRoutes from "./routes/webhooks-admin.js";
@@ -53,7 +53,6 @@ import { normalizeAppId } from "./services/PromptBuilder.js";
 import { executionQueueService } from './services/ExecutionQueueService.js';
 import { ExecutionQuotaExceededError } from './services/ExecutionQuotaService.js';
 import { triggerPersistenceService } from './services/TriggerPersistenceService.js';
-import { executionResumeTokenService } from './services/ExecutionResumeTokenService.js';
 import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
@@ -145,55 +144,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.use(securityService.createRateLimiter(rateLimitConfig));
 
-  app.post('/api/runs/:executionId/nodes/:nodeId/resume', async (req, res) => {
-    const { executionId, nodeId } = req.params;
-    const tokenFromQuery = typeof req.query.token === 'string' ? req.query.token : undefined;
-    const signatureFromQuery = typeof req.query.signature === 'string' ? req.query.signature : undefined;
-    const bodyToken = req.body && typeof (req.body as any).token === 'string' ? (req.body as any).token : undefined;
-    const bodySignature = req.body && typeof (req.body as any).signature === 'string' ? (req.body as any).signature : undefined;
-    const headerToken = typeof req.headers['x-resume-token'] === 'string' ? req.headers['x-resume-token'] : undefined;
-    const headerSignature = typeof req.headers['x-resume-signature'] === 'string' ? req.headers['x-resume-signature'] : undefined;
-
-    const token = tokenFromQuery || bodyToken || headerToken;
-    const signature = signatureFromQuery || bodySignature || headerSignature;
-
-    if (!executionId || !nodeId) {
-      return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
-    }
-
-    if (!token || !signature) {
-      return res.status(400).json({ success: false, error: 'TOKEN_REQUIRED' });
-    }
-
-    try {
-      const consumed = await executionResumeTokenService.consumeToken({
-        token,
-        signature,
-        executionId,
-        nodeId,
-      });
-
-      if (!consumed) {
-        return res.status(401).json({ success: false, error: 'INVALID_TOKEN' });
-      }
-
-      await executionQueueService.enqueueResume({
-        tokenId: consumed.tokenId,
-        executionId: consumed.executionId,
-        workflowId: consumed.workflowId,
-        organizationId: consumed.organizationId,
-        userId: consumed.userId ?? undefined,
-        resumeState: consumed.resumeState,
-        initialData: consumed.initialData,
-        triggerType: consumed.triggerType ?? 'callback',
-      });
-
-      res.json({ success: true, executionId: consumed.executionId, nodeId: consumed.nodeId });
-    } catch (error) {
-      console.error('Failed to enqueue resume from callback:', getErrorMessage(error));
-      res.status(500).json({ success: false, error: 'FAILED_TO_RESUME' });
-    }
-  });
+  app.use('/api/runs', executionResumeRouter);
 
   // AI routes - Register FIRST to avoid conflicts
   app.use('/api/ai', aiRouter);
