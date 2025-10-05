@@ -154,12 +154,34 @@ app.use((req, res, next) => {
   await registerRoutes(app);
   const server = createServer(app);
 
+  const shouldStartInlineWorker = (() => {
+    const rawValue = process.env.ENABLE_INLINE_WORKER ?? process.env.INLINE_EXECUTION_WORKER;
+    if (!rawValue) {
+      return false;
+    }
+
+    return ['1', 'true', 'yes', 'inline'].includes(rawValue.toLowerCase());
+  })();
+
   try {
     const { executionQueueService } = await import('./services/ExecutionQueueService.js');
     const { WebhookManager } = await import('./webhooks/WebhookManager.js');
     WebhookManager.configureQueueService(executionQueueService);
+
+    if (shouldStartInlineWorker) {
+      console.log('⚙️  ENABLE_INLINE_WORKER detected. Starting execution worker inline.');
+      await executionQueueService.start();
+      console.log('✅ Inline execution worker started.');
+    } else {
+      console.log('🏭 Inline execution worker disabled. Expecting external worker process.');
+    }
   } catch (error) {
     console.warn('⚠️ Failed to configure execution queue:', (error as any)?.message || error);
+
+    if (shouldStartInlineWorker) {
+      console.error('❌ Inline execution worker requested but failed to start. Exiting.');
+      process.exit(1);
+    }
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

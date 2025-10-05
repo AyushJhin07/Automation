@@ -8,6 +8,7 @@ import { Router } from 'express';
 import { LLMProviderService } from '../services/LLMProviderService.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { checkQueueHealth } from '../services/QueueHealthService.js';
+import { executionQueueService } from '../services/ExecutionQueueService.js';
 
 const router = Router();
 
@@ -174,6 +175,111 @@ router.get('/live', (req, res) => {
     alive: true,
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
+  });
+});
+
+router.get('/queue/heartbeat', (req, res) => {
+  const snapshot = executionQueueService.getTelemetrySnapshot();
+  const queueHealth = snapshot.queueHealth;
+  const queueDepths = snapshot.metrics.queueDepths;
+  const leases = snapshot.leases.entries;
+  const now = Date.now();
+  const heartbeatTimeout = snapshot.worker.heartbeatTimeoutMs;
+
+  const staleLeases = leases.filter((lease) => {
+    const heartbeatMs = lease.lastHeartbeatAt !== null ? Date.parse(lease.lastHeartbeatAt) : null;
+    if (heartbeatMs !== null && Number.isFinite(heartbeatMs)) {
+      return now - heartbeatMs > heartbeatTimeout;
+    }
+
+    const lockedMs = lease.lockedAt !== null ? Date.parse(lease.lockedAt) : null;
+    if (lockedMs !== null && Number.isFinite(lockedMs)) {
+      return now - lockedMs > heartbeatTimeout;
+    }
+
+    return true;
+  });
+
+  const latestHeartbeatAt = leases.reduce<string | null>((latest, lease) => {
+    if (!lease.lastHeartbeatAt) {
+      return latest;
+    }
+
+    if (!latest) {
+      return lease.lastHeartbeatAt;
+    }
+
+    return Date.parse(lease.lastHeartbeatAt) > Date.parse(latest) ? lease.lastHeartbeatAt : latest;
+  }, null);
+  const parsedLatestHeartbeat = latestHeartbeatAt !== null ? Date.parse(latestHeartbeatAt) : null;
+  const latestHeartbeatAgeMs =
+    parsedLatestHeartbeat !== null && Number.isFinite(parsedLatestHeartbeat)
+      ? now - parsedLatestHeartbeat
+      : null;
+
+  const totalWaiting = Object.values(queueDepths).reduce((sum, depth) => {
+    const waiting = depth?.waiting ?? 0;
+    const delayed = depth?.delayed ?? 0;
+    return sum + waiting + delayed;
+  }, 0);
+
+  const status: HealthCheck = (() => {
+    if (!snapshot.started || !snapshot.databaseEnabled) {
+      return {
+        status: 'fail',
+        message: 'Execution worker has not been started. Queue processing is offline.'
+      };
+    }
+
+    if (queueHealth && queueHealth.status === 'fail') {
+      return {
+        status: 'fail',
+        message: queueHealth.message,
+        details: queueHealth,
+      };
+    }
+
+    if (staleLeases.length > 0) {
+      return {
+        status: 'warn',
+        message: `Detected ${staleLeases.length} leases without a fresh heartbeat.`,
+        details: { staleLeases },
+      };
+    }
+
+    if (totalWaiting > 0) {
+      return {
+        status: 'warn',
+        message: `Queue depth is ${totalWaiting}. Worker is running but backlog remains.`,
+        details: { totalWaiting },
+      };
+    }
+
+    return {
+      status: 'pass',
+      message: 'Execution worker heartbeat is healthy and queue is drained.'
+    };
+  })();
+
+  const httpStatus = status.status === 'pass' ? 200 : 503;
+
+  res.status(httpStatus).json({
+    status,
+    timestamp: new Date().toISOString(),
+    worker: {
+      started: snapshot.started,
+      id: snapshot.worker.id,
+      queue: snapshot.worker.queueName,
+      heartbeatTimeoutMs: heartbeatTimeout,
+      latestHeartbeatAt,
+      latestHeartbeatAgeMs,
+    },
+    queueHealth,
+    queueDepths,
+    leases,
+    inlineWorker: ['1', 'true', 'yes', 'inline'].includes(
+      (process.env.ENABLE_INLINE_WORKER ?? process.env.INLINE_EXECUTION_WORKER ?? '').toLowerCase()
+    ),
   });
 });
 

@@ -52,6 +52,25 @@ docker run --env WORKER_SCRIPT=start:timers my-org/automation-worker
 This tri-process topology keeps queue responsibilities isolated across dedicated containers while
 sharing the same build artifacts.
 
+### Launch sequencing
+
+For predictable queue behaviour, launch production processes in the following order:
+
+1. `npm run start:api` (or the API container/Procfile entry)
+2. `npm run start:scheduler`
+3. `npm run start:worker`
+4. `npm run start:timers`
+
+Starting the scheduler before the worker is acceptable, but the worker must be online before queue
+backlog grows. The [`/api/health/queue/heartbeat`](../../server/routes/production-health.ts) probe
+confirms that the worker heartbeat is current and the queue depth is draining.
+
+If you prefer to co-locate everything inside the API process for a lightweight environment, export
+`ENABLE_INLINE_WORKER=true` (or `INLINE_EXECUTION_WORKER=true`) before starting the server. The API
+boot sequence will start `executionQueueService` inline and expose the same health endpoints without
+requiring the dedicated worker container. Unset the flag to return to the recommended multi-process
+deployment.
+
 ## Local development with Docker Compose
 
 A minimal Redis instance suitable for local queue development can be started with Docker Compose:

@@ -48,6 +48,27 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
   processing components (scheduler + execution worker) online alongside the API.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
+### Multi-process vs. inline worker flows
+
+Local developers can now choose between a dedicated worker topology or a single-process "inline"
+mode when booting the stack:
+
+1. **Multi-process (recommended for parity with production)**
+   - Start the API: `npm run dev:api`
+   - In a second terminal, start the scheduler: `npm run dev:scheduler`
+   - In a third terminal, run the execution worker: `npm run dev:worker`
+   - Optional: `npm run dev:rotation` or `npm run dev:stack` to supervise all of the above in one
+     shell.
+   This mirrors the production Procfile entries so you can observe queue depth and worker logs
+   independently.
+
+2. **Inline worker (single terminal)**
+   - Export `ENABLE_INLINE_WORKER=true` (or set it in `.env.development`).
+   - Run `npm run dev:api`.
+   When the flag is present, the API boot sequence automatically starts the execution worker inside
+   the same Node process. This is convenient for quick smoke tests when you do not need separate
+   worker logs. Turn the flag off to return to the dedicated worker model.
+
 Shut the stack down with:
 
 ```bash
