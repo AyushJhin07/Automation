@@ -98,6 +98,7 @@ import {
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
+import type { ValidationError } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
@@ -242,13 +243,99 @@ const getAppColor = (category: string) => {
   return colorMap[category] || '#6366F1';
 };
 
-// Custom Node Components
-const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
+const isErrorSeverity = (severity?: string): boolean => {
+  if (!severity) return true;
+  const normalized = severity.toLowerCase();
+  return normalized === 'error';
+};
+
+const NodeValidationBanner: React.FC<{ errors?: ValidationError[] }> = ({ errors }) => {
+  const issues = Array.isArray(errors)
+    ? errors.filter((issue) => isErrorSeverity((issue as any)?.severity))
+    : [];
+
+  if (issues.length === 0) {
+    return null;
+  }
+
+  const [firstIssue, ...rest] = issues;
+  const additionalCount = rest.length;
+
+  return (
+    <div className="mb-3 rounded-lg border border-red-500/80 bg-red-500/90 px-3 py-2 text-white shadow-md">
+      <div className="flex items-center gap-2 text-xs font-semibold">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        <span>Needs attention</span>
+      </div>
+      {firstIssue?.message && (
+        <p className="mt-1 text-[11px] leading-snug text-red-50/95">{firstIssue.message}</p>
+      )}
+      {additionalCount > 0 && (
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="mt-2 text-[11px] font-medium text-red-50/90 underline decoration-dotted underline-offset-2 transition-colors hover:text-white"
+              >
+                +{additionalCount} more issue{additionalCount > 1 ? 's' : ''}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <ul className="space-y-1 text-xs text-slate-100">
+                {rest.map((issue, index) => (
+                  <li key={`${issue.path ?? 'issue'}-${index}`}>{issue.message}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  );
+};
+
+const parseNodeIdFromPath = (path?: string | null): string | null => {
+  if (!path || typeof path !== 'string') {
+    return null;
+  }
+
+  const normalized = path.replace(/^[#/]+/, '').replace(/[\[\]]/g, '.');
+  const tokens = normalized.split(/[./]/).filter(Boolean);
+
+  const nodesIndex = tokens.indexOf('nodes');
+  if (nodesIndex !== -1 && tokens[nodesIndex + 1]) {
+    return tokens[nodesIndex + 1];
+  }
+
+  const fallback = tokens.find((token) => token.startsWith('node-') || token.startsWith('trigger') || token.startsWith('action'));
+  return fallback ?? null;
+};
+
+const getNodeIdFromValidationError = (error: ValidationError): string | null => {
+  if (error?.nodeId) {
+    return String(error.nodeId);
+  }
+  return parseNodeIdFromPath(error?.path);
+};
+
+type WorkflowValidationResult = {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
+  message?: string;
+};
+
+export const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const statusLabel = STATUS_LABELS[status];
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const hasValidationErrors = validationErrors.length > 0;
 
   return (
     <div
@@ -256,7 +343,8 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
         'relative bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
         selected ? 'border-white shadow-xl scale-105' : 'border-green-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
-        ringClass
+        ringClass,
+        hasValidationErrors && 'border-red-500/60 shadow-red-500/30'
       )}
     >
       {/* Animated pulse effect */}
@@ -280,9 +368,10 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
             <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </Button>
         </div>
-        
+
         {/* Content */}
         <div className="text-white">
+          <NodeValidationBanner errors={validationErrors} />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-green-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -318,7 +407,7 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
             </div>
           </div>
         )}
-        
+
         {/* ReactFlow Handles */}
         <Handle
           type="source"
@@ -330,12 +419,16 @@ const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   );
 };
 
-const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
+export const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
   const statusLabel = STATUS_LABELS[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const hasValidationErrors = validationErrors.length > 0;
 
   const getIcon = () => {
     if (data.app === 'Gmail') return <Mail className="w-4 h-4 text-white" />;
@@ -350,7 +443,8 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
         'relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
         selected ? 'border-white shadow-xl scale-105' : 'border-blue-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
-        ringClass
+        ringClass,
+        hasValidationErrors && 'border-red-500/60 shadow-red-500/30'
       )}
     >
       {/* Animated glow effect */}
@@ -374,9 +468,10 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
             <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </Button>
         </div>
-        
+
         {/* Content */}
         <div className="text-white">
+          <NodeValidationBanner errors={validationErrors} />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-blue-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -416,7 +511,7 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
             </div>
           </div>
         )}
-        
+
         {/* ReactFlow Handles */}
         <Handle
           type="target"
@@ -433,12 +528,16 @@ const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   );
 };
 
-const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => {
+export const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
   const statusLabel = STATUS_LABELS[status];
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const hasValidationErrors = validationErrors.length > 0;
 
   return (
     <div
@@ -446,7 +545,8 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
         'relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg border-2 transition-all duration-300 ease-out',
         selected ? 'border-white shadow-xl scale-105' : 'border-purple-400/30',
         'hover:shadow-2xl hover:scale-102 min-w-[200px] max-w-[280px]',
-        ringClass
+        ringClass,
+        hasValidationErrors && 'border-red-500/60 shadow-red-500/30'
       )}
     >
       {/* Animated shimmer effect */}
@@ -470,9 +570,10 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
             <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </Button>
         </div>
-        
+
         {/* Content */}
         <div className="text-white">
+          <NodeValidationBanner errors={validationErrors} />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-purple-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -493,7 +594,7 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
             </p>
           )}
         </div>
-        
+
         {/* Expanded content */}
         {isExpanded && (
           <div className="mt-3 pt-3 border-t border-white/20 animate-in slide-in-from-top-2 duration-200">
@@ -507,7 +608,7 @@ const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => 
             </div>
           </div>
         )}
-        
+
         {/* ReactFlow Handles */}
         <Handle
           type="target"
@@ -1327,7 +1428,12 @@ const GraphEditorContent = () => {
   const logout = useAuthStore((state) => state.logout);
   const [catalog, setCatalog] = useState<any | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
-  const { data: connectorDefinitions, loading: connectorDefinitionsLoading } = useConnectorDefinitions();
+  const [refreshConnectorsFlag, setRefreshConnectorsFlag] = useState(false);
+  const {
+    data: connectorDefinitions,
+    loading: connectorDefinitionsLoading,
+    error: connectorDefinitionsError,
+  } = useConnectorDefinitions(refreshConnectorsFlag);
   const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
   const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
@@ -1341,6 +1447,99 @@ const GraphEditorContent = () => {
     notes: '',
   });
   const [promotionError, setPromotionError] = useState<string | null>(null);
+
+  const updateNodeValidation = useCallback(
+    (errors: ValidationError[], options: { focus?: boolean } = {}) => {
+      const focus = options.focus ?? true;
+      const errorMap = new Map<string, ValidationError[]>();
+      let firstNodeId: string | null = null;
+
+      errors.forEach((error) => {
+        if (!isErrorSeverity((error as any)?.severity)) {
+          return;
+        }
+        const nodeId = getNodeIdFromValidationError(error);
+        if (!nodeId) {
+          return;
+        }
+        if (!errorMap.has(nodeId)) {
+          errorMap.set(nodeId, []);
+          if (!firstNodeId) {
+            firstNodeId = nodeId;
+          }
+        }
+        errorMap.get(nodeId)!.push(error);
+      });
+
+      setNodes((nds) =>
+        nds.map((node) => {
+          const baseData = applyExecutionStateDefaults(node.data);
+          const nodeErrors = errorMap.get(String(node.id)) ?? [];
+          const nextData = { ...baseData } as Record<string, any>;
+          if (nodeErrors.length > 0) {
+            nextData.validationErrors = nodeErrors;
+          } else {
+            delete nextData.validationErrors;
+          }
+
+          const shouldFocus = focus && firstNodeId;
+          const nextSelected = shouldFocus ? String(node.id) === firstNodeId : node.selected;
+
+          return {
+            ...node,
+            data: nextData,
+            selected: shouldFocus ? nextSelected : node.selected,
+          } as Node;
+        })
+      );
+
+      if (focus && firstNodeId) {
+        setSelectedNodeId(firstNodeId);
+      }
+    },
+    [setNodes, setSelectedNodeId]
+  );
+
+  const validateWorkflowGraph = useCallback(
+    async (graphPayload: NodeGraph): Promise<WorkflowValidationResult> => {
+      try {
+        const response = await authFetch('/api/workflows/validate', {
+          method: 'POST',
+          body: JSON.stringify({ graph: graphPayload }),
+        });
+
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json?.success) {
+          const message = json?.error || 'Unable to validate workflow';
+          return { valid: false, errors: [], warnings: [], message };
+        }
+
+        const validation = json.validation ?? {};
+        const errors = Array.isArray(validation.errors) ? (validation.errors as ValidationError[]) : [];
+        const warnings = Array.isArray(validation.warnings) ? (validation.warnings as ValidationError[]) : [];
+        const blockingErrors = errors.filter((error) => isErrorSeverity((error as any)?.severity));
+
+        return {
+          valid: validation.valid !== false && blockingErrors.length === 0,
+          errors,
+          warnings,
+        };
+      } catch (error: any) {
+        console.error('Failed to validate workflow graph:', error);
+        return {
+          valid: false,
+          errors: [],
+          warnings: [],
+          message: error?.message || 'Unable to validate workflow',
+        };
+      }
+    },
+    [authFetch]
+  );
+
+  const handleRefreshConnectorMetadata = useCallback(() => {
+    setRefreshConnectorsFlag((flag) => !flag);
+  }, []);
 
   useEffect(() => {
     setLabelValue(selectedNode?.data?.label || '');
@@ -1998,6 +2197,27 @@ const GraphEditorContent = () => {
     const payload = createGraphPayload(workflowIdentifier);
 
     setRunBanner(null);
+
+    const validationResult = await validateWorkflowGraph(payload);
+    const blockingErrors = validationResult.errors.filter((error) => isErrorSeverity((error as any)?.severity));
+
+    if (!validationResult.valid || blockingErrors.length > 0) {
+      updateNodeValidation(validationResult.errors, { focus: true });
+      const detail =
+        blockingErrors[0]?.message ??
+        validationResult.message ??
+        'Resolve validation issues before running.';
+      const bannerMessage =
+        blockingErrors.length > 0
+          ? `Resolve validation issues before running: ${detail}`
+          : detail;
+      setRunBanner({ type: 'error', message: bannerMessage });
+      toast.error(bannerMessage);
+      return;
+    }
+
+    updateNodeValidation([], { focus: false });
+
     setIsRunning(true);
 
     setNodes((nds) =>
@@ -2150,7 +2370,18 @@ const GraphEditorContent = () => {
         resetExecutionHighlights();
       }, 1200);
     }
-  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, updateNodeExecution, resetExecutionHighlights, setNodes, setActiveWorkflowId]);
+  }, [
+    nodes,
+    ensureSupportedNodes,
+    activeWorkflowId,
+    createGraphPayload,
+    validateWorkflowGraph,
+    updateNodeValidation,
+    updateNodeExecution,
+    resetExecutionHighlights,
+    setNodes,
+    setActiveWorkflowId,
+  ]);
 
   const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
     if (nodes.length === 0) {
