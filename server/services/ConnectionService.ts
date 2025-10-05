@@ -16,6 +16,7 @@ import { getErrorMessage } from '../types/common';
 import type { OAuthTokens, OAuthUserInfo } from '../oauth/OAuthManager';
 import { integrationManager } from '../integrations/IntegrationManager';
 import { env } from '../env';
+import { ensureConnectionEncryptionColumns } from '../database/startupGuards';
 import { genericExecutor } from '../integrations/GenericExecutor';
 import type { DynamicOptionHandlerContext, DynamicOptionResult } from '../integrations/BaseAPIClient';
 import { normalizeDynamicOptionPath } from '../../common/connectorDynamicOptions.js';
@@ -1814,6 +1815,8 @@ export class ConnectionService {
     }
 
     this.ensureDb();
+
+    await ensureConnectionEncryptionColumns();
 
     let existingConnectionId: string | undefined;
 
