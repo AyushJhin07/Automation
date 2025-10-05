@@ -194,8 +194,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/expressions', expressionRoutes);
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
-  app.use('/api', workflowReadRoutes);
-  app.use('/api/workflows', workflowVersionRoutes);
+  app.use('/api', optionalAuth, workflowReadRoutes);
+  app.use('/api/workflows', optionalAuth, workflowVersionRoutes);
   app.get('/api/workflows/:workflowId/duplicate-events', authenticateToken, async (req, res) => {
     const { workflowId } = req.params;
     if (!workflowId) {
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.use('/api/workflows', workflowDeploymentRoutes);
+  app.use('/api/workflows', optionalAuth, workflowDeploymentRoutes);
 
   app.use(
     '/api/webhooks/admin',
