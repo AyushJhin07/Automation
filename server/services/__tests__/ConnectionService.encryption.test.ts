@@ -6,8 +6,20 @@ import path from 'node:path';
 process.env.NODE_ENV = 'development';
 process.env.ENCRYPTION_MASTER_KEY = 'a'.repeat(32);
 process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
-process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgresql://user:password@localhost:5432/test-db';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+
+const schemaModule = (await import('../../database/schema.js')) as {
+  setDatabaseClientForTests: (client: any) => void;
+  db: any;
+};
+const { setDatabaseClientForTests } = schemaModule;
+const originalDbClient = schemaModule.db;
+const initialNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = 'test';
+setDatabaseClientForTests(null);
+process.env.NODE_ENV = initialNodeEnv;
 
 const tempDir = await mkdtemp(path.join(os.tmpdir(), 'connection-service-'));
 process.env.CONNECTION_STORE_PATH = path.join(tempDir, 'connections.json');
@@ -119,3 +131,57 @@ delete process.env.CONNECTION_STORE_PATH;
 delete process.env.ALLOW_FILE_CONNECTION_STORE;
 
 console.log('ConnectionService encrypt/decrypt round trip verified via file store.');
+
+const guardModule = (await import('../../database/startupGuards.js')) as {
+  resetConnectionEncryptionColumnsGuardForTests: () => void;
+};
+const { resetConnectionEncryptionColumnsGuardForTests } = guardModule;
+
+const failingDb = {
+  async execute() {
+    return {
+      rows: [
+        { column_name: 'data_key_ciphertext', is_nullable: 'YES' },
+        { column_name: 'data_key_iv', is_nullable: 'YES' },
+        { column_name: 'payload_ciphertext', is_nullable: 'YES' },
+      ],
+    };
+  },
+};
+
+const originalNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = 'test';
+setDatabaseClientForTests(failingDb as any);
+process.env.NODE_ENV = originalNodeEnv;
+
+resetConnectionEncryptionColumnsGuardForTests();
+
+const guardService = new ConnectionService();
+
+await assert.rejects(
+  async () =>
+    guardService.storeConnection(
+      'user-migration',
+      'org-migration',
+      'OpenAI',
+      {
+        accessToken: 'token',
+        refreshToken: 'refresh',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+    ),
+  (error: any) => {
+    assert.match(error?.message ?? '', /Run database migrations/i);
+    assert.match(error?.message ?? '', /payload_iv/);
+    return true;
+  }
+);
+
+process.env.NODE_ENV = 'test';
+setDatabaseClientForTests(originalDbClient ?? null);
+process.env.NODE_ENV = originalNodeEnv;
+resetConnectionEncryptionColumnsGuardForTests();
+
+console.log('ConnectionService migration guard verified for missing payload_iv column.');
+
+process.exit(0);
