@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import cors, { type CorsOptions } from 'cors';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from "./storage";
@@ -64,6 +65,70 @@ import organizationConnectorRoutes from "./routes/organization-connectors";
 import usageAdminRoutes from "./routes/usage";
 import { getSchedulerLockService } from './services/SchedulerLockService.js';
 import { checkQueueHealth } from './services/QueueHealthService.js';
+
+const DEV_CORS_DEFAULTS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+function parseAllowedOrigins(rawOrigins: string | undefined): string[] {
+  if (!rawOrigins) {
+    return [];
+  }
+
+  return rawOrigins
+    .split(/[,\s]+/)
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
+function buildCorsOptions(): CorsOptions {
+  const environment = process.env.NODE_ENV ?? env.NODE_ENV ?? 'development';
+  const configuredOrigins = parseAllowedOrigins(process.env.CORS_ORIGIN ?? process.env.CORS_ORIGINS);
+  const allowList = configuredOrigins.length > 0
+    ? configuredOrigins
+    : environment === 'development'
+      ? DEV_CORS_DEFAULTS
+      : [];
+
+  if (environment !== 'development' && allowList.length === 0) {
+    console.warn('⚠️  No CORS_ORIGIN configured; cross-origin requests will be rejected.');
+  }
+
+  const allowedOrigins = new Set(allowList);
+
+  return {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      const error = new Error(`CORS origin not allowed: ${origin}`);
+      (error as any).status = 403;
+      callback(error);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-Organization-Id',
+      'X-Request-Id',
+    ],
+    exposedHeaders: ['X-Request-Id'],
+    optionsSuccessStatus: 204,
+    maxAge: 24 * 60 * 60,
+  } satisfies CorsOptions;
+}
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -135,6 +200,9 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Apply global security middleware
   app.use(securityService.securityHeaders());
+  const corsOptions = buildCorsOptions();
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
   app.use(securityService.requestMonitoring());
 
   // Apply global rate limiting (more permissive in development)
