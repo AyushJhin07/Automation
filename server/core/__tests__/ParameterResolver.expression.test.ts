@@ -28,6 +28,11 @@ const context = {
         { product: 'Analytics Add-on', score: 0.81 },
       ],
     },
+    listStep: [
+      { id: 'one', active: true },
+      { id: 'two', active: false },
+      { id: 'three', active: true },
+    ],
     slackNotify: {
       channel: '#sales',
       ts: '1727548200.000200',
@@ -52,6 +57,43 @@ const context = {
 };
 
 const main = async () => {
+  const recommendationNames = await resolveParamValue(
+    { mode: 'ref', nodeId: 'enrichment', path: 'recommendations[score > 0.8].product' },
+    context as any
+  );
+  assert.deepEqual(recommendationNames, ['Premium Support', 'Analytics Add-on']);
+
+  const topRecommendation = await resolveParamValue(
+    { mode: 'ref', nodeId: 'enrichment', path: 'recommendations[score > 0.9].product' },
+    context as any
+  );
+  assert.deepEqual(topRecommendation, ['Premium Support']);
+
+  const firstListEntry = await resolveParamValue(
+    { mode: 'ref', nodeId: 'listStep', path: '[0]' },
+    context as any
+  );
+  assert.equal(firstListEntry?.id, 'one');
+  assert.equal(firstListEntry?.active, true);
+
+  const activeListIds = await resolveParamValue(
+    { mode: 'ref', nodeId: 'listStep', path: '[active == true].id' },
+    context as any
+  );
+  assert.deepEqual(activeListIds, ['one', 'three']);
+
+  const triggerTimestamp = await resolveParamValue(
+    { mode: 'ref', nodeId: 'trigger', path: 'metadata["receivedAt"]' },
+    context as any
+  );
+  assert.equal(triggerTimestamp, '2024-05-20T12:30:00.000Z');
+
+  const invalidReference = await resolveParamValue(
+    { mode: 'ref', nodeId: 'enrichment', path: 'recommendations[' },
+    context as any
+  );
+  assert.equal(invalidReference, undefined);
+
   const filteredProducts = await resolveParamValue(
     { mode: 'expr', expression: 'steps.enrichment.recommendations[score > 0.9].product' },
     context as any
@@ -104,13 +146,21 @@ const main = async () => {
     'object'
   );
 
-  const validationResult = expressionEvaluator.evaluateDetailed(
+  const invalidSchemaResult = expressionEvaluator.evaluateDetailed(
     'steps.slackNotify.ts',
     context as any,
     { expectedResultSchema: { type: 'number' } }
   );
-  assert.equal(validationResult.valid, false);
-  assert(validationResult.diagnostics.length > 0);
+  assert.equal(invalidSchemaResult.valid, false);
+  assert(invalidSchemaResult.diagnostics.length > 0);
+
+  const validSchemaResult = expressionEvaluator.evaluateDetailed(
+    'steps.salesforceOpportunity.probability',
+    context as any,
+    { expectedResultSchema: { type: 'number' } }
+  );
+  assert.equal(validSchemaResult.valid, true);
+  assert.equal(validSchemaResult.diagnostics.length, 0);
 
   console.log('Expression parameter resolution scenarios completed successfully.');
 };

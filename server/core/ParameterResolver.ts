@@ -5,7 +5,11 @@
 
 import { llmRegistry } from '../llm/LLMProvider';
 import { ParamValue, EvaluatedValue, ParameterContext } from '../../shared/nodeGraphSchema';
-import { expressionEvaluator } from './ExpressionEvaluator';
+import {
+  expressionEvaluator,
+  evaluateContextExpression,
+  type ExpressionEvaluationContext,
+} from './ExpressionEvaluator';
 
 /**
  * Cache for LLM responses to avoid repeated API calls
@@ -108,18 +112,28 @@ export async function resolveAllParams(
  */
 function resolveReference(nodeId: string, path: string, context: ParameterContext): any {
   const nodeOutput = context.nodeOutputs[nodeId];
-  
+
   if (!nodeOutput) {
     console.warn(`Reference to node ${nodeId} not found in context`);
     return undefined;
   }
-  
+
   // Handle root reference
   if (!path || path === '$' || path === '') {
     return nodeOutput;
   }
-  
-  // Handle dot-notation path traversal
+
+  const evaluationContext = createEvaluationContext(context);
+  const normalizedExpression = normalizeReferenceExpression(nodeId, path);
+
+  try {
+    return evaluateContextExpression(normalizedExpression, evaluationContext);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to evaluate reference path ${nodeId}.${path}: ${message}`);
+  }
+
+  // Fallback to simple dot-notation traversal for backward compatibility
   try {
     return path.split('.').reduce((obj: any, key: string) => {
       if (obj && typeof obj === 'object' && key in obj) {
@@ -131,6 +145,51 @@ function resolveReference(nodeId: string, path: string, context: ParameterContex
     console.warn(`Failed to resolve reference path ${nodeId}.${path}:`, error);
     return undefined;
   }
+}
+
+function createEvaluationContext(
+  context: ParameterContext,
+  overrides: { vars?: Record<string, any>; steps?: Record<string, any> } = {}
+): ExpressionEvaluationContext {
+  return {
+    nodeOutputs: context.nodeOutputs,
+    currentNodeId: context.currentNodeId,
+    workflowId: context.workflowId,
+    executionId: context.executionId,
+    userId: context.userId,
+    trigger: context.trigger,
+    steps: overrides.steps ?? context.steps ?? context.nodeOutputs,
+    variables: context.variables,
+    vars: overrides.vars,
+  };
+}
+
+function normalizeReferenceExpression(nodeId: string, rawPath: string): string {
+  const trimmed = rawPath.trim();
+  const escapedNodeId = escapeForJsonata(nodeId);
+  const base = `steps["${escapedNodeId}"]`;
+
+  if (!trimmed || trimmed === '$') {
+    return base;
+  }
+
+  if (/^(steps|trigger|vars|variables|nodeOutputs|outputs|context|workflow|current)\b/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('$')) {
+    return base + trimmed.slice(1);
+  }
+
+  if (trimmed.startsWith('[') || trimmed.startsWith('.')) {
+    return base + trimmed;
+  }
+
+  return `${base}.${trimmed}`;
+}
+
+function escapeForJsonata(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 /**
@@ -329,17 +388,10 @@ async function resolveExpressionValue(
   context: ParameterContext
 ): Promise<any> {
   try {
-    const evaluation = expressionEvaluator.evaluateDetailed(expressionValue.expression, {
-      nodeOutputs: context.nodeOutputs,
-      currentNodeId: context.currentNodeId,
-      workflowId: context.workflowId,
-      executionId: context.executionId,
-      userId: context.userId,
-      trigger: context.trigger,
-      steps: context.steps,
-      variables: context.variables,
-      vars: expressionValue.vars,
-    });
+    const evaluation = expressionEvaluator.evaluateDetailed(
+      expressionValue.expression,
+      createEvaluationContext(context, { vars: expressionValue.vars })
+    );
 
     if (!evaluation.valid && evaluation.diagnostics.length > 0) {
       const details = evaluation.diagnostics
