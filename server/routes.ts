@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response } from 'express';
+import cors, { type CorsOptions } from 'cors';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from "./storage";
@@ -108,6 +109,107 @@ import { getErrorMessage, formatError, APIResponse } from "./types/common";
 
 export async function registerRoutes(app: Express): Promise<void> {
 
+  const normalizeOrigin = (origin: string): string => {
+    return origin.endsWith('/') ? origin.slice(0, -1) : origin;
+  };
+
+  const parseCorsOrigins = (raw: string | undefined): { allowAll: boolean; origins: string[] } => {
+    if (!raw) {
+      return { allowAll: false, origins: [] };
+    }
+
+    const tokens = raw
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map(normalizeOrigin);
+
+    const uniqueTokens = Array.from(new Set(tokens));
+    const allowAll = uniqueTokens.includes('*');
+
+    return {
+      allowAll,
+      origins: uniqueTokens.filter((value) => value !== '*'),
+    };
+  };
+
+  const parseOriginHeader = (header: string | string[] | undefined): string | undefined => {
+    if (!header) {
+      return undefined;
+    }
+
+    const value = Array.isArray(header) ? header[0] : header;
+    return value ? normalizeOrigin(value) : undefined;
+  };
+
+  const defaultDevelopmentOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ].map(normalizeOrigin);
+
+  const corsEnvValue = process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.length > 0
+    ? process.env.CORS_ORIGIN
+    : env.CORS_ORIGIN;
+
+  const parsedOrigins = parseCorsOrigins(corsEnvValue);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const allowAllInDevelopment = parsedOrigins.allowAll && !isProduction;
+
+  let allowedOrigins = parsedOrigins.origins;
+  if (allowedOrigins.length === 0 && !isProduction) {
+    allowedOrigins = defaultDevelopmentOrigins;
+  }
+
+  if (parsedOrigins.allowAll && isProduction) {
+    console.warn('⚠️ Ignoring wildcard CORS_ORIGIN in production. Configure explicit origins.');
+  }
+
+  if (isProduction && allowedOrigins.length === 0) {
+    console.warn('⚠️ No CORS_ORIGIN configured in production. Cross-origin requests will be blocked.');
+  }
+
+  const isAllowedOrigin = (origin: string | undefined): boolean => {
+    if (!origin) {
+      return true;
+    }
+
+    if (allowAllInDevelopment) {
+      return true;
+    }
+
+    return allowedOrigins.includes(origin);
+  };
+
+  const corsOptions: CorsOptions = {
+    origin(origin, callback) {
+      const normalized = origin ? normalizeOrigin(origin) : undefined;
+      if (isAllowedOrigin(normalized)) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Accept',
+      'X-Requested-With',
+      'X-Request-Id',
+      'X-Organization-Id',
+      'X-CSRF-Token',
+    ],
+    exposedHeaders: ['X-Request-Id'],
+    optionsSuccessStatus: 204,
+    preflightContinue: false,
+    maxAge: 600,
+  };
+
+  const corsMiddleware = cors(corsOptions);
+
   const mapOrganization = (org: any) => ({
     id: org.id,
     name: org.name,
@@ -135,6 +237,20 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Apply global security middleware
   app.use(securityService.securityHeaders());
+  app.use((req, res, next) => {
+    const originHeader = parseOriginHeader(req.headers.origin);
+    if (isAllowedOrigin(originHeader)) {
+      return next();
+    }
+
+    if (req.method === 'OPTIONS') {
+      return res.status(403).end();
+    }
+
+    return res.status(403).json({ success: false, error: 'Origin not allowed' });
+  });
+  app.use(corsMiddleware);
+  app.options('*', corsMiddleware);
   app.use(securityService.requestMonitoring());
 
   // Apply global rate limiting (more permissive in development)

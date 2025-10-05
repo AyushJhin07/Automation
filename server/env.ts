@@ -140,6 +140,7 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET,
   PORT: process.env.PORT || '5000',
   SERVER_PUBLIC_URL: process.env.SERVER_PUBLIC_URL || '',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || '',
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
   CONNECTOR_SIMULATOR_ENABLED: process.env.CONNECTOR_SIMULATOR_ENABLED === 'true',
