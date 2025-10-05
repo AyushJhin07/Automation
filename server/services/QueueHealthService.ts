@@ -1,4 +1,4 @@
-import IORedis from 'ioredis';
+import IORedis, { type RedisOptions } from 'ioredis';
 
 import type { OrganizationRegion } from '../database/schema.js';
 import { getRedisConnectionOptions } from '../queue/BullMQFactory.js';
@@ -24,6 +24,26 @@ function resolveRegionKey(region?: OrganizationRegion): string {
   return region ?? 'default';
 }
 
+let redisHelpLogged = false;
+
+function logRedisConnectivityHelp(connection: RedisOptions, explanation: string) {
+  if (redisHelpLogged) {
+    return;
+  }
+
+  const location = `${connection.host ?? '127.0.0.1'}:${connection.port ?? 6379}/${connection.db ?? 0}`;
+  const instructions = [
+    `[queue] Redis connection failed: ${explanation}`,
+    `[queue] Attempted connection: ${location}`,
+    '[queue] Ensure Redis is running before starting the API/worker processes.',
+    "[queue] • To use Docker, run: docker compose -f docker-compose.dev.yml up redis",
+    '[queue] • For a local install, follow docs/operations/local-dev.md#queue-configuration',
+  ].join('\n');
+
+  console.error(instructions);
+  redisHelpLogged = true;
+}
+
 async function pingRedis(region?: OrganizationRegion): Promise<QueueHealthStatus> {
   const connection = getRedisConnectionOptions(region);
   const client = new IORedis(connection);
@@ -40,6 +60,7 @@ async function pingRedis(region?: OrganizationRegion): Promise<QueueHealthStatus
     };
   } catch (error) {
     const explanation = getErrorMessage(error);
+    logRedisConnectivityHelp(connection, explanation);
     return {
       status: 'fail',
       durable: true,
