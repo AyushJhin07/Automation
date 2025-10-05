@@ -63,6 +63,15 @@ async function main() {
 
   await ensureRedisIsReachable();
 
+  try {
+    await runDatabaseMigrations();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    exitCode = exitCode || 1;
+    log(`Database migrations failed: ${message}`);
+    return;
+  }
+
   const exitPromises = scriptsToRun.map((script) => {
     return new Promise<void>((resolve) => {
       const childEnv = { ...process.env };
@@ -124,6 +133,42 @@ async function main() {
   });
 
   await Promise.all(exitPromises);
+}
+
+async function runDatabaseMigrations(): Promise<void> {
+  if (process.env.SKIP_DB_VALIDATION === 'true') {
+    log('Skipping database migrations because SKIP_DB_VALIDATION=true.');
+    return;
+  }
+
+  log('Applying database migrations with "npm run db:push"...');
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(npmCommand, ['run', 'db:push'], {
+      stdio: 'inherit',
+      env: { ...process.env },
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      if (signal) {
+        reject(new Error(`db:push terminated by signal ${signal}`));
+        return;
+      }
+
+      reject(new Error(`db:push exited with code ${code ?? 'unknown'}`));
+    });
+  });
+
+  log('Database migrations applied successfully.');
 }
 
 async function ensureRedisIsReachable() {

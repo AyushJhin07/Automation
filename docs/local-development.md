@@ -27,7 +27,27 @@ This guide covers the quickest path to booting the platform locally with Docker 
 
 > ℹ️  When running outside of Docker Compose, either export the variables manually or copy `.env.development` to `.env` so `dotenv` can pick them up. Never commit personal secrets.
 
-## 2. Start the Docker Compose stack
+## 2. Initialize the database (one-time)
+
+Run the schema migrations and seed the encryption key before booting the services. These
+commands target the database referenced by `DATABASE_URL` in `.env.development`:
+
+```bash
+npm run db:push
+npm run seed:encryption-key
+```
+
+`npm run seed:encryption-key` derives a deterministic 256-bit key from
+`ENCRYPTION_MASTER_KEY`. Ensure `npm run bootstrap:secrets` has populated that variable in
+your `.env.development` file first. Re-run the seed after wiping your database to restore the
+active key record. If you need connector metadata locally, run
+`npx tsx scripts/seed-all-connectors.ts seed` once migrations have succeeded.
+
+> ℹ️  `npm run dev:stack` automatically executes `npm run db:push` on startup. Running the
+> commands above ahead of time provides fast feedback and guarantees that the seed completes
+> before the API or workers begin processing traffic.
+
+## 3. Start the Docker Compose stack
 
 With `.env.development` in place, launch the local services:
 
@@ -37,7 +57,7 @@ docker compose --env-file .env.development up --build
 
 The default configuration in `.env.example` assumes PostgreSQL and Redis are running inside the Compose stack. Adjust the hostnames or ports if you are using external services.
 
-## 3. Next steps
+## 4. Next steps
 
 - `npm run dev:api` starts the API in watch mode and automatically boots the Vite-powered frontend
   development server. In development the API now defaults to running the execution worker inline when
