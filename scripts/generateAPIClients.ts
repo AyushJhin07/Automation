@@ -131,11 +131,16 @@ export class APIClientGenerator {
   private generateClientCode(connector: ConnectorData, className: string): string {
     const baseUrl = connector.baseUrl || `https://api.${connector.id}.com`;
     const authType = connector.authentication?.type || 'oauth2';
+    const rawAuthMetadata = JSON.stringify(connector.authentication?.config ?? {}, null, 2);
+    const formattedAuthMetadata = rawAuthMetadata.replace(/\n/g, '\n      ');
+    const escapedName = this.escapeString(connector.name);
+    const escapedDescription = this.escapeString(connector.description);
 
     return `// ${connector.name.toUpperCase()} API CLIENT
 // Auto-generated API client for ${connector.name} integration
 
 import { BaseAPIClient } from './BaseAPIClient';
+import type { ConnectorModule } from '../../shared/connectors/module';
 
 export interface ${className}Config {
   ${this.generateConfigInterface(connector, authType)}
@@ -174,7 +179,21 @@ export class ${className} extends BaseAPIClient {
 ${this.generateActionMethods(connector)}
 
 ${this.generateTriggerMethods(connector)}
-}`;
+}
+
+export const ${className}Module = (config: ${className}Config): ConnectorModule => {
+  const client = new ${className}(config);
+  return client.toConnectorModule({
+    id: '${connector.id}',
+    name: '${escapedName}',
+    description: '${escapedDescription}',
+    auth: {
+      type: '${authType}',
+      metadata: ${formattedAuthMetadata},
+    },
+    inputSchema: { type: 'object', properties: {}, additionalProperties: true },
+  });
+};`;
   }
 
   /**
@@ -382,6 +401,13 @@ ${this.generateTriggerMethods(connector)}
   private toCamelCase(str: string): string {
     const pascal = this.toPascalCase(str);
     return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+  }
+
+  private escapeString(value?: string): string {
+    if (!value) {
+      return '';
+    }
+    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ');
   }
 }
 
