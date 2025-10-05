@@ -7,6 +7,8 @@ export type Permission =
   | 'workflow:deploy'
   | 'workflow:delete'
   | 'workflow:collaborate'
+  | 'execution:read'
+  | 'execution:retry'
   | 'connections:read'
   | 'connections:write'
   | 'integration:metadata:read'
@@ -30,6 +32,8 @@ const OWNER_PERMISSIONS: Permission[] = [
   'workflow:deploy',
   'workflow:delete',
   'workflow:collaborate',
+  'execution:read',
+  'execution:retry',
   'connections:read',
   'connections:write',
   'integration:metadata:read',
@@ -52,6 +56,8 @@ const MEMBER_PERMISSIONS: Permission[] = [
   'workflow:edit',
   'workflow:deploy',
   'workflow:collaborate',
+  'execution:read',
+  'execution:retry',
   'connections:read',
   'connections:write',
   'integration:metadata:read',
@@ -60,6 +66,7 @@ const MEMBER_PERMISSIONS: Permission[] = [
 
 const VIEWER_PERMISSIONS: Permission[] = [
   'workflow:view',
+  'execution:read',
   'organization:view_usage',
   'integration:metadata:read',
 ];
@@ -83,7 +90,7 @@ export const ROLE_PERMISSIONS: Record<OrgRole, RolePermissionMatrix> = {
   },
 };
 
-const FALLBACK_PERMISSIONS: Permission[] = ['workflow:view'];
+const FALLBACK_PERMISSIONS: Permission[] = ['workflow:view', 'execution:read'];
 
 export function getPermissionsForRole(role?: string | null): Permission[] {
   if (!role) {

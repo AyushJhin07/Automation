@@ -174,7 +174,7 @@ router.post('/', requirePermission('workflow:deploy'), async (req, res) => {
   }
 });
 
-router.post('/dry-run', async (req, res) => {
+router.post('/dry-run', requirePermission('execution:read'), async (req, res) => {
   const organizationId = (req as any)?.organizationId;
   if (!organizationId) {
     return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
@@ -364,7 +364,7 @@ router.post('/dry-run', async (req, res) => {
   }
 });
 
-router.get('/', async (req, res) => {
+router.get('/', requirePermission('execution:read'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -421,7 +421,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/stats/:timeframe', async (req, res) => {
+router.get('/stats/:timeframe', requirePermission('execution:read'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -437,7 +437,7 @@ router.get('/stats/:timeframe', async (req, res) => {
   }
 });
 
-router.get('/correlation/:correlationId', async (req, res) => {
+router.get('/correlation/:correlationId', requirePermission('execution:read'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -452,7 +452,7 @@ router.get('/correlation/:correlationId', async (req, res) => {
   }
 });
 
-router.get('/:executionId/nodes', async (req, res) => {
+router.get('/:executionId/nodes', requirePermission('execution:read'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -474,7 +474,7 @@ router.get('/:executionId/nodes', async (req, res) => {
   }
 });
 
-router.get('/:executionId', async (req, res) => {
+router.get('/:executionId', requirePermission('execution:read'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -492,7 +492,7 @@ router.get('/:executionId', async (req, res) => {
   }
 });
 
-router.post('/:executionId/retry', async (req, res) => {
+router.post('/:executionId/retry', requirePermission('execution:retry'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
@@ -522,7 +522,7 @@ router.post('/:executionId/retry', async (req, res) => {
   }
 });
 
-router.post('/:executionId/nodes/:nodeId/retry', async (req, res) => {
+router.post('/:executionId/nodes/:nodeId/retry', requirePermission('execution:retry'), async (req, res) => {
   try {
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
