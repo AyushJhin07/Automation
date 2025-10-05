@@ -1,5 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import process from 'node:process';
+import IORedis from 'ioredis';
+
+import { getRedisConnectionOptions } from '../server/queue/BullMQFactory.js';
 
 type ManagedProcess = {
   script: string;
@@ -58,6 +61,8 @@ function setupSignalHandlers() {
 async function main() {
   setupSignalHandlers();
 
+  await ensureRedisIsReachable();
+
   const exitPromises = scriptsToRun.map((script) => {
     return new Promise<void>((resolve) => {
       const child = spawn(npmCommand, ['run', script], {
@@ -111,6 +116,39 @@ async function main() {
   });
 
   await Promise.all(exitPromises);
+}
+
+async function ensureRedisIsReachable() {
+  const connection = getRedisConnectionOptions();
+  const target = `${connection.host ?? '127.0.0.1'}:${connection.port ?? 6379}/${connection.db ?? 0}`;
+  log(`Checking Redis connectivity at ${target}...`);
+
+  const client = new IORedis(connection);
+  let shouldExit = false;
+
+  try {
+    await client.ping();
+    log(`Redis connection verified at ${target}.`);
+  } catch (error) {
+    const explanation = error instanceof Error ? error.message : String(error);
+    console.error(
+      `${logPrefix} Unable to reach Redis at ${target}: ${explanation}`,
+      `\n${logPrefix} Start Redis with 'docker compose -f docker-compose.dev.yml up redis' or install it locally (docs/operations/local-dev.md#queue-configuration).`
+    );
+    process.exitCode = 1;
+    shouldExit = true;
+  } finally {
+    try {
+      await client.quit();
+    } catch {
+      client.disconnect();
+    }
+
+    if (shouldExit) {
+      terminateAll();
+      process.exit(process.exitCode ?? 1);
+    }
+  }
 }
 
 main()
