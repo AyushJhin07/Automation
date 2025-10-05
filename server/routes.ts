@@ -2920,44 +2920,6 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // ===== WEBHOOK & TRIGGER MANAGEMENT ROUTES =====
   
-  // Handle incoming webhooks
-  app.post('/api/webhooks/:webhookId', async (req, res) => {
-    const startTime = Date.now();
-    
-    try {
-      const { webhookId } = req.params;
-      const payload = req.body;
-      const headers = req.headers as Record<string, string>;
-      
-      const success = await webhookManager.handleWebhook(webhookId, payload, headers);
-      
-      if (success) {
-        res.json({
-          success: true,
-          message: 'Webhook processed successfully',
-          webhookId,
-          timestamp: new Date(),
-          responseTime: Date.now() - startTime
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: 'Failed to process webhook',
-          webhookId,
-          responseTime: Date.now() - startTime
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Webhook endpoint error:', getErrorMessage(error));
-      res.status(500).json({
-        success: false,
-        error: getErrorMessage(error),
-        responseTime: Date.now() - startTime
-      });
-    }
-  });
-  
   // Register new webhook
   app.post('/api/webhooks/register', authenticateToken, async (req, res) => {
     const startTime = Date.now();
@@ -3248,22 +3210,26 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  const forwardWebhookRequest = async (req: Request) => {
+    const { webhookId } = req.params;
+    const headers = req.headers as Record<string, string>;
+    const payload = req.body;
+    const rawBody = (req as any).rawBody || JSON.stringify(payload);
+
+    return webhookManager.handleWebhook(webhookId, payload, headers, rawBody);
+  };
+
   // Generic webhook handler (handles all incoming webhooks)
   app.post('/api/webhooks/:webhookId', async (req, res) => {
     const startTime = Date.now();
-    
+
     try {
       const { webhookId } = req.params;
-      const headers = req.headers as Record<string, string>;
-      const payload = req.body;
-      
-      // Get raw body for signature verification (critical for Stripe, Shopify, GitHub)
-      const rawBody = (req as any).rawBody || JSON.stringify(payload);
-      
+
       console.log(`📥 Webhook received: ${webhookId}`);
-      
-      const success = await webhookManager.handleWebhook(webhookId, payload, headers, rawBody);
-      
+
+      const success = await forwardWebhookRequest(req);
+
       if (success) {
         res.json({
           success: true,
@@ -3292,30 +3258,22 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Vendor-specific webhook endpoints for better organization
   app.post('/api/webhooks/slack/:webhookId', async (req, res) => {
-    const { webhookId } = req.params;
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
-    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    await forwardWebhookRequest(req);
     res.status(200).send('OK');
   });
 
   app.post('/api/webhooks/stripe/:webhookId', async (req, res) => {
-    const { webhookId } = req.params;
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
-    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    await forwardWebhookRequest(req);
     res.status(200).send('OK');
   });
 
   app.post('/api/webhooks/shopify/:webhookId', async (req, res) => {
-    const { webhookId } = req.params;
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
-    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    await forwardWebhookRequest(req);
     res.status(200).send('OK');
   });
 
   app.post('/api/webhooks/github/:webhookId', async (req, res) => {
-    const { webhookId } = req.params;
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
-    await webhookManager.handleWebhook(webhookId, req.body, req.headers as Record<string, string>, rawBody);
+    await forwardWebhookRequest(req);
     res.status(200).send('OK');
   });
 
