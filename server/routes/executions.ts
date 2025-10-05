@@ -5,6 +5,7 @@ import { runExecutionManager } from '../core/RunExecutionManager.js';
 import { retryManager } from '../core/RetryManager.js';
 import { executionReplayService } from '../services/ExecutionReplayService.js';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
+import { executionResumeTokenService } from '../services/ExecutionResumeTokenService.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { auditLogService } from '../services/AuditLogService.js';
 import { logAction } from '../utils/actionLog.js';
@@ -18,6 +19,123 @@ import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/
 import { computeExecutionOrder, sanitizeGraphForExecution, summarizeDryRunError } from '../utils/workflowExecution.js';
 
 const router = Router();
+export const executionResumeRouter = Router({ mergeParams: true });
+
+function extractResumeCredentials(source: any): { token?: string; signature?: string } {
+  if (!source || typeof source !== 'object') {
+    return {};
+  }
+
+  const payload =
+    source && typeof source.resume === 'object' && source.resume
+      ? (source.resume as Record<string, any>)
+      : (source as Record<string, any>);
+
+  const token =
+    typeof payload.resumeToken === 'string'
+      ? payload.resumeToken
+      : typeof payload.resume_token === 'string'
+      ? payload.resume_token
+      : typeof payload.token === 'string'
+      ? payload.token
+      : undefined;
+
+  const signature =
+    typeof payload.resumeSignature === 'string'
+      ? payload.resumeSignature
+      : typeof payload.resume_signature === 'string'
+      ? payload.resume_signature
+      : typeof payload.signature === 'string'
+      ? payload.signature
+      : undefined;
+
+  return {
+    token: typeof token === 'string' ? token : undefined,
+    signature: typeof signature === 'string' ? signature : undefined,
+  };
+}
+
+executionResumeRouter.post('/:executionId/nodes/:nodeId/resume', async (req, res) => {
+  const { executionId, nodeId } = req.params;
+
+  if (!executionId || !nodeId) {
+    return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+  }
+
+  const queryToken =
+    typeof req.query.token === 'string'
+      ? req.query.token
+      : typeof req.query.resumeToken === 'string'
+      ? req.query.resumeToken
+      : typeof req.query.resume_token === 'string'
+      ? req.query.resume_token
+      : undefined;
+  const querySignature =
+    typeof req.query.signature === 'string'
+      ? req.query.signature
+      : typeof req.query.resumeSignature === 'string'
+      ? req.query.resumeSignature
+      : typeof req.query.resume_signature === 'string'
+      ? req.query.resume_signature
+      : undefined;
+
+  const headerToken = typeof req.headers['x-resume-token'] === 'string' ? req.headers['x-resume-token'] : undefined;
+  const headerSignature =
+    typeof req.headers['x-resume-signature'] === 'string' ? req.headers['x-resume-signature'] : undefined;
+
+  const bodyCredentials = extractResumeCredentials(req.body);
+
+  const token = (queryToken || bodyCredentials.token || headerToken)?.trim();
+  const signature = (querySignature || bodyCredentials.signature || headerSignature)?.trim();
+
+  const consumption = await executionResumeTokenService.consume({
+    token: token ?? '',
+    signature,
+    executionId,
+    nodeId,
+  });
+
+  if (consumption.status === 'invalid') {
+    const status = consumption.reason === 'token_missing' ? 400 : consumption.reason === 'not_found' ? 410 : 403;
+    return res.status(status).json({
+      success: false,
+      error: 'RESUME_TOKEN_INVALID',
+      reason: consumption.reason,
+    });
+  }
+
+  if (consumption.status === 'expired') {
+    return res.status(410).json({
+      success: false,
+      error: 'RESUME_TOKEN_EXPIRED',
+      reason: consumption.reason,
+    });
+  }
+
+  if (consumption.status === 'error') {
+    return res.status(500).json({ success: false, error: 'FAILED_TO_RESUME', message: consumption.message });
+  }
+
+  const consumed = consumption.record;
+
+  try {
+    await executionQueueService.enqueueResume({
+      tokenId: consumed.tokenId,
+      executionId: consumed.executionId,
+      workflowId: consumed.workflowId,
+      organizationId: consumed.organizationId,
+      userId: consumed.userId ?? undefined,
+      resumeState: consumed.resumeState,
+      initialData: consumed.initialData,
+      triggerType: consumed.triggerType ?? 'callback',
+    });
+  } catch (error) {
+    console.error('Failed to enqueue resume from callback:', getErrorMessage(error));
+    return res.status(500).json({ success: false, error: 'FAILED_TO_RESUME', message: getErrorMessage(error) });
+  }
+
+  return res.json({ success: true, executionId: consumed.executionId, nodeId: consumed.nodeId });
+});
 
 const manualRunSchema = z.object({
   workflowId: z.string().min(1, 'workflowId is required'),

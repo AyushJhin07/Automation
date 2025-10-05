@@ -465,23 +465,37 @@ export class WebhookManager {
 
     if (event.payload && typeof event.payload === 'object') {
       const payload = event.payload as Record<string, any>;
-      const resumePayload =
-        payload && typeof payload.resume === 'object' ? (payload.resume as Record<string, any>) : payload;
-
-      if (typeof resumePayload.resumeToken === 'string') {
-        payloadToken = resumePayload.resumeToken;
-      } else if (typeof resumePayload.resume_token === 'string') {
-        payloadToken = resumePayload.resume_token;
-      } else if (typeof resumePayload.token === 'string' && 'resume' in payload) {
-        payloadToken = resumePayload.token;
+      const candidatePayloads: Record<string, any>[] = [payload];
+      if (payload.resume && typeof payload.resume === 'object') {
+        candidatePayloads.push(payload.resume as Record<string, any>);
+      }
+      if (payload.callback && typeof payload.callback === 'object') {
+        candidatePayloads.push(payload.callback as Record<string, any>);
+      }
+      if (payload.externalCallback && typeof payload.externalCallback === 'object') {
+        candidatePayloads.push(payload.externalCallback as Record<string, any>);
       }
 
-      if (typeof resumePayload.resumeSignature === 'string') {
-        payloadSignature = resumePayload.resumeSignature;
-      } else if (typeof resumePayload.resume_signature === 'string') {
-        payloadSignature = resumePayload.resume_signature;
-      } else if (typeof resumePayload.signature === 'string' && 'resume' in payload) {
-        payloadSignature = resumePayload.signature;
+      for (const candidate of candidatePayloads) {
+        if (!payloadToken) {
+          if (typeof candidate.resumeToken === 'string') {
+            payloadToken = candidate.resumeToken;
+          } else if (typeof candidate.resume_token === 'string') {
+            payloadToken = candidate.resume_token;
+          } else if (typeof candidate.token === 'string') {
+            payloadToken = candidate.token;
+          }
+        }
+
+        if (!payloadSignature) {
+          if (typeof candidate.resumeSignature === 'string') {
+            payloadSignature = candidate.resumeSignature;
+          } else if (typeof candidate.resume_signature === 'string') {
+            payloadSignature = candidate.resume_signature;
+          } else if (typeof candidate.signature === 'string') {
+            payloadSignature = candidate.signature;
+          }
+        }
       }
     }
 
@@ -1364,21 +1378,40 @@ export class WebhookManager {
 
       const resumeRequest = this.extractResumeCallback(event);
       if (resumeRequest) {
-        const consumed = await executionResumeTokenService.consumeToken({
+        const consumption = await executionResumeTokenService.consume({
           token: resumeRequest.token,
           signature: resumeRequest.signature,
           organizationId: event.organizationId,
         });
 
-        if (!consumed) {
+        if (consumption.status === 'invalid') {
           await this.persistence.markWebhookEventProcessed(logId, {
             success: false,
-            error: 'invalid_resume_token',
+            error: `resume_${consumption.reason}`,
             region: event.region ?? this.workerRegion,
           });
           return false;
         }
 
+        if (consumption.status === 'expired') {
+          await this.persistence.markWebhookEventProcessed(logId, {
+            success: false,
+            error: `resume_${consumption.reason}`,
+            region: event.region ?? this.workerRegion,
+          });
+          return false;
+        }
+
+        if (consumption.status === 'error') {
+          await this.persistence.markWebhookEventProcessed(logId, {
+            success: false,
+            error: 'resume_error',
+            region: event.region ?? this.workerRegion,
+          });
+          return false;
+        }
+
+        const consumed = consumption.record;
         const queueService = await this.getQueueService();
         if (typeof queueService.enqueueResume !== 'function') {
           console.warn('⚠️ Queue service does not support resume callbacks; dropping event.');

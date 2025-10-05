@@ -47,12 +47,42 @@ type ConsumedTokenResult = ResumeTokenRecord & {
   tokenId: string;
 };
 
+type ConsumeSuccessResult = {
+  status: 'success';
+  record: ConsumedTokenResult;
+};
+
+type ConsumeInvalidResult = {
+  status: 'invalid';
+  reason: 'token_missing' | 'signature_invalid' | 'not_found' | 'context_mismatch';
+  message?: string;
+};
+
+type ConsumeExpiredResult = {
+  status: 'expired';
+  reason: 'expired' | 'consumed';
+  expiresAt?: Date;
+  consumedAt?: Date | null;
+};
+
+type ConsumeErrorResult = {
+  status: 'error';
+  message: string;
+};
+
+export type ConsumeResult =
+  | ConsumeSuccessResult
+  | ConsumeInvalidResult
+  | ConsumeExpiredResult
+  | ConsumeErrorResult;
+
 const DEFAULT_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 class ExecutionResumeTokenService {
   private static instance: ExecutionResumeTokenService;
   private readonly memoryStore = new Map<string, ResumeTokenRecord>();
   private readonly memoryIndex = new Map<string, string>();
+  private readonly memoryConsumed = new Map<string, { expiresAt: Date; consumedAt: Date | null }>();
 
   private constructor() {}
 
@@ -99,43 +129,58 @@ class ExecutionResumeTokenService {
   }
 
   private useMemoryStore(): boolean {
+    if (process.env.EXECUTION_RESUME_FORCE_MEMORY === 'true') {
+      return true;
+    }
     return !db;
   }
 
   private storeInMemory(record: ResumeTokenRecord & { token: string }): void {
     this.memoryStore.set(record.id, record);
     this.memoryIndex.set(this.hashToken(record.token), record.id);
+    this.memoryConsumed.delete(this.hashToken(record.token));
   }
 
-  private consumeFromMemory(params: ConsumeTokenParams): ConsumedTokenResult | null {
+  private consumeFromMemory(params: ConsumeTokenParams): ConsumeResult {
     const now = Date.now();
     const tokenHash = this.hashToken(params.token);
     const recordId = this.memoryIndex.get(tokenHash);
     if (!recordId) {
-      return null;
+      const consumed = this.memoryConsumed.get(tokenHash);
+      if (consumed) {
+        return { status: 'expired', reason: 'consumed', expiresAt: consumed.expiresAt, consumedAt: consumed.consumedAt };
+      }
+      return { status: 'invalid', reason: 'not_found' };
     }
     const stored = this.memoryStore.get(recordId);
     if (!stored) {
       this.memoryIndex.delete(tokenHash);
-      return null;
+      const consumed = this.memoryConsumed.get(tokenHash);
+      if (consumed) {
+        return { status: 'expired', reason: 'consumed', expiresAt: consumed.expiresAt, consumedAt: consumed.consumedAt };
+      }
+      return { status: 'invalid', reason: 'not_found' };
     }
     if (stored.expiresAt.getTime() <= now) {
       this.memoryStore.delete(recordId);
       this.memoryIndex.delete(tokenHash);
-      return null;
+      this.memoryConsumed.set(tokenHash, { expiresAt: stored.expiresAt, consumedAt: stored.expiresAt });
+      return { status: 'expired', reason: 'expired', expiresAt: stored.expiresAt, consumedAt: stored.expiresAt };
     }
     if (params.executionId && params.executionId !== stored.executionId) {
-      return null;
+      return { status: 'invalid', reason: 'context_mismatch' };
     }
     if (params.nodeId && params.nodeId !== stored.nodeId) {
-      return null;
+      return { status: 'invalid', reason: 'context_mismatch' };
     }
     if (params.organizationId && params.organizationId !== stored.organizationId) {
-      return null;
+      return { status: 'invalid', reason: 'context_mismatch' };
     }
     this.memoryStore.delete(recordId);
     this.memoryIndex.delete(tokenHash);
-    return { ...stored, tokenId: recordId };
+    const consumedAt = new Date();
+    this.memoryConsumed.set(tokenHash, { expiresAt: stored.expiresAt, consumedAt });
+    return { status: 'success', record: { ...stored, tokenId: recordId } };
   }
 
   public async issueToken(
@@ -235,34 +280,73 @@ class ExecutionResumeTokenService {
     }
   }
 
-  public async consumeToken(params: ConsumeTokenParams): Promise<ConsumedTokenResult | null> {
-    if (!params.token) {
-      return null;
+  public async consume(params: ConsumeTokenParams): Promise<ConsumeResult> {
+    const token = typeof params.token === 'string' ? params.token.trim() : '';
+    if (!token) {
+      return { status: 'invalid', reason: 'token_missing' };
     }
-    if (!this.verifySignature(params.token, params.signature ?? null)) {
-      return null;
+    if (!this.verifySignature(token, params.signature ?? null)) {
+      return { status: 'invalid', reason: 'signature_invalid' };
     }
 
     if (this.useMemoryStore()) {
-      return this.consumeFromMemory(params);
+      return this.consumeFromMemory({ ...params, token });
     }
 
     try {
-      const tokenHash = this.hashToken(params.token);
+      const tokenHash = this.hashToken(token);
+      const [existing] = await db
+        .select({
+          id: executionResumeTokens.id,
+          executionId: executionResumeTokens.executionId,
+          workflowId: executionResumeTokens.workflowId,
+          organizationId: executionResumeTokens.organizationId,
+          nodeId: executionResumeTokens.nodeId,
+          userId: executionResumeTokens.userId,
+          resumeState: executionResumeTokens.resumeState,
+          initialData: executionResumeTokens.initialData,
+          triggerType: executionResumeTokens.triggerType,
+          waitUntil: executionResumeTokens.waitUntil,
+          metadata: executionResumeTokens.metadata,
+          expiresAt: executionResumeTokens.expiresAt,
+          consumedAt: executionResumeTokens.consumedAt,
+        })
+        .from(executionResumeTokens)
+        .where(eq(executionResumeTokens.tokenHash, tokenHash))
+        .limit(1);
+
+      if (!existing) {
+        return { status: 'invalid', reason: 'not_found' };
+      }
+
+      if (params.executionId && params.executionId !== existing.executionId) {
+        return { status: 'invalid', reason: 'context_mismatch' };
+      }
+      if (params.nodeId && params.nodeId !== existing.nodeId) {
+        return { status: 'invalid', reason: 'context_mismatch' };
+      }
+      if (params.organizationId && params.organizationId !== existing.organizationId) {
+        return { status: 'invalid', reason: 'context_mismatch' };
+      }
+
       const now = new Date();
-      const conditions = [
-        eq(executionResumeTokens.tokenHash, tokenHash),
-        sql`${executionResumeTokens.consumedAt} IS NULL`,
-        sql`${executionResumeTokens.expiresAt} > ${now}`,
-      ];
-      if (params.executionId) {
-        conditions.push(eq(executionResumeTokens.executionId, params.executionId));
+
+      if (existing.consumedAt) {
+        return {
+          status: 'expired',
+          reason: 'consumed',
+          expiresAt: existing.expiresAt,
+          consumedAt: existing.consumedAt,
+        };
       }
-      if (params.nodeId) {
-        conditions.push(eq(executionResumeTokens.nodeId, params.nodeId));
-      }
-      if (params.organizationId) {
-        conditions.push(eq(executionResumeTokens.organizationId, params.organizationId));
+
+      if (existing.expiresAt.getTime() <= now.getTime()) {
+        return {
+          status: 'expired',
+          reason: 'expired',
+          expiresAt: existing.expiresAt,
+          consumedAt: existing.consumedAt ?? existing.expiresAt,
+        };
       }
 
       const [updated] = await db
@@ -271,7 +355,13 @@ class ExecutionResumeTokenService {
           consumedAt: now,
           updatedAt: now,
         })
-        .where(and(...conditions))
+        .where(
+          and(
+            eq(executionResumeTokens.id, existing.id),
+            sql`${executionResumeTokens.consumedAt} IS NULL`,
+            sql`${executionResumeTokens.expiresAt} > ${now}`,
+          ),
+        )
         .returning({
           id: executionResumeTokens.id,
           executionId: executionResumeTokens.executionId,
@@ -288,27 +378,43 @@ class ExecutionResumeTokenService {
         });
 
       if (!updated) {
-        return null;
+        return {
+          status: 'expired',
+          reason: 'consumed',
+          expiresAt: existing.expiresAt,
+          consumedAt: existing.consumedAt ?? now,
+        };
       }
 
       return {
-        tokenId: updated.id,
-        executionId: updated.executionId,
-        workflowId: updated.workflowId,
-        organizationId: updated.organizationId,
-        nodeId: updated.nodeId,
-        userId: updated.userId ?? null,
-        resumeState: updated.resumeState as WorkflowResumeState,
-        initialData: updated.initialData,
-        triggerType: updated.triggerType,
-        waitUntil: updated.waitUntil ?? null,
-        metadata: (updated.metadata ?? {}) as Record<string, any>,
-        expiresAt: updated.expiresAt,
+        status: 'success',
+        record: {
+          tokenId: updated.id,
+          executionId: updated.executionId,
+          workflowId: updated.workflowId,
+          organizationId: updated.organizationId,
+          nodeId: updated.nodeId,
+          userId: updated.userId ?? null,
+          resumeState: updated.resumeState as WorkflowResumeState,
+          initialData: updated.initialData,
+          triggerType: updated.triggerType,
+          waitUntil: updated.waitUntil ?? null,
+          metadata: (updated.metadata ?? {}) as Record<string, any>,
+          expiresAt: updated.expiresAt,
+        },
       };
     } catch (error) {
       console.error('Failed to consume execution resume token:', getErrorMessage(error));
-      return null;
+      return { status: 'error', message: getErrorMessage(error) };
     }
+  }
+
+  public async consumeToken(params: ConsumeTokenParams): Promise<ConsumedTokenResult | null> {
+    const result = await this.consume(params);
+    if (result.status === 'success') {
+      return result.record;
+    }
+    return null;
   }
 }
 
