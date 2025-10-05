@@ -26,12 +26,21 @@ function resolveRegionKey(region?: OrganizationRegion): string {
 
 let redisHelpLogged = false;
 
+function describeRedisTarget(connection: RedisOptions): string {
+  const scheme = connection.tls ? 'rediss' : 'redis';
+  const host = connection.host ?? '127.0.0.1';
+  const port = connection.port ?? 6379;
+  const db = connection.db ?? 0;
+  const username = connection.username ? `${connection.username}@` : '';
+  return `${scheme}://${username}${host}:${port}/${db}`;
+}
+
 function logRedisConnectivityHelp(connection: RedisOptions, explanation: string) {
   if (redisHelpLogged) {
     return;
   }
 
-  const location = `${connection.host ?? '127.0.0.1'}:${connection.port ?? 6379}/${connection.db ?? 0}`;
+  const location = describeRedisTarget(connection);
   const instructions = [
     `[queue] Redis connection failed: ${explanation}`,
     `[queue] Attempted connection: ${location}`,
@@ -42,6 +51,11 @@ function logRedisConnectivityHelp(connection: RedisOptions, explanation: string)
 
   console.error(instructions);
   redisHelpLogged = true;
+}
+
+export function getRedisTargetLabel(region?: OrganizationRegion): string {
+  const connection = getRedisConnectionOptions(region);
+  return describeRedisTarget(connection);
 }
 
 async function pingRedis(region?: OrganizationRegion): Promise<QueueHealthStatus> {
@@ -132,16 +146,29 @@ export async function assertQueueIsReady(options: {
   region?: OrganizationRegion;
 }): Promise<void> {
   const status = await checkQueueHealth(options.region);
+  const target = getRedisTargetLabel(options.region);
 
   if (!status.durable) {
-    throw new QueueDriverUnavailableError(
-      `[Queue] ${options.context} requires a durable BullMQ queue. Current driver is set to in-memory mode.`
-    );
+    const message = [
+      `[Queue] ${options.context} requires a durable BullMQ queue. Current driver is set to in-memory mode.`,
+      `[Queue] Configure QUEUE_REDIS_HOST/PORT/DB (and optional QUEUE_REDIS_USERNAME/QUEUE_REDIS_PASSWORD/QUEUE_REDIS_TLS) so the worker can reach Redis at ${target}.`,
+      '[Queue] Validate the deployment with GET /api/production/queue/heartbeat before routing workload.',
+      '[Queue] See docs/operations/queue.md#environment-variables for full configuration guidance.',
+    ].join('\n');
+
+    console.error(message);
+    throw new QueueDriverUnavailableError(message);
   }
 
   if (status.status !== 'pass') {
-    throw new QueueDriverUnavailableError(
-      `[Queue] ${options.context} cannot start because Redis is unavailable: ${status.message}`
-    );
+    const remediation = [
+      `[Queue] ${options.context} cannot start because Redis is unavailable: ${status.message}`,
+      `[Queue] Attempted Redis target: ${target}`,
+      '[Queue] Confirm QUEUE_REDIS_HOST/PORT/DB values (plus QUEUE_REDIS_USERNAME/QUEUE_REDIS_PASSWORD/QUEUE_REDIS_TLS when required).',
+      '[Queue] Use GET /api/production/queue/heartbeat for live diagnostics or consult docs/operations/queue.md#environment-variables.',
+    ].join('\n');
+
+    console.error(remediation);
+    throw new QueueDriverUnavailableError(remediation, status.error ? { cause: new Error(status.error) } : undefined);
   }
 }

@@ -125,8 +125,8 @@ REDIS_URL=redis://localhost:6379
 QUEUE_REDIS_HOST=redis.production.example.com
 QUEUE_REDIS_PORT=6379
 QUEUE_REDIS_DB=0
-# QUEUE_REDIS_USERNAME=your-redis-username
-# QUEUE_REDIS_PASSWORD=your-redis-password
+QUEUE_REDIS_USERNAME=queue-user
+QUEUE_REDIS_PASSWORD=super-secure-password
 QUEUE_REDIS_TLS=true
 ELASTICSEARCH_URL=http://localhost:9200
 

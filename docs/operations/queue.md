@@ -4,7 +4,9 @@ This service uses [BullMQ](https://docs.bullmq.io/) backed by Redis for all back
 
 ## Environment variables
 
-Set the following variables to configure the Redis connection that BullMQ should use:
+Set the following variables to configure the Redis connection that BullMQ should use. The defaults mirror `server/env.ts` so
+local development falls back to `127.0.0.1:6379/0`, but production deployments **must** provide explicit values either through
+your managed secret store (see `docs/operations/secret-management.md`) or the deployment environment:
 
 | Variable | Description | Default |
 | --- | --- | --- |
@@ -13,7 +15,7 @@ Set the following variables to configure the Redis connection that BullMQ should
 | `QUEUE_REDIS_DB` | Logical Redis database index. | `0` |
 | `QUEUE_REDIS_USERNAME` | Optional Redis username when ACLs are enabled. | _empty_ |
 | `QUEUE_REDIS_PASSWORD` | Optional Redis password. | _empty_ |
-| `QUEUE_REDIS_TLS` | Set to `true` to enable TLS connections. | `false` |
+| `QUEUE_REDIS_TLS` | Set to `true` to enable TLS connections (`rediss://`). | `false` |
 | `QUEUE_METRICS_INTERVAL_MS` | Interval (ms) for periodic queue metrics collection/logging. | `60000` |
 | `QUEUE_DRIVER` | Override the queue implementation. Set to `inmemory` only for isolated tests. | _empty_ |
 | `EXECUTION_WORKER_CONCURRENCY` | Maximum number of workflow jobs processed concurrently across all tenants. | `2` |
@@ -107,7 +109,7 @@ When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS
 
 ## Queue health & readiness
 
-Worker processes call `assertQueueIsReady` during startup and exit immediately if the BullMQ connection cannot be established. The `/api/health` endpoint now reports the queue status, latency, and durability, while `/api/health/ready` returns `503` whenever Redis is unreachable or the queue is running in in-memory mode. Use these probes in Kubernetes or container orchestrators to ensure the workers only receive traffic when the queue is durable.
+Worker processes call `assertQueueIsReady` during startup and exit immediately if the BullMQ connection cannot be established. If Redis is unreachable the error now includes the exact target (e.g. `rediss://queue-user@redis.internal:6380/1`) and remediation hints that point to `/api/production/queue/heartbeat` and this guide. Run `npm run check:queue` (or `tsx scripts/check-queue-readiness.ts`) in CI/CD pipelines to fail fast when the queue is misconfigured before the API or worker containers begin accepting workload. The `/api/health` endpoint now reports the queue status, latency, and durability, while `/api/health/ready` returns `503` whenever Redis is unreachable or the queue is running in in-memory mode. Use these probes in Kubernetes or container orchestrators to ensure the workers only receive traffic when the queue is durable.
 
 ## Telemetry & metrics helpers
 

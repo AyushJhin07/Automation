@@ -105,6 +105,19 @@ GEMINI_API_KEY=your-production-gemini-key
 JWT_SECRET=your-secure-jwt-secret-32-chars-minimum
 BCRYPT_ROUNDS=12
 
+# Queue (BullMQ via Redis)
+QUEUE_REDIS_HOST=redis.production.example.com
+QUEUE_REDIS_PORT=6379
+QUEUE_REDIS_DB=0
+QUEUE_REDIS_USERNAME=queue-user
+QUEUE_REDIS_PASSWORD=super-secure-password
+QUEUE_REDIS_TLS=true
+
+# Queue validation (run before routing traffic)
+npm run check:queue
+curl -fsS "${API_ORIGIN:-https://api.yourdomain.com}/api/production/queue/heartbeat" \
+  | jq '{status: .status.status, message: .status.message, queueDepths: .queueDepths}'
+
 # Performance
 MAX_CONCURRENT_BUILDS=10
 BUILD_TIMEOUT_MS=300000
