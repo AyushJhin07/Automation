@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from "./storage";
@@ -143,6 +143,45 @@ export async function registerRoutes(app: Express): Promise<void> {
     : { windowMs: 60000, maxRequests: 100 };   // 100 requests per minute in production
 
   app.use(securityService.createRateLimiter(rateLimitConfig));
+
+  const webhookRawParser = express.raw({ type: '*/*' });
+  app.use('/api/webhooks', (req, res, next) => {
+    webhookRawParser(req, res, (err: any) => {
+      if (err) {
+        return next(err);
+      }
+
+      const buffer = req.body;
+      if (buffer instanceof Buffer) {
+        (req as any).rawBody = buffer;
+
+        const contentTypeHeader = req.headers['content-type'];
+        const contentType = Array.isArray(contentTypeHeader)
+          ? contentTypeHeader[0]
+          : contentTypeHeader ?? '';
+        const isJsonContent = typeof contentType === 'string' && contentType.toLowerCase().includes('json');
+
+        if (isJsonContent) {
+          if (buffer.length === 0) {
+            req.body = {};
+          } else {
+            try {
+              req.body = JSON.parse(buffer.toString('utf8'));
+            } catch (_error) {
+              const parseError = new SyntaxError('Invalid JSON in webhook payload');
+              (parseError as any).status = 400;
+              (parseError as any).type = 'entity.parse.failed';
+              return next(parseError);
+            }
+          }
+        } else {
+          req.body = buffer;
+        }
+      }
+
+      return next();
+    });
+  });
 
   app.use('/api/runs', executionResumeRouter);
 
@@ -3214,7 +3253,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     const { webhookId } = req.params;
     const headers = req.headers as Record<string, string>;
     const payload = req.body;
-    const rawBody = (req as any).rawBody || JSON.stringify(payload);
+    const rawBody = (req as any).rawBody ?? (payload ? JSON.stringify(payload) : undefined);
 
     return webhookManager.handleWebhook(webhookId, payload, headers, rawBody);
   };
