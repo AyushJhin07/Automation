@@ -148,6 +148,13 @@ export class WorkflowRepository {
   private static memoryWorkflowDeployments = new Map<string, MemoryWorkflowDeploymentRecord[]>();
   private static cachedSystemUserId: string | null = null;
 
+  private static ensureOrganizationId(organizationId: string | null | undefined): string {
+    if (typeof organizationId !== 'string' || organizationId.trim().length === 0) {
+      throw new Error('organizationId is required');
+    }
+    return organizationId;
+  }
+
   private static isDatabaseEnabled(): boolean {
     return isDatabaseAvailable();
   }
@@ -730,6 +737,7 @@ export class WorkflowRepository {
     workflowId: string,
     organizationId: string,
   ): Promise<WorkflowVersionRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!this.isDatabaseEnabled()) {
       return this.findLatestMemoryVersion(workflowId);
     }
@@ -740,7 +748,7 @@ export class WorkflowRepository {
       .where(
         and(
           eq(workflowVersions.workflowId, workflowId),
-          eq(workflowVersions.organizationId, organizationId),
+          eq(workflowVersions.organizationId, requiredOrganizationId),
         ),
       )
       .orderBy(desc(workflowVersions.versionNumber))
@@ -754,6 +762,7 @@ export class WorkflowRepository {
     versionId: string,
     organizationId: string,
   ): Promise<WorkflowVersionRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!this.isDatabaseEnabled()) {
       return this.getMemoryVersionById(workflowId, versionId);
     }
@@ -765,7 +774,7 @@ export class WorkflowRepository {
         and(
           eq(workflowVersions.id, versionId),
           eq(workflowVersions.workflowId, workflowId),
-          eq(workflowVersions.organizationId, organizationId),
+          eq(workflowVersions.organizationId, requiredOrganizationId),
         ),
       )
       .limit(1);
@@ -778,8 +787,9 @@ export class WorkflowRepository {
     organizationId: string,
     environment: WorkflowEnvironment,
   ): Promise<WorkflowDeploymentRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!this.isDatabaseEnabled()) {
-      return this.getMemoryDeployment(workflowId, organizationId, environment);
+      return this.getMemoryDeployment(workflowId, requiredOrganizationId, environment);
     }
 
     const aliases = this.getEnvironmentAliases(environment);
@@ -790,7 +800,7 @@ export class WorkflowRepository {
       .where(
         and(
           eq(workflowDeployments.workflowId, workflowId),
-          eq(workflowDeployments.organizationId, organizationId),
+          eq(workflowDeployments.organizationId, requiredOrganizationId),
           inArray(workflowDeployments.environment, aliases),
           eq(workflowDeployments.isActive, true),
         ),
@@ -811,12 +821,13 @@ export class WorkflowRepository {
     organizationId: string,
     deploymentId: string,
   ): Promise<WorkflowDeploymentRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!this.isDatabaseEnabled()) {
       const deployments = this.memoryWorkflowDeployments.get(workflowId) ?? [];
       return (
         deployments.find(
           (deployment) =>
-            deployment.id === deploymentId && deployment.organizationId === organizationId,
+            deployment.id === deploymentId && deployment.organizationId === requiredOrganizationId,
         ) ?? null
       );
     }
@@ -828,7 +839,7 @@ export class WorkflowRepository {
         and(
           eq(workflowDeployments.id, deploymentId),
           eq(workflowDeployments.workflowId, workflowId),
-          eq(workflowDeployments.organizationId, organizationId),
+          eq(workflowDeployments.organizationId, requiredOrganizationId),
         ),
       )
       .limit(1);
@@ -946,13 +957,14 @@ export class WorkflowRepository {
   }
 
   public static async getWorkflowById(id: string, organizationId: string): Promise<WorkflowRecord | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!id) {
       return null;
     }
 
     if (!this.isDatabaseEnabled()) {
       const record = this.memoryWorkflows.get(id);
-      if (!record || record.organizationId !== organizationId) {
+      if (!record || record.organizationId !== requiredOrganizationId) {
         return null;
       }
 
@@ -979,7 +991,7 @@ export class WorkflowRepository {
     const result = await db
       .select()
       .from(workflows)
-      .where(and(eq(workflows.id, id), eq(workflows.organizationId, organizationId)))
+      .where(and(eq(workflows.id, id), eq(workflows.organizationId, requiredOrganizationId)))
       .limit(1);
 
     if (result.length === 0) {
@@ -994,7 +1006,7 @@ export class WorkflowRepository {
       .where(
         and(
           eq(workflowVersions.workflowId, id),
-          eq(workflowVersions.organizationId, organizationId),
+          eq(workflowVersions.organizationId, requiredOrganizationId),
         ),
       )
       .orderBy(desc(workflowVersions.versionNumber))
@@ -1015,12 +1027,13 @@ export class WorkflowRepository {
   }
 
   public static async listWorkflows(options: ListWorkflowOptions): Promise<WorkflowListResult> {
+    const organizationId = this.ensureOrganizationId(options.organizationId);
     const limit = this.sanitizeLimit(options.limit);
     const offset = this.sanitizeOffset(options.offset);
 
     if (!this.isDatabaseEnabled()) {
       const all = Array.from(this.memoryWorkflows.values());
-      const filteredByOrg = all.filter((workflow) => workflow.organizationId === options.organizationId);
+      const filteredByOrg = all.filter((workflow) => workflow.organizationId === organizationId);
       const filtered = options.search
         ? filteredByOrg.filter((workflow) =>
             workflow.name.toLowerCase().includes(options.search!.toLowerCase()) ||
@@ -1058,7 +1071,7 @@ export class WorkflowRepository {
       };
     }
 
-    const conditions: any[] = [eq(workflows.organizationId, options.organizationId)];
+    const conditions: any[] = [eq(workflows.organizationId, organizationId)];
 
     if (options.userId) {
       conditions.push(eq(workflows.userId, options.userId));
@@ -1102,7 +1115,7 @@ export class WorkflowRepository {
         .where(
           and(
             inArray(workflowVersions.workflowId, workflowIds),
-            eq(workflowVersions.organizationId, options.organizationId),
+            eq(workflowVersions.organizationId, organizationId),
           ),
         )
         .orderBy(desc(workflowVersions.versionNumber));
@@ -1137,13 +1150,14 @@ export class WorkflowRepository {
   }
 
   public static async deleteWorkflow(id: string, organizationId: string): Promise<boolean> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!id) {
       return false;
     }
 
     if (!this.isDatabaseEnabled()) {
       const record = this.memoryWorkflows.get(id);
-      if (!record || record.organizationId !== organizationId) {
+      if (!record || record.organizationId !== requiredOrganizationId) {
         return false;
       }
       this.memoryWorkflowVersions.delete(id);
@@ -1153,7 +1167,7 @@ export class WorkflowRepository {
 
     const result = await db
       .delete(workflows)
-      .where(and(eq(workflows.id, id), eq(workflows.organizationId, organizationId)))
+      .where(and(eq(workflows.id, id), eq(workflows.organizationId, requiredOrganizationId)))
       .returning({ id: workflows.id });
     return result.length > 0;
   }
@@ -1168,6 +1182,7 @@ export class WorkflowRepository {
     rollbackOfDeploymentId?: string | null;
   }): Promise<PublishWorkflowResult> {
     const environment = this.normalizeEnvironment(params.environment);
+    const organizationId = this.ensureOrganizationId(params.organizationId);
     if (environment === 'draft') {
       throw new Error('Draft environment cannot be published');
     }
@@ -1176,7 +1191,7 @@ export class WorkflowRepository {
 
     if (!this.isDatabaseEnabled()) {
       const workflow = this.memoryWorkflows.get(params.workflowId);
-      if (!workflow || workflow.organizationId !== params.organizationId) {
+      if (!workflow || workflow.organizationId !== organizationId) {
         throw new Error('Workflow not found for organization');
       }
 
@@ -1207,7 +1222,7 @@ export class WorkflowRepository {
       const deployments = this.memoryWorkflowDeployments.get(params.workflowId) ?? [];
       const activeDeploymentRecord = deployments.find(
         (deployment) =>
-          deployment.organizationId === params.organizationId &&
+          deployment.organizationId === organizationId &&
           deployment.environment === environment &&
           deployment.isActive,
       );
@@ -1221,7 +1236,7 @@ export class WorkflowRepository {
 
       const deactivated = deployments.map((deployment) => {
         if (
-          deployment.organizationId === params.organizationId &&
+          deployment.organizationId === organizationId &&
           deployment.environment === environment &&
           deployment.isActive
         ) {
@@ -1233,7 +1248,7 @@ export class WorkflowRepository {
       const newDeployment: MemoryWorkflowDeploymentRecord = {
         id: randomUUID(),
         workflowId: params.workflowId,
-        organizationId: params.organizationId,
+        organizationId,
         versionId: updatedVersion.id,
         environment,
         isActive: true,
@@ -1254,9 +1269,9 @@ export class WorkflowRepository {
     let version: WorkflowVersionRow | null = null;
 
     if (params.versionId) {
-      version = await this.getVersionRecordById(params.workflowId, params.versionId, params.organizationId);
+      version = await this.getVersionRecordById(params.workflowId, params.versionId, organizationId);
     } else {
-      version = await this.getLatestVersionRecord(params.workflowId, params.organizationId);
+      version = await this.getLatestVersionRecord(params.workflowId, organizationId);
     }
 
     if (!version) {
@@ -1276,17 +1291,17 @@ export class WorkflowRepository {
 
     const activeDeployment = await this.getActiveDeploymentRecord(
       params.workflowId,
-      params.organizationId,
+      organizationId,
       environment,
     );
 
     let activeVersionGraph: Record<string, any> | null = null;
     if (activeDeployment) {
-      const activeVersion = await this.getVersionRecordById(
-        params.workflowId,
-        activeDeployment.versionId,
-        params.organizationId,
-      );
+        const activeVersion = await this.getVersionRecordById(
+          params.workflowId,
+          activeDeployment.versionId,
+          organizationId,
+        );
       activeVersionGraph = activeVersion?.graph ?? null;
     }
 
@@ -1302,7 +1317,7 @@ export class WorkflowRepository {
 
     const deploymentValues: WorkflowDeploymentInsert = {
       workflowId: params.workflowId,
-      organizationId: params.organizationId,
+      organizationId,
       versionId: version.id,
       environment,
       isActive: true,
@@ -1329,10 +1344,11 @@ export class WorkflowRepository {
     environment: WorkflowEnvironment | string;
   }): Promise<WorkflowDiffResult> {
     const environment = this.normalizeEnvironment(params.environment);
+    const organizationId = this.ensureOrganizationId(params.organizationId);
 
     const [draftVersion, activeDeployment] = await Promise.all([
-      this.getLatestVersionRecord(params.workflowId, params.organizationId),
-      this.getActiveDeploymentRecord(params.workflowId, params.organizationId, environment),
+      this.getLatestVersionRecord(params.workflowId, organizationId),
+      this.getActiveDeploymentRecord(params.workflowId, organizationId, environment),
     ]);
 
     let deployedVersion: WorkflowVersionRow | null = null;
@@ -1340,7 +1356,7 @@ export class WorkflowRepository {
       deployedVersion = await this.getVersionRecordById(
         params.workflowId,
         activeDeployment.versionId,
-        params.organizationId,
+        organizationId,
       );
     }
 
@@ -1357,16 +1373,17 @@ export class WorkflowRepository {
     organizationId: string;
     limit?: number;
   }): Promise<WorkflowVersionHistory> {
+    const organizationId = this.ensureOrganizationId(params.organizationId);
     const limit = params.limit ? this.sanitizeLimit(params.limit) : 50;
 
     if (!this.isDatabaseEnabled()) {
       const versions = [...(this.memoryWorkflowVersions.get(params.workflowId) ?? [])]
-        .filter((version) => version.organizationId === params.organizationId)
+        .filter((version) => version.organizationId === organizationId)
         .sort((a, b) => b.versionNumber - a.versionNumber)
         .slice(0, limit);
 
       const deployments = [...(this.memoryWorkflowDeployments.get(params.workflowId) ?? [])]
-        .filter((deployment) => deployment.organizationId === params.organizationId)
+        .filter((deployment) => deployment.organizationId === organizationId)
         .sort((a, b) => {
           const aTime = a.deployedAt instanceof Date ? a.deployedAt.getTime() : 0;
           const bTime = b.deployedAt instanceof Date ? b.deployedAt.getTime() : 0;
@@ -1428,7 +1445,7 @@ export class WorkflowRepository {
         .where(
           and(
             eq(workflowVersions.workflowId, params.workflowId),
-            eq(workflowVersions.organizationId, params.organizationId),
+            eq(workflowVersions.organizationId, organizationId),
           ),
         )
         .orderBy(desc(workflowVersions.versionNumber))
@@ -1439,7 +1456,7 @@ export class WorkflowRepository {
         .where(
           and(
             eq(workflowDeployments.workflowId, params.workflowId),
-            eq(workflowDeployments.organizationId, params.organizationId),
+            eq(workflowDeployments.organizationId, organizationId),
           ),
         )
         .orderBy(desc(workflowDeployments.deployedAt)),
@@ -1464,7 +1481,7 @@ export class WorkflowRepository {
       if (versionsById.has(versionId)) {
         return versionsById.get(versionId)!;
       }
-      const record = await this.getVersionRecordById(params.workflowId, versionId, params.organizationId);
+      const record = await this.getVersionRecordById(params.workflowId, versionId, organizationId);
       if (record) {
         versions.push(record);
         versionsById.set(record.id, record);
@@ -1504,10 +1521,11 @@ export class WorkflowRepository {
     summary: WorkflowDiffSummary;
   }> {
     const environment = this.normalizeEnvironment(params.targetEnvironment);
+    const organizationId = this.ensureOrganizationId(params.organizationId);
     const version = await this.getVersionRecordById(
       params.workflowId,
       params.versionId,
-      params.organizationId,
+      organizationId,
     );
 
     if (!version) {
@@ -1526,7 +1544,7 @@ export class WorkflowRepository {
 
     const activeDeployment = await this.getActiveDeploymentRecord(
       params.workflowId,
-      params.organizationId,
+      organizationId,
       environment,
     );
 
@@ -1535,7 +1553,7 @@ export class WorkflowRepository {
       activeVersion = await this.getVersionRecordById(
         params.workflowId,
         activeDeployment.versionId,
-        params.organizationId,
+        organizationId,
       );
     }
 
@@ -1558,13 +1576,14 @@ export class WorkflowRepository {
     allowBreakingChanges?: boolean;
   }): Promise<PublishWorkflowResult> {
     const environment = this.normalizeEnvironment(params.targetEnvironment);
+    const organizationId = this.ensureOrganizationId(params.organizationId);
     if (environment === 'draft') {
       throw new Error('Cannot promote a version to the draft slot');
     }
 
     const diff = await this.getVersionDiffAgainstEnvironment({
       workflowId: params.workflowId,
-      organizationId: params.organizationId,
+      organizationId,
       versionId: params.versionId,
       targetEnvironment: environment,
     });
@@ -1581,7 +1600,7 @@ export class WorkflowRepository {
     if (environment === 'production') {
       const activeTestDeployment = await this.getActiveDeploymentRecord(
         params.workflowId,
-        params.organizationId,
+        organizationId,
         'test',
       );
 
@@ -1602,7 +1621,7 @@ export class WorkflowRepository {
 
     return this.publishWorkflowVersion({
       workflowId: params.workflowId,
-      organizationId: params.organizationId,
+      organizationId,
       environment,
       userId: params.userId,
       versionId: diff.version.id,
@@ -1620,13 +1639,14 @@ export class WorkflowRepository {
     metadata?: Record<string, any> | null;
   }): Promise<PublishWorkflowResult | null> {
     const environment = this.normalizeEnvironment(params.environment);
+    const organizationId = this.ensureOrganizationId(params.organizationId);
     if (environment === 'draft') {
       throw new Error('Cannot rollback the draft slot');
     }
 
     const activeDeployment = await this.getActiveDeploymentRecord(
       params.workflowId,
-      params.organizationId,
+      organizationId,
       environment,
     );
 
@@ -1639,7 +1659,7 @@ export class WorkflowRepository {
     if (params.deploymentId) {
       targetDeployment = await this.getDeploymentRecordById(
         params.workflowId,
-        params.organizationId,
+        organizationId,
         params.deploymentId,
       );
     } else if (!this.isDatabaseEnabled()) {
@@ -1647,7 +1667,7 @@ export class WorkflowRepository {
       const candidates = deployments
         .filter(
           (deployment) =>
-            deployment.organizationId === params.organizationId &&
+            deployment.organizationId === organizationId &&
             deployment.environment === environment &&
             !deployment.isActive,
         )
@@ -1664,7 +1684,7 @@ export class WorkflowRepository {
         .where(
           and(
             eq(workflowDeployments.workflowId, params.workflowId),
-            eq(workflowDeployments.organizationId, params.organizationId),
+            eq(workflowDeployments.organizationId, organizationId),
             eq(workflowDeployments.environment, environment),
             eq(workflowDeployments.isActive, false),
           ),
@@ -1680,7 +1700,7 @@ export class WorkflowRepository {
 
     return this.publishWorkflowVersion({
       workflowId: params.workflowId,
-      organizationId: params.organizationId,
+      organizationId,
       environment,
       userId: params.userId,
       versionId: targetDeployment.versionId,
@@ -1729,6 +1749,7 @@ export class WorkflowRepository {
   public static async claimNextQueuedExecution(
     organizationId: string,
   ): Promise<WorkflowExecutionRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!this.isDatabaseEnabled()) {
       return null;
     }
@@ -1740,7 +1761,7 @@ export class WorkflowRepository {
         SELECT id
         FROM ${workflowExecutions}
         WHERE status = 'queued'
-          AND ${workflowExecutions.organizationId} = ${organizationId}
+          AND ${workflowExecutions.organizationId} = ${requiredOrganizationId}
           AND (
             ${workflowExecutions.metadata} ->> 'nextRetryAt' IS NULL
             OR (${workflowExecutions.metadata} ->> 'nextRetryAt')::timestamptz <= ${now.toISOString()}
@@ -1754,7 +1775,7 @@ export class WorkflowRepository {
           started_at = ${now}
       FROM next_execution
       WHERE executions.id = next_execution.id
-        AND executions.organization_id = ${organizationId}
+        AND executions.organization_id = ${requiredOrganizationId}
       RETURNING executions.*;
     `);
 
@@ -1767,13 +1788,14 @@ export class WorkflowRepository {
     updates: UpdateWorkflowExecutionInput,
     organizationId: string,
   ): Promise<WorkflowExecutionRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!id) {
       return null;
     }
 
     if (!this.isDatabaseEnabled()) {
       const existing = this.memoryExecutions.get(id);
-      if (!existing || existing.organizationId !== organizationId) {
+      if (!existing || existing.organizationId !== requiredOrganizationId) {
         return null;
       }
 
@@ -1808,7 +1830,7 @@ export class WorkflowRepository {
       const [existing] = await db
         .select()
         .from(workflowExecutions)
-        .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
+        .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, requiredOrganizationId)))
         .limit(1);
       return existing ?? null;
     }
@@ -1816,7 +1838,7 @@ export class WorkflowRepository {
     const [result] = await db
       .update(workflowExecutions)
       .set(updateSet)
-      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
+      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, requiredOrganizationId)))
       .returning();
 
     return result ?? null;
@@ -1826,13 +1848,14 @@ export class WorkflowRepository {
     id: string,
     organizationId: string,
   ): Promise<WorkflowExecutionRow | null> {
+    const requiredOrganizationId = this.ensureOrganizationId(organizationId);
     if (!id) {
       return null;
     }
 
     if (!this.isDatabaseEnabled()) {
       const record = this.memoryExecutions.get(id);
-      if (!record || record.organizationId !== organizationId) {
+      if (!record || record.organizationId !== requiredOrganizationId) {
         return null;
       }
       return record;
@@ -1841,7 +1864,7 @@ export class WorkflowRepository {
     const result = await db
       .select()
       .from(workflowExecutions)
-      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, organizationId)))
+      .where(and(eq(workflowExecutions.id, id), eq(workflowExecutions.organizationId, requiredOrganizationId)))
       .limit(1);
 
     return result.length > 0 ? result[0] : null;
