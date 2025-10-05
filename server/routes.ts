@@ -2920,44 +2920,6 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // ===== WEBHOOK & TRIGGER MANAGEMENT ROUTES =====
   
-  // Handle incoming webhooks
-  app.post('/api/webhooks/:webhookId', async (req, res) => {
-    const startTime = Date.now();
-    
-    try {
-      const { webhookId } = req.params;
-      const payload = req.body;
-      const headers = req.headers as Record<string, string>;
-      
-      const success = await webhookManager.handleWebhook(webhookId, payload, headers);
-      
-      if (success) {
-        res.json({
-          success: true,
-          message: 'Webhook processed successfully',
-          webhookId,
-          timestamp: new Date(),
-          responseTime: Date.now() - startTime
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: 'Failed to process webhook',
-          webhookId,
-          responseTime: Date.now() - startTime
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Webhook endpoint error:', getErrorMessage(error));
-      res.status(500).json({
-        success: false,
-        error: getErrorMessage(error),
-        responseTime: Date.now() - startTime
-      });
-    }
-  });
-  
   // Register new webhook
   app.post('/api/webhooks/register', authenticateToken, async (req, res) => {
     const startTime = Date.now();
