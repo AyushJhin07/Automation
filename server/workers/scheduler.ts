@@ -122,6 +122,7 @@ async function main(): Promise<void> {
   console.log('🌍 Worker environment:', env.NODE_ENV);
 
   WebhookManager.configureQueueService(executionQueueService);
+  await executionQueueService.start();
 
   const intervalMs = Math.max(1000, Number.parseInt(process.env.TRIGGER_SCHEDULER_INTERVAL_MS ?? `${DEFAULT_INTERVAL_MS}`, 10));
   const batchSize = Math.max(1, Number.parseInt(process.env.TRIGGER_SCHEDULER_BATCH_SIZE ?? `${DEFAULT_BATCH_SIZE}`, 10));

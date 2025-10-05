@@ -41,16 +41,23 @@ export type {
 
 type QueueDriverName = 'bullmq' | 'inmemory';
 
+export class QueueDriverUnavailableError extends Error {
+  public readonly code = 'QUEUE_DRIVER_UNAVAILABLE';
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'QueueDriverUnavailableError';
+  }
+}
+
 type QueueDriverState = {
   name: QueueDriverName;
   memoryDriver: InMemoryQueueDriver | null;
-  warnedFallback: boolean;
 };
 
 const state: QueueDriverState = {
   name: resolveInitialDriver(),
   memoryDriver: null,
-  warnedFallback: false,
 };
 
 function resolveInitialDriver(): QueueDriverName {
@@ -104,29 +111,18 @@ function isRedisConnectionError(error: unknown): boolean {
   return indicativeMessages.some((needle) => lowered.includes(needle));
 }
 
-function switchToInMemoryDriver(reason?: unknown): void {
-  if (state.name === 'inmemory') {
-    return;
+function handleBullMQCreationError(error: unknown, context: string): never {
+  if (!isRedisConnectionError(error) || state.name === 'inmemory') {
+    throw error instanceof Error ? error : new Error(getErrorMessage(error));
   }
-  state.name = 'inmemory';
-  if (!state.warnedFallback) {
-    const explanation = reason ? getErrorMessage(reason) : 'unknown error';
-    console.warn(
-      `[Queue] Falling back to in-memory queue driver due to Redis issue: ${explanation}. Jobs will not be persisted.`
-    );
-    state.warnedFallback = true;
-  }
-}
 
-export function handleQueueDriverError(error: unknown): boolean {
-  if (state.name === 'inmemory') {
-    return false;
-  }
-  if (!isRedisConnectionError(error)) {
-    return false;
-  }
-  switchToInMemoryDriver(error);
-  return true;
+  const explanation = getErrorMessage(error);
+  const message =
+    `[Queue] Unable to connect to Redis while ${context}: ${explanation}. ` +
+    'Configure QUEUE_REDIS_* or ensure Redis is reachable. Set QUEUE_DRIVER=inmemory only for isolated testing.';
+
+  console.error(message);
+  throw new QueueDriverUnavailableError(message, { cause: error });
 }
 
 export function createQueue<Name extends QueueName, ResultType = unknown>(
@@ -137,10 +133,7 @@ export function createQueue<Name extends QueueName, ResultType = unknown>(
     try {
       return createBullQueue<Name, ResultType>(name, options);
     } catch (error) {
-      if (handleQueueDriverError(error)) {
-        return createQueue<Name, ResultType>(name, options);
-      }
-      throw error;
+      handleBullMQCreationError(error, `creating queue "${String(name)}"`);
     }
   }
 
@@ -156,10 +149,7 @@ export function createWorker<Name extends QueueName, ResultType = unknown>(
     try {
       return createBullWorker<Name, ResultType>(name, processor, options);
     } catch (error) {
-      if (handleQueueDriverError(error)) {
-        return createWorker<Name, ResultType>(name, processor, options);
-      }
-      throw error;
+      handleBullMQCreationError(error, `creating worker for "${String(name)}"`);
     }
   }
 
@@ -174,10 +164,7 @@ export function createQueueEvents<Name extends QueueName>(
     try {
       return createBullQueueEvents<Name>(name, options);
     } catch (error) {
-      if (handleQueueDriverError(error)) {
-        return createQueueEvents<Name>(name, options);
-      }
-      throw error;
+      handleBullMQCreationError(error, `creating queue events for "${String(name)}"`);
     }
   }
 

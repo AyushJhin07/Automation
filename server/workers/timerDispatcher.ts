@@ -139,7 +139,7 @@ async function runDispatcher(): Promise<void> {
   }
 
   console.log('⏰ Starting workflow timer dispatcher');
-  executionQueueService.start();
+  await executionQueueService.start();
 
   let shuttingDown = false;
   const shutdown = async (signal: NodeJS.Signals) => {

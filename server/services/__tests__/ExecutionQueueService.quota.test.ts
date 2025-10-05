@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
 process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+process.env.QUEUE_DRIVER = 'inmemory';
 
 const { executionQueueService } = await import('../ExecutionQueueService.js');
 const {

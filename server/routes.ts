@@ -63,6 +63,7 @@ import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
 import usageAdminRoutes from "./routes/usage";
 import { getSchedulerLockService } from './services/SchedulerLockService.js';
+import { checkQueueHealth } from './services/QueueHealthService.js';
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -2223,6 +2224,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const executionTelemetry = executionQueueService.getTelemetrySnapshot();
       const schedulerTelemetry = getSchedulerLockService().getTelemetrySnapshot();
+      const queueHealth = await checkQueueHealth();
 
       res.json({
         success: true,
@@ -2230,6 +2232,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           timestamp: new Date().toISOString(),
           executionWorker: executionTelemetry,
           scheduler: schedulerTelemetry,
+          queue: queueHealth,
         },
       });
     } catch (error) {

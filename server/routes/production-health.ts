@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { LLMProviderService } from '../services/LLMProviderService.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
+import { checkQueueHealth } from '../services/QueueHealthService.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ interface HealthStatus {
     llm: HealthCheck;
     workflows: HealthCheck;
     memory: HealthCheck;
+    queue: HealthCheck;
     dependencies: HealthCheck;
   };
   metrics: {
@@ -41,8 +43,9 @@ interface HealthCheck {
 // Comprehensive health check endpoint
 router.get('/health', async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
+    const queueStatus = await checkQueueDurability();
     const healthStatus: HealthStatus = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -54,6 +57,7 @@ router.get('/health', async (req, res) => {
         llm: await checkLLMProviders(),
         workflows: await checkWorkflowRepository(),
         memory: checkMemoryUsage(),
+        queue: queueStatus,
         dependencies: checkDependencies()
       },
       metrics: {
@@ -138,17 +142,22 @@ router.get('/metrics', async (req, res) => {
 router.get('/ready', async (req, res) => {
   try {
     // Quick checks for readiness
+    const queueHealth = await checkQueueHealth();
     const checks = {
       llm: LLMProviderService.getProviderStatus().configured,
       environment: process.env.NODE_ENV === 'production',
-      dependencies: true // Would check actual dependencies
+      dependencies: true, // Would check actual dependencies
+      queue: queueHealth.status === 'pass' && queueHealth.durable,
     };
 
     const ready = Object.values(checks).every(check => check);
 
     res.status(ready ? 200 : 503).json({
       ready,
-      checks,
+      checks: {
+        ...checks,
+        queue: queueHealth,
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -318,6 +327,26 @@ function checkDependencies(): HealthCheck {
       responseTime: Date.now() - startTime
     };
   }
+}
+
+async function checkQueueDurability(): Promise<HealthCheck> {
+  const status = await checkQueueHealth();
+  const base: HealthCheck = {
+    status: status.status,
+    message: status.message,
+    responseTime: status.latencyMs ?? undefined,
+    details: {
+      durable: status.durable,
+      checkedAt: status.checkedAt,
+      error: status.error,
+    },
+  };
+
+  if (!status.durable || status.status !== 'pass') {
+    return { ...base, status: 'fail' };
+  }
+
+  return base;
 }
 
 export default router;
