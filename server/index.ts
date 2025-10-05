@@ -37,8 +37,26 @@ app.use((req, res, next) => {
   runWithRequestContext({ requestId: reqId }, () => next());
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+const jsonParser = express.json();
+const urlencodedParser = express.urlencoded({ extended: false });
+
+const shouldBypassStandardBodyParsers = (req: Request): boolean => {
+  return req.path.startsWith('/api/webhooks');
+};
+
+app.use((req, res, next) => {
+  if (shouldBypassStandardBodyParsers(req)) {
+    return next();
+  }
+  return jsonParser(req, res, next);
+});
+
+app.use((req, res, next) => {
+  if (shouldBypassStandardBodyParsers(req)) {
+    return next();
+  }
+  return urlencodedParser(req, res, next);
+});
 
 app.use((req, res, next) => {
   const routeSnapshot = req.path;

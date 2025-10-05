@@ -529,7 +529,7 @@ export class WebhookManager {
     webhook: WebhookTrigger,
     event: TriggerEvent,
     headers: Record<string, string>,
-    rawBody: string | undefined,
+    rawBody: string | Buffer | undefined,
     config: SignatureEnforcementConfig | null
   ): Promise<boolean> {
     const secret = webhook.secret ?? '';
@@ -756,7 +756,12 @@ export class WebhookManager {
   /**
    * Handle incoming webhook request
    */
-  async handleWebhook(webhookId: string, payload: any, headers: Record<string, string>, rawBody?: string): Promise<boolean> {
+  async handleWebhook(
+    webhookId: string,
+    payload: any,
+    headers: Record<string, string>,
+    rawBody?: string | Buffer,
+  ): Promise<boolean> {
     try {
       await this.ready;
 
