@@ -1,6 +1,6 @@
 # Queue & Worker Infrastructure
 
-This service uses [BullMQ](https://docs.bullmq.io/) backed by Redis for all background job processing when a Redis instance is available. The queue helpers in `server/queue/index.ts` select the BullMQ driver by default and fall back to an in-memory queue that mimics the BullMQ APIs used by the platform when Redis is unavailable. The utilities centralize queue configuration so that every queue, worker, and queue-events instance shares the same connection parameters, telemetry, and defaults.
+This service uses [BullMQ](https://docs.bullmq.io/) backed by Redis for all background job processing. The queue helpers in `server/queue/index.ts` require a healthy Redis connection and will terminate worker startup if the queue cannot be created. Set `QUEUE_DRIVER=inmemory` only for isolated unit tests; production and development workers must run against Redis so jobs are durable. The utilities centralize queue configuration so that every queue, worker, and queue-events instance shares the same connection parameters, telemetry, and defaults.
 
 ## Environment variables
 
@@ -15,6 +15,7 @@ Set the following variables to configure the Redis connection that BullMQ should
 | `QUEUE_REDIS_PASSWORD` | Optional Redis password. | _empty_ |
 | `QUEUE_REDIS_TLS` | Set to `true` to enable TLS connections. | `false` |
 | `QUEUE_METRICS_INTERVAL_MS` | Interval (ms) for periodic queue metrics collection/logging. | `60000` |
+| `QUEUE_DRIVER` | Override the queue implementation. Set to `inmemory` only for isolated tests. | _empty_ |
 | `EXECUTION_WORKER_CONCURRENCY` | Maximum number of workflow jobs processed concurrently across all tenants. | `2` |
 | `EXECUTION_TENANT_CONCURRENCY` | Maximum number of workflow jobs processed concurrently per tenant/organization. | `EXECUTION_WORKER_CONCURRENCY` |
 
@@ -61,7 +62,13 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command:
+      [
+        "redis-server",
+        "--save", "60", "1",
+        "--appendonly", "yes",
+        "--appendfsync", "everysec"
+      ]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -77,7 +84,11 @@ export QUEUE_REDIS_PORT=6379
 export QUEUE_REDIS_DB=0
 ```
 
-When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS_PASSWORD`, and `QUEUE_REDIS_TLS=true` accordingly. Set `QUEUE_DRIVER=inmemory` to force the non-persistent in-memory driver in local development.
+When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS_PASSWORD`, and `QUEUE_REDIS_TLS=true` accordingly. Set `QUEUE_DRIVER=inmemory` only for automated tests that do not start the real workers; production and developer workflows should use Redis.
+
+## Queue health & readiness
+
+Worker processes call `assertQueueIsReady` during startup and exit immediately if the BullMQ connection cannot be established. The `/api/health` endpoint now reports the queue status, latency, and durability, while `/api/health/ready` returns `503` whenever Redis is unreachable or the queue is running in in-memory mode. Use these probes in Kubernetes or container orchestrators to ensure the workers only receive traffic when the queue is durable.
 
 ## Telemetry & metrics helpers
 

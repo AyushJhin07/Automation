@@ -8,7 +8,7 @@ async function main(): Promise<void> {
   console.log('🌍 Worker environment:', env.NODE_ENV);
 
   WebhookManager.configureQueueService(executionQueueService);
-  executionQueueService.start();
+  await executionQueueService.start();
 
   let shuttingDown = false;
   let resolveWait: (() => void) | null = null;

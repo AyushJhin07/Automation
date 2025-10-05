@@ -47,11 +47,9 @@ Jaeger’s UI is available at [http://localhost:16686](http://localhost:16686). 
 
 The Node containers mount your local workspace, so edits on the host trigger `tsx watch` restarts inside each process. If you change dependencies, rerun `npm install` on the host and restart the compose stack so the containers pick up the updated `node_modules`.
 
-## Queue backends: in-memory vs Redis
+## Queue configuration
 
-The execution queue automatically falls back to in-memory behavior when the database is unavailable. When `DATABASE_URL` is missing or migrations have not been applied, `ExecutionQueueService` logs a warning and skips worker startup, letting workflow execution remain synchronous for quick prototyping.【F:server/database/schema.ts†L1094-L1111】【F:server/services/ExecutionQueueService.ts†L189-L211】 This mode does not require Redis or Postgres.
-
-To exercise the production-like BullMQ flow, provide a valid `DATABASE_URL` and Redis configuration. The compose file wires each Node service to Postgres and Redis via environment variables so that `ExecutionQueueService` creates the BullMQ queue and background worker automatically.【F:docker-compose.dev.yml†L4-L74】【F:server/queue/BullMQFactory.ts†L42-L81】 You can also export the same variables in your shell when running processes outside Docker:
+The execution queue now requires a healthy Redis instance. If the worker cannot create the BullMQ queue, it exits immediately so you notice configuration drift instead of silently downgrading to the in-memory shim. Provide a valid `DATABASE_URL` and Redis connection details before starting the worker stack. The compose file wires each Node service to Postgres and Redis via environment variables so that `ExecutionQueueService` creates the BullMQ queue and background worker automatically.【F:docker-compose.dev.yml†L4-L74】【F:server/services/ExecutionQueueService.ts†L735-L839】 You can also export the same variables in your shell when running processes outside Docker:
 
 ```bash
 export DATABASE_URL=postgres://automation:automation@localhost:5432/automation
@@ -60,7 +58,7 @@ export QUEUE_REDIS_PORT=6379
 export QUEUE_REDIS_DB=0
 ```
 
-With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. The `npm run dev:stack` helper launches the API, scheduler, execution worker, and encryption rotation worker together and keeps their lifecycles in sync.
+With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. The readiness probe at `http://localhost:5000/api/health/ready` returns `503` if Redis is unreachable or the queue is running in in-memory mode, making it easy to verify durability before exercising workflows.【F:server/routes/production-health.ts†L35-L103】 The `npm run dev:stack` helper launches the API, scheduler, execution worker, and encryption rotation worker together and keeps their lifecycles in sync.
 
 ## Observability
 

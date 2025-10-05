@@ -41,6 +41,12 @@ export interface ProductionConfig {
   
   // External Services
   REDIS_URL?: string;
+  QUEUE_REDIS_HOST: string;
+  QUEUE_REDIS_PORT: number;
+  QUEUE_REDIS_DB: number;
+  QUEUE_REDIS_USERNAME?: string;
+  QUEUE_REDIS_PASSWORD?: string;
+  QUEUE_REDIS_TLS: boolean;
   ELASTICSEARCH_URL?: string;
   SENTRY_DSN?: string;
   
@@ -116,6 +122,12 @@ SENTRY_DSN=your-sentry-dsn-for-error-tracking
 # EXTERNAL SERVICES
 # =================================
 REDIS_URL=redis://localhost:6379
+QUEUE_REDIS_HOST=redis.production.example.com
+QUEUE_REDIS_PORT=6379
+QUEUE_REDIS_DB=0
+# QUEUE_REDIS_USERNAME=your-redis-username
+# QUEUE_REDIS_PASSWORD=your-redis-password
+QUEUE_REDIS_TLS=true
 ELASTICSEARCH_URL=http://localhost:9200
 
 # =================================
@@ -190,6 +202,10 @@ export class ProductionConfigValidator {
 
     if (!config.DATABASE_URL) {
       errors.push('DATABASE_URL is required for production');
+    }
+
+    if (!config.QUEUE_REDIS_HOST) {
+      errors.push('QUEUE_REDIS_HOST is required for durable queue processing');
     }
 
     if (!config.GEMINI_API_KEY && !config.OPENAI_API_KEY) {

@@ -30,7 +30,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command:
+      [
+        "redis-server",
+        "--save", "60", "1",
+        "--appendonly", "yes",
+        "--appendfsync", "everysec"
+      ]
     ports:
       - "6379:6379"
     volumes:

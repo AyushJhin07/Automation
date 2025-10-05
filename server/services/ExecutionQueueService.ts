@@ -9,7 +9,6 @@ import {
   createQueue,
   createQueueEvents,
   getActiveQueueDriver,
-  handleQueueDriverError,
   registerQueueTelemetry,
   type Queue,
   type QueueEvents,
@@ -37,6 +36,12 @@ import {
 import type { Job } from 'bullmq';
 import { usageMeteringService, type QuotaCheck } from './UsageMeteringService.js';
 import { executionResumeTokenService } from './ExecutionResumeTokenService.js';
+import {
+  assertQueueIsReady,
+  checkQueueHealth,
+  getQueueHealthSnapshot,
+  type QueueHealthStatus,
+} from './QueueHealthService.js';
 
 export type QueueRunRequest = {
   workflowId: string;
@@ -69,6 +74,7 @@ type ExecutionQueueTelemetrySnapshot = {
   started: boolean;
   databaseEnabled: boolean;
   queueDriver: string;
+  queueHealth: QueueHealthStatus | null;
   worker: {
     id: string | null;
     region: OrganizationRegion;
@@ -116,6 +122,7 @@ class ExecutionQueueService {
   private readonly heartbeatTimeoutMs: number;
   private readonly heartbeatPersistIntervalMs: number;
   private started = false;
+  private startPromise: Promise<void> | null = null;
   private shutdownPromise: Promise<void> | null = null;
   private readonly queueCache = new Map<
     ExecutionQueueName,
@@ -237,17 +244,17 @@ class ExecutionQueueService {
     try {
       return await operation(queue);
     } catch (error) {
-      const switched = await this.handleQueueFallback(error);
-      if (!switched) {
-        throw error;
-      }
-      const fallbackQueue = this.ensureQueue(queueName);
-      return operation(fallbackQueue);
+      console.error(
+        `ExecutionQueueService queue operation failed for ${queueName}:`,
+        getErrorMessage(error)
+      );
+      throw error;
     }
   }
 
   public getTelemetrySnapshot(): ExecutionQueueTelemetrySnapshot {
     const queueDepths = getQueueDepthSnapshot();
+    const queueHealth = getQueueHealthSnapshot();
     const leases: ExecutionLeaseTelemetry[] = Array.from(this.activeLeases.entries()).map(
       ([executionId, entry]) => {
         const leaseMetadata = (entry.metadata.lease ?? {}) as Record<string, any>;
@@ -270,6 +277,7 @@ class ExecutionQueueService {
       started: this.started,
       databaseEnabled: this.isDbEnabled(),
       queueDriver: getActiveQueueDriver(),
+      queueHealth,
       worker: {
         id: this.worker?.id ?? null,
         region: this.workerRegion,
@@ -732,106 +740,117 @@ class ExecutionQueueService {
     }
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     if (this.started) {
       return;
     }
 
-    if (!this.isDbEnabled()) {
-      console.warn('⚠️ ExecutionQueueService requires a configured database to run.');
+    if (this.startPromise) {
+      await this.startPromise;
       return;
     }
 
-    const queue = this.ensureQueue(this.workerQueueName);
-    if (!this.queueEvents) {
-      this.queueEvents = createQueueEvents(this.workerQueueName, { region: this.workerRegion });
-    }
-
-    if (!this.telemetryCleanup) {
-      this.telemetryCleanup = registerQueueTelemetry(queue, this.queueEvents, {
-        logger: console,
-        onMetrics: (counts) => {
-          updateQueueDepthMetric(queue.name, counts);
-        },
-      });
-    }
-
-    this.worker = registerQueueWorker(
-      this.workerQueueName,
-      async (job) => this.process(job),
-      {
-        region: this.workerRegion,
-        concurrency: this.concurrency,
-        tenantConcurrency: this.tenantConcurrency,
-        resolveTenantId: (job) => job.data.organizationId,
-        lockDuration: this.lockDurationMs,
-        lockRenewTime: this.lockRenewTimeMs,
-        heartbeatIntervalMs: this.heartbeatIntervalMs,
-        heartbeatTimeoutMs: this.heartbeatTimeoutMs,
-        onHeartbeat: async (
-          _job: Job<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>,
-          context: QueueWorkerHeartbeatContext<ExecutionQueueName>
-        ) => {
-          const payload = _job.data;
-          const executionId = payload.executionId;
-          const organizationId = payload.organizationId;
-          if (!executionId || !organizationId) {
-            return;
-          }
-
-          const leaseEntry = this.activeLeases.get(executionId);
-          if (!leaseEntry) {
-            return;
-          }
-
-          const leaseMetadata = (leaseEntry.metadata.lease ?? {}) as Record<string, any>;
-          leaseMetadata.lastHeartbeatAt = context.timestamp.toISOString();
-          leaseMetadata.lockExpiresAt = context.lockExpiresAt.toISOString();
-          leaseMetadata.renewCount = context.renewCount;
-          leaseEntry.metadata.lease = leaseMetadata;
-
-          const now = context.timestamp.getTime();
-          if (now - leaseEntry.lastPersistedAt < this.heartbeatPersistIntervalMs) {
-            return;
-          }
-
-          leaseEntry.lastPersistedAt = now;
-
-          try {
-            await WorkflowRepository.updateWorkflowExecution(
-              executionId,
-              { metadata: { ...leaseEntry.metadata } },
-              organizationId
-            );
-          } catch (error) {
-            console.warn(
-              `Failed to persist heartbeat metadata for execution ${executionId}:`,
-              getErrorMessage(error)
-            );
-          }
-        },
-        settings: {
-          backoffStrategies: {
-            'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
-          },
-        },
+    this.startPromise = (async () => {
+      if (!this.isDbEnabled()) {
+        console.warn('⚠️ ExecutionQueueService requires a configured database to run.');
+        return;
       }
-    );
 
-    this.worker.on('error', (error) => {
-      void (async () => {
-        const handled = await this.handleQueueFallback(error);
-        if (!handled) {
-          console.error('ExecutionQueue worker error:', getErrorMessage(error));
+      await assertQueueIsReady({ context: 'ExecutionQueueService', region: this.workerRegion });
+
+      const queue = this.ensureQueue(this.workerQueueName);
+      if (!this.queueEvents) {
+        this.queueEvents = createQueueEvents(this.workerQueueName, { region: this.workerRegion });
+      }
+
+      if (!this.telemetryCleanup) {
+        this.telemetryCleanup = registerQueueTelemetry(queue, this.queueEvents, {
+          logger: console,
+          onMetrics: (counts) => {
+            updateQueueDepthMetric(queue.name, counts);
+          },
+        });
+      }
+
+      this.worker = registerQueueWorker(
+        this.workerQueueName,
+        async (job) => this.process(job),
+        {
+          region: this.workerRegion,
+          concurrency: this.concurrency,
+          tenantConcurrency: this.tenantConcurrency,
+          resolveTenantId: (job) => job.data.organizationId,
+          lockDuration: this.lockDurationMs,
+          lockRenewTime: this.lockRenewTimeMs,
+          heartbeatIntervalMs: this.heartbeatIntervalMs,
+          heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+          onHeartbeat: async (
+            _job: Job<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>,
+            context: QueueWorkerHeartbeatContext<ExecutionQueueName>
+          ) => {
+            const payload = _job.data;
+            const executionId = payload.executionId;
+            const organizationId = payload.organizationId;
+            if (!executionId || !organizationId) {
+              return;
+            }
+
+            const leaseEntry = this.activeLeases.get(executionId);
+            if (!leaseEntry) {
+              return;
+            }
+
+            const leaseMetadata = (leaseEntry.metadata.lease ?? {}) as Record<string, any>;
+            leaseMetadata.lastHeartbeatAt = context.timestamp.toISOString();
+            leaseMetadata.lockExpiresAt = context.lockExpiresAt.toISOString();
+            leaseMetadata.renewCount = context.renewCount;
+            leaseEntry.metadata.lease = leaseMetadata;
+
+            const now = context.timestamp.getTime();
+            if (now - leaseEntry.lastPersistedAt < this.heartbeatPersistIntervalMs) {
+              return;
+            }
+
+            leaseEntry.lastPersistedAt = now;
+
+            try {
+              await WorkflowRepository.updateWorkflowExecution(
+                executionId,
+                { metadata: { ...leaseEntry.metadata } },
+                organizationId
+              );
+            } catch (error) {
+              console.warn(
+                `Failed to persist heartbeat metadata for execution ${executionId}:`,
+                getErrorMessage(error)
+              );
+            }
+          },
+          settings: {
+            backoffStrategies: {
+              'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+            },
+          },
         }
-      })();
-    });
+      );
 
-    this.started = true;
+      this.worker.on('error', (error) => {
+        console.error('ExecutionQueue worker error:', getErrorMessage(error));
+        void checkQueueHealth(this.workerRegion).catch(() => undefined);
+      });
 
-    console.log(
-      `🧵 ExecutionQueueService started (region=${this.workerRegion}, concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
-    );
+      this.started = true;
+
+      console.log(
+        `🧵 ExecutionQueueService started (region=${this.workerRegion}, concurrency=${this.concurrency}, tenantConcurrency=${this.tenantConcurrency})`
+      );
+    })();
+
+    try {
+      await this.startPromise;
+    } finally {
+      this.startPromise = null;
+    }
   }
 
   public stop(): Promise<void> {
@@ -927,35 +946,6 @@ class ExecutionQueueService {
 
     this.queueCache.set(name, queue);
     return queue;
-  }
-
-  private async handleQueueFallback(error: unknown): Promise<boolean> {
-    if (!handleQueueDriverError(error)) {
-      return false;
-    }
-
-    const wasStarted = this.started;
-    const message = getErrorMessage(error);
-    console.warn(
-      `⚠️ Detected Redis connection issue for ExecutionQueueService. Switching to in-memory queue driver: ${message}`
-    );
-
-    try {
-      await this.shutdown({ timeoutMs: 0 });
-    } catch (shutdownError) {
-      console.error(
-        'Failed to shutdown ExecutionQueueService cleanly during queue driver fallback:',
-        getErrorMessage(shutdownError)
-      );
-    }
-
-    this.queueCache.clear();
-
-    if (wasStarted) {
-      this.start();
-    }
-
-    return true;
   }
 
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
