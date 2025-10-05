@@ -65,9 +65,17 @@ async function main() {
 
   const exitPromises = scriptsToRun.map((script) => {
     return new Promise<void>((resolve) => {
+      const childEnv = { ...process.env };
+      if (script === 'dev:api') {
+        if (!('ENABLE_INLINE_WORKER' in childEnv)) {
+          childEnv.ENABLE_INLINE_WORKER = 'false';
+        }
+        childEnv.DISABLE_INLINE_WORKER_AUTOSTART = 'true';
+      }
+
       const child = spawn(npmCommand, ['run', script], {
         stdio: 'inherit',
-        env: { ...process.env },
+        env: childEnv,
       });
 
       const managed: ManagedProcess = { script, child };

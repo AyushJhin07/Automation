@@ -66,10 +66,10 @@ backlog grows. The [`/api/health/queue/heartbeat`](../../server/routes/productio
 confirms that the worker heartbeat is current and the queue depth is draining.
 
 If you prefer to co-locate everything inside the API process for a lightweight environment, export
-`ENABLE_INLINE_WORKER=true` (or `INLINE_EXECUTION_WORKER=true`) before starting the server. The API
-boot sequence will start `executionQueueService` inline and expose the same health endpoints without
-requiring the dedicated worker container. Unset the flag to return to the recommended multi-process
-deployment.
+`ENABLE_INLINE_WORKER=true` (or `INLINE_EXECUTION_WORKER=true`) before starting the server. In
+development this flag now defaults to `true` when unset so local API boots automatically start the
+execution worker inline. Set `ENABLE_INLINE_WORKER=false` (or
+`DISABLE_INLINE_WORKER_AUTOSTART=true`) to return to the recommended multi-process deployment.
 
 ## Local development with Docker Compose
 

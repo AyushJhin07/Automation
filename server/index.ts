@@ -157,14 +157,29 @@ app.use((req, res, next) => {
   const shouldStartInlineWorker = (() => {
     const rawValue = process.env.ENABLE_INLINE_WORKER ?? process.env.INLINE_EXECUTION_WORKER;
     if (!rawValue) {
+      if (
+        env.NODE_ENV === 'development' &&
+        process.env.CI !== 'true' &&
+        process.env.DISABLE_INLINE_WORKER_AUTOSTART !== 'true'
+      ) {
+        process.env.ENABLE_INLINE_WORKER = 'true';
+        console.log(
+          '🛠️ Defaulting ENABLE_INLINE_WORKER=true for development. Set ENABLE_INLINE_WORKER=false to opt-out of inline execution.'
+        );
+        return true;
+      }
       return false;
     }
 
     return ['1', 'true', 'yes', 'inline'].includes(rawValue.toLowerCase());
   })();
 
+  let executionQueueService:
+    | typeof import('./services/ExecutionQueueService.js').executionQueueService
+    | null = null;
   try {
-    const { executionQueueService } = await import('./services/ExecutionQueueService.js');
+    const queueModule = await import('./services/ExecutionQueueService.js');
+    executionQueueService = queueModule.executionQueueService;
     const { WebhookManager } = await import('./webhooks/WebhookManager.js');
     WebhookManager.configureQueueService(executionQueueService);
 
@@ -180,6 +195,36 @@ app.use((req, res, next) => {
 
     if (shouldStartInlineWorker) {
       console.error('❌ Inline execution worker requested but failed to start. Exiting.');
+      process.exit(1);
+    }
+  }
+
+  const shouldVerifyWorkerHeartbeat =
+    executionQueueService !== null &&
+    (env.NODE_ENV === 'development' || process.env.CI === 'true') &&
+    process.env.SKIP_WORKER_HEARTBEAT_CHECK !== 'true';
+
+  if (shouldVerifyWorkerHeartbeat && executionQueueService) {
+    const timeoutOverride = Number.parseInt(
+      process.env.WORKER_HEARTBEAT_STARTUP_TIMEOUT_MS ?? '',
+      10
+    );
+    const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : undefined;
+
+    try {
+      const heartbeat = await executionQueueService.waitForWorkerHeartbeat({ timeoutMs });
+      const modeLabel = heartbeat.inline ? 'inline' : 'external';
+      console.log(
+        `✅ Execution worker heartbeat detected (${modeLabel} worker ${
+          heartbeat.workerId ?? 'unknown'
+        }, age=${Math.round(heartbeat.ageMs)}ms).`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('❌ Execution worker heartbeat check failed:', message);
+      console.error(
+        '👉 Start `npm run dev:worker` / `npm run dev:scheduler` or enable ENABLE_INLINE_WORKER=true before launching the API.'
+      );
       process.exit(1);
     }
   }
