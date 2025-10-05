@@ -9,9 +9,11 @@ export type RateLimitHeaderConfig = {
   retryAfter?: string[];
 };
 
+export type RateLimitScope = 'connection' | 'connector' | 'organization';
+
 export type RateLimitConcurrencyRule = {
   maxConcurrent?: number;
-  scope?: 'connection' | 'connector' | 'organization';
+  scope?: RateLimitScope;
 };
 
 export type RateLimitRules = {
@@ -19,6 +21,7 @@ export type RateLimitRules = {
   requestsPerMinute?: number;
   burst?: number;
   concurrency?: RateLimitConcurrencyRule | null;
+  bucketScope?: RateLimitScope;
   rateHeaders?: RateLimitHeaderConfig | null;
 };
 
@@ -28,6 +31,7 @@ export interface AcquireOptions {
   organizationId?: string | null;
   tokens?: number;
   rules?: RateLimitRules | null;
+  bucketScope?: RateLimitScope;
 }
 
 export interface AcquireResult {
@@ -130,7 +134,8 @@ export class RateLimiter {
     const connectorId = normalizeId(options.connectorId || 'unknown');
     const connectionId = options.connectionId ? normalizeId(options.connectionId) : 'global';
     const organizationId = options.organizationId ? normalizeId(options.organizationId) : 'global';
-    const key = `rate:${connectorId}:${connectionId}`;
+    const bucketScope = options.bucketScope ?? options.rules?.bucketScope ?? 'connection';
+    const key = this.getBucketKey(bucketScope, connectorId, connectionId, organizationId);
 
     const tokens = Math.max(1, Math.ceil(options.tokens ?? 1));
     const bucketConfig = this.buildBucketConfig(options.rules);
@@ -172,7 +177,7 @@ export class RateLimiter {
     connectionId?: string | null;
     organizationId?: string | null;
     waitMs: number;
-    scope?: 'connection' | 'connector' | 'organization';
+    scope?: RateLimitScope;
   }): void {
     const connectorId = normalizeId(options.connectorId || 'unknown');
     const connectionId = options.connectionId ? normalizeId(options.connectionId) : 'global';
@@ -221,6 +226,23 @@ export class RateLimiter {
     const ttlMs = Math.max(60000, Math.ceil((capacity / refillRatePerMs) * 2));
 
     return { capacity, refillRatePerMs, ttlMs };
+  }
+
+  private getBucketKey(
+    scope: RateLimitScope,
+    connectorId: string,
+    connectionId: string,
+    organizationId: string
+  ): string {
+    switch (scope) {
+      case 'organization':
+        return `rate:${connectorId}:org:${organizationId}`;
+      case 'connector':
+        return `rate:${connectorId}`;
+      case 'connection':
+      default:
+        return `rate:${connectorId}:${connectionId}`;
+    }
   }
 
   private async acquireWithRedis(

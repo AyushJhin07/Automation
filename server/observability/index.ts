@@ -187,6 +187,18 @@ const connectorConcurrencyGauge = meter.createObservableGauge('connector_concurr
 });
 const latestConnectorConcurrency = new Map<string, ConnectorConcurrencySnapshot>();
 
+const connectorThrottleCounter = meter.createCounter('connector_throttle_events_total', {
+  description: 'Counts throttling events experienced by connectors',
+});
+
+const connectorRetryCounter = meter.createCounter('connector_retry_attempts_total', {
+  description: 'Counts HTTP retry attempts per connector',
+});
+
+const connectorPolicyOverrideCounter = meter.createCounter('connector_rate_policy_overrides_total', {
+  description: 'Counts occasions where connector rate limit policies were overridden',
+});
+
 type SandboxStateRecord = {
   key: string;
   scope: 'tenant' | 'execution';
@@ -354,6 +366,70 @@ function sanitizeAttributes(attributes: Record<string, unknown>): MetricAttribut
     }
   }
   return sanitized;
+}
+
+export function recordConnectorThrottleEvent(context: {
+  connectorId: string;
+  connectionId?: string | null;
+  organizationId?: string | null;
+  source: 'rate_limiter' | 'http_status';
+  reason: string;
+  waitMs?: number;
+  statusCode?: number;
+  attempts?: number;
+}): void {
+  const attributes = sanitizeAttributes({
+    connector_id: context.connectorId || 'unknown',
+    connection_id: context.connectionId ?? 'global',
+    organization_id: context.organizationId ?? 'global',
+    throttle_source: context.source,
+    throttle_reason: context.reason,
+    status_code: context.statusCode ?? 'n/a',
+    wait_ms: context.waitMs,
+    limiter_attempts: context.attempts,
+  });
+
+  connectorThrottleCounter.add(1, attributes);
+}
+
+export function recordConnectorRetryEvent(context: {
+  connectorId: string;
+  connectionId?: string | null;
+  organizationId?: string | null;
+  reason: string;
+  waitMs: number;
+  attempt: number;
+  statusCode?: number;
+}): void {
+  const attributes = sanitizeAttributes({
+    connector_id: context.connectorId || 'unknown',
+    connection_id: context.connectionId ?? 'global',
+    organization_id: context.organizationId ?? 'global',
+    retry_reason: context.reason,
+    wait_ms: context.waitMs,
+    attempt: context.attempt,
+    status_code: context.statusCode ?? 'n/a',
+  });
+
+  connectorRetryCounter.add(1, attributes);
+}
+
+export function recordConnectorRatePolicyOverride(context: {
+  connectorId: string;
+  connectionId?: string | null;
+  organizationId?: string | null;
+  scope: string;
+  policy?: string;
+}): void {
+  const attributes = sanitizeAttributes({
+    connector_id: context.connectorId || 'unknown',
+    connection_id: context.connectionId ?? 'global',
+    organization_id: context.organizationId ?? 'global',
+    policy_scope: context.scope,
+    policy_name: context.policy ?? 'unspecified',
+  });
+
+  connectorPolicyOverrideCounter.add(1, attributes);
 }
 
 export function recordHttpRequestDuration(durationMs: number, attributes: Record<string, unknown>): void {
