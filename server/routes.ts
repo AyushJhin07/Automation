@@ -2472,6 +2472,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/health/credentials', authenticateToken, adminOnly, async (_req, res) => {
+    try {
+      const credentials = healthMonitoringService.getCredentialStatuses();
+      res.json({ success: true, credentials });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   app.get('/api/health/alerts', authenticateToken, adminOnly, async (req, res) => {
     try {
       const alerts = healthMonitoringService.getActiveAlerts();

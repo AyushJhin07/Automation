@@ -40,6 +40,7 @@
     "generate:risks": "node scripts/generate-risk-skeleton.js",
     "init:roadmap": "node scripts/init-roadmap.js",
     "audit:bronze": "node scripts/audit-bronze.js",
+    "audit:secrets": "tsx scripts/audit-secrets.ts",
     "smoke:e2e": "node scripts/e2e-smoke.js",
     "smoke:connectors": "tsx scripts/connector-smoke.ts",
     "ci:smoke": "tsx scripts/connector-smoke.ts --use-simulator",

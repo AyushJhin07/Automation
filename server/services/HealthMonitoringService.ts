@@ -2,6 +2,7 @@ import { db } from '../database/schema';
 import { connectionService } from './ConnectionService';
 import { authService } from './AuthService';
 import { connectorFramework } from '../connectors/ConnectorFramework';
+import { getSecretMetadata, type SecretSourceType } from '../secrets/SecretManager';
 
 export interface HealthCheck {
   name: string;
@@ -44,6 +45,17 @@ export interface SystemMetrics {
     activeToday: number;
     successRate: number;
   };
+}
+
+export interface CredentialStatus {
+  key: string;
+  label: string;
+  required: boolean;
+  configured: boolean;
+  source: SecretSourceType | 'missing';
+  provider?: string;
+  secretId?: string;
+  loadedAt?: Date;
 }
 
 export interface Alert {
@@ -171,6 +183,48 @@ export class HealthMonitoringService {
         successRate: 0
       }
     };
+  }
+
+  public getCredentialStatuses(): CredentialStatus[] {
+    const metadata = getSecretMetadata();
+    const descriptors: Array<{ key: string; label: string; required: boolean }> = [
+      { key: 'ENCRYPTION_MASTER_KEY', label: 'Envelope encryption master key', required: true },
+      { key: 'JWT_SECRET', label: 'JWT signing secret', required: true },
+      { key: 'OPENAI_API_KEY', label: 'OpenAI API key', required: false },
+      { key: 'ANTHROPIC_API_KEY', label: 'Anthropic API key', required: false },
+      { key: 'CLAUDE_API_KEY', label: 'Claude API key', required: false },
+      { key: 'GEMINI_API_KEY', label: 'Gemini API key', required: false },
+      { key: 'GOOGLE_API_KEY', label: 'Google API key', required: false },
+    ];
+
+    return descriptors.map((descriptor) => {
+      const envValue = process.env[descriptor.key];
+      const configured = typeof envValue === 'string' && envValue.trim().length > 0;
+      const meta = metadata.get(descriptor.key);
+
+      const source: SecretSourceType | 'missing' = meta?.source ?? (configured ? 'environment' : 'missing');
+      const status: CredentialStatus = {
+        key: descriptor.key,
+        label: descriptor.label,
+        required: descriptor.required,
+        configured,
+        source,
+      };
+
+      if (meta?.provider) {
+        status.provider = meta.provider;
+      }
+
+      if (meta?.secretId) {
+        status.secretId = meta.secretId;
+      }
+
+      if (meta?.loadedAt) {
+        status.loadedAt = meta.loadedAt;
+      }
+
+      return status;
+    });
   }
 
   /**
