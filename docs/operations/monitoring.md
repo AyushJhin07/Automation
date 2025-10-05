@@ -50,3 +50,17 @@ Use this endpoint to observe the execution worker heartbeat and queue depth in d
 ### Example Dashboard Panel
 
 For Grafana or any HTTP-capable dashboard, configure a JSON data source panel that queries `/api/production/queue/heartbeat` on a short interval (15–30 seconds) and visualises `status.status` alongside the numeric queue depth. Combine a stat panel for the heartbeat status with a time-series panel charting `sum(map_values(.queueDepths[]; .waiting + .delayed))` so on-call engineers can immediately see when a backlog forms and whether workers are keeping up.
+
+## Observability health checks & dashboards
+
+### Health checks
+
+- **SDK bootstrap:** Run `npm run observability:check` with production environment variables to verify that the OpenTelemetry SDK initialises against your collector before deployments. A non-zero exit code blocks rollouts when exporters are misconfigured or the collector is unavailable.
+- **Trace/metric ingestion:** Monitor the log message `📈 OpenTelemetry instrumentation initialized` emitted by the API and worker pods on startup. Absence of the message indicates instrumentation never completed.
+- **Runtime exporters:** When Prometheus scraping is enabled, hit `http://<pod>:9464/metrics` and ensure the response includes `workflow_queue_depth` and `workflow_node_latency_ms` samples for the current tenant.
+
+### Dashboards
+
+- **Workflow latency:** Plot the histogram metric `workflow_node_latency_ms` by `workflow_id` and `node_id` to surface nodes that regress. Combine with a percentile transformation (p95/p99) to trigger alerts on slowdowns.
+- **Queue depth and saturation:** Visualise the `workflow_queue_depth` observable gauge alongside `/api/production/queue/heartbeat` responses. Alert when waiting or delayed counts remain above baseline for longer than the SLA.
+- **Error rates:** Use `http_request_duration_ms_count` divided by error-status counts to derive API error rate, and track `workflow.execute` queue failure counts via the `queue.job.duration_ms` histogram's failure attribute bucket (available in Jaeger trace summaries). Pair these with the production health endpoints so operators can cross-reference incidents quickly.

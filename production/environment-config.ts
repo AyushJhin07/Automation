@@ -38,6 +38,18 @@ export interface ProductionConfig {
   ENABLE_METRICS: boolean;
   METRICS_PORT: number;
   HEALTH_CHECK_INTERVAL: number;
+  OBSERVABILITY_ENABLED: boolean;
+  OTEL_SERVICE_NAME: string;
+  OTEL_EXPORTER_OTLP_ENDPOINT: string;
+  OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf' | 'grpc';
+  OTEL_EXPORTER_OTLP_HEADERS?: string;
+  OTEL_METRICS_EXPORTER: 'otlp' | 'prometheus';
+  OTEL_LOGS_EXPORTER: 'otlp' | 'console' | 'none';
+  OBSERVABILITY_TRACE_EXPORTER: 'otlp' | 'tempo' | 'jaeger' | 'none';
+  OBSERVABILITY_LOG_EXPORTER: 'otlp' | 'console' | 'opensearch' | 'none';
+  PROMETHEUS_METRICS_HOST: string;
+  PROMETHEUS_METRICS_PORT: number;
+  PROMETHEUS_METRICS_ENDPOINT: string;
   
   // External Services
   REDIS_URL?: string;
@@ -117,6 +129,18 @@ ENABLE_METRICS=true
 METRICS_PORT=9090
 HEALTH_CHECK_INTERVAL=30000
 SENTRY_DSN=your-sentry-dsn-for-error-tracking
+OBSERVABILITY_ENABLED=true
+OTEL_SERVICE_NAME=automation-platform
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector.example.com:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+# OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <token>
+OTEL_METRICS_EXPORTER=otlp
+OTEL_LOGS_EXPORTER=otlp
+OBSERVABILITY_TRACE_EXPORTER=otlp
+OBSERVABILITY_LOG_EXPORTER=otlp
+PROMETHEUS_METRICS_HOST=0.0.0.0
+PROMETHEUS_METRICS_PORT=9464
+PROMETHEUS_METRICS_ENDPOINT=/metrics
 
 # =================================
 # EXTERNAL SERVICES

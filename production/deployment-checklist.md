@@ -149,6 +149,34 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
+        - name: OBSERVABILITY_ENABLED
+          value: "true"
+        - name: OTEL_SERVICE_NAME
+          value: "automation-platform"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: otel-collector
+              key: endpoint
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "http/protobuf"
+        - name: OTEL_EXPORTER_OTLP_HEADERS
+          valueFrom:
+            secretKeyRef:
+              name: otel-collector
+              key: headers
+        - name: OTEL_METRICS_EXPORTER
+          value: "otlp"
+        - name: OTEL_LOGS_EXPORTER
+          value: "otlp"
+        - name: OBSERVABILITY_LOG_EXPORTER
+          value: "otlp"
+        - name: PROMETHEUS_METRICS_HOST
+          value: "0.0.0.0"
+        - name: PROMETHEUS_METRICS_PORT
+          value: "9464"
+        - name: PROMETHEUS_METRICS_ENDPOINT
+          value: "/metrics"
         resources:
           requests:
             memory: "512Mi"
