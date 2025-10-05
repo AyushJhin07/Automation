@@ -6,6 +6,7 @@ import { EncryptionService } from '../services/EncryptionService';
 import { getErrorMessage } from '../types/common';
 import { connectorDefinitions, db } from '../database/schema';
 import { ensureConnectionEncryptionColumns } from '../database/startupGuards';
+import { assertQueueIsReady } from '../services/QueueHealthService';
 import { count } from 'drizzle-orm';
 
 async function ensureEncryptionReady(): Promise<void> {
@@ -74,6 +75,11 @@ async function ensureConnectionsEncryptionSchema(): Promise<void> {
   await ensureConnectionEncryptionColumns();
 }
 
+async function ensureQueueReady(): Promise<void> {
+  await assertQueueIsReady({ context: 'API startup readiness guard' });
+  console.log(`✅ Startup check: queue readiness confirmed for ${process.env.NODE_ENV ?? 'unknown'} environment.`);
+}
+
 function ensureServerUrl(): void {
   if (env.NODE_ENV === 'production' && !env.SERVER_PUBLIC_URL) {
     throw new Error('SERVER_PUBLIC_URL must be set in production to guarantee OAuth callback URLs.');
@@ -84,5 +90,6 @@ export async function runStartupChecks(): Promise<void> {
   await ensureEncryptionReady();
   await ensureConnectorCatalog();
   await ensureConnectionsEncryptionSchema();
+  await ensureQueueReady();
   ensureServerUrl();
 }

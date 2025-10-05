@@ -20,7 +20,8 @@ During local development `npm run dev:stack` now polls this endpoint and termina
 
 ### `GET /api/production/queue/heartbeat`
 
-Use this endpoint to observe the execution worker heartbeat and queue depth in detail.
+Use this endpoint to observe the execution worker heartbeat and queue depth in detail. Production runbooks should hit this probe
+before and after each deployment to ensure the queue is draining and workers are emitting timely heartbeats.
 
 * When the dedicated worker is offline (no heartbeat observed), the probe returns HTTP 503 with `status.status: "fail"` and the message `Execution worker has not been started. Queue processing is offline.`【F:server/routes/production-health.ts†L228-L267】
 * When Redis is reachable but reports a queue failure (for example, authentication issues), the heartbeat endpoint surfaces the queue health failure message and also returns HTTP 503.【F:server/routes/production-health.ts†L236-L242】
@@ -36,7 +37,7 @@ Use this endpoint to observe the execution worker heartbeat and queue depth in d
   curl -fsS "${API_ORIGIN:-http://localhost:5000}/api/production/ready" \
     | jq '{ready: .ready, queueReady: .checks.queue, queueMessage: .checks.queueDetails.message}'
   ```
-* Inspect the worker heartbeat and backlog:
+* Inspect the worker heartbeat and backlog (recommended pre- and post-deploy runbook step):
   ```bash
   curl -fsS "${API_ORIGIN:-http://localhost:5000}/api/production/queue/heartbeat" \
     | jq '{status: .status.status, message: .status.message, latestHeartbeatAt: .worker.latestHeartbeatAt, queueDepths: .queueDepths}'

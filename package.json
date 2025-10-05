@@ -27,6 +27,7 @@
     "start:timers": "NODE_ENV=production node dist/workers/timerDispatcher.js",
     "start:rotation": "NODE_ENV=production node dist/workers/encryption-rotation.js",
     "check": "tsc",
+    "check:queue": "tsx scripts/check-queue-readiness.ts",
     "check:deps": "node scripts/check-deps.js",
     "fix:deps": "rm -rf node_modules package-lock.json && npm cache clean --force && npm install",
     "lint": "npm run check && tsx scripts/check-connector-parity.ts && tsx scripts/validate-connector-ops.ts && tsx scripts/validate-procfile.ts",
