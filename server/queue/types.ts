@@ -13,6 +13,7 @@ import type { OrganizationRegion } from '../database/schema.js';
 import type { WorkflowResumeState } from '../types/workflowTimers';
 
 export type ExecutionQueueName = `workflow.execute.${OrganizationRegion}`;
+export type ExecutionStepQueueName = `workflow.run-step.${OrganizationRegion}`;
 
 export type WorkflowExecuteJobPayload = {
   workflowId: string;
@@ -29,10 +30,28 @@ export type WorkflowExecuteJobPayload = {
   connectors?: string[];
 };
 
-export interface JobPayloads extends Record<ExecutionQueueName, WorkflowExecuteJobPayload> {
-  'workflow.execute': WorkflowExecuteJobPayload;
-  'encryption.rotate': { jobId: string };
-}
+export type WorkflowRunStepJobPayload = {
+  executionId: string;
+  workflowId: string;
+  organizationId: string;
+  nodeId: string;
+  stepId: string;
+  userId?: string;
+  triggerType?: string;
+  initialData?: any;
+  attempt?: number;
+  resumeState?: WorkflowResumeState | null;
+  region: OrganizationRegion;
+  timerId?: string | null;
+};
+
+export type JobPayloads =
+  & Record<ExecutionQueueName, WorkflowExecuteJobPayload>
+  & Record<ExecutionStepQueueName, WorkflowRunStepJobPayload>
+  & {
+    'workflow.execute': WorkflowExecuteJobPayload;
+    'encryption.rotate': { jobId: string };
+  };
 
 export type QueueName = keyof JobPayloads;
 

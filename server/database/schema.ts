@@ -730,6 +730,77 @@ export const workflowExecutions = pgTable(
   })
 );
 
+export const workflowExecutionSteps = pgTable(
+  'workflow_execution_steps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    workflowId: uuid('workflow_id')
+      .references(() => workflows.id, { onDelete: 'cascade' })
+      .notNull(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    nodeId: text('node_id').notNull(),
+    status: text('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts'),
+    queuedAt: timestamp('queued_at').defaultNow().notNull(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    input: jsonb('input').$type<Record<string, any> | null>().default(null),
+    output: jsonb('output').$type<Record<string, any> | null>().default(null),
+    error: jsonb('error').$type<Record<string, any> | null>().default(null),
+    deterministicKeys: jsonb('deterministic_keys').$type<Record<string, any> | null>().default(null),
+    resumeState: jsonb('resume_state').$type<WorkflowResumeState | null>().default(null),
+    waitUntil: timestamp('wait_until'),
+    metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+  },
+  (table) => ({
+    executionNodeIdx: uniqueIndex('workflow_execution_steps_execution_node_idx').on(
+      table.executionId,
+      table.nodeId,
+    ),
+    executionStatusIdx: index('workflow_execution_steps_execution_status_idx').on(
+      table.executionId,
+      table.status,
+    ),
+    organizationStatusIdx: index('workflow_execution_steps_org_status_idx').on(
+      table.organizationId,
+      table.status,
+    ),
+  })
+);
+
+export const workflowExecutionStepDependencies = pgTable(
+  'workflow_execution_step_dependencies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    executionId: uuid('execution_id')
+      .references(() => workflowExecutions.id, { onDelete: 'cascade' })
+      .notNull(),
+    stepId: uuid('step_id')
+      .references(() => workflowExecutionSteps.id, { onDelete: 'cascade' })
+      .notNull(),
+    dependsOnStepId: uuid('depends_on_step_id')
+      .references(() => workflowExecutionSteps.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    executionIdx: index('workflow_execution_step_dependencies_execution_idx').on(table.executionId),
+    stepIdx: index('workflow_execution_step_dependencies_step_idx').on(table.stepId),
+    dependsIdx: index('workflow_execution_step_dependencies_depends_idx').on(table.dependsOnStepId),
+    uniqueLink: uniqueIndex('workflow_execution_step_dependencies_unique').on(
+      table.stepId,
+      table.dependsOnStepId,
+    ),
+  })
+);
+
 export const nodeExecutionResults = pgTable(
   'node_execution_results',
   {

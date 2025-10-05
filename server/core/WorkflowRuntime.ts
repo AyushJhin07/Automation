@@ -39,6 +39,7 @@ export interface WorkflowRuntimeOptions {
   organizationId?: string;
   triggerType?: string;
   resumeState?: WorkflowResumeState | null;
+  mode?: 'workflow' | 'step';
 }
 
 interface NormalizedRuntimeOptions {
@@ -127,6 +128,8 @@ export class WorkflowRuntime {
     const resumeState = options.resumeState ?? null;
     const executionId = options.executionId ?? `exec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const triggerType = options.triggerType ?? (resumeState ? 'resume' : 'manual');
+    const mode = options.mode ?? 'workflow';
+    const manageLifecycle = mode === 'workflow';
 
     const context: ExecutionContext = {
       outputs: resumeState?.nodeOutputs ? { ...resumeState.nodeOutputs } : {},
@@ -154,10 +157,23 @@ export class WorkflowRuntime {
       }
     }
 
-    // Start execution tracking
-    await runExecutionManager.startExecution(executionId, graph, userId, triggerType, initialData, options.organizationId);
+    if (manageLifecycle) {
+      // Start execution tracking
+      await runExecutionManager.startExecution(
+        executionId,
+        graph,
+        userId,
+        triggerType,
+        initialData,
+        options.organizationId
+      );
 
-    console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
+      console.log(`🚀 Starting server-side execution of workflow: ${graph.name}`);
+    } else {
+      console.log(
+        `▶️ Executing workflow step ${resumeState?.nextNodeId ?? 'unknown'} for ${graph.name} (execution=${executionId})`
+      );
+    }
 
     try {
       // Execute nodes in order
@@ -326,9 +342,12 @@ export class WorkflowRuntime {
       const executionTime = Date.now() - startTime.getTime();
       
       // Track successful completion
-      await runExecutionManager.completeExecution(context.executionId, context.prevOutput);
-
-      console.log(`🎉 Workflow execution completed in ${executionTime}ms`);
+      if (manageLifecycle) {
+        await runExecutionManager.completeExecution(context.executionId, context.prevOutput);
+        console.log(`🎉 Workflow execution completed in ${executionTime}ms`);
+      } else {
+        console.log(`✅ Step execution completed in ${executionTime}ms`);
+      }
 
       return {
         success: true,
@@ -346,9 +365,14 @@ export class WorkflowRuntime {
       const errorMessage = (error as Error)?.message ?? 'Unknown error';
 
       // Track failed completion
-      await runExecutionManager.completeExecution(context.executionId, undefined, errorMessage);
+      if (manageLifecycle) {
+        await runExecutionManager.completeExecution(context.executionId, undefined, errorMessage);
+      }
 
-      console.error(`💥 Workflow execution failed after ${executionTime}ms:`, error);
+      console.error(
+        `${mode === 'workflow' ? '💥 Workflow' : '💥 Step'} execution failed after ${executionTime}ms:`,
+        error
+      );
 
       return {
         success: false,

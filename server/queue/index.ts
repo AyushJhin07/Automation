@@ -28,7 +28,14 @@ import type {
 } from './types.js';
 
 export type { QueueTelemetryHandlers, QueueJobCounts } from './types.js';
-export type { JobPayloads, QueueName, WorkflowExecuteJobPayload, ExecutionQueueName } from './types.js';
+export type {
+  JobPayloads,
+  QueueName,
+  WorkflowExecuteJobPayload,
+  WorkflowRunStepJobPayload,
+  ExecutionQueueName,
+  ExecutionStepQueueName,
+} from './types.js';
 export type {
   Processor,
   Queue,

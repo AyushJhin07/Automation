@@ -4,6 +4,7 @@ import { getErrorMessage } from '../types/common.js';
 import { sanitizeLogPayload } from '../utils/executionLogRedaction.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
+import { runExecutionManager } from '../core/RunExecutionManager.js';
 import { db, workflowTimers, type OrganizationLimits, type OrganizationRegion } from '../database/schema.js';
 import {
   createQueue,
@@ -14,7 +15,9 @@ import {
   type QueueEvents,
   type Worker,
   type WorkflowExecuteJobPayload,
+  type WorkflowRunStepJobPayload,
   type ExecutionQueueName,
+  type ExecutionStepQueueName,
 } from '../queue/index.js';
 import { registerQueueWorker, type QueueWorkerHeartbeatContext } from '../workers/queueWorker.js';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
@@ -36,6 +39,10 @@ import {
 import type { Job } from 'bullmq';
 import { usageMeteringService, type QuotaCheck } from './UsageMeteringService.js';
 import { executionResumeTokenService } from './ExecutionResumeTokenService.js';
+import {
+  WorkflowExecutionStepRepository,
+  type InitializedStepDescriptor,
+} from '../workflow/WorkflowExecutionStepRepository.js';
 import {
   assertQueueIsReady,
   checkQueueHealth,
@@ -129,8 +136,15 @@ class ExecutionQueueService {
     Queue<WorkflowExecuteJobPayload, unknown, ExecutionQueueName>
   >();
   private worker: Worker<WorkflowExecuteJobPayload, unknown, ExecutionQueueName> | null = null;
+  private readonly stepQueueCache = new Map<
+    ExecutionStepQueueName,
+    Queue<WorkflowRunStepJobPayload, unknown, ExecutionStepQueueName>
+  >();
+  private stepWorker: Worker<WorkflowRunStepJobPayload, unknown, ExecutionStepQueueName> | null = null;
   private queueEvents: QueueEvents | null = null;
+  private stepQueueEvents: QueueEvents | null = null;
   private telemetryCleanup: (() => void) | null = null;
+  private stepTelemetryCleanup: (() => void) | null = null;
   private readonly activeLeases = new Map<
     string,
     { metadata: Record<string, any>; organizationId: string; lastPersistedAt: number }
@@ -226,6 +240,10 @@ class ExecutionQueueService {
 
   private getQueueName(region: OrganizationRegion): ExecutionQueueName {
     return `workflow.execute.${region}` as ExecutionQueueName;
+  }
+
+  private getStepQueueName(region: OrganizationRegion): ExecutionStepQueueName {
+    return `workflow.run-step.${region}` as ExecutionStepQueueName;
   }
 
   private computeBackoff(attempt: number): number {
@@ -360,6 +378,14 @@ class ExecutionQueueService {
         region,
       },
     };
+
+    if (sanitizedInitialData !== undefined) {
+      baseMetadata.initialData = sanitizedInitialData;
+    }
+
+    if (sanitizedResumeState !== undefined) {
+      baseMetadata.resumeState = sanitizedResumeState;
+    }
 
     if (req.replay) {
       baseMetadata.replay = {
@@ -701,9 +727,21 @@ class ExecutionQueueService {
       return;
     }
 
+    const region = await organizationService.getOrganizationRegion(params.organizationId);
+    const targetNodeId = params.resumeState.nextNodeId ?? params.resumeState.remainingNodeIds?.[0] ?? null;
+    if (targetNodeId) {
+      const stepRecord = await WorkflowExecutionStepRepository.getStepByNode(
+        params.executionId,
+        targetNodeId
+      );
+      if (stepRecord) {
+        await WorkflowExecutionStepRepository.updateResumeState(stepRecord.id, params.resumeState);
+        await WorkflowExecutionStepRepository.resetForRetry(stepRecord.id);
+      }
+    }
+
     const resumeIdentifier = params.timerId ?? params.tokenId ?? Date.now().toString(36);
     const jobId = `${params.executionId}:${resumeIdentifier}`;
-    const region = await organizationService.getOrganizationRegion(params.organizationId);
     const queueName = this.getQueueName(region);
 
     try {
@@ -729,6 +767,10 @@ class ExecutionQueueService {
           }
         )
       );
+
+      if (params.timerId) {
+        await this.markTimerCompleted(params.timerId);
+      }
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       console.error(
@@ -839,6 +881,62 @@ class ExecutionQueueService {
         void checkQueueHealth(this.workerRegion).catch(() => undefined);
       });
 
+      const stepQueueName = this.getStepQueueName(this.workerRegion);
+      const stepQueue = this.ensureStepQueue(stepQueueName);
+      if (!this.stepQueueEvents) {
+        this.stepQueueEvents = createQueueEvents(stepQueueName, { region: this.workerRegion });
+      }
+
+      if (!this.stepTelemetryCleanup) {
+        this.stepTelemetryCleanup = registerQueueTelemetry(stepQueue, this.stepQueueEvents, {
+          logger: console,
+          onMetrics: (counts) => {
+            updateQueueDepthMetric(stepQueue.name, counts);
+          },
+        });
+      }
+
+      this.stepWorker = registerQueueWorker(
+        stepQueueName,
+        async (job) => this.processStep(job),
+        {
+          region: this.workerRegion,
+          concurrency: this.concurrency,
+          tenantConcurrency: this.tenantConcurrency,
+          resolveTenantId: (job) => job.data.organizationId,
+          lockDuration: this.lockDurationMs,
+          lockRenewTime: this.lockRenewTimeMs,
+          heartbeatIntervalMs: this.heartbeatIntervalMs,
+          heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+          onHeartbeat: async (
+            _job: Job<WorkflowRunStepJobPayload, unknown, ExecutionStepQueueName>,
+            context: QueueWorkerHeartbeatContext<ExecutionStepQueueName>
+          ) => {
+            const { executionId } = _job.data;
+            if (!executionId) {
+              return;
+            }
+
+            const leaseEntry = this.activeLeases.get(executionId);
+            if (!leaseEntry) {
+              return;
+            }
+
+            const leaseMetadata = (leaseEntry.metadata.lease ?? {}) as Record<string, any>;
+            leaseMetadata.lastStepHeartbeatAt = context.timestamp.toISOString();
+            leaseMetadata.lastStepLockExpiresAt = context.lockExpiresAt.toISOString();
+            leaseMetadata.stepRenewCount = context.renewCount;
+            leaseEntry.metadata.lease = leaseMetadata;
+            leaseEntry.lastPersistedAt = context.timestamp.getTime();
+          },
+        }
+      );
+
+      this.stepWorker.on('error', (error) => {
+        console.error('Run-step worker error:', getErrorMessage(error));
+        void checkQueueHealth(this.workerRegion).catch(() => undefined);
+      });
+
       this.started = true;
 
       console.log(
@@ -877,8 +975,17 @@ class ExecutionQueueService {
         this.worker = null;
       };
 
+      const closeStepWorker = async () => {
+        if (!this.stepWorker) {
+          return;
+        }
+        await this.stepWorker.close();
+        this.stepWorker = null;
+      };
+
       if (timeoutMs === 0) {
         await closeWorker();
+        await closeStepWorker();
       } else {
         await Promise.race([
           closeWorker(),
@@ -887,11 +994,24 @@ class ExecutionQueueService {
         await closeWorker().catch((error) => {
           console.error('Failed to close execution worker gracefully:', getErrorMessage(error));
         });
+
+        await Promise.race([
+          closeStepWorker(),
+          new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+        ]);
+        await closeStepWorker().catch((error) => {
+          console.error('Failed to close step worker gracefully:', getErrorMessage(error));
+        });
       }
 
       if (this.queueEvents) {
         await this.queueEvents.close();
         this.queueEvents = null;
+      }
+
+      if (this.stepQueueEvents) {
+        await this.stepQueueEvents.close();
+        this.stepQueueEvents = null;
       }
 
       if (this.telemetryCleanup) {
@@ -903,6 +1023,15 @@ class ExecutionQueueService {
         this.telemetryCleanup = null;
       }
 
+      if (this.stepTelemetryCleanup) {
+        try {
+          this.stepTelemetryCleanup();
+        } catch (error) {
+          console.error('Failed to cleanup step queue telemetry handlers:', getErrorMessage(error));
+        }
+        this.stepTelemetryCleanup = null;
+      }
+
       const workerQueue = this.queueCache.get(this.workerQueueName);
       if (workerQueue) {
         try {
@@ -912,7 +1041,17 @@ class ExecutionQueueService {
         }
       }
 
+      const stepQueue = this.stepQueueCache.get(this.getStepQueueName(this.workerRegion));
+      if (stepQueue) {
+        try {
+          await stepQueue.close();
+        } catch (error) {
+          console.error('Failed to close step queue during shutdown:', getErrorMessage(error));
+        }
+      }
+
       this.queueCache.clear();
+      this.stepQueueCache.clear();
 
       this.started = false;
       this.shutdownPromise = null;
@@ -946,6 +1085,464 @@ class ExecutionQueueService {
 
     this.queueCache.set(name, queue);
     return queue;
+  }
+
+  private ensureStepQueue(
+    name: ExecutionStepQueueName
+  ): Queue<WorkflowRunStepJobPayload, unknown, ExecutionStepQueueName> {
+    const existing = this.stepQueueCache.get(name);
+    if (existing) {
+      return existing;
+    }
+
+    const queue = createQueue(name, {
+      region: this.workerRegion,
+      defaultJobOptions: {
+        attempts: this.maxRetries + 1,
+        backoff: { type: 'execution-backoff' },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+      settings: {
+        backoffStrategies: {
+          'execution-backoff': (attemptsMade: number) => this.computeBackoff(Math.max(1, attemptsMade)),
+        },
+      },
+    });
+
+    this.stepQueueCache.set(name, queue);
+    return queue;
+  }
+
+  private async enqueueReadySteps(params: {
+    executionId: string;
+    workflowId: string;
+    organizationId: string;
+    userId?: string;
+    trigger: string;
+    region: OrganizationRegion;
+    steps: InitializedStepDescriptor[];
+  }): Promise<void> {
+    if (params.steps.length === 0) {
+      return;
+    }
+
+    const queueName = this.getStepQueueName(params.region);
+    const queue = this.ensureStepQueue(queueName);
+
+    for (const step of params.steps) {
+      try {
+        await WorkflowExecutionStepRepository.setQueued(step.stepId);
+        const payload: WorkflowRunStepJobPayload = {
+          executionId: params.executionId,
+          workflowId: params.workflowId,
+          organizationId: params.organizationId,
+          nodeId: step.nodeId,
+          stepId: step.stepId,
+          userId: params.userId,
+          triggerType: params.trigger,
+          region: params.region,
+        };
+
+        await queue.add(
+          'workflow.run-step',
+          payload,
+          {
+            jobId: `${step.stepId}:${Date.now().toString(36)}`,
+            group: {
+              id: params.organizationId,
+            },
+          }
+        );
+      } catch (error) {
+        console.error(
+          `Failed to enqueue step ${step.stepId} for execution ${params.executionId}:`,
+          getErrorMessage(error)
+        );
+        await WorkflowExecutionStepRepository.resetForRetry(step.stepId).catch((resetError) => {
+          console.warn(
+            `Failed to reset step ${step.stepId} after enqueue error:`,
+            getErrorMessage(resetError)
+          );
+        });
+        throw error;
+      }
+    }
+  }
+
+  private async awaitExecutionCompletion(params: {
+    executionId: string;
+    organizationId: string;
+    startedAt: number;
+  }): Promise<{ status: 'completed' | 'failed' | 'waiting'; errorMessage?: string }> {
+    const pollInterval = Math.max(500, Math.floor(this.heartbeatIntervalMs));
+
+    while (true) {
+      const execution = await WorkflowRepository.getExecutionById(
+        params.executionId,
+        params.organizationId
+      );
+
+      if (!execution) {
+        throw new Error(`Execution ${params.executionId} not found during orchestration`);
+      }
+
+      const status = execution.status as string;
+      if (status === 'completed' || status === 'failed' || status === 'waiting') {
+        return {
+          status: status as 'completed' | 'failed' | 'waiting',
+          errorMessage: execution.errorDetails?.error ?? undefined,
+        };
+      }
+
+      const allCompleted = await WorkflowExecutionStepRepository.allStepsCompleted(params.executionId);
+      if (allCompleted) {
+        const aggregatedOutputs = await WorkflowExecutionStepRepository.getNodeOutputs(
+          params.executionId
+        );
+        await WorkflowRepository.updateWorkflowExecution(
+          params.executionId,
+          {
+            status: 'completed',
+            completedAt: new Date(),
+            duration: Date.now() - params.startedAt,
+            nodeResults: aggregatedOutputs,
+            errorDetails: null,
+          },
+          params.organizationId
+        ).catch((error) => {
+          console.warn(
+            `Execution ${params.executionId}: failed to mark completion while waiting:`,
+            getErrorMessage(error)
+          );
+        });
+        return { status: 'completed' };
+      }
+
+      await this.delay(pollInterval);
+    }
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private resolvePrevOutputForNode(
+    graph: any,
+    nodeId: string,
+    nodeOutputs: Record<string, any>,
+    initialData: any
+  ): any {
+    if (!graph?.edges || !Array.isArray(graph.edges)) {
+      return initialData;
+    }
+
+    const inbound = graph.edges.filter((edge: any) => edge?.to === nodeId);
+    if (inbound.length === 0) {
+      return initialData;
+    }
+
+    for (let i = inbound.length - 1; i >= 0; i--) {
+      const candidate = inbound[i];
+      if (candidate?.from && candidate.from in nodeOutputs) {
+        return nodeOutputs[candidate.from];
+      }
+    }
+
+    return initialData;
+  }
+
+  private async processStep(job: Job<WorkflowRunStepJobPayload>): Promise<void> {
+    const { executionId, workflowId, organizationId, nodeId, stepId } = job.data;
+    const jobRegion = (job.data.region as OrganizationRegion | undefined) ?? this.workerRegion;
+
+    if (jobRegion !== this.workerRegion) {
+      recordCrossRegionViolation({
+        subsystem: 'run-step-worker',
+        expectedRegion: this.workerRegion,
+        actualRegion: jobRegion,
+        identifier: `${executionId}:${nodeId}`,
+      });
+      throw new Error(
+        `Run-step worker region mismatch: expected ${this.workerRegion}, received ${jobRegion}`
+      );
+    }
+
+    const execution = await WorkflowRepository.getExecutionById(executionId, organizationId);
+    if (!execution) {
+      throw new Error(`Execution ${executionId} not found for step ${stepId}`);
+    }
+
+    const wf = await WorkflowRepository.getWorkflowById(workflowId, organizationId);
+    if (!wf || !wf.graph) {
+      throw new Error(`Workflow ${workflowId} not found for step execution`);
+    }
+
+    const stepRecord = await WorkflowExecutionStepRepository.markRunning(stepId);
+    if (!stepRecord) {
+      throw new Error(`Step ${stepId} is missing (execution ${executionId})`);
+    }
+
+    const attemptNumber = stepRecord.attempts;
+    const maxAttempts = stepRecord.maxAttempts ?? (job.opts.attempts ?? this.maxRetries + 1);
+
+    const initialData = execution.metadata?.initialData ?? job.data.initialData ?? {};
+    const existingOutputs = await WorkflowExecutionStepRepository.getNodeOutputs(executionId);
+    const deterministicKeys = await WorkflowExecutionStepRepository.getDeterministicKeys(executionId);
+
+    const prevOutput = this.resolvePrevOutputForNode(
+      wf.graph as any,
+      nodeId,
+      existingOutputs,
+      initialData
+    );
+
+    const storedResumeState = (stepRecord.resumeState as WorkflowResumeState | null) ?? null;
+    const resumeState: WorkflowResumeState = storedResumeState
+      ? {
+          ...storedResumeState,
+          nodeOutputs: {
+            ...(storedResumeState.nodeOutputs ?? {}),
+            ...existingOutputs,
+          },
+          prevOutput: storedResumeState.prevOutput ?? prevOutput,
+          remainingNodeIds:
+            storedResumeState.remainingNodeIds && storedResumeState.remainingNodeIds.length > 0
+              ? storedResumeState.remainingNodeIds
+              : [nodeId],
+          nextNodeId: storedResumeState.nextNodeId ?? nodeId,
+          idempotencyKeys: storedResumeState.idempotencyKeys ?? deterministicKeys.idempotency,
+          requestHashes: storedResumeState.requestHashes ?? deterministicKeys.request,
+        }
+      : {
+          nodeOutputs: existingOutputs,
+          prevOutput,
+          remainingNodeIds: [nodeId],
+          nextNodeId: nodeId,
+          startedAt: execution.startedAt?.toISOString() ?? new Date().toISOString(),
+          idempotencyKeys: deterministicKeys.idempotency,
+          requestHashes: deterministicKeys.request,
+        };
+
+    try {
+      const result = await workflowRuntime.executeWorkflow(
+        wf.graph as any,
+        initialData,
+        job.data.userId ?? execution.userId ?? undefined,
+        {
+          executionId,
+          organizationId,
+          triggerType: job.data.triggerType ?? execution.triggerType ?? 'manual',
+          resumeState,
+          mode: 'step',
+        }
+      );
+
+      if (!result.success && result.status === 'failed') {
+        throw new Error(result.error || `Step ${nodeId} returned failure`);
+      }
+
+      if (result.status === 'waiting') {
+        const latestExecution = await WorkflowRepository.getExecutionById(
+          executionId,
+          organizationId
+        );
+        const baseMetadata = latestExecution?.metadata ?? {};
+
+        await WorkflowExecutionStepRepository.markWaiting({
+          stepId,
+          waitUntil: result.waitUntil ? new Date(result.waitUntil) : null,
+          resumeState: result.resumeState ?? null,
+          metadata: result.deterministicKeys ?? null,
+        });
+
+        if (result.resumeState && result.waitingNode?.id) {
+          const stepCounts = await WorkflowExecutionStepRepository.getStatusCounts(executionId);
+          try {
+            const tokenResult = await executionResumeTokenService.issueToken({
+              executionId,
+              workflowId,
+              organizationId,
+              nodeId: result.waitingNode.id,
+              userId: job.data.userId ?? execution.userId ?? undefined,
+              resumeState: result.resumeState,
+              initialData,
+              triggerType: 'callback',
+              waitUntil: result.waitUntil ? new Date(result.waitUntil) : null,
+              metadata: {
+                waitingNode: result.waitingNode,
+              },
+            });
+
+            if (tokenResult) {
+              await WorkflowRepository.updateWorkflowExecution(
+                executionId,
+                {
+                  status: 'waiting',
+                  nodeResults: result.nodeOutputs,
+                  metadata: {
+                    ...baseMetadata,
+                    waitUntil: result.waitUntil ?? null,
+                    resumeCallbacks: {
+                      ...(baseMetadata?.resumeCallbacks ?? {}),
+                      [result.waitingNode.id]: {
+                        callbackUrl: tokenResult.callbackUrl,
+                        expiresAt: tokenResult.expiresAt.toISOString(),
+                      },
+                    },
+                    stepCounts,
+                  },
+                },
+                organizationId
+              );
+            }
+          } catch (tokenError) {
+            console.warn(
+              `Execution ${executionId}: failed to emit resume token for node ${result.waitingNode?.id}:`,
+              getErrorMessage(tokenError)
+            );
+          }
+        } else {
+          await WorkflowRepository.updateWorkflowExecution(
+            executionId,
+            {
+              status: 'waiting',
+              nodeResults: result.nodeOutputs,
+              metadata: {
+                ...baseMetadata,
+                waitUntil: result.waitUntil ?? null,
+                stepCounts: await WorkflowExecutionStepRepository.getStatusCounts(executionId),
+              },
+            },
+            organizationId
+          );
+        }
+
+        return;
+      }
+
+      const stepOutput = result.nodeOutputs?.[nodeId] ?? null;
+      await WorkflowExecutionStepRepository.markCompleted({
+        stepId,
+        output: stepOutput,
+        deterministicKeys: result.deterministicKeys ?? null,
+        metadata: {
+          executionTime: result.executionTime,
+          attempt: attemptNumber,
+        },
+      });
+      await WorkflowExecutionStepRepository.clearResumeState(stepId);
+
+      const refreshedExecution = await WorkflowRepository.getExecutionById(
+        executionId,
+        organizationId
+      );
+
+      const executionMetadata = {
+        ...(refreshedExecution?.metadata ?? {}),
+      } as Record<string, any>;
+      executionMetadata.deterministicKeys = {
+        ...(refreshedExecution?.metadata?.deterministicKeys ?? {}),
+        ...(result.deterministicKeys ?? {}),
+      };
+      executionMetadata.stepCounts = await WorkflowExecutionStepRepository.getStatusCounts(executionId);
+      if ('waitUntil' in executionMetadata) {
+        delete executionMetadata.waitUntil;
+      }
+      if ('resumeCallbacks' in executionMetadata) {
+        delete executionMetadata.resumeCallbacks;
+      }
+
+      await WorkflowRepository.updateWorkflowExecution(
+        executionId,
+        {
+          status: 'running',
+          nodeResults: result.nodeOutputs,
+          metadata: executionMetadata,
+        },
+        organizationId
+      );
+
+      const dependents = await WorkflowExecutionStepRepository.getDependents(stepId);
+      const readyDependents: InitializedStepDescriptor[] = [];
+      for (const dependent of dependents) {
+        const satisfied = await WorkflowExecutionStepRepository.areDependenciesSatisfied(dependent.id);
+        if (satisfied && dependent.status === 'pending') {
+          readyDependents.push({ stepId: dependent.id, nodeId: dependent.nodeId });
+        }
+      }
+
+      if (readyDependents.length > 0) {
+        await this.enqueueReadySteps({
+          executionId,
+          workflowId,
+          organizationId,
+          userId: job.data.userId ?? execution.userId ?? undefined,
+          trigger: job.data.triggerType ?? execution.triggerType ?? 'manual',
+          region: jobRegion,
+          steps: readyDependents,
+        });
+      }
+
+      const allCompleted = await WorkflowExecutionStepRepository.allStepsCompleted(executionId);
+      if (allCompleted) {
+        const completedExecution = await WorkflowRepository.getExecutionById(
+          executionId,
+          organizationId
+        );
+        const startedAtMs = completedExecution?.startedAt?.getTime() ?? refreshedExecution?.startedAt?.getTime() ?? execution.startedAt?.getTime() ?? null;
+        await WorkflowRepository.updateWorkflowExecution(
+          executionId,
+          {
+            status: 'completed',
+            completedAt: new Date(),
+            duration: startedAtMs !== null ? Date.now() - startedAtMs : null,
+            nodeResults: result.nodeOutputs,
+            errorDetails: null,
+          },
+          organizationId
+        );
+      }
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      const finalFailure = attemptNumber >= maxAttempts;
+
+      await WorkflowExecutionStepRepository.markFailed({
+        stepId,
+        error: { error: errorMessage },
+        metadata: { attempt: attemptNumber },
+        finalFailure,
+      });
+
+      if (finalFailure) {
+        const failedExecution = await WorkflowRepository.getExecutionById(
+          executionId,
+          organizationId
+        );
+        const startedAtMs = failedExecution?.startedAt?.getTime() ?? execution.startedAt?.getTime() ?? null;
+        const stepCounts = await WorkflowExecutionStepRepository.getStatusCounts(executionId);
+        await WorkflowRepository.updateWorkflowExecution(
+          executionId,
+          {
+            status: 'failed',
+            completedAt: new Date(),
+            errorDetails: { error: errorMessage, nodeId },
+            metadata: {
+              ...(failedExecution?.metadata ?? execution.metadata ?? {}),
+              lastError: errorMessage,
+              failedNode: nodeId,
+              stepCounts,
+            },
+            duration: startedAtMs !== null ? Date.now() - startedAtMs : null,
+          },
+          organizationId
+        );
+      } else {
+        await WorkflowExecutionStepRepository.resetForRetry(stepId);
+      }
+
+      throw error;
+    }
   }
 
   private async process(job: Job<WorkflowExecuteJobPayload>): Promise<void> {
@@ -1133,121 +1730,78 @@ class ExecutionQueueService {
       };
       const initialData = job.data.initialData ?? defaultInitialData;
       const trigger = job.data.triggerType ?? (resumeState ? 'timer' : 'manual');
+      try {
+        await runExecutionManager.startExecution(
+          executionId,
+          wf.graph as any,
+          userId,
+          trigger,
+          initialData,
+          organizationId
+        );
+      } catch (startError) {
+        console.warn(
+          `Execution ${executionId}: failed to record start in execution manager:`,
+          getErrorMessage(startError)
+        );
+      }
 
-      const result = await workflowRuntime.executeWorkflow(wf.graph as any, initialData, userId, {
+      const initialized = await WorkflowExecutionStepRepository.isInitialized(executionId);
+      let stepInitialization: { stepIdByNodeId: Map<string, string>; readySteps: InitializedStepDescriptor[] };
+
+      if (!initialized) {
+        stepInitialization = await WorkflowExecutionStepRepository.initialize({
+          executionId,
+          workflowId,
+          organizationId,
+          graph: wf.graph as any,
+          maxAttempts: this.maxRetries + 1,
+        });
+      } else {
+        const existingSteps = await WorkflowExecutionStepRepository.getSteps(executionId);
+        const map = new Map<string, string>();
+        for (const step of existingSteps) {
+          map.set(step.nodeId, step.id);
+        }
+        const readySteps = await WorkflowExecutionStepRepository.getReadySteps(executionId);
+        stepInitialization = { stepIdByNodeId: map, readySteps };
+      }
+
+      if (stepInitialization.readySteps.length > 0) {
+        await this.enqueueReadySteps({
+          executionId,
+          workflowId,
+          organizationId,
+          userId,
+          trigger,
+          region: jobRegion,
+          steps: stepInitialization.readySteps,
+        });
+      }
+
+      const completion = await this.awaitExecutionCompletion({
         executionId,
         organizationId,
-        triggerType: trigger,
-        resumeState,
+        startedAt,
       });
 
-      if (result.deterministicKeys) {
-        runningMetadata.deterministicKeys = {
-          ...(runningMetadata.deterministicKeys ?? {}),
-          ...result.deterministicKeys,
-        };
+      if (completion.status === 'waiting') {
+        return;
       }
 
       if (timerId) {
         await this.markTimerCompleted(timerId);
       }
 
-      if (!result.success && result.status === 'failed') {
-        throw new Error(result.error || 'Execution returned unsuccessful result');
-      }
-
-      if (result.status === 'waiting') {
-        const waitingMetadata = {
-          ...runningMetadata,
-          waitUntil: result.waitUntil ?? null,
-          timerId: result.timerId ?? null,
-          retryCount: Math.max(0, attemptNumber - 1),
-        } as Record<string, any>;
-        delete waitingMetadata.lastError;
-        delete waitingMetadata.finishedAt;
-        if ('lease' in waitingMetadata) {
-          delete waitingMetadata.lease;
-        }
-
-        if (result.resumeState && result.waitingNode?.id) {
-          const tokenResult = await executionResumeTokenService.issueToken({
-            executionId,
-            workflowId,
-            organizationId,
-            nodeId: result.waitingNode.id,
-            userId,
-            resumeState: result.resumeState,
-            initialData: job.data.initialData ?? null,
-            triggerType: 'callback',
-            waitUntil: result.waitUntil ? new Date(result.waitUntil) : null,
-            metadata: {
-              timerId: result.timerId ?? null,
-              waitingNode: {
-                id: result.waitingNode.id,
-                label: result.waitingNode.label,
-                type: result.waitingNode.type,
-              },
-            },
-          });
-
-          if (tokenResult) {
-            waitingMetadata.resumeCallbacks = {
-              ...(waitingMetadata.resumeCallbacks ?? {}),
-              [result.waitingNode.id]: {
-                callbackUrl: tokenResult.callbackUrl,
-                expiresAt: tokenResult.expiresAt.toISOString(),
-              },
-            } as Record<string, any>;
-          }
-        }
-
-        await WorkflowRepository.updateWorkflowExecution(
-          executionId,
-          {
-            status: 'waiting',
-            completedAt: null,
-            duration: Date.now() - startedAt,
-            nodeResults: result.nodeOutputs,
-            errorDetails: null,
-            metadata: waitingMetadata,
-          },
-          organizationId
+      if (completion.status === 'failed') {
+        console.error(
+          `❌ Execution ${executionId} failed after ${attemptNumber} attempt(s):`,
+          completion.errorMessage ?? 'Unknown error'
         );
-
         return;
       }
 
-      const metadata = {
-        ...runningMetadata,
-        finishedAt: new Date().toISOString(),
-        retryCount: Math.max(0, attemptNumber - 1),
-      } as Record<string, any>;
-      delete metadata.lastError;
-      if ('waitUntil' in metadata) {
-        delete metadata.waitUntil;
-      }
-      if ('timerId' in metadata) {
-        delete metadata.timerId;
-      }
-      if ('lease' in metadata) {
-        delete metadata.lease;
-      }
-      if ('resumeCallbacks' in metadata) {
-        delete metadata.resumeCallbacks;
-      }
-
-      await WorkflowRepository.updateWorkflowExecution(
-        executionId,
-        {
-          status: 'completed',
-          completedAt: new Date(),
-          duration: Date.now() - startedAt,
-          nodeResults: result.nodeOutputs,
-          errorDetails: null,
-          metadata,
-        },
-        organizationId
-      );
+      console.log(`✅ Execution ${executionId} completed via step queue.`);
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       const failureMetadata = {
