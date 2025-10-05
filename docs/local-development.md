@@ -40,12 +40,14 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
 ## 3. Next steps
 
 - `npm run dev:api` starts the API in watch mode and automatically boots the Vite-powered frontend
-  development server.
+  development server. In development the API now defaults to running the execution worker inline when
+  `ENABLE_INLINE_WORKER` is not explicitly set, preventing silent queues when you forget to start a
+  separate worker.
 - `npm run dev:worker` runs the execution worker that processes queued jobs.
 - `npm run dev:scheduler` runs the polling scheduler responsible for enqueuing work.
 - `npm run dev:stack` starts the API, scheduler, execution worker, and encryption rotation worker
-  together with shared lifecycle and cleanup logic. Use this script whenever you need the queue
-  processing components (scheduler + execution worker) online alongside the API.
+  together with shared lifecycle and cleanup logic. It also disables the inline auto-start on the API
+  so the dedicated worker process can take over.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
 ### Multi-process vs. inline worker flows
@@ -54,6 +56,8 @@ Local developers can now choose between a dedicated worker topology or a single-
 mode when booting the stack:
 
 1. **Multi-process (recommended for parity with production)**
+   - Set `ENABLE_INLINE_WORKER=false` (or run through `npm run dev:stack`, which configures this for
+     you).
    - Start the API: `npm run dev:api`
    - In a second terminal, start the scheduler: `npm run dev:scheduler`
    - In a third terminal, run the execution worker: `npm run dev:worker`
@@ -63,11 +67,17 @@ mode when booting the stack:
    independently.
 
 2. **Inline worker (single terminal)**
-   - Export `ENABLE_INLINE_WORKER=true` (or set it in `.env.development`).
+   - Leave `ENABLE_INLINE_WORKER` unset or set it to `true` in `.env.development`.
    - Run `npm run dev:api`.
-   When the flag is present, the API boot sequence automatically starts the execution worker inside
-   the same Node process. This is convenient for quick smoke tests when you do not need separate
-   worker logs. Turn the flag off to return to the dedicated worker model.
+   When the flag resolves to true, the API boot sequence automatically starts the execution worker
+   inside the same Node process. This is convenient for quick smoke tests when you do not need
+   separate worker logs. Export `ENABLE_INLINE_WORKER=false` (or `DISABLE_INLINE_WORKER_AUTOSTART=true`)
+   to return to the dedicated worker model.
+
+In development and CI the API now refuses to finish booting if it cannot detect a fresh execution
+worker heartbeat. When you see the startup failure, start `npm run dev:worker`/`npm run dev:scheduler`
+or enable the inline worker flag before retrying. Set `SKIP_WORKER_HEARTBEAT_CHECK=true` only when you
+deliberately want to bypass this guard (for example in a one-off smoke test container).
 
 Shut the stack down with:
 

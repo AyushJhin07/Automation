@@ -1,3 +1,4 @@
+import IORedis from 'ioredis';
 import { eq, sql } from 'drizzle-orm';
 
 import { getErrorMessage } from '../types/common.js';
@@ -10,6 +11,7 @@ import {
   createQueue,
   createQueueEvents,
   getActiveQueueDriver,
+  getRedisConnectionOptions,
   registerQueueTelemetry,
   type Queue,
   type QueueEvents,
@@ -151,6 +153,9 @@ class ExecutionQueueService {
   >();
   private readonly workerRegion: OrganizationRegion;
   private readonly workerQueueName: ExecutionQueueName;
+  private readonly workerHeartbeatKey: string;
+  private workerHeartbeatClient: IORedis | null = null;
+  private workerHeartbeatTimer: NodeJS.Timeout | null = null;
 
   private constructor() {
     const configuredConcurrency = Number.parseInt(
@@ -211,6 +216,7 @@ class ExecutionQueueService {
 
     this.workerRegion = this.resolveRegionFromEnv();
     this.workerQueueName = this.getQueueName(this.workerRegion);
+    this.workerHeartbeatKey = this.getWorkerHeartbeatKey(this.workerRegion);
   }
 
   public static getInstance(): ExecutionQueueService {
@@ -244,6 +250,18 @@ class ExecutionQueueService {
 
   private getStepQueueName(region: OrganizationRegion): ExecutionStepQueueName {
     return `workflow.run-step.${region}` as ExecutionStepQueueName;
+  }
+
+  private getWorkerHeartbeatKey(region: OrganizationRegion): string {
+    return `automation:execution-worker:heartbeat:${region}`;
+  }
+
+  private isInlineWorkerEnabled(): boolean {
+    const raw = process.env.ENABLE_INLINE_WORKER ?? process.env.INLINE_EXECUTION_WORKER;
+    if (!raw) {
+      return false;
+    }
+    return ['1', 'true', 'yes', 'inline'].includes(raw.toLowerCase());
   }
 
   private computeBackoff(attempt: number): number {
@@ -937,6 +955,7 @@ class ExecutionQueueService {
         void checkQueueHealth(this.workerRegion).catch(() => undefined);
       });
 
+      await this.startWorkerHeartbeatPublisher();
       this.started = true;
 
       console.log(
@@ -1032,6 +1051,9 @@ class ExecutionQueueService {
         this.stepTelemetryCleanup = null;
       }
 
+      this.stopWorkerHeartbeatPublisher();
+      await this.disposeWorkerHeartbeatClient();
+
       const workerQueue = this.queueCache.get(this.workerQueueName);
       if (workerQueue) {
         try {
@@ -1058,6 +1080,193 @@ class ExecutionQueueService {
     })();
 
     return this.shutdownPromise;
+  }
+
+  private async startWorkerHeartbeatPublisher(): Promise<void> {
+    if (this.workerHeartbeatTimer) {
+      clearInterval(this.workerHeartbeatTimer);
+      this.workerHeartbeatTimer = null;
+    }
+
+    const client = await this.ensureWorkerHeartbeatClient();
+    if (!client) {
+      return;
+    }
+
+    await this.publishWorkerHeartbeat('started');
+
+    const intervalMs = Math.min(Math.max(this.heartbeatIntervalMs, 5000), 15000);
+    this.workerHeartbeatTimer = setInterval(() => {
+      void this.publishWorkerHeartbeat('interval');
+    }, intervalMs);
+
+    if (typeof this.workerHeartbeatTimer.unref === 'function') {
+      this.workerHeartbeatTimer.unref();
+    }
+  }
+
+  private stopWorkerHeartbeatPublisher(): void {
+    if (this.workerHeartbeatTimer) {
+      clearInterval(this.workerHeartbeatTimer);
+      this.workerHeartbeatTimer = null;
+    }
+    void this.publishWorkerHeartbeat('shutdown');
+  }
+
+  private async ensureWorkerHeartbeatClient(): Promise<IORedis | null> {
+    if (getActiveQueueDriver() !== 'bullmq') {
+      return null;
+    }
+
+    if (this.workerHeartbeatClient) {
+      return this.workerHeartbeatClient;
+    }
+
+    try {
+      const connection = getRedisConnectionOptions(this.workerRegion);
+      this.workerHeartbeatClient = new IORedis(connection);
+      this.workerHeartbeatClient.on('error', (error) => {
+        console.warn(
+          '[ExecutionQueueService] Worker heartbeat Redis connection error:',
+          getErrorMessage(error)
+        );
+      });
+      return this.workerHeartbeatClient;
+    } catch (error) {
+      console.warn(
+        '[ExecutionQueueService] Unable to establish Redis connection for worker heartbeat:',
+        getErrorMessage(error)
+      );
+      return null;
+    }
+  }
+
+  private async disposeWorkerHeartbeatClient(): Promise<void> {
+    if (!this.workerHeartbeatClient) {
+      return;
+    }
+
+    try {
+      await this.workerHeartbeatClient.quit();
+    } catch {
+      this.workerHeartbeatClient.disconnect();
+    }
+
+    this.workerHeartbeatClient = null;
+  }
+
+  private async publishWorkerHeartbeat(
+    stage: 'started' | 'interval' | 'shutdown'
+  ): Promise<void> {
+    const client = await this.ensureWorkerHeartbeatClient();
+    if (!client) {
+      return;
+    }
+
+    if (stage === 'shutdown') {
+      try {
+        await client.del(this.workerHeartbeatKey);
+      } catch (error) {
+        console.warn(
+          '[ExecutionQueueService] Failed to clear worker heartbeat key during shutdown:',
+          getErrorMessage(error)
+        );
+      }
+      return;
+    }
+
+    const payload = {
+      workerId: this.worker?.id ?? `execution-worker:${process.pid}`,
+      pid: process.pid,
+      region: this.workerRegion,
+      queue: this.workerQueueName,
+      inline: this.isInlineWorkerEnabled(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const ttlMs = Math.max(this.heartbeatTimeoutMs * 2, 20000);
+
+    try {
+      await client.set(this.workerHeartbeatKey, JSON.stringify(payload), 'PX', ttlMs);
+    } catch (error) {
+      console.warn(
+        `[ExecutionQueueService] Failed to publish worker heartbeat (${stage}):`,
+        getErrorMessage(error)
+      );
+    }
+  }
+
+  public async waitForWorkerHeartbeat(options: {
+    timeoutMs?: number;
+    pollIntervalMs?: number;
+  } = {}): Promise<{
+    workerId: string | null;
+    heartbeatAt: string;
+    ageMs: number;
+    inline: boolean;
+    region: OrganizationRegion;
+  }> {
+    if (getActiveQueueDriver() !== 'bullmq') {
+      throw new Error(
+        'Worker heartbeat checks require the BullMQ queue driver. Configure Redis or set QUEUE_DRIVER to bullmq.'
+      );
+    }
+
+    const timeoutMs = Math.max(this.heartbeatTimeoutMs, options.timeoutMs ?? 20000);
+    const pollIntervalMs = Math.max(250, options.pollIntervalMs ?? 1000);
+    const maxAgeMs = Math.max(this.heartbeatTimeoutMs * 2, pollIntervalMs * 3);
+    const deadline = Date.now() + timeoutMs;
+    const connection = getRedisConnectionOptions(this.workerRegion);
+    const client = new IORedis(connection);
+
+    try {
+      while (Date.now() <= deadline) {
+        const raw = await client.get(this.workerHeartbeatKey);
+        if (raw) {
+          try {
+            const data = JSON.parse(raw) as {
+              workerId?: string;
+              inline?: boolean;
+              updatedAt?: string;
+              timestamp?: string;
+              region?: string;
+            };
+            const heartbeatIso = data.updatedAt ?? data.timestamp;
+            const parsed = heartbeatIso ? Date.parse(heartbeatIso) : NaN;
+            if (Number.isFinite(parsed)) {
+              const ageMs = Date.now() - parsed;
+              if (ageMs <= maxAgeMs) {
+                return {
+                  workerId: typeof data.workerId === 'string' ? data.workerId : null,
+                  heartbeatAt: new Date(parsed).toISOString(),
+                  ageMs,
+                  inline: Boolean(data.inline),
+                  region:
+                    (data.region as OrganizationRegion | undefined) ?? this.workerRegion,
+                };
+              }
+            }
+          } catch (error) {
+            console.warn(
+              '[ExecutionQueueService] Unable to parse worker heartbeat payload:',
+              getErrorMessage(error)
+            );
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      }
+    } finally {
+      try {
+        await client.quit();
+      } catch {
+        client.disconnect();
+      }
+    }
+
+    throw new Error(
+      `Execution worker heartbeat not detected within ${timeoutMs}ms. Start "npm run dev:worker" or enable ENABLE_INLINE_WORKER.`
+    );
   }
 
   private ensureQueue(
