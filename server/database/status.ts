@@ -12,10 +12,22 @@ const REQUIRED_TABLES = [
   'webhook_dedupe',
 ];
 
+export interface DatabaseStatus {
+  available: boolean;
+  missingTables: string[];
+  error?: string;
+  checkedAt: string | null;
+}
+
 let dbAvailable = Boolean(db);
 let checkInFlight: Promise<boolean> | null = null;
 let checkCompleted = false;
 let availabilityOverride: boolean | null = null;
+let lastStatus: DatabaseStatus = {
+  available: dbAvailable,
+  missingTables: [],
+  checkedAt: null,
+};
 
 function getResultRows(result: any): any[] {
   if (!result) {
@@ -34,9 +46,17 @@ function getResultRows(result: any): any[] {
 }
 
 async function runDatabaseCheck(): Promise<boolean> {
+  const checkedAt = new Date().toISOString();
+
   if (!db) {
     dbAvailable = false;
     checkCompleted = true;
+    lastStatus = {
+      available: false,
+      missingTables: [],
+      error: 'Database client is not configured. Set DATABASE_URL.',
+      checkedAt,
+    };
     return false;
   }
 
@@ -61,18 +81,28 @@ async function runDatabaseCheck(): Promise<boolean> {
     const missingTables = REQUIRED_TABLES.filter((table) => !tables.has(table));
 
     if (missingTables.length > 0) {
+      const missingList = missingTables.join(', ');
       console.warn(
-        `⚠️ Database schema check failed: missing tables [${missingTables.join(
-          ', ',
-        )}]. Run "npm run db:push" or apply the latest migrations before enabling database features.`,
+        `⚠️ Database schema check failed: missing tables [${missingList}]. Run "npm run db:push" or apply the latest migrations before enabling database features.`,
       );
       dbAvailable = false;
       checkCompleted = true;
+      lastStatus = {
+        available: false,
+        missingTables,
+        error: `Missing tables: ${missingList}`,
+        checkedAt,
+      };
       return false;
     }
 
     dbAvailable = true;
     checkCompleted = true;
+    lastStatus = {
+      available: true,
+      missingTables: [],
+      checkedAt,
+    };
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -81,6 +111,12 @@ async function runDatabaseCheck(): Promise<boolean> {
     );
     dbAvailable = false;
     checkCompleted = true;
+    lastStatus = {
+      available: false,
+      missingTables: [],
+      error: message,
+      checkedAt,
+    };
     return false;
   }
 }
@@ -89,12 +125,24 @@ export async function ensureDatabaseReady(): Promise<boolean> {
   if (availabilityOverride !== null) {
     dbAvailable = availabilityOverride && Boolean(db);
     checkCompleted = true;
+    lastStatus = {
+      available: dbAvailable,
+      missingTables: [],
+      error: dbAvailable ? undefined : 'Database availability overridden to false.',
+      checkedAt: new Date().toISOString(),
+    };
     return dbAvailable;
   }
 
   if (!db) {
     dbAvailable = false;
     checkCompleted = true;
+    lastStatus = {
+      available: false,
+      missingTables: [],
+      error: 'Database client is not configured. Set DATABASE_URL.',
+      checkedAt: new Date().toISOString(),
+    };
     return false;
   }
 
@@ -128,6 +176,12 @@ export function setDatabaseAvailabilityForTests(available: boolean): void {
   dbAvailable = available && Boolean(db);
   checkCompleted = true;
   checkInFlight = null;
+  lastStatus = {
+    available: dbAvailable,
+    missingTables: [],
+    error: available ? undefined : 'Database availability overridden to false for tests.',
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 export function resetDatabaseAvailabilityOverrideForTests(): void {
@@ -139,6 +193,21 @@ export function resetDatabaseAvailabilityOverrideForTests(): void {
   dbAvailable = Boolean(db);
   checkCompleted = false;
   checkInFlight = null;
+  lastStatus = {
+    available: dbAvailable,
+    missingTables: [],
+    checkedAt: null,
+  };
+}
+
+export async function getDatabaseStatus(): Promise<DatabaseStatus> {
+  if (!checkCompleted) {
+    await ensureDatabaseReady();
+  } else if (checkInFlight) {
+    await checkInFlight;
+  }
+
+  return lastStatus;
 }
 
 if (process.env.NODE_ENV !== 'test') {

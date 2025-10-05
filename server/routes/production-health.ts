@@ -9,6 +9,7 @@ import { LLMProviderService } from '../services/LLMProviderService.js';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { checkQueueHealth } from '../services/QueueHealthService.js';
 import { executionQueueService } from '../services/ExecutionQueueService.js';
+import { getDatabaseStatus } from '../database/status.js';
 
 const router = Router();
 
@@ -286,27 +287,36 @@ router.get('/queue/heartbeat', (req, res) => {
 // Helper functions for health checks
 async function checkDatabase(): Promise<HealthCheck> {
   const startTime = Date.now();
-  
+
   try {
-    // In production, you'd test actual database connection
-    // For now, simulate based on environment
-    if (process.env.DATABASE_URL) {
+    const status = await getDatabaseStatus();
+    const responseTime = Date.now() - startTime;
+
+    if (!status.available) {
+      const message = status.missingTables.length > 0
+        ? `Database schema incomplete: missing tables [${status.missingTables.join(', ')}]`
+        : status.error
+          ? `Database check failed: ${status.error}`
+          : 'Database unavailable';
+
       return {
-        status: 'pass',
-        message: 'Database connection healthy',
-        responseTime: Date.now() - startTime
-      };
-    } else {
-      return {
-        status: 'warn',
-        message: 'Database URL not configured (development mode)',
-        responseTime: Date.now() - startTime
+        status: 'fail',
+        message,
+        responseTime,
+        details: status
       };
     }
+
+    return {
+      status: 'pass',
+      message: 'Database connection healthy',
+      responseTime,
+      details: status
+    };
   } catch (error) {
     return {
       status: 'fail',
-      message: `Database check failed: ${error.message}`,
+      message: `Database check failed: ${error instanceof Error ? error.message : String(error)}`,
       responseTime: Date.now() - startTime
     };
   }
