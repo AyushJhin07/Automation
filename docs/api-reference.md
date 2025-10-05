@@ -236,6 +236,206 @@ Content-Type: application/json
 }
 ```
 
+### **Launch Manual Workflow Execution**
+
+Enqueue a production workflow run on demand. Requires `workflow:deploy` permission.
+
+```http
+POST /api/executions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "workflowId": "wf-789",
+  "triggerType": "manual",
+  "triggerData": {
+    "source": "api",
+    "notes": "Run from incident response playbook"
+  }
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "success": true,
+  "workflowId": "wf-789",
+  "executionId": "exec_01J123ABCXYZ"
+}
+```
+
+**Error responses:**
+
+* `404 WORKFLOW_NOT_FOUND` – workflow is missing or belongs to a different organization.
+* `429 EXECUTION_QUOTA_EXCEEDED` – organization execution throughput or concurrency limits were reached.
+* `429 CONNECTOR_CONCURRENCY_EXCEEDED` – connector-specific concurrency guard blocked the run.
+* `429 USAGE_QUOTA_EXCEEDED` – per-user usage quotas prevent the run (returns `details.quotaType`).
+
+### **Dry Run Workflow**
+
+Simulate a workflow locally without calling external systems. Returns summarized node results and deployment diagnostics.
+
+```http
+POST /api/executions/dry-run
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "workflowId": "wf-789",
+  "options": {
+    "timezone": "America/New_York",
+    "stopOnError": true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "workflowId": "wf-789",
+  "execution": {
+    "executionId": "dryrun-1713039123456",
+    "status": "completed",
+    "summary": "Dry run completed successfully",
+    "startedAt": "2024-04-13T21:12:03.456Z",
+    "completedAt": "2024-04-13T21:12:04.112Z",
+    "durationMs": 656,
+    "order": ["trigger-1", "action-1"],
+    "nodes": {
+      "trigger-1": {
+        "status": "success",
+        "label": "Scheduled trigger",
+        "result": {
+          "summary": "Prepared trigger Scheduled trigger",
+          "logs": ["Evaluated 2 parameters", "Manual run uses provided sample data for triggers."],
+          "finishedAt": "2024-04-13T21:12:03.789Z"
+        }
+      }
+    }
+  },
+  "preview": {
+    "success": true,
+    "logs": ["Deploying workflow in dry-run mode"],
+    "error": null
+  },
+  "requiredScopes": ["gmail.readonly"],
+  "encounteredError": false
+}
+```
+
+**Error responses:**
+
+* `400 WORKFLOW_GRAPH_EMPTY` – workflow does not have nodes to simulate.
+* `404 WORKFLOW_NOT_FOUND` – workflow is unavailable.
+* `422 WORKFLOW_COMPILATION_FAILED` – validation or compilation errors block execution; `details` contains compiler output.
+
+---
+
+## **🔔 WEBHOOK OPERATIONS**
+
+### **List Active Webhook Listeners**
+
+```http
+GET /api/webhooks/admin/listeners
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "listeners": {
+    "webhooks": [
+      {
+        "id": "whk_123",
+        "workflowId": "wf-789",
+        "appId": "slack",
+        "triggerId": "event",
+        "endpoint": "/api/webhooks/whk_123",
+        "isActive": true,
+        "region": "us",
+        "lastTriggered": "2024-04-13T20:51:12.000Z"
+      }
+    ],
+    "polling": [
+      {
+        "id": "poll_456",
+        "workflowId": "wf-789",
+        "appId": "sheets",
+        "triggerId": "check_updates",
+        "interval": 300,
+        "nextPoll": "2024-04-13T21:17:00.000Z",
+        "lastPoll": null,
+        "isActive": true,
+        "region": "us",
+        "status": null
+      }
+    ]
+  }
+}
+```
+
+### **Deactivate Webhook Listener**
+
+```http
+POST /api/webhooks/admin/listeners/{webhookId}/deactivate
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhookId": "whk_123",
+  "deactivated": true
+}
+```
+
+### **Remove Webhook Listener**
+
+```http
+DELETE /api/webhooks/admin/listeners/{webhookId}
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhookId": "whk_123",
+  "removed": true
+}
+```
+
+### **Webhook Health Snapshot**
+
+```http
+GET /api/webhooks/admin/health
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "status": "healthy",
+  "initializationError": null,
+  "queueDriver": "bullmq",
+  "region": "us",
+  "supportedRegions": ["us", "eu", "apac"],
+  "stats": {
+    "activeWebhooks": 4,
+    "pollingTriggers": 2,
+    "dedupeEntries": null,
+    "webhooks": [
+      { "id": "whk_123", "app": "slack", "trigger": "event", "endpoint": "/api/webhooks/whk_123", "isActive": true, "lastTriggered": "2024-04-13T20:51:12.000Z" }
+    ]
+  },
+  "timestamp": "2024-04-13T21:12:05.000Z"
+}
+```
+
 ### **Get Workflow**
 
 Retrieve a built workflow by ID.

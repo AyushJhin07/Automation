@@ -24,6 +24,7 @@ import oauthRoutes from "./routes/oauth";
 import executionRoutes from "./routes/executions.js";
 import runExplorerRoutes from "./routes/run-explorer.js";
 import expressionRoutes from "./routes/expressions.js";
+import webhookAdminRoutes from "./routes/webhooks-admin.js";
 import { RealAIService, ConversationManager } from "./realAIService";
 import organizationRoleRoutes from "./routes/organization-roles";
 
@@ -297,6 +298,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   app.use('/api/workflows', workflowDeploymentRoutes);
+
+  app.use(
+    '/api/webhooks/admin',
+    authenticateToken,
+    requireOrganizationContext(),
+    requirePermission('workflow:view'),
+    webhookAdminRoutes,
+  );
   
   // PRODUCTION: Health monitoring and metrics routes
   app.use('/api', productionHealthRoutes);
