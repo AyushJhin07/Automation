@@ -1422,9 +1422,15 @@ class ExecutionQueueService {
       }
 
       const stepOutput = result.nodeOutputs?.[nodeId] ?? null;
+      const outputObject =
+        stepOutput && typeof stepOutput === 'object' && !Array.isArray(stepOutput)
+          ? (stepOutput as Record<string, any>)
+          : null;
       await WorkflowExecutionStepRepository.markCompleted({
         stepId,
         output: stepOutput,
+        logs: outputObject?.logs ?? null,
+        diagnostics: (outputObject?.diagnostics as Record<string, any> | null | undefined) ?? null,
         deterministicKeys: result.deterministicKeys ?? null,
         metadata: {
           executionTime: result.executionTime,
@@ -1512,6 +1518,8 @@ class ExecutionQueueService {
         error: { error: errorMessage },
         metadata: { attempt: attemptNumber },
         finalFailure,
+        logs: null,
+        diagnostics: null,
       });
 
       if (finalFailure) {
