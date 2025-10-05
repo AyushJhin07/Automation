@@ -21,6 +21,8 @@
   - POST /api/integrations/execute-paginated
   - POST /api/integrations/execute-list
   - POST /api/integrations/execute-batch
+- Architecture
+  - docs/architecture/connector-modules.md
 - Telemetry
   - GET /api/roadmap
   - GET /api/roadmap/summary

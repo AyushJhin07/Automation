@@ -2,6 +2,7 @@
 // Provides unified interface for executing functions across all integrated applications
 
 import { BaseAPIClient, APICredentials, APIResponse, DynamicOptionHandlerContext, DynamicOptionResult } from './BaseAPIClient';
+import Ajv, { ValidateFunction } from 'ajv';
 import { AirtableAPIClient } from './AirtableAPIClient';
 import { GmailAPIClient } from './GmailAPIClient';
 import { NotionAPIClient } from './NotionAPIClient';
@@ -16,6 +17,7 @@ import { getErrorMessage } from '../types/common';
 import { ConnectorSimulator } from '../testing/ConnectorSimulator';
 import { connectorFramework } from '../connectors/ConnectorFramework';
 import type { RateLimitRules } from './RateLimiter';
+import type { ConnectorModule, ConnectorOperationContract, ConnectorJSONSchema } from '../../shared/connectors/module';
 
 export interface IntegrationConfig {
   appName: string;
@@ -65,6 +67,9 @@ export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
   private supportedApps = new Set(getImplementedConnectorIds());
   private simulator?: ConnectorSimulator;
+  private connectorModules: Map<string, ConnectorModule> = new Map();
+  private moduleValidators: Map<string, ValidateFunction> = new Map();
+  private readonly moduleSchemaValidator = new Ajv({ allErrors: true, strict: false, coerceTypes: true });
 
   constructor(options: IntegrationManagerOptions = {}) {
     const shouldUseSimulator = options.useSimulator ?? env.CONNECTOR_SIMULATOR_ENABLED;
@@ -276,6 +281,8 @@ export class IntegrationManager {
       }
 
       this.clients.set(clientKey, client);
+      const module = this.createConnectorModule(appKey, client, definition);
+      this.setConnectorModule(clientKey, module);
 
       return {
         success: true,
@@ -405,27 +412,71 @@ export class IntegrationManager {
         client.updateCredentials(params.credentials);
       }
 
-      // Execute the function
-      const clientRequestContext = this.buildClientRequestContext(params);
-      const executeOnClient = () =>
-        this.executeFunctionOnClient(
-          client,
-          appKey,
-          params.functionId,
-          params.parameters
-        );
+      const module = this.getOrCreateConnectorModule(appKey, clientKey, client);
+      const validation = this.validateModuleOperation(
+        clientKey,
+        module,
+        params.functionId,
+        params.parameters
+      );
 
-      const result = clientRequestContext
-        ? await client.withRequestContext(clientRequestContext, executeOnClient)
-        : await executeOnClient();
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: validation.error,
+          appName: params.appName,
+          functionId: params.functionId,
+          executionTime: Date.now() - startTime,
+        };
+      }
+
+      const moduleResult = await module.execute({
+        operationId: params.functionId,
+        input: params.parameters,
+        credentials: params.credentials,
+        additionalConfig: params.additionalConfig,
+        connectionId: params.connectionId,
+        metadata: this.buildClientRequestContext(params),
+      });
+
+      if (!moduleResult.success) {
+        if (
+          env.GENERIC_EXECUTOR_ENABLED &&
+          typeof moduleResult.error === 'string' &&
+          moduleResult.error.startsWith('Function ')
+        ) {
+          const fallback = await genericExecutor.execute({
+            appId: appKey,
+            functionId: params.functionId,
+            parameters: params.parameters,
+            credentials: params.credentials,
+          });
+          return {
+            success: fallback.success,
+            data: fallback.data,
+            error: fallback.error,
+            appName: params.appName,
+            functionId: params.functionId,
+            executionTime: Date.now() - startTime,
+          };
+        }
+
+        return {
+          success: false,
+          error: moduleResult.error,
+          appName: params.appName,
+          functionId: params.functionId,
+          executionTime: Date.now() - startTime,
+        };
+      }
 
       return {
-        success: result.success,
-        data: result.data,
-        error: result.error,
+        success: true,
+        data: moduleResult.data,
+        error: moduleResult.error,
         appName: params.appName,
         functionId: params.functionId,
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
 
     } catch (error) {
@@ -579,6 +630,8 @@ export class IntegrationManager {
     for (const key of Array.from(this.clients.keys())) {
       if (key === appKey || key.startsWith(`${appKey}::`)) {
         this.clients.delete(key);
+        this.connectorModules.delete(key);
+        this.purgeValidatorsForModule(key);
         removed = true;
       }
     }
@@ -596,6 +649,193 @@ export class IntegrationManager {
     return {
       connected: !!client,
       client
+    };
+  }
+
+  private getOrCreateConnectorModule(
+    appKey: string,
+    clientKey: string,
+    client: BaseAPIClient,
+  ): ConnectorModule {
+    const cached = this.connectorModules.get(clientKey);
+    if (cached) {
+      return cached;
+    }
+
+    const definition = connectorRegistry.getConnectorDefinition(appKey);
+    const module = this.createConnectorModule(appKey, client, definition);
+    this.setConnectorModule(clientKey, module);
+    return module;
+  }
+
+  private createConnectorModule(
+    appKey: string,
+    client: BaseAPIClient,
+    definition?: any,
+  ): ConnectorModule {
+    const operations = this.buildOperationsFromDefinition(definition);
+    const auth = definition?.authentication
+      ? {
+          type: definition.authentication.type ?? 'custom',
+          metadata: definition.authentication.config ?? {},
+        }
+      : { type: 'custom' };
+
+    const module = client.toConnectorModule({
+      id: appKey,
+      name: definition?.name ?? appKey,
+      description: definition?.description,
+      auth,
+      inputSchema: this.buildModuleInputSchema(operations),
+      operations,
+      executor: async (input) => {
+        const executeOnClient = () =>
+          this.executeFunctionOnClient(
+            client,
+            appKey,
+            input.operationId,
+            input.input ?? {}
+          );
+
+        const context = input.metadata;
+        const response = context
+          ? await client.withRequestContext(context, executeOnClient)
+          : await executeOnClient();
+
+        return {
+          success: response.success !== false,
+          data: response.data,
+          error: response.error,
+          meta: {
+            statusCode: response.statusCode,
+            headers: response.headers,
+          },
+        };
+      },
+    });
+
+    return module;
+  }
+
+  private buildOperationsFromDefinition(definition?: any): Record<string, ConnectorOperationContract> {
+    const operations: Record<string, ConnectorOperationContract> = {};
+    if (!definition) {
+      return operations;
+    }
+
+    const addOperations = (items: any, type: ConnectorOperationContract['type']) => {
+      if (!Array.isArray(items)) {
+        return;
+      }
+
+      for (const item of items) {
+        if (!item || typeof item !== 'object' || !item.id) {
+          continue;
+        }
+        const id = String(item.id);
+        operations[id] = {
+          id,
+          type,
+          name: typeof item.name === 'string' ? item.name : undefined,
+          description: typeof item.description === 'string' ? item.description : undefined,
+          inputSchema: (item.parameters ?? item.requestSchema) as ConnectorJSONSchema | undefined,
+          outputSchema: (item.responseSchema ?? item.outputSchema) as ConnectorJSONSchema | undefined,
+          metadata: this.buildOperationMetadata(item),
+        };
+      }
+    };
+
+    addOperations(definition.actions, 'action');
+    addOperations(definition.triggers, 'trigger');
+
+    return operations;
+  }
+
+  private buildOperationMetadata(operation: any): Record<string, any> | undefined {
+    if (!operation || typeof operation !== 'object') {
+      return undefined;
+    }
+
+    const metadata: Record<string, any> = {};
+
+    if (operation.endpoint) metadata.endpoint = operation.endpoint;
+    if (operation.method) metadata.method = operation.method;
+    if (operation.examples) metadata.examples = operation.examples;
+    if (operation.rateLimits) metadata.rateLimits = operation.rateLimits;
+
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
+  }
+
+  private buildModuleInputSchema(
+    operations: Record<string, ConnectorOperationContract>
+  ): ConnectorJSONSchema {
+    const operationIds = Object.keys(operations);
+    return {
+      type: 'object',
+      properties: {
+        operationId: operationIds.length
+          ? { type: 'string', enum: operationIds }
+          : { type: 'string' },
+        parameters: { type: 'object', additionalProperties: true },
+      },
+      required: ['operationId', 'parameters'],
+      additionalProperties: true,
+    };
+  }
+
+  private setConnectorModule(clientKey: string, module: ConnectorModule): void {
+    this.connectorModules.set(clientKey, module);
+    this.purgeValidatorsForModule(clientKey);
+  }
+
+  private purgeValidatorsForModule(clientKey: string): void {
+    for (const key of Array.from(this.moduleValidators.keys())) {
+      if (key.startsWith(`${clientKey}::`)) {
+        this.moduleValidators.delete(key);
+      }
+    }
+  }
+
+  private validateModuleOperation(
+    clientKey: string,
+    module: ConnectorModule,
+    operationId: string,
+    parameters: Record<string, any>,
+  ): { valid: boolean; error?: string } {
+    const op = module.operations[operationId]
+      ?? module.operations[operationId?.toLowerCase?.() ?? ''];
+
+    if (!op?.inputSchema || typeof op.inputSchema !== 'object') {
+      return { valid: true };
+    }
+
+    const validatorKey = `${clientKey}::${op.id}`;
+    let validator = this.moduleValidators.get(validatorKey);
+    if (!validator) {
+      try {
+        validator = this.moduleSchemaValidator.compile(op.inputSchema);
+        this.moduleValidators.set(validatorKey, validator);
+      } catch (error) {
+        console.warn(
+          `[IntegrationManager] Failed to compile schema for ${validatorKey}:`,
+          getErrorMessage(error)
+        );
+        return { valid: true };
+      }
+    }
+
+    const payload = parameters ?? {};
+    if (validator(payload)) {
+      return { valid: true };
+    }
+
+    const issues = (validator.errors ?? [])
+      .map(err => `${err.instancePath || '/'} ${err.message}`)
+      .join('; ');
+
+    return {
+      valid: false,
+      error: `Validation failed for ${op.id}: ${issues || 'unknown validation error'}`,
     };
   }
 

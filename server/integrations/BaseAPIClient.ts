@@ -3,6 +3,14 @@
 
 import { getErrorMessage } from '../types/common';
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
+import type {
+  ConnectorModule,
+  ConnectorOperationContract,
+  ConnectorExecuteInput,
+  ConnectorExecuteOutput,
+  ConnectorAuthContract,
+  ConnectorJSONSchema,
+} from '../../shared/connectors/module';
 import { isIP } from 'node:net';
 import { createHash } from 'node:crypto';
 import type {
@@ -157,6 +165,20 @@ type RequestContext = {
   idempotencyKey?: string;
 };
 
+type HandlerFunction = (params: Record<string, any>) => Promise<APIResponse<any>>;
+
+interface OperationRegistration {
+  handler: HandlerFunction;
+  name?: string;
+  description?: string;
+  inputSchema?: ConnectorJSONSchema;
+  outputSchema?: ConnectorJSONSchema;
+  type?: ConnectorOperationContract['type'];
+  metadata?: Record<string, any>;
+}
+
+type HandlerRegistration = HandlerFunction | OperationRegistration;
+
 type ProviderIdempotencyFormat = {
   /** Header name used by the provider for idempotency keys. */
   header?: string;
@@ -193,7 +215,8 @@ export abstract class BaseAPIClient {
   private lastRateLimitWaitMs = 0;
   private lastRateLimitAttempts = 0;
   private readonly responseMiddleware: ResponseMiddleware[];
-  private __functionHandlers?: Map<string, (params: Record<string, any>) => Promise<APIResponse<any>>>;
+  private __functionHandlers?: Map<string, HandlerFunction>;
+  private __operationMetadata?: Map<string, ConnectorOperationContract>;
   private __dynamicOptionHandlers?: Map<string, DynamicOptionHandler>;
   private requestContext: RequestContext | null = null;
 
@@ -215,6 +238,7 @@ export abstract class BaseAPIClient {
     this.credentials = credentials;
     this.__functionHandlers = new Map();
     this.__dynamicOptionHandlers = new Map();
+    this.__operationMetadata = new Map();
 
     if (options?.connectionId && !this.credentials.__connectionId) {
       this.credentials.__connectionId = options.connectionId;
@@ -1046,9 +1070,34 @@ export abstract class BaseAPIClient {
   /**
    * Register a function handler for generic execution
    */
-  protected registerHandler(functionId: string, handler: (params: Record<string, any>) => Promise<APIResponse<any>>): void {
+  protected registerHandler(functionId: string, handler: HandlerRegistration): void {
+    if (!functionId) {
+      throw new Error(`${this.constructor.name}: registerHandler requires a function id.`);
+    }
+
     if (!this.__functionHandlers) this.__functionHandlers = new Map();
-    this.__functionHandlers.set(String(functionId).toLowerCase(), handler);
+    if (!this.__operationMetadata) this.__operationMetadata = new Map();
+
+    const normalizedId = String(functionId).toLowerCase();
+    const operationId = String(functionId);
+
+    if (typeof handler === 'function') {
+      this.__functionHandlers.set(normalizedId, handler);
+      this.__operationMetadata.delete(normalizedId);
+      return;
+    }
+
+    this.__functionHandlers.set(normalizedId, handler.handler);
+    const metadata: ConnectorOperationContract = {
+      id: operationId,
+      type: handler.type ?? 'action',
+      name: handler.name,
+      description: handler.description,
+      inputSchema: handler.inputSchema,
+      outputSchema: handler.outputSchema,
+      metadata: handler.metadata,
+    };
+    this.__operationMetadata.set(normalizedId, metadata);
   }
 
   protected registerDynamicOptionHandler(handlerId: string, handler: DynamicOptionHandler): void {
@@ -1060,6 +1109,79 @@ export abstract class BaseAPIClient {
     for (const [id, handler] of Object.entries(handlers)) {
       this.registerDynamicOptionHandler(id, handler);
     }
+  }
+
+  public getRegisteredOperations(): ConnectorOperationContract[] {
+    const handlers = this.__functionHandlers ?? new Map();
+    const operations: ConnectorOperationContract[] = [];
+
+    for (const [key] of handlers) {
+      const metadata = this.__operationMetadata?.get(key);
+      if (metadata) {
+        operations.push(metadata);
+      } else {
+        operations.push({ id: key, type: 'action' });
+      }
+    }
+
+    return operations;
+  }
+
+  public getOperationContract(functionId: string): ConnectorOperationContract | undefined {
+    if (!functionId) {
+      return undefined;
+    }
+    const key = String(functionId).toLowerCase();
+    return this.__operationMetadata?.get(key);
+  }
+
+  public toConnectorModule(metadata: {
+    id: string;
+    name?: string;
+    description?: string;
+    auth?: ConnectorAuthContract;
+    inputSchema?: ConnectorJSONSchema;
+    operations?: Record<string, ConnectorOperationContract>;
+    executor?: (input: ConnectorExecuteInput) => Promise<ConnectorExecuteOutput>;
+  }): ConnectorModule {
+    const providedOperations = metadata.operations ?? {};
+    const operations: Record<string, ConnectorOperationContract> = {};
+    for (const op of this.getRegisteredOperations()) {
+      operations[op.id] = { ...op };
+    }
+    for (const [id, op] of Object.entries(providedOperations)) {
+      operations[id] = { ...(operations[id] ?? { id, type: op.type ?? 'action' }), ...op, id };
+    }
+
+    const auth: ConnectorAuthContract = metadata.auth ?? { type: 'custom' };
+    const inputSchema: ConnectorJSONSchema = metadata.inputSchema ?? {
+      type: 'object',
+      properties: {},
+      additionalProperties: true,
+    };
+
+    const executor = metadata.executor
+      ?? (async (input: ConnectorExecuteInput): Promise<ConnectorExecuteOutput> => {
+        const response = await this.execute(input.operationId, input.input ?? {});
+        return {
+          success: response.success !== false,
+          data: response.data,
+          error: response.error,
+          meta: response.headers ? { headers: response.headers, statusCode: response.statusCode } : {
+            statusCode: response.statusCode,
+          },
+        };
+      });
+
+    return {
+      id: metadata.id,
+      name: metadata.name,
+      description: metadata.description,
+      auth,
+      inputSchema,
+      operations,
+      execute: executor,
+    };
   }
 
   public hasDynamicOptionHandler(handlerId: string): boolean {
@@ -1114,7 +1236,7 @@ export abstract class BaseAPIClient {
   /**
    * Register multiple function handlers at once
    */
-  protected registerHandlers(handlers: Record<string, (params: Record<string, any>) => Promise<APIResponse<any>>>): void {
+  protected registerHandlers(handlers: Record<string, HandlerRegistration>): void {
     for (const [id, fn] of Object.entries(handlers)) {
       this.registerHandler(id, fn);
     }
