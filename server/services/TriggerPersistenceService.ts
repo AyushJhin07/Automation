@@ -868,7 +868,9 @@ export class TriggerPersistenceService {
       return rows.map((row: any) => this.mapPollingTriggerRow(row));
     }
 
-    if (!database.transaction) {
+    const executor: ((query: any) => Promise<any>) | undefined = (database as any).execute?.bind(database);
+
+    if (!executor) {
       const rows = await (database as any)
         .select()
         .from(pollingTriggers)
@@ -896,50 +898,53 @@ export class TriggerPersistenceService {
       return mapped;
     }
 
-    return await database.transaction(async (tx: any) => {
-      const regionFilter = region
-        ? sql` AND (region = ${region} OR region IS NULL)`
-        : sql``;
-      const result = await tx.execute(
-        sql`SELECT * FROM polling_triggers WHERE is_active = true AND COALESCE(next_poll_at, next_poll) <= ${now}${regionFilter} ORDER BY COALESCE(next_poll_at, next_poll) ASC LIMIT ${limit} FOR UPDATE SKIP LOCKED`
-      );
-      const rows: any[] = (result?.rows ?? result ?? []) as any[];
+    const regionFilter = region
+      ? sql` AND (region = ${region} OR region IS NULL)`
+      : sql``;
 
-      if (!rows || rows.length === 0) {
-        return [];
-      }
+    const result = await executor(
+      sql`
+WITH due AS (
+  SELECT
+    *,
+    GREATEST(1, "interval") AS sanitized_base,
+    LEAST(30, GREATEST(0, backoff_count)) AS exponent,
+    ${now}::timestamptz AS reference_time
+  FROM polling_triggers
+  WHERE is_active = true
+    AND COALESCE(next_poll_at, next_poll) <= ${now}${regionFilter}
+  ORDER BY COALESCE(next_poll_at, next_poll) ASC
+  LIMIT ${limit}
+  FOR UPDATE SKIP LOCKED
+),
+updates AS (
+  SELECT
+    id,
+    reference_time,
+    LEAST(
+      sanitized_base * POWER(2, exponent),
+      sanitized_base * ${DEFAULT_MAX_BACKOFF_MULTIPLIER}
+    )::double precision AS effective_interval
+  FROM due
+)
+UPDATE polling_triggers AS t
+SET
+  next_poll = updates.reference_time + updates.effective_interval * interval '1 second',
+  next_poll_at = updates.reference_time + updates.effective_interval * interval '1 second',
+  updated_at = updates.reference_time
+FROM updates
+WHERE t.id = updates.id
+RETURNING t.*;
+      `
+    );
 
-      const claimed: PollingTrigger[] = [];
-      for (const row of rows) {
-        if (region && row.region && row.region !== region) {
-          continue;
-        }
-        const intervalSeconds = Math.max(1, Number(row.interval ?? 60));
-        const effectiveInterval = computeExponentialBackoffInterval(
-          intervalSeconds,
-          Number(row.backoff_count ?? row.backoffCount ?? 0)
-        );
-        const nextRun = new Date(now.getTime() + effectiveInterval * 1000);
-        await tx
-          .update(pollingTriggers)
-          .set({
-            nextPoll: nextRun,
-            nextPollAt: nextRun,
-            updatedAt: now,
-          })
-          .where(eq(pollingTriggers.id, row.id));
+    const rows: any[] = (result?.rows ?? result ?? []) as any[];
 
-        claimed.push(
-          this.mapPollingTriggerRow({
-            ...row,
-            nextPoll: nextRun,
-            nextPollAt: nextRun,
-          })
-        );
-      }
+    if (!rows || rows.length === 0) {
+      return [];
+    }
 
-      return claimed;
-    });
+    return rows.map((row) => this.mapPollingTriggerRow(row));
   }
 
   public async saveWebhookTrigger(trigger: WebhookTrigger): Promise<void> {
