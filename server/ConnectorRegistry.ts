@@ -128,6 +128,7 @@ interface APIClientConstructor {
 interface ConnectorRegistryEntry {
   definition: ConnectorDefinition;
   apiClient?: APIClientConstructor;
+  hasRegisteredClient: boolean;
   hasImplementation: boolean;
   functionCount: number;
   categories: string[];
@@ -493,6 +494,7 @@ export class ConnectorRegistry {
         const entry: ConnectorRegistryEntry = {
           definition: normalizedDefinition,
           apiClient: hasImplementation ? this.apiClients.get(appId) : undefined,
+          hasRegisteredClient,
           hasImplementation,
           functionCount: coverage.total,
           categories: [def.category],
@@ -759,6 +761,7 @@ export class ConnectorRegistry {
    */
   public async listConnectors(options: ConnectorListOptions = {}): Promise<Array<ConnectorDefinition & {
     hasImplementation: boolean;
+    hasRegisteredClient: boolean;
     availability: ConnectorAvailability;
     pricingTier: ConnectorPricingTier;
     status: ConnectorStatusFlags;
@@ -788,6 +791,7 @@ export class ConnectorRegistry {
       ...entry.definition,
       description: entry.manifest?.description ?? entry.definition.description,
       availability: entry.availability,
+      hasRegisteredClient: entry.hasRegisteredClient,
       hasImplementation: entry.hasImplementation,
       pricingTier: entry.pricingTier,
       status: entry.status,
@@ -1012,12 +1016,39 @@ export class ConnectorRegistry {
    * Get registry statistics for debugging
    */
   public getStats() {
+    const stableConnectors: string[] = [];
+    const implementedStable: string[] = [];
+    const stableWithoutImplementation: string[] = [];
+    const stableWithoutClient: string[] = [];
+
+    for (const [appId, entry] of this.registry.entries()) {
+      if (entry.availability !== 'stable') {
+        continue;
+      }
+
+      stableConnectors.push(appId);
+
+      if (!entry.hasRegisteredClient) {
+        stableWithoutClient.push(appId);
+      }
+
+      if (entry.hasImplementation) {
+        implementedStable.push(appId);
+      } else {
+        stableWithoutImplementation.push(appId);
+      }
+    }
+
     return {
       connectorsPath: this.connectorsPath,
       manifestPath: this.connectorManifestPath,
       apiClientCount: this.apiClients.size,
       count: this.registry.size,
-      apps: Array.from(this.registry.keys()).sort()
+      apps: Array.from(this.registry.keys()).sort(),
+      stableCount: stableConnectors.length,
+      implementedStableCount: implementedStable.length,
+      stableWithoutImplementation: stableWithoutImplementation.sort(),
+      stableWithoutClient: stableWithoutClient.sort(),
     };
   }
 
@@ -1030,6 +1061,7 @@ export class ConnectorRegistry {
       category: string;
       actions: ConnectorFunction[];
       triggers: ConnectorFunction[];
+      hasRegisteredClient: boolean;
       hasImplementation: boolean;
       availability: ConnectorAvailability;
       version?: string;
@@ -1067,6 +1099,7 @@ export class ConnectorRegistry {
         category: def.category,
         actions: def.actions || [],
         triggers: def.triggers || [],
+        hasRegisteredClient: entry.hasRegisteredClient === true,
         hasImplementation: entry.hasImplementation === true,
         availability: entry.availability,
         version: def.version ?? def.release?.semver,

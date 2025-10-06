@@ -1,3 +1,5 @@
+import { buildOperationKeyCandidates, canonicalizeOperationKey } from './op-map.js';
+
 export interface ConnectorOperationDefinition {
   id?: string | null;
 }
@@ -14,21 +16,6 @@ export interface ConnectorOperationCoverageSummary {
   missing: string[];
 }
 
-function buildKeyCandidates(
-  connectorId: string,
-  operationId: string,
-  type: 'action' | 'trigger'
-): string[] {
-  const normalizedOp = operationId.trim();
-  const normalizedConnector = connectorId.trim();
-  return [
-    `${normalizedConnector}.${normalizedOp}`,
-    `${type}.${normalizedConnector}:${normalizedOp}`,
-    `${type}.${normalizedConnector}.${normalizedOp}`,
-    `${normalizedConnector}:${normalizedOp}`,
-  ];
-}
-
 export function computeConnectorOperationCoverage(
   connector: ConnectorLikeDefinition,
   opMap: Record<string, unknown>
@@ -36,6 +23,11 @@ export function computeConnectorOperationCoverage(
   const missing: string[] = [];
   let implemented = 0;
   let total = 0;
+
+  const canonicalOpKeys = new Set<string>();
+  for (const key of Object.keys(opMap)) {
+    canonicalOpKeys.add(canonicalizeOperationKey(key));
+  }
 
   const allOps: Array<{ type: 'action' | 'trigger'; id: string }> = [];
 
@@ -53,8 +45,10 @@ export function computeConnectorOperationCoverage(
 
   for (const op of allOps) {
     total++;
-    const candidates = buildKeyCandidates(connector.id, op.id, op.type);
-    const hasMatch = candidates.some(key => Object.prototype.hasOwnProperty.call(opMap, key));
+    const candidates = buildOperationKeyCandidates(connector.id, op.id, op.type);
+    const hasMatch = candidates.some(candidate =>
+      canonicalOpKeys.has(canonicalizeOperationKey(candidate))
+    );
 
     if (hasMatch) {
       implemented++;
