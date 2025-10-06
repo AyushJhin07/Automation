@@ -2240,17 +2240,22 @@ const GraphEditorContent = () => {
     let encounteredError = false;
 
     try {
-      const response = await fetch(`/api/workflows/${workflowIdentifier}/execute`, {
+      const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ graph: payload })
       });
 
       if (!response.ok) {
         let message = 'Failed to execute workflow';
         try {
-          const errorJson = await response.json();
-          message = errorJson?.error || message;
+          // Prefer plain text to surface 401/403 details; fallback to JSON
+          const text = await response.text();
+          if (text) {
+            message = `Execute failed: ${response.status} ${text}`;
+          } else {
+            const errorJson = await response.json();
+            message = errorJson?.error || message;
+          }
         } catch {}
         throw new Error(message);
       }

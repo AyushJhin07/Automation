@@ -1267,11 +1267,57 @@ RETURNING t.*;
 
     const id = randomUUID();
     const inboxId = params.logId ?? params.event.id ?? id;
-    const now = new Date();
     const region = params.event.region ?? 'us';
 
     try {
-      const inserted = await database.transaction(async (tx) => {
+      const executor: ((query: any) => Promise<any>) | undefined = (database as any).execute?.bind(database);
+
+      if (executor) {
+        const result = await executor(sql`
+WITH upsert_inbox AS (
+  INSERT INTO "webhook_inbox" (
+    "id", "webhook_id", "workflow_id", "organization_id", "user_id", "region",
+    "dedupe_token", "payload", "headers", "status", "attempts", "last_error",
+    "available_at", "locked_at", "locked_by", "processed_at", "execution_id", "created_at", "updated_at"
+  ) VALUES (
+    ${inboxId}, ${params.event.webhookId}, ${params.event.workflowId}, ${params.event.organizationId ?? null}, ${params.event.userId ?? null}, ${region},
+    ${params.event.dedupeToken ?? null}, ${params.event.payload as any}, ${params.event.headers as any}, 'pending', 0, NULL,
+    NOW(), NULL, NULL, ${params.event.processed ? sql`NOW()` : sql`NULL`}, NULL, NOW(), NOW()
+  )
+  ON CONFLICT ("id") DO UPDATE SET
+    "status" = 'pending',
+    "updated_at" = NOW(),
+    "dedupe_token" = EXCLUDED."dedupe_token",
+    "payload" = EXCLUDED."payload",
+    "headers" = EXCLUDED."headers",
+    "organization_id" = EXCLUDED."organization_id",
+    "user_id" = EXCLUDED."user_id",
+    "region" = EXCLUDED."region"
+  RETURNING "id"
+), insert_outbox AS (
+  INSERT INTO "webhook_outbox" (
+    "id", "inbox_id", "workflow_id", "organization_id", "user_id", "trigger_type",
+    "payload", "deterministic_keys", "status", "attempts", "last_error", "execution_id",
+    "region", "available_at", "locked_at", "locked_by", "metadata", "created_at", "updated_at"
+  ) VALUES (
+    ${id}, ${inboxId}, ${params.event.workflowId}, ${params.event.organizationId ?? null}, ${params.event.userId ?? null}, ${params.event.source ?? 'webhook'},
+    ${params.queueRequest as any}, ${params.deterministicKeys ?? null}, 'pending', 0, NULL, NULL,
+    ${region}, NOW(), NULL, NULL, ${sql`${{ webhookId: params.event.webhookId, triggerId: params.event.triggerId } as any}`}, NOW(), NOW()
+  )
+  RETURNING *
+), touch_logs AS (
+  UPDATE "webhook_logs" SET "updated_at" = NOW() WHERE "id" = ${inboxId}
+)
+SELECT * FROM insert_outbox;
+        `);
+
+        const rows: any[] = (result?.rows ?? result ?? []) as any[];
+        return (rows && rows[0]) ? (rows[0] as WebhookOutboxRow) : null;
+      }
+
+      // Fallback to transactional path if executor not available
+      const now = new Date();
+      const inserted = await database.transaction(async (tx: any) => {
         const inboxValues = {
           id: inboxId,
           webhookId: params.event.webhookId,
@@ -1346,7 +1392,6 @@ RETURNING t.*;
 
         return outboxRow;
       });
-
       return inserted ?? null;
     } catch (error) {
       this.logPersistenceError('createWebhookOutboxRecord', error, {
@@ -1371,10 +1416,46 @@ RETURNING t.*;
       return;
     }
 
-    const now = new Date();
+    const executor: ((query: any) => Promise<any>) | undefined = (database as any).execute?.bind(database);
     const inboxId = record.inboxId ?? record.id;
 
-    await database.transaction(async (tx) => {
+    if (executor) {
+      await executor(sql`
+WITH upd_outbox AS (
+  UPDATE "webhook_outbox" SET
+    "status" = 'dispatched',
+    "execution_id" = ${result.executionId},
+    "attempts" = "attempts" + 1,
+    "last_error" = NULL,
+    "locked_at" = NULL,
+    "locked_by" = NULL,
+    "updated_at" = NOW()
+  WHERE "id" = ${record.id}
+  RETURNING "inbox_id"
+), upd_inbox AS (
+  UPDATE "webhook_inbox" SET
+    "status" = 'processed',
+    "execution_id" = ${result.executionId},
+    "last_error" = NULL,
+    "processed_at" = NOW(),
+    "updated_at" = NOW()
+  WHERE "id" = (SELECT "inbox_id" FROM upd_outbox)
+  RETURNING "id"
+), upd_logs AS (
+  UPDATE "webhook_logs" SET
+    "processed" = true,
+    "execution_id" = ${result.executionId},
+    "error" = NULL,
+    "updated_at" = NOW()
+  WHERE "id" = ${inboxId}
+)
+SELECT 1;
+      `);
+      return;
+    }
+
+    const now = new Date();
+    await database.transaction(async (tx: any) => {
       await tx
         .update(webhookOutbox)
         .set({
@@ -1426,11 +1507,44 @@ RETURNING t.*;
       return;
     }
 
-    const now = new Date();
-    const retryAt = options.retryAt ?? new Date(now.getTime() + 60_000);
+    const executor: ((query: any) => Promise<any>) | undefined = (database as any).execute?.bind(database);
     const inboxId = record.inboxId ?? record.id;
+    const retryAt = options.retryAt ?? new Date(Date.now() + 60_000);
 
-    await database.transaction(async (tx) => {
+    if (executor) {
+      await executor(sql`
+WITH upd_outbox AS (
+  UPDATE "webhook_outbox" SET
+    "status" = 'failed',
+    "attempts" = "attempts" + 1,
+    "last_error" = ${error},
+    "available_at" = ${retryAt},
+    "locked_at" = NULL,
+    "locked_by" = NULL,
+    "updated_at" = NOW()
+  WHERE "id" = ${record.id}
+  RETURNING "inbox_id"
+), upd_inbox AS (
+  UPDATE "webhook_inbox" SET
+    "status" = 'failed',
+    "last_error" = ${error},
+    "updated_at" = NOW()
+  WHERE "id" = (SELECT "inbox_id" FROM upd_outbox)
+  RETURNING "id"
+), upd_logs AS (
+  UPDATE "webhook_logs" SET
+    "processed" = false,
+    "error" = ${error},
+    "updated_at" = NOW()
+  WHERE "id" = ${inboxId}
+)
+SELECT 1;
+      `);
+      return;
+    }
+
+    const now = new Date();
+    await database.transaction(async (tx: any) => {
       await tx
         .update(webhookOutbox)
         .set({
