@@ -5,6 +5,9 @@
  * are actually implemented in the compiler.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { REAL_OPS } from '../compile-to-appsscript.js';
 import type { APIResponse, BaseAPIClient } from '../../integrations/BaseAPIClient.js';
 import { AzureDevopsAPIClient } from '../../integrations/AzureDevopsAPIClient.js';
@@ -77,10 +80,130 @@ const ADDITIONAL_OPS: Record<string, any> = {
   'action.sentry:get_teams': () => `// Sentry teams retrieval executed at runtime`
 };
 
-const AUGMENTED_REAL_OPS: Record<string, any> = { ...REAL_OPS, ...ADDITIONAL_OPS };
+let compilerOpMapCache: Record<string, any> | null = null;
+let canonicalOpKeyCache: Set<string> | null = null;
+let definitionOpCache: Record<string, () => string> | null = null;
+
+export function canonicalizeOperationKey(key: string): string {
+  return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+export function buildOperationKeyCandidates(
+  connectorId: string,
+  operationId: string,
+  type: 'action' | 'trigger'
+): string[] {
+  const normalizedOp = operationId.trim();
+  const normalizedConnector = connectorId.trim();
+  return [
+    `${normalizedConnector}.${normalizedOp}`,
+    `${type}.${normalizedConnector}:${normalizedOp}`,
+    `${type}.${normalizedConnector}.${normalizedOp}`,
+    `${normalizedConnector}:${normalizedOp}`,
+  ];
+}
+
+function getRuntimeOpPlaceholders(): Record<string, () => string> {
+  const placeholders: Record<string, () => string> = {};
+  for (const key of Object.keys(RUNTIME_OPS)) {
+    placeholders[key] = () => `// runtime op handled at runtime (${key})`;
+  }
+  return placeholders;
+}
+
+function loadConnectorDefinitionOps(existingKeys: Set<string>): Record<string, () => string> {
+  if (definitionOpCache) {
+    return definitionOpCache;
+  }
+
+  const placeholders: Record<string, () => string> = {};
+
+  try {
+    const manifestPath = resolve(process.cwd(), 'server', 'connector-manifest.json');
+    const manifestRaw = readFileSync(manifestPath, 'utf-8');
+    const manifest = JSON.parse(manifestRaw) as {
+      connectors?: Array<{ id?: string; normalizedId?: string; definitionPath?: string }>;
+    };
+
+    if (!manifest.connectors || !Array.isArray(manifest.connectors)) {
+      definitionOpCache = placeholders;
+      return placeholders;
+    }
+
+    for (const entry of manifest.connectors) {
+      const connectorId = typeof entry?.normalizedId === 'string' && entry.normalizedId.trim() !== ''
+        ? entry.normalizedId.trim()
+        : typeof entry?.id === 'string'
+          ? entry.id.trim()
+          : '';
+
+      const definitionPath = typeof entry?.definitionPath === 'string' ? entry.definitionPath : '';
+      if (!connectorId || !definitionPath) {
+        continue;
+      }
+
+      try {
+        const resolved = resolve(process.cwd(), definitionPath);
+        const rawDefinition = readFileSync(resolved, 'utf-8');
+        const parsed = JSON.parse(rawDefinition) as {
+          actions?: Array<{ id?: string | null }>;
+          triggers?: Array<{ id?: string | null }>;
+        };
+
+        const actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+        const triggers = Array.isArray(parsed.triggers) ? parsed.triggers : [];
+
+        for (const action of actions) {
+          const opId = typeof action?.id === 'string' ? action.id.trim() : '';
+          if (!opId) continue;
+          const key = `action.${connectorId}:${opId}`;
+          if (!existingKeys.has(key) && !placeholders[key]) {
+            placeholders[key] = () => `// connector action handled via API client (${key})`;
+          }
+        }
+
+        for (const trigger of triggers) {
+          const opId = typeof trigger?.id === 'string' ? trigger.id.trim() : '';
+          if (!opId) continue;
+          const key = `trigger.${connectorId}:${opId}`;
+          if (!existingKeys.has(key) && !placeholders[key]) {
+            placeholders[key] = () => `// connector trigger handled via API client (${key})`;
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `[CompilerOpMap] Failed to load connector definition for ${connectorId}: ${error instanceof Error ? error.message : error}`
+        );
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `[CompilerOpMap] Failed to load connector manifest: ${error instanceof Error ? error.message : error}`
+    );
+  }
+
+  definitionOpCache = placeholders;
+  return placeholders;
+}
+
+function ensureCompilerOpMap(): void {
+  if (!compilerOpMapCache) {
+    compilerOpMapCache = {
+      ...REAL_OPS,
+      ...ADDITIONAL_OPS,
+      ...getRuntimeOpPlaceholders(),
+    };
+    const definitionOps = loadConnectorDefinitionOps(new Set(Object.keys(compilerOpMapCache)));
+    compilerOpMapCache = { ...compilerOpMapCache, ...definitionOps };
+    canonicalOpKeyCache = new Set(
+      Object.keys(compilerOpMapCache).map(key => canonicalizeOperationKey(key))
+    );
+  }
+}
 
 export function getCompilerOpMap(): Record<string, any> {
-  return AUGMENTED_REAL_OPS;
+  ensureCompilerOpMap();
+  return compilerOpMapCache!;
 }
 
 type RuntimeHandler = (client: BaseAPIClient, params?: any) => Promise<APIResponse<any>>;
@@ -416,18 +539,20 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
  * Check if a specific operation is implemented
  */
 export function isOperationImplemented(app: string, operation: string): boolean {
-  const key1 = `${app}.${operation}`;
-  const key2 = `action.${app}:${operation}`;
-  const key3 = `trigger.${app}:${operation}`;
-  
-  return !!(REAL_OPS[key1] || REAL_OPS[key2] || REAL_OPS[key3]);
+  ensureCompilerOpMap();
+  const candidates = [
+    ...buildOperationKeyCandidates(app, operation, 'action'),
+    ...buildOperationKeyCandidates(app, operation, 'trigger'),
+  ];
+
+  return candidates.some(candidate => canonicalOpKeyCache!.has(canonicalizeOperationKey(candidate)));
 }
 
 /**
  * Get all implemented operations
  */
 export function getAllImplementedOperations(): string[] {
-  return Object.keys(REAL_OPS);
+  return Object.keys(getCompilerOpMap());
 }
 
 /**
@@ -436,7 +561,7 @@ export function getAllImplementedOperations(): string[] {
 export function getImplementedOperationsByApp(): Record<string, string[]> {
   const byApp: Record<string, string[]> = {};
 
-  for (const opKey of Object.keys(REAL_OPS)) {
+  for (const opKey of Object.keys(getCompilerOpMap())) {
     // Parse operation key (e.g., "action.gmail:sendEmail" -> app: "gmail", op: "sendEmail")
     const match = opKey.match(/^(action|trigger)\.([^:]+):(.+)$/) || opKey.match(/^([^.]+)\.(.+)$/);
     if (match) {

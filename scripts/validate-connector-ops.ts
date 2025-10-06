@@ -26,6 +26,7 @@ async function main(): Promise<void> {
 
   const errors: ValidationError[] = [];
   const demoted: string[] = [];
+  const missingImplementations: string[] = [];
 
   for (const entry of connectors) {
     if (manifestIntendsStable(entry)) {
@@ -36,6 +37,10 @@ async function main(): Promise<void> {
 
     if (entry.availability !== 'stable') {
       continue;
+    }
+
+    if (!entry.hasImplementation) {
+      missingImplementations.push(entry.definition.id);
     }
 
     const coverage = entry.operationCoverage;
@@ -51,9 +56,16 @@ async function main(): Promise<void> {
   if (demoted.length > 0) {
     const preview = demoted.slice(0, 10).join(', ');
     const suffix = demoted.length > 10 ? ', …' : '';
-    console.warn(
-      `⚠️ ${demoted.length} connector(s) were marked stable in manifests but were demoted to experimental due to missing compiler coverage: ${preview}${suffix}`
+    console.error(
+      `\n${demoted.length} connector(s) were marked stable in manifests but were demoted to experimental due to missing compiler coverage: ${preview}${suffix}`
     );
+  }
+
+  if (missingImplementations.length > 0) {
+    console.error('\nStable connectors missing implementations:');
+    for (const id of missingImplementations) {
+      console.error(`  • ${id}`);
+    }
   }
 
   if (errors.length > 0) {
@@ -63,6 +75,11 @@ async function main(): Promise<void> {
       console.error(`  • ${error.connectorId}: missing compiler operations for [${missingList}]`);
     }
     console.error('\nAdd generator handlers for the listed operations or mark the connector as experimental.');
+    process.exitCode = 1;
+    return;
+  }
+
+  if (demoted.length > 0 || missingImplementations.length > 0) {
     process.exitCode = 1;
     return;
   }
