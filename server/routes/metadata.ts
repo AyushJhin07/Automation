@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken, requirePermission, requireOrganizationContext } from '../middleware/auth';
+import { authenticateToken, optionalAuth, requirePermission, requireOrganizationContext } from '../middleware/auth';
 import { connectionService } from '../services/ConnectionService';
 import { connectorMetadataService } from '../services/metadata/ConnectorMetadataService';
 import { auditLogService } from '../services/AuditLogService';
@@ -46,7 +46,11 @@ const normalizeLifecycleBadges = (entry: any) => {
   };
 };
 
-const serializeConnector = (entry: any) => {
+interface SerializeConnectorOptions {
+  publicCatalog?: boolean;
+}
+
+const serializeConnector = (entry: any, options: SerializeConnectorOptions = {}) => {
   const lifecycle = normalizeLifecycleBadges(entry);
   const scopes = new Set<string>();
   const addScopes = (value: unknown) => {
@@ -69,7 +73,7 @@ const serializeConnector = (entry: any) => {
       }
     : null;
 
-  return {
+  const base = {
     id: entry.id,
     name: entry.displayName ?? entry.name ?? entry.id,
     description: entry.description ?? '',
@@ -102,6 +106,30 @@ const serializeConnector = (entry: any) => {
     authentication,
     scopes: Array.from(scopes),
   };
+
+  if (!options.publicCatalog) {
+    return base;
+  }
+
+  const {
+    lifecycle: baseLifecycle,
+    authentication: baseAuth,
+    ...rest
+  } = base;
+
+  const { pricingTier: _ignoredPricingTier, ...restWithoutTier } = rest;
+
+  const sanitized: Record<string, any> = {
+    ...restWithoutTier,
+    lifecycle: baseLifecycle
+      ? { status: baseLifecycle.status, badges: baseLifecycle.badges }
+      : baseLifecycle,
+    authentication: baseAuth ? { type: baseAuth.type } : null,
+    pricingTier: null,
+    scopes: [],
+  };
+
+  return sanitized;
 };
 
 const router = Router();
@@ -174,26 +202,51 @@ router.post(
   }
 });
 
-router.get(
-  '/v1/connectors',
-  authenticateToken,
-  requirePermission('integration:metadata:read'),
-  async (req, res) => {
-    try {
-      const registry = ConnectorRegistry.getInstance();
-      const connectors = await registry.listConnectors({
-        includeExperimental: true,
-        includeHidden: false,
-        organizationId: (req as any)?.organizationId,
-      });
+const enforceMetadataPermission = requirePermission('integration:metadata:read');
 
-      const payload = connectors.map(serializeConnector);
-      return res.json({ success: true, data: { connectors: payload } });
-    } catch (error) {
-      console.error('Failed to list connector metadata:', error);
-      return res.status(500).json({ success: false, error: getErrorMessage(error) });
-    }
+const listConnectorMetadata = async (
+  req: any,
+  res: any,
+  publicCatalog: boolean,
+) => {
+  try {
+    const registry = ConnectorRegistry.getInstance();
+    const connectors = await registry.listConnectors({
+      includeExperimental: true,
+      includeHidden: false,
+      organizationId: publicCatalog ? undefined : req?.organizationId,
+    });
+
+    const payload = connectors.map((entry: any) =>
+      serializeConnector(entry, { publicCatalog })
+    );
+    return res.json({ success: true, data: { connectors: payload } });
+  } catch (error) {
+    console.error('Failed to list connector metadata:', error);
+    return res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
-);
+};
+
+router.get('/v1/connectors', optionalAuth, (req, res, next) => {
+  const publicCatalog = !req.user;
+
+  const execute = () =>
+    listConnectorMetadata(req, res, publicCatalog).catch((error: unknown) => {
+      console.error('Failed to process connector metadata request:', error);
+      next(error);
+    });
+
+  if (!publicCatalog) {
+    enforceMetadataPermission(req, res, (err?: unknown) => {
+      if (err) {
+        return next(err);
+      }
+      execute();
+    });
+    return;
+  }
+
+  return execute();
+});
 
 export default router;
