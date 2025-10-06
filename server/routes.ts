@@ -858,10 +858,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!req.organizationId) {
         return res.status(400).json({ success: false, error: 'Organization context required' });
       }
-      const connections = await connectionService.getUserConnections(req.user!.id, req.organizationId);
+      const { connections, problems } = await connectionService.getUserConnections(
+        req.user!.id,
+        req.organizationId
+      );
       // Mask credentials for security
       const maskedConnections = connections.map(conn => ConnectionService.maskCredentials(conn));
-      res.json({ success: true, connections: maskedConnections });
+      res.json({ success: true, connections: maskedConnections, problems });
     } catch (error) {
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
@@ -873,7 +876,10 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!req.organizationId) {
         return res.status(400).json({ success: false, error: 'Organization context required' });
       }
-      const conns = await connectionService.getUserConnections(req.user!.id, req.organizationId);
+      const { connections: conns } = await connectionService.getUserConnections(
+        req.user!.id,
+        req.organizationId
+      );
       const usage = conns.map(c => ({ id: c.id, provider: c.provider, name: c.name, lastUsed: (c as any).lastUsed, lastError: (c as any).lastError }));
       res.json({ success: true, usage });
     } catch (error) {
@@ -2818,8 +2824,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Get all LLM connections for this user
-      const connections = await connectionService.getUserConnections(userId, req.organizationId);
-      const llmConnections = connections.filter(conn => 
+      const { connections } = await connectionService.getUserConnections(userId, req.organizationId);
+      const llmConnections = connections.filter(conn =>
         ['gemini', 'openai', 'claude', 'anthropic'].includes(conn.provider.toLowerCase())
       );
 
@@ -4176,7 +4182,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Get all user connections
-      const connections = await connectionService.getUserConnections(userId, req.organizationId);
+      const { connections } = await connectionService.getUserConnections(userId, req.organizationId);
 
       const healthChecks: Record<string, any> = {};
       let totalConnections = 0;
@@ -4270,8 +4276,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Check if user has this connection
-      const connections = await connectionService.getUserConnections(userId, req.organizationId);
-      const connection = connections.find(conn => conn.provider === provider);
+      const { connections: userConnections } = await connectionService.getUserConnections(
+        userId,
+        req.organizationId
+      );
+      const connection = userConnections.find(conn => conn.provider === provider);
 
       if (!connection) {
         return res.status(404).json({

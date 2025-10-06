@@ -32,7 +32,7 @@ router.get(
     }
 
     try {
-      const connections = await connectionService.getUserConnections(userId, organizationId);
+      const { connections } = await connectionService.getUserConnections(userId, organizationId);
       const sheetsConnection = connections.find((conn) => {
         const provider = (conn.provider || "").toLowerCase();
         return provider.includes("sheet");

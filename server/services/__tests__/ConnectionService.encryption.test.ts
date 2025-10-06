@@ -108,8 +108,12 @@ assert.equal(
   'provider lookup exposes payload IV'
 );
 
-const allConnections = await service.getUserConnections('user-123', 'org-123', 'openai');
+const {
+  connections: allConnections,
+  problems: roundTripProblems,
+} = await service.getUserConnections('user-123', 'org-123', 'openai');
 assert.equal(allConnections.length, 1, 'user should have one connection after creation');
+assert.equal(roundTripProblems.length, 0, 'round trip should not surface decrypt problems');
 assert.equal(allConnections[0].iv, storedRecords[0].iv, 'list entries expose iv');
 assert.deepEqual(allConnections[0].credentials, originalCredentials, 'list entries decrypt credentials');
 assert.equal(allConnections[0].encryptionKeyId ?? null, null, 'list entries expose encryptionKeyId');

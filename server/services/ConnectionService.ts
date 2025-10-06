@@ -76,6 +76,19 @@ export interface DecryptedConnection {
   updatedAt: Date;
 }
 
+export interface ConnectionProblem {
+  id: string;
+  provider: string;
+  name?: string | null;
+  status: 'BROKEN_DECRYPT';
+  error: string;
+}
+
+export interface UserConnectionResult {
+  connections: DecryptedConnection[];
+  problems: ConnectionProblem[];
+}
+
 type TokenRefreshUpdate = {
   accessToken: string;
   refreshToken?: string;
@@ -1230,8 +1243,20 @@ export class ConnectionService {
     userId: string,
     organizationId: string,
     provider?: string
-  ): Promise<DecryptedConnection[]> {
+  ): Promise<UserConnectionResult> {
     const normalizedProvider = provider?.toLowerCase();
+    const problems: ConnectionProblem[] = [];
+    const results: DecryptedConnection[] = [];
+
+    const handleDecryptFailure = (connection: any, error: unknown) => {
+      problems.push({
+        id: connection.id,
+        provider: connection.provider,
+        name: connection.name,
+        status: 'BROKEN_DECRYPT',
+        error: getErrorMessage(error),
+      });
+    };
 
     if (this.useFileStore) {
       const records = await this.readFileStore();
@@ -1241,7 +1266,15 @@ export class ConnectionService {
         conn.isActive &&
         (!normalizedProvider || conn.provider === normalizedProvider)
       );
-      return Promise.all(filtered.map((record) => this.toDecryptedConnection(record)));
+      for (const record of filtered) {
+        try {
+          const decrypted = await this.toDecryptedConnection(record);
+          results.push(decrypted);
+        } catch (error) {
+          handleDecryptFailure(record, error);
+        }
+      }
+      return { connections: results, problems };
     }
 
     const whereConditions = [
@@ -1261,8 +1294,8 @@ export class ConnectionService {
       .where(and(...whereConditions))
       .orderBy(connections.createdAt);
 
-    return Promise.all(
-      userConnections.map(async (connection) => {
+    for (const connection of userConnections) {
+      try {
         const credentials = await EncryptionService.decryptCredentials(
           connection.payloadCiphertext ?? connection.encryptedCredentials,
           connection.payloadIv ?? connection.iv,
@@ -1275,7 +1308,7 @@ export class ConnectionService {
           }
         );
 
-        return {
+        results.push({
           id: connection.id,
           userId: connection.userId,
           organizationId: connection.organizationId,
@@ -1296,9 +1329,13 @@ export class ConnectionService {
           testError: connection.testError,
           createdAt: connection.createdAt,
           updatedAt: connection.updatedAt,
-        };
-      })
-    );
+        });
+      } catch (error) {
+        handleDecryptFailure(connection, error);
+      }
+    }
+
+    return { connections: results, problems };
   }
 
   public async getConnectionByProvider(
@@ -1683,7 +1720,7 @@ export class ConnectionService {
    * Export user's active connections (masked credentials)
    */
   public async exportConnections(userId: string, organizationId: string): Promise<any[]> {
-    const conns = await this.getUserConnections(userId, organizationId);
+    const { connections: conns } = await this.getUserConnections(userId, organizationId);
     return conns.map(c => ConnectionService.maskCredentials(c));
   }
 
@@ -2325,7 +2362,11 @@ export class ConnectionService {
     organizationId: string,
     provider: string
   ): Promise<DecryptedConnection | null> {
-    const userConnections = await this.getUserConnections(userId, organizationId, provider);
+    const { connections: userConnections } = await this.getUserConnections(
+      userId,
+      organizationId,
+      provider
+    );
 
     // Return the first active LLM connection for the provider
     return userConnections.find(conn => conn.type === 'llm') || null;
