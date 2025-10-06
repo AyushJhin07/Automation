@@ -34,6 +34,9 @@
   - GET /api/admin/executions
   - GET /api/connections/usage
   - GET /api/schema/export
+- Connections
+  - GET /api/connections
+    - Returns `{ success, connections, problems }`. `problems` is an array of entries shaped like `{ id, provider, name, status: 'BROKEN_DECRYPT', error }` when credential decryption fails so clients can surface issues without crashing.
 - Recipes
   - docs/recipes/slack-on-stripe-payment.md
   - docs/recipes/hubspot-contact-from-typeform.md

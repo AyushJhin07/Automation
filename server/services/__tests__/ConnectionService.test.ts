@@ -6,8 +6,20 @@ import path from 'node:path';
 process.env.NODE_ENV = 'development';
 process.env.ENCRYPTION_MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY ?? 'a'.repeat(32);
 process.env.ALLOW_FILE_CONNECTION_STORE = 'true';
-process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://localhost:5432/test-db';
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgresql://user:password@localhost:5432/test-db';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret';
+
+const schemaModule = (await import('../../database/schema.js')) as {
+  setDatabaseClientForTests: (client: any) => void;
+  db: any;
+};
+const { setDatabaseClientForTests } = schemaModule;
+const originalDbClient = schemaModule.db;
+const originalNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = 'test';
+setDatabaseClientForTests(null);
+process.env.NODE_ENV = originalNodeEnv;
 
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connection-service-'));
 const storePath = path.join(tempDir, 'connections.json');
@@ -41,8 +53,12 @@ const testResult = await service.testConnection(connectionId, request.userId, re
 assert.equal(testResult.provider, request.provider, 'test returns provider name');
 assert.equal(testResult.success, false, 'unknown providers fall back to not implemented');
 
-const userConnections = await service.getUserConnections(request.userId, request.organizationId);
+const {
+  connections: userConnections,
+  problems: initialProblems,
+} = await service.getUserConnections(request.userId, request.organizationId);
 assert.equal(userConnections.length, 1, 'user should have exactly one connection');
+assert.equal(initialProblems.length, 0, 'no problems expected for fresh connection');
 const [connection] = userConnections;
 
 assert.equal(connection?.id, connectionId, 'connection ids should match');
@@ -140,8 +156,44 @@ try {
   oauthModule.oauthManager.refreshToken = originalRefresh;
 }
 
+// Seed a broken connection payload to ensure degraded responses are returned gracefully
+const rawRecords = JSON.parse(await fs.readFile(storePath, 'utf8'));
+assert.ok(Array.isArray(rawRecords), 'file store should contain an array of connections');
+const templateRecord = rawRecords.find((record: any) => record?.id === connectionId);
+assert.ok(templateRecord, 'file store should contain the good connection');
+rawRecords.push({
+  ...templateRecord,
+  id: 'broken-connection',
+  name: 'Broken Credentials',
+  provider: 'corrupted-service',
+  payloadCiphertext: 'definitely-not-valid',
+  payloadIv: 'bad-iv',
+  encryptedCredentials: 'bad-data',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+await fs.writeFile(storePath, JSON.stringify(rawRecords, null, 2));
+
+const {
+  connections: healthyConnections,
+  problems,
+} = await service.getUserConnections(request.userId, request.organizationId);
+assert.ok(
+  healthyConnections.some(conn => conn.id === connectionId),
+  'healthy connections should still include the original connection'
+);
+assert.equal(problems.length, 1, 'broken connection should be reported as a problem');
+assert.equal(problems[0]?.id, 'broken-connection', 'problem should reference the broken record id');
+assert.equal(problems[0]?.status, 'BROKEN_DECRYPT', 'problem should be marked as BROKEN_DECRYPT');
+assert.equal(problems[0]?.provider, 'corrupted-service', 'problem should preserve provider metadata');
+assert.ok((problems[0]?.error || '').length > 0, 'problem should include an error message');
+
 await fs.rm(tempDir, { recursive: true, force: true });
 
 delete process.env.ALLOW_FILE_CONNECTION_STORE;
+
+process.env.NODE_ENV = 'test';
+setDatabaseClientForTests(originalDbClient);
+process.env.NODE_ENV = originalNodeEnv;
 
 console.log('ConnectionService stores type/test status metadata in sync with schema.');
