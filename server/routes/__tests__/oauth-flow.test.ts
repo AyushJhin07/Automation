@@ -63,6 +63,7 @@ let connectionService: any;
 let authService: any;
 let originalVerifyToken: ((...args: any[]) => any) | undefined;
 const originalOAuthMethods = new Map<string, (...args: any[]) => any>();
+let stateStoreModule: typeof import('../../oauth/stateStore') | undefined;
 
 const connectionStorePath = path.join(process.cwd(), '.data', 'oauth-flow-test-connections.json');
 
@@ -72,9 +73,10 @@ process.env.CONNECTION_STORE_PATH = connectionStorePath;
 
 try {
   const mockOAuthModule = await import('../../oauth/__mocks__/OAuthManager.ts');
-  const mockOAuthManager = mockOAuthModule.oauthManager;
+  const { MockOAuthManager } = mockOAuthModule;
+  const mockOAuthManager = new MockOAuthManager();
   mockOAuthManager.reset();
-  mockOAuthManager.registerProvider('gmail', {
+  const gmailProviderConfig = {
     displayName: 'Gmail',
     config: {
       authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -89,7 +91,9 @@ try {
       scope: tokenResponse.scope,
     },
     userInfo: userInfoResponse,
-  });
+  } as const;
+
+  mockOAuthManager.registerProvider('gmail', { ...gmailProviderConfig });
 
   const oauthModule = await import('../../oauth/OAuthManager');
   const methodsToMock = [
@@ -105,13 +109,17 @@ try {
     'refreshToken',
   ] as const;
 
-  for (const method of methodsToMock) {
-    const original = (oauthModule.oauthManager as any)[method];
-    if (typeof original === 'function') {
-      originalOAuthMethods.set(method, original.bind(oauthModule.oauthManager));
+  const bindMock = (managerInstance: InstanceType<typeof MockOAuthManager>) => {
+    for (const method of methodsToMock) {
+      const original = (oauthModule.oauthManager as any)[method];
+      if (!originalOAuthMethods.has(method) && typeof original === 'function') {
+        originalOAuthMethods.set(method, original.bind(oauthModule.oauthManager));
+      }
+      (oauthModule.oauthManager as any)[method] = (managerInstance as any)[method].bind(managerInstance);
     }
-    (oauthModule.oauthManager as any)[method] = (mockOAuthManager as any)[method].bind(mockOAuthManager);
-  }
+  };
+
+  bindMock(mockOAuthManager);
 
   const { registerRoutes } = await import('../../routes.ts');
   ({ connectionService } = await import('../../services/ConnectionService'));
@@ -199,6 +207,23 @@ try {
 
   const state = authBody.data.state as string;
 
+  stateStoreModule = await import('../../oauth/stateStore');
+  const peekBeforeRestart = stateStoreModule.oauthStateStore.peek(state);
+  assert.equal(peekBeforeRestart.found, true, 'state should be persisted in durable store before restart simulation');
+  assert.equal(peekBeforeRestart.expired, false, 'state should not be expired immediately after authorization');
+
+  const restartedMockManager = new MockOAuthManager();
+  restartedMockManager.registerProvider('gmail', { ...gmailProviderConfig });
+  bindMock(restartedMockManager);
+
+  const peekAfterRestart = stateStoreModule.oauthStateStore.peek(state);
+  assert.equal(
+    peekAfterRestart.found,
+    true,
+    'state should remain in durable store after restarting OAuth manager bindings'
+  );
+  assert.equal(peekAfterRestart.expired, false, 'state should remain fresh after restarting OAuth manager bindings');
+
   const callbackResponse = await fetch(
     `${baseUrl}/api/oauth/callback/gmail?code=test-code&state=${state}`,
     { redirect: 'manual' }
@@ -247,6 +272,14 @@ try {
     await fs.rm(connectionStorePath, { force: true });
   } catch (error) {
     console.warn('Failed to clean up connection store path', error);
+  }
+
+  if (stateStoreModule) {
+    try {
+      stateStoreModule.oauthStateStore.clearAll();
+    } catch (error) {
+      console.warn('Failed to clear OAuth state store', error);
+    }
   }
 
   if (authService && originalVerifyToken) {

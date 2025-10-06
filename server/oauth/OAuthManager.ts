@@ -5,6 +5,7 @@ import { getErrorMessage } from '../types/common';
 import { connectionService } from '../services/ConnectionService';
 import { EncryptionService } from '../services/EncryptionService';
 import { env } from '../env';
+import { DEFAULT_OAUTH_STATE_TTL_SECONDS, oauthStateStore } from './stateStore';
 
 export interface OAuthConfig {
   clientId: string;
@@ -55,8 +56,9 @@ export interface OAuthState {
 
 export class OAuthManager {
   private providers: Map<string, OAuthProvider> = new Map();
-  private pendingStates: Map<string, OAuthState> = new Map();
   private disabledProviders: Map<string, { provider: OAuthProvider; reason: string }> = new Map();
+
+  private static readonly STATE_TTL_SECONDS = DEFAULT_OAUTH_STATE_TTL_SECONDS;
 
   constructor() {
     this.initializeProviders();
@@ -70,9 +72,28 @@ export class OAuthManager {
 
   public resolveReturnUrl(providerId: string, state?: string): string {
     if (state) {
-      const storedState = this.pendingStates.get(state);
-      if (storedState && storedState.provider === providerId && storedState.returnUrl) {
-        return storedState.returnUrl;
+      const lookup = oauthStateStore.peek(state);
+
+      if (lookup.found) {
+        if (lookup.expired) {
+          console.warn('OAuth state expired while resolving return URL', {
+            providerId,
+            stateKey: state,
+          });
+        } else if (lookup.state?.provider === providerId && lookup.state.returnUrl) {
+          return lookup.state.returnUrl;
+        } else {
+          console.warn('OAuth state mismatch while resolving return URL', {
+            providerId,
+            stateKey: state,
+            storedProvider: lookup.state?.provider,
+          });
+        }
+      } else {
+        console.warn('OAuth state missing while resolving return URL', {
+          providerId,
+          stateKey: state,
+        });
       }
     }
 
@@ -1713,7 +1734,7 @@ export class OAuthManager {
     const label = sanitizedLabel && sanitizedLabel.length > 0 ? sanitizedLabel : undefined;
 
     // Store state
-    this.pendingStates.set(state, {
+    oauthStateStore.set(state, {
       userId,
       provider: providerId,
       organizationId,
@@ -1723,7 +1744,7 @@ export class OAuthManager {
       codeVerifier,
       nonce,
       createdAt: Date.now()
-    });
+    }, OAuthManager.STATE_TTL_SECONDS);
 
     // Build authorization URL
     const scopes = [...provider.config.scopes];
@@ -1760,8 +1781,30 @@ export class OAuthManager {
     providerId: string
   ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string; connectionId: string; label: string; userInfoError?: string }> {
     // Verify state
-    const storedState = this.pendingStates.get(state);
-    if (!storedState || storedState.provider !== providerId) {
+    const { state: storedState, found, expired } = oauthStateStore.consume(state);
+
+    if (!found) {
+      console.warn('OAuth state not found during callback', {
+        providerId,
+        stateKey: state,
+      });
+      throw new Error('Invalid OAuth state');
+    }
+
+    if (expired || !storedState) {
+      console.warn('OAuth state expired during callback', {
+        providerId,
+        stateKey: state,
+      });
+      throw new Error('OAuth state expired');
+    }
+
+    if (storedState.provider !== providerId) {
+      console.warn('OAuth state provider mismatch during callback', {
+        providerId,
+        expectedProvider: storedState.provider,
+        stateKey: state,
+      });
       throw new Error('Invalid OAuth state');
     }
 
@@ -1769,14 +1812,6 @@ export class OAuthManager {
 
     if (!storedState.organizationId) {
       throw new Error('OAuth state missing organization context');
-    }
-
-    // Clean up state
-    this.pendingStates.delete(state);
-
-    // Check state expiry (15 minutes)
-    if (Date.now() - storedState.createdAt > 15 * 60 * 1000) {
-      throw new Error('OAuth state expired');
     }
 
     const provider = this.providers.get(providerId);
@@ -2035,16 +2070,7 @@ export class OAuthManager {
    * Clean up expired states
    */
   private cleanupExpiredStates(): void {
-    const now = Date.now();
-    const expiredStates: string[] = [];
-
-    for (const [state, data] of this.pendingStates) {
-      if (now - data.createdAt > 15 * 60 * 1000) { // 15 minutes
-        expiredStates.push(state);
-      }
-    }
-
-    expiredStates.forEach(state => this.pendingStates.delete(state));
+    oauthStateStore.clearExpired();
   }
 
   /**

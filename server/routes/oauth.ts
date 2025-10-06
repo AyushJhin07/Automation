@@ -52,6 +52,14 @@ oauthRouter.post('/authorize/:provider', authenticateToken, requirePermission('c
       }
     );
 
+    console.info('OAuth authorize state stored', {
+      providerId,
+      state,
+      userId: user.id,
+      organizationId,
+      hasReturnUrl: Boolean(returnUrl),
+    });
+
     return res.json({
       success: true,
       data: {
@@ -61,7 +69,10 @@ oauthRouter.post('/authorize/:provider', authenticateToken, requirePermission('c
       },
     });
   } catch (error) {
-    console.error('OAuth authorize error:', error);
+    console.error('OAuth authorize error', {
+      providerId: String(req.params.provider || '').toLowerCase(),
+      error: getErrorMessage(error),
+    });
     return res.status(500).json({ success: false, error: getErrorMessage(error) });
   }
 });
@@ -84,11 +95,25 @@ oauthRouter.get('/callback/:provider', async (req, res) => {
       throw new Error(`Unsupported OAuth provider: ${providerId}`);
     }
 
+    console.info('OAuth callback received', {
+      providerId,
+      state,
+    });
+
     const { tokens, userInfo, returnUrl, connectionId, label, userInfoError } = await oauthManager.handleCallback(
       code,
       state,
       providerId
     );
+
+    console.info('OAuth callback state resolved', {
+      providerId,
+      state,
+      hasTokens: Boolean(tokens?.accessToken),
+      connectionId,
+      label,
+      hasUserInfo: Boolean(userInfo),
+    });
 
     if (!tokens?.accessToken) {
       throw new Error('OAuth token exchange failed');
@@ -113,8 +138,14 @@ oauthRouter.get('/callback/:provider', async (req, res) => {
 
     return res.redirect(302, redirectUrl.toString());
   } catch (error) {
-    console.error('OAuth callback error:', error);
     const providerId = String(req.params.provider || '');
+    const state = typeof req.query.state === 'string' ? req.query.state : undefined;
+
+    console.error('OAuth callback error', {
+      providerId,
+      state,
+      error: getErrorMessage(error),
+    });
     const fallbackUrl = new URL(
       `${process.env.BASE_URL || process.env.SERVER_PUBLIC_URL || 'http://localhost:5000'}/oauth/callback/${providerId}`
     );

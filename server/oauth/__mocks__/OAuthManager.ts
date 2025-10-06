@@ -1,24 +1,15 @@
 import { connectionService } from '../../services/ConnectionService';
 import { env } from '../../env';
+import { DEFAULT_OAUTH_STATE_TTL_SECONDS, oauthStateStore } from '../stateStore';
 import type {
   OAuthConfig,
   OAuthProvider,
+  OAuthState,
   OAuthTokens,
   OAuthUserInfo,
 } from '../OAuthManager';
 
 export type { OAuthConfig, OAuthProvider, OAuthTokens, OAuthUserInfo } from '../OAuthManager';
-
-interface PendingState {
-  userId: string;
-  organizationId: string;
-  provider: string;
-  returnUrl: string;
-  connectionId?: string;
-  label?: string;
-  scopes?: string[];
-  createdAt: number;
-}
 
 interface ProviderMetadata {
   provider: OAuthProvider;
@@ -41,12 +32,11 @@ function normalizeReturnUrl(providerId: string, returnUrl?: string): string {
 
 export class MockOAuthManager {
   private providers = new Map<string, ProviderMetadata>();
-  private pendingStates = new Map<string, PendingState>();
   private stateCounter = 0;
 
   reset() {
     this.providers.clear();
-    this.pendingStates.clear();
+    oauthStateStore.clearAll();
     this.stateCounter = 0;
   }
 
@@ -114,9 +104,9 @@ export class MockOAuthManager {
 
   resolveReturnUrl(providerId: string, state?: string): string {
     if (state) {
-      const stored = this.pendingStates.get(state);
-      if (stored && stored.provider === providerId.toLowerCase()) {
-        return stored.returnUrl;
+      const lookup = oauthStateStore.peek(state);
+      if (lookup.found && !lookup.expired && lookup.state?.provider === providerId.toLowerCase() && lookup.state.returnUrl) {
+        return lookup.state.returnUrl;
       }
     }
     return normalizeReturnUrl(providerId.toLowerCase());
@@ -140,7 +130,7 @@ export class MockOAuthManager {
     const state = `mock-${normalizedId}-${++this.stateCounter}`;
     const redirectUri = normalizeReturnUrl(normalizedId, returnUrl);
 
-    this.pendingStates.set(state, {
+    const storedState: OAuthState = {
       userId,
       organizationId,
       provider: normalizedId,
@@ -148,8 +138,12 @@ export class MockOAuthManager {
       connectionId: options.connectionId,
       label: options.label,
       scopes: additionalScopes ?? metadata.provider.config.scopes,
+      codeVerifier: undefined,
+      nonce: `mock-nonce-${state}`,
       createdAt: Date.now(),
-    });
+    };
+
+    oauthStateStore.set(state, storedState, DEFAULT_OAUTH_STATE_TTL_SECONDS);
 
     const authUrl = `${metadata.provider.config.authUrl}?response_type=code&client_id=${encodeURIComponent(metadata.provider.config.clientId)}&redirect_uri=${encodeURIComponent(metadata.provider.config.redirectUri)}&state=${encodeURIComponent(state)}`;
 
@@ -191,13 +185,15 @@ export class MockOAuthManager {
     userInfoError?: string;
   }> {
     const normalizedId = providerId.toLowerCase();
-    const storedState = this.pendingStates.get(state);
+    const { state: storedState, found, expired } = oauthStateStore.consume(state);
 
-    if (!storedState || storedState.provider !== normalizedId) {
+    if (!found || !storedState || storedState.provider !== normalizedId) {
       throw new Error('Invalid OAuth state');
     }
 
-    this.pendingStates.delete(state);
+    if (expired) {
+      throw new Error('OAuth state expired');
+    }
 
     const metadata = this.providers.get(normalizedId);
     if (!metadata) {
