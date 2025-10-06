@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { oauthManager } from '../oauth/OAuthManager';
+import { oauthStateStore } from '../oauth/stateStore';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import { getErrorMessage } from '../types/common';
 
@@ -78,27 +79,78 @@ oauthRouter.post('/authorize/:provider', authenticateToken, requirePermission('c
 });
 
 oauthRouter.get('/callback/:provider', async (req, res) => {
+  const providerId = String(req.params.provider || '').toLowerCase();
+  const code = typeof req.query.code === 'string' ? req.query.code : undefined;
+  const state = typeof req.query.state === 'string' ? req.query.state : undefined;
+
+  const sendPopupResponse = (
+    status: number,
+    payload: {
+      success: boolean;
+      provider: string;
+      state?: string;
+      returnUrl?: string;
+      connectionId?: string;
+      label?: string;
+      error?: string;
+      userInfoError?: string;
+    }
+  ) => {
+    const messagePayload = {
+      type: 'oauth:connection',
+      ...payload,
+    };
+    const serializedPayload = JSON.stringify(messagePayload).replace(/</g, '\\u003c');
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>OAuth Complete</title>
+  </head>
+  <body>
+    <script>
+      const payload = ${serializedPayload};
+      try {
+        window.opener?.postMessage(payload, window.location.origin);
+      } catch (err) {
+        console.warn('Failed to notify opener about OAuth result', err);
+      }
+      window.close();
+    </script>
+    <p>OAuth flow complete. You may close this window.</p>
+  </body>
+</html>`;
+    res.status(status).set('Content-Type', 'text/html; charset=utf-8').send(html);
+  };
+
   try {
-    const providerId = String(req.params.provider || '').toLowerCase();
-    const code = typeof req.query.code === 'string' ? req.query.code : undefined;
-    const state = typeof req.query.state === 'string' ? req.query.state : undefined;
-
     if (!providerId) {
-      throw new Error('Provider is required');
+      return sendPopupResponse(400, { success: false, provider: providerId, state, error: 'Provider is required' });
     }
-
     if (!code || !state) {
-      throw new Error('Missing OAuth code or state');
+      return sendPopupResponse(400, { success: false, provider: providerId, state, error: 'Missing OAuth code or state' });
     }
-
     if (!oauthManager.supportsOAuth(providerId)) {
-      throw new Error(`Unsupported OAuth provider: ${providerId}`);
+      return sendPopupResponse(404, { success: false, provider: providerId, state, error: `Unsupported OAuth provider: ${providerId}` });
     }
 
-    console.info('OAuth callback received', {
-      providerId,
-      state,
-    });
+    console.info('OAuth callback received', { providerId, state });
+
+    // If already consumed, short-circuit as success
+    const consumed = state ? oauthStateStore.getConsumed(state) : { found: false };
+    if (consumed.found) {
+      const data = consumed.data || {};
+      console.info('OAuth callback consumed marker hit; returning success without re-processing', { providerId, state });
+      return sendPopupResponse(200, {
+        success: true,
+        provider: providerId,
+        state,
+        returnUrl: typeof data.returnUrl === 'string' ? data.returnUrl : undefined,
+        connectionId: data.connectionId,
+        label: data.label,
+        userInfoError: data.userInfoError,
+      });
+    }
 
     const { tokens, userInfo, returnUrl, connectionId, label, userInfoError } = await oauthManager.handleCallback(
       code,
@@ -114,11 +166,7 @@ oauthRouter.get('/callback/:provider', async (req, res) => {
       label,
       hasUserInfo: Boolean(userInfo),
     });
-
-    if (!tokens?.accessToken) {
-      throw new Error('OAuth token exchange failed');
-    }
-
+    // Redirect to front-end handler (kept for compatibility with existing flow/tests)
     const redirectUrl = normalizeRedirectUrl(returnUrl, providerId);
     redirectUrl.searchParams.set('code', code);
     redirectUrl.searchParams.set('state', state);
@@ -138,19 +186,12 @@ oauthRouter.get('/callback/:provider', async (req, res) => {
 
     return res.redirect(302, redirectUrl.toString());
   } catch (error) {
-    const providerId = String(req.params.provider || '');
-    const state = typeof req.query.state === 'string' ? req.query.state : undefined;
-
     console.error('OAuth callback error', {
       providerId,
       state,
       error: getErrorMessage(error),
     });
-    const fallbackUrl = new URL(
-      `${process.env.BASE_URL || process.env.SERVER_PUBLIC_URL || 'http://localhost:5000'}/oauth/callback/${providerId}`
-    );
-    fallbackUrl.searchParams.set('error', getErrorMessage(error));
-    return res.redirect(302, fallbackUrl.toString());
+    return sendPopupResponse(400, { success: false, provider: providerId, state, error: getErrorMessage(error) });
   }
 });
 

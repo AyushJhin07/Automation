@@ -24,6 +24,10 @@ export interface OAuthStateStore {
   consume(stateKey: string): OAuthStateConsumeResult;
   peek(stateKey: string): OAuthStatePeekResult;
   delete(stateKey: string): void;
+  // Duplicate-callback guard helpers
+  markConsumed(stateKey: string, data: Record<string, any> | undefined, ttlSeconds: number): void;
+  getConsumed(stateKey: string): { found: boolean; data?: Record<string, any> };
+  // Maintenance
   clearExpired(): void;
   clearAll(): void;
 }
@@ -36,9 +40,11 @@ interface GlobalWithStore extends typeof globalThis {
 
 class DurableOAuthStateStore implements OAuthStateStore {
   private store: Map<string, OAuthStateStoreEntry>;
+  private consumed: Map<string, { data?: Record<string, any>; expiresAt: number }>;
 
   constructor() {
     this.store = new Map();
+    this.consumed = new Map();
   }
 
   set(stateKey: string, payload: OAuthState, ttlSeconds: number): void {
@@ -85,6 +91,24 @@ class DurableOAuthStateStore implements OAuthStateStore {
     this.store.delete(stateKey);
   }
 
+  markConsumed(stateKey: string, data: Record<string, any> | undefined, ttlSeconds: number): void {
+    const ttl = Math.max(1, ttlSeconds);
+    const expiresAt = Date.now() + ttl * 1000;
+    this.consumed.set(stateKey, { data, expiresAt });
+  }
+
+  getConsumed(stateKey: string): { found: boolean; data?: Record<string, any> } {
+    const entry = this.consumed.get(stateKey);
+    if (!entry) {
+      return { found: false };
+    }
+    if (Date.now() >= entry.expiresAt) {
+      this.consumed.delete(stateKey);
+      return { found: false };
+    }
+    return { found: true, data: entry.data };
+  }
+
   clearExpired(): void {
     const now = Date.now();
     for (const [stateKey, entry] of this.store.entries()) {
@@ -92,10 +116,16 @@ class DurableOAuthStateStore implements OAuthStateStore {
         this.store.delete(stateKey);
       }
     }
+    for (const [stateKey, entry] of this.consumed.entries()) {
+      if (now >= entry.expiresAt) {
+        this.consumed.delete(stateKey);
+      }
+    }
   }
 
   clearAll(): void {
     this.store.clear();
+    this.consumed.clear();
   }
 }
 

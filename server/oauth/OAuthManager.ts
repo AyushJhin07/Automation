@@ -1746,6 +1746,13 @@ export class OAuthManager {
       createdAt: Date.now()
     }, OAuthManager.STATE_TTL_SECONDS);
 
+    console.info('Saved oauth:state', {
+      state,
+      provider: providerId,
+      hasReturnUrl: Boolean(resolvedReturnUrl),
+      hasCodeVerifier: Boolean(codeVerifier),
+    });
+
     // Build authorization URL
     const scopes = [...provider.config.scopes];
     if (additionalScopes) {
@@ -1782,6 +1789,13 @@ export class OAuthManager {
   ): Promise<{ tokens: OAuthTokens; userInfo?: OAuthUserInfo; returnUrl: string; connectionId: string; label: string; userInfoError?: string }> {
     // Verify state
     const { state: storedState, found, expired } = oauthStateStore.consume(state);
+
+    console.info('Found oauth:state during callback', {
+      state,
+      provider: providerId,
+      found,
+      expired,
+    });
 
     if (!found) {
       console.warn('OAuth state not found during callback', {
@@ -1879,6 +1893,19 @@ export class OAuthManager {
         }
       }
     );
+
+    // Mark state as consumed to make callback idempotent for duplicates
+    try {
+      oauthStateStore.markConsumed(state, {
+        provider: providerId,
+        returnUrl: redirectUrl,
+        connectionId,
+        label,
+        ...(userInfoError ? { userInfoError } : {}),
+      }, OAuthManager.STATE_TTL_SECONDS);
+    } catch (err) {
+      console.warn('Failed to mark OAuth state as consumed', { providerId, stateKey: state, error: getErrorMessage(err) });
+    }
 
     return { tokens, userInfo, returnUrl: redirectUrl, connectionId, label, userInfoError };
   }

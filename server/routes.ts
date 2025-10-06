@@ -42,6 +42,7 @@ import { usageMeteringService } from "./services/UsageMeteringService";
 import { securityService } from "./services/SecurityService";
 import { integrationManager } from "./integrations/IntegrationManager";
 import { oauthManager } from "./oauth/OAuthManager";
+import { oauthStateStore } from "./oauth/stateStore";
 import { endToEndTester } from "./testing/EndToEndTester";
 import { connectorSeeder } from "./database/seedConnectors";
 import { connectorRegistry } from "./ConnectorRegistry";
@@ -239,7 +240,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use(securityService.securityHeaders());
   app.use((req, res, next) => {
     const originHeader = parseOriginHeader(req.headers.origin);
-    if (isAllowedOrigin(originHeader)) {
+    // Always allow same-origin requests (direct navigation to this server)
+    const requestOrigin = (() => {
+      const host = req.get('host');
+      if (!host) return undefined;
+      const scheme = req.protocol || 'http';
+      return normalizeOrigin(`${scheme}://${host}`);
+    })();
+    const sameOrigin = originHeader && requestOrigin && originHeader === requestOrigin;
+
+    if (sameOrigin || isAllowedOrigin(originHeader)) {
       return next();
     }
 
@@ -862,11 +872,18 @@ export async function registerRoutes(app: Express): Promise<void> {
         req.user!.id,
         req.organizationId
       );
-      // Mask credentials for security
       const maskedConnections = connections.map(conn => ConnectionService.maskCredentials(conn));
       res.json({ success: true, connections: maskedConnections, problems });
     } catch (error) {
-      res.status(500).json({ success: false, error: getErrorMessage(error) });
+      // Graceful degradation: do not 500 the whole list; return empty set with problems[]
+      const message = getErrorMessage(error);
+      res.json({
+        success: true,
+        connections: [],
+        problems: [
+          { id: '-', provider: '*', name: null, status: 'BROKEN_DECRYPT', error: `LIST_FAILED: ${message}` }
+        ]
+      });
     }
   });
 
@@ -1715,6 +1732,43 @@ export async function registerRoutes(app: Express): Promise<void> {
     };
 
     try {
+      // If this state was already processed, short-circuit as success (idempotent callback)
+      if (queryState) {
+        const consumed = oauthStateStore.getConsumed(queryState);
+        if (consumed.found) {
+          const consumedData = consumed.data || {};
+          const params = new URLSearchParams(search ? search.slice(1) : '');
+          if (consumedData.connectionId) {
+            params.set('connectionId', String(consumedData.connectionId));
+          }
+          if (consumedData.label) {
+            params.set('label', String(consumedData.label));
+          }
+          if (consumedData.userInfoError) {
+            params.set('userInfoError', String(consumedData.userInfoError));
+          }
+          const query = params.toString();
+          const returnUrl = typeof consumedData.returnUrl === 'string' ? consumedData.returnUrl : resolveReturnUrl();
+          const finalReturnUrl = returnUrl
+            ? (query.length > 0 ? `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}${query}` : returnUrl)
+            : undefined;
+
+          console.info('OAuth callback consumed marker hit; returning success without re-processing', {
+            provider,
+            state: queryState,
+          });
+          return sendPopupResponse(200, {
+            success: true,
+            provider,
+            state: queryState,
+            returnUrl: finalReturnUrl,
+            connectionId: consumedData.connectionId,
+            label: consumedData.label,
+            userInfoError: consumedData.userInfoError,
+          });
+        }
+      }
+
       if (queryError) {
         return sendPopupResponse(400, {
           success: false,

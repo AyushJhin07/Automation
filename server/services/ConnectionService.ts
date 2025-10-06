@@ -1287,55 +1287,83 @@ export class ConnectionService {
       whereConditions.push(eq(connections.provider, normalizedProvider));
     }
 
-    this.ensureDb();
-    const userConnections = await this.db
-      .select()
-      .from(connections)
-      .where(and(...whereConditions))
-      .orderBy(connections.createdAt);
+    try {
+      this.ensureDb();
+      const userConnections = await this.db
+        .select()
+        .from(connections)
+        .where(and(...whereConditions))
+        .orderBy(connections.createdAt);
 
-    for (const connection of userConnections) {
-      try {
-        const credentials = await EncryptionService.decryptCredentials(
-          connection.payloadCiphertext ?? connection.encryptedCredentials,
-          connection.payloadIv ?? connection.iv,
-          connection.encryptionKeyId,
-          connection.dataKeyCiphertext,
-          {
-            dataKeyIv: connection.dataKeyIv,
-            payloadCiphertext: connection.payloadCiphertext,
-            payloadIv: connection.payloadIv,
-          }
-        );
+      for (const connection of userConnections) {
+        try {
+          const credentials = await EncryptionService.decryptCredentials(
+            connection.payloadCiphertext ?? connection.encryptedCredentials,
+            connection.payloadIv ?? connection.iv,
+            connection.encryptionKeyId,
+            connection.dataKeyCiphertext,
+            {
+              dataKeyIv: connection.dataKeyIv,
+              payloadCiphertext: connection.payloadCiphertext,
+              payloadIv: connection.payloadIv,
+            }
+          );
 
-        results.push({
-          id: connection.id,
-          userId: connection.userId,
-          organizationId: connection.organizationId,
-          name: connection.name,
-          provider: connection.provider,
-          type: connection.type,
-          iv: connection.iv,
-          encryptionKeyId: connection.encryptionKeyId ?? null,
-          dataKeyCiphertext: connection.dataKeyCiphertext ?? null,
-          dataKeyIv: connection.dataKeyIv ?? null,
-          payloadCiphertext: connection.payloadCiphertext ?? null,
-          payloadIv: connection.payloadIv ?? null,
-          credentials,
-          metadata: connection.metadata,
-          isActive: connection.isActive,
-          lastTested: connection.lastTested,
-          testStatus: connection.testStatus,
-          testError: connection.testError,
-          createdAt: connection.createdAt,
-          updatedAt: connection.updatedAt,
-        });
-      } catch (error) {
-        handleDecryptFailure(connection, error);
+          results.push({
+            id: connection.id,
+            userId: connection.userId,
+            organizationId: connection.organizationId,
+            name: connection.name,
+            provider: connection.provider,
+            type: connection.type,
+            iv: connection.iv,
+            encryptionKeyId: connection.encryptionKeyId ?? null,
+            dataKeyCiphertext: connection.dataKeyCiphertext ?? null,
+            dataKeyIv: connection.dataKeyIv ?? null,
+            payloadCiphertext: connection.payloadCiphertext ?? null,
+            payloadIv: connection.payloadIv ?? null,
+            credentials,
+            metadata: connection.metadata,
+            isActive: connection.isActive,
+            lastTested: connection.lastTested,
+            testStatus: connection.testStatus,
+            testError: connection.testError,
+            createdAt: connection.createdAt,
+            updatedAt: connection.updatedAt,
+          });
+        } catch (error) {
+          handleDecryptFailure(connection, error);
+        }
       }
-    }
 
-    return { connections: results, problems };
+      return { connections: results, problems };
+    } catch (error) {
+      console.error('❌ Failed to list user connections from database:', getErrorMessage(error));
+      if (this.allowFileStore) {
+        try {
+          const records = await this.readFileStore();
+          const filtered = records.filter((conn) =>
+            conn.userId === userId &&
+            conn.organizationId === organizationId &&
+            conn.isActive &&
+            (!normalizedProvider || conn.provider === normalizedProvider)
+          );
+          for (const record of filtered) {
+            try {
+              const decrypted = await this.toDecryptedConnection(record);
+              results.push(decrypted);
+            } catch (decryptErr) {
+              handleDecryptFailure(record, decryptErr);
+            }
+          }
+          return { connections: results, problems };
+        } catch (fallbackError) {
+          console.error('❌ File-store fallback failed while listing connections:', getErrorMessage(fallbackError));
+        }
+      }
+      problems.push({ id: '-', provider: '*', name: null, status: 'BROKEN_DECRYPT', error: `LIST_FAILED: ${getErrorMessage(error)}` });
+      return { connections: [], problems };
+    }
   }
 
   public async getConnectionByProvider(
