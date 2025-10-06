@@ -143,6 +143,23 @@ export const enrichWorkflowNode = <T extends WorkflowNode>(
   });
 
   const metadata = mergeWorkflowMetadata(resolverResult.metadata);
+  if (params && typeof params === 'object') {
+    const baseColumns = Array.isArray(metadata.columns)
+      ? metadata.columns.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      : [];
+    const columnSet = new Set<string>(baseColumns);
+    Object.entries(params as Record<string, any>).forEach(([key, value]) => {
+      if (key) columnSet.add(key);
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        Object.keys(value as Record<string, any>).forEach((nested) => {
+          if (nested) columnSet.add(nested);
+        });
+      }
+    });
+    if (columnSet.size > 0) {
+      metadata.columns = Array.from(columnSet);
+    }
+  }
   const outputMetadata = mergeWorkflowMetadata(
     resolverResult.outputMetadata ?? resolverResult.metadata
   );
@@ -181,4 +198,3 @@ export const enrichWorkflowGraph = (
   const nodes = graph.nodes.map((node) => enrichWorkflowNode(node, context));
   return { ...graph, nodes };
 };
-

@@ -10,6 +10,8 @@ import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { auditLogService } from '../services/AuditLogService.js';
 import { logAction } from '../utils/actionLog.js';
 import { getErrorMessage } from '../types/common.js';
+import { QueueDriverUnavailableError } from '../queue/index.js';
+import { checkQueueHealth, getRedisTargetLabel } from '../services/QueueHealthService.js';
 import { requirePermission } from '../middleware/auth.js';
 import { ConnectorConcurrencyExceededError } from '../services/ConnectorConcurrencyService.js';
 import { ExecutionQuotaExceededError } from '../services/ExecutionQuotaService.js';
@@ -166,6 +168,22 @@ type EnqueueErrorResponse = {
 };
 
 function mapEnqueueError(error: unknown, fallbackMessage: string): EnqueueErrorResponse {
+  // Surface queue/worker readiness problems as a clear 503 for the UI
+  if (error instanceof QueueDriverUnavailableError) {
+    return {
+      status: 503,
+      body: {
+        success: false,
+        error: 'QUEUE_UNAVAILABLE',
+        message: getErrorMessage(error),
+        details: {
+          queue: 'bullmq',
+          target: getRedisTargetLabel(),
+        },
+      },
+    };
+  }
+
   if (error instanceof ExecutionQuotaExceededError) {
     return {
       status: 429,
@@ -226,6 +244,8 @@ function mapEnqueueError(error: unknown, fallbackMessage: string): EnqueueErrorR
       success: false,
       error: fallbackMessage,
       message: getErrorMessage(error),
+      // Opportunistically attach queue health to ease debugging in UI/logs
+      details: undefined,
     },
   };
 }

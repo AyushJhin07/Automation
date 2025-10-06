@@ -34,9 +34,9 @@ export interface OAuthStateStore {
 
 const GLOBAL_STORE_KEY = '__automationOAuthStateStore__';
 
-interface GlobalWithStore extends typeof globalThis {
-  [GLOBAL_STORE_KEY]?: DurableOAuthStateStore;
-}
+type GlobalWithStore = typeof globalThis & {
+  __automationOAuthStateStore__?: DurableOAuthStateStore;
+};
 
 class DurableOAuthStateStore implements OAuthStateStore {
   private store: Map<string, OAuthStateStoreEntry>;

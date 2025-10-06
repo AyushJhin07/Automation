@@ -71,6 +71,46 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
   so the dedicated worker process can take over.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
+## 5. Dev helper commands
+
+These commands speed up local smoke testing once the stack is running:
+
+- `npm run dev:bootstrap` registers a development user (`developer@local.test`), creates an
+  organization, and seeds a "Hello World" workflow. The script prints a fully formed `curl`
+  command with a bearer token and organization header so you can enqueue the seeded workflow
+  immediately.
+- `npm run dev:smoke` reuses the bootstrap credentials, fetches the most recently updated
+  workflow, and POSTs to `/api/executions` with the right headers. Expect an HTTP `202` and an
+  `executionId` when the queue is healthy.
+- `curl http://localhost:5000/api/production/queue/heartbeat` checks Redis connectivity and the
+  worker heartbeat. The readiness probe (`/api/production/ready`) returns `503` in development
+  until you flip `NODE_ENV` to `production`; rely on the queue heartbeat during local work.
+- `POST /api/dev/run-direct` executes a workflow synchronously through the runtime without touching
+  the queue. The endpoint is only mounted in development and accepts either a `workflowId` or an
+  inline `graph` payload:
+
+  ```bash
+  curl -X POST http://localhost:5000/api/dev/run-direct \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <DEV_TOKEN>" \
+    -H "X-Organization-Id: <ORG_ID>" \
+    -d '{"workflowId":"<WORKFLOW_ID>","initialData":{"message":"Hi"}}'
+  ```
+
+## 6. Optional health-check tuning
+
+The health monitor no longer calls `connectionService.getUserConnections` with placeholder IDs.
+Set the following environment variables if you want the LLM connection health check to run against
+a real workspace:
+
+```bash
+HEALTHCHECK_USER_ID=<uuid-of-user-with-connections>
+HEALTHCHECK_ORG_ID=<uuid-of-organization>
+```
+
+If either value is missing, the `llm_connections` probe reports a `degraded` status with an
+informational message instead of throwing noisy errors in the API logs.
+
 ### Multi-process vs. inline worker flows
 
 Local developers can now choose between a dedicated worker topology or a single-process "inline"

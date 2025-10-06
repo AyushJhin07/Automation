@@ -10,8 +10,17 @@ import {
   recordGeneratedSecret,
 } from './secrets/SecretManager';
 
-// Load .env and .env.local files (if present)
+// Load .env, .env.development (when applicable) and .env.local files (if present)
 dotenv.config();
+
+// In development, also honor a dedicated .env.development file if present
+if ((process.env.NODE_ENV || 'development') === 'development') {
+  try {
+    dotenv.config({ path: resolve(process.cwd(), '.env.development') });
+  } catch {
+    // best-effort; ignore if not present
+  }
+}
 
 const envLocalPath = resolve(process.cwd(), '.env.local');
 dotenv.config({ path: envLocalPath });

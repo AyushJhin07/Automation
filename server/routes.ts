@@ -64,6 +64,7 @@ import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
 import usageAdminRoutes from "./routes/usage";
+import devToolsRouter from "./routes/dev-tools.js";
 import { getSchedulerLockService } from './services/SchedulerLockService.js';
 import { checkQueueHealth } from './services/QueueHealthService.js';
 
@@ -210,6 +211,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   };
 
   const corsMiddleware = cors(corsOptions);
+  const deployCorsMiddleware = cors({ ...corsOptions, preflightContinue: true });
+
+  app.options('/api/workflow/deploy', deployCorsMiddleware, (req, res) => {
+    res.status(204).set('Allow', 'POST').end();
+  });
 
   const mapOrganization = (org: any) => ({
     id: org.id,
@@ -330,6 +336,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     requirePermission('workflow:view'),
     runExplorerRoutes,
   );
+
+  if ((process.env.NODE_ENV || env.NODE_ENV) === 'development') {
+    app.use('/api/dev', devToolsRouter);
+  }
 
   app.use('/api/google', googleSheetsRoutes);
   app.use('/api/metadata', metadataRoutes);
@@ -1092,11 +1102,6 @@ export async function registerRoutes(app: Express): Promise<void> {
   );
 
   // ===== DEPLOYMENT ROUTES =====
-
-  app.options('/api/workflow/deploy', (req, res) => {
-    res.set('Allow', 'POST');
-    res.sendStatus(204);
-  });
 
   app.post('/api/workflow/deploy',
     process.env.NODE_ENV === 'development' ? optionalAuth : authenticateToken,

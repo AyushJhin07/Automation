@@ -404,16 +404,24 @@ export class HealthMonitoringService {
    */
   private async checkLLMConnections(): Promise<void> {
     const startTime = Date.now();
-    
+    const userId = process.env.HEALTHCHECK_USER_ID;
+    const organizationId = process.env.HEALTHCHECK_ORG_ID;
+
+    if (!userId || !organizationId) {
+      this.healthChecks.set('llm_connections', {
+        name: 'LLM Connections',
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        message: 'Skipping LLM connection check (set HEALTHCHECK_USER_ID/HEALTHCHECK_ORG_ID)',
+        lastChecked: new Date(),
+      });
+      return;
+    }
+
     try {
-      // Test if we can create connections (this would test the service)
-      const { connections: testResult } = await connectionService.getUserConnections(
-        'health-check-user',
-        'health-check-org'
-      );
-      
+      await connectionService.getUserConnections(userId, organizationId);
       const responseTime = Date.now() - startTime;
-      
+
       this.healthChecks.set('llm_connections', {
         name: 'LLM Connections',
         status: 'healthy',

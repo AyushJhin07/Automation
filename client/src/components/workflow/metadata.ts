@@ -28,6 +28,7 @@ const collectColumnsFromAny = (source: unknown): string[] => {
     if (typeof value === 'object') {
       Object.entries(value as Record<string, any>).forEach(([key, val]) => {
         if (typeof val === 'string' && val.trim()) {
+          result.add(key);
           result.add(val);
           return;
         }

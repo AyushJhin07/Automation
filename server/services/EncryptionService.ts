@@ -223,7 +223,7 @@ export class EncryptionService {
 
     const active = this.getActiveKeyEntry();
     if (active) {
-      const kmsResource = active.kmsKeyArn ?? active.keyId;
+      const kmsResource = active.kmsKeyArn ?? null;
       if (kmsResource) {
         try {
           const kms = getKmsClient();
@@ -263,7 +263,7 @@ export class EncryptionService {
       }
 
       const keyEntry = keyRecordId ? this.keyCache.get(keyRecordId) : null;
-      const kmsResource = keyEntry?.kmsKeyArn ?? keyEntry?.keyId;
+      const kmsResource = keyEntry?.kmsKeyArn ?? null;
       if (!kmsResource && !keyEntry?.legacyDerivedKey) {
         throw new Error(`KMS metadata missing for encrypted data key ${keyRecordId ?? 'unknown'}`);
       }

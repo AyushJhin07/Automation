@@ -19,5 +19,13 @@
   - Run the web API/UI: `NODE_ENV=production node dist/index.js` (or `tsx server/index.ts` during development).
   - Run at least one execution worker: `NODE_ENV=production tsx server/workers/execution.ts` (scale horizontally for more throughput).
   - A root-level `Procfile` defines the production process manifest (`web`, `worker`, `scheduler`, `timers`, `encryption-rotation`) so platforms like Heroku, Render, or PM2 can auto-discover the correct bundles (`dist/index.js`, `dist/workers/execution.js`, `dist/workers/scheduler.js`, `dist/workers/timerDispatcher.js`, `dist/workers/encryption-rotation.js`).
+  - The generated `ecosystem.config.js` mirrors the Procfile for PM2 deployments:
+
+    ```bash
+    npm run build
+    pm2 start ecosystem.config.js
+    pm2 status
+    ```
+
   - Use a process supervisor (systemd, PM2, etc.) to restart the web and worker processes and to forward `SIGTERM` for graceful shutdowns.
   - Both processes require the same environment (DATABASE_URL, API keys). Workers will drain in-flight jobs before exiting.

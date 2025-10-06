@@ -245,6 +245,9 @@ export class ConnectionService {
   constructor() {
     this.db = db;
     this.allowFileStore = process.env.ALLOW_FILE_CONNECTION_STORE === 'true';
+    if (!this.db && !this.allowFileStore && (env.NODE_ENV === 'development' || env.NODE_ENV === 'test')) {
+      this.allowFileStore = true;
+    }
     this.fileStorePath = path.resolve(
       process.env.CONNECTION_STORE_PATH || path.join(process.cwd(), '.data', 'connections.json')
     );
