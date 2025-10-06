@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -12,25 +12,24 @@ import ReactFlow, {
   ReactFlowProvider,
   ReactFlowInstance,
   MarkerType,
-  Position
+  Position,
 } from 'reactflow';
+import type { NodeProps } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Brain, 
-  Sparkles, 
-  Loader2, 
-  Settings, 
+import { Input } from '@/components/ui/input';
+import {
+  Brain,
+  Sparkles,
+  Loader2,
+  Settings,
   Play,
   Save,
-  Download,
   Zap,
   Mail,
   Sheet,
@@ -43,242 +42,119 @@ import {
   Cloud,
   Heart,
   X,
-  Plus,
   Trash2,
-  MessageCircle
+  MessageCircle,
+  Wand2,
 } from 'lucide-react';
+import { NodeConfigurationModal } from '@/components/workflow/NodeConfigurationModal';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
+import { serializeGraphPayload } from '@/components/workflow/graphPayload';
 import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
+import type { FunctionDefinition } from '@/components/workflow/DynamicParameterForm';
 
-// N8N-Style Custom Node Component
-const N8NNode = ({ data }: { data: any }) => {
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-
+// N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
+const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
   const getAppIcon = (appName: string) => {
     const iconMap: Record<string, any> = {
-      'Gmail': Mail,
-      'Google Sheets': Sheet,
-      'Google Calendar': Calendar,
-      'Slack': MessageSquare,
-      'Stripe': CreditCard,
-      'Shopify': ShoppingBag,
-      'Asana': CheckSquare,
-      'Trello': TrelloIcon,
-      'Salesforce': Cloud,
-      'HubSpot': Heart
+      gmail: Mail,
+      'google sheets': Sheet,
+      'google calendar': Calendar,
+      slack: MessageSquare,
+      stripe: CreditCard,
+      shopify: ShoppingBag,
+      asana: CheckSquare,
+      trello: TrelloIcon,
+      salesforce: Cloud,
+      hubspot: Heart,
     };
-    
-    const IconComponent = iconMap[appName] || Zap;
+
+    const normalized = typeof appName === 'string' ? appName.toLowerCase() : '';
+    const IconComponent = iconMap[normalized] || Zap;
     return <IconComponent className="w-6 h-6 text-white" />;
   };
 
+  const configured = Boolean(data?.function);
+  const hasConnection = Boolean(data?.connectionId);
+  const isAiGenerated = Boolean(data?.aiOptimized);
+  const description = data?.functionDescription || data?.description;
+
   return (
-    <>
-      <div 
-        className="relative bg-gray-800 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-all cursor-pointer group"
-        style={{ width: '200px', minHeight: '80px' }}
-        onClick={() => setIsConfigOpen(true)}
+    <div
+      className="relative bg-gray-800 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-all cursor-pointer group"
+      style={{ width: '200px', minHeight: '80px' }}
+    >
+      {/* Node Header */}
+      <div
+        className="flex items-center gap-3 p-3 rounded-t-lg"
+        style={{ backgroundColor: data?.color || '#6366f1' }}
       >
-        {/* Node Header */}
-        <div 
-          className="flex items-center gap-3 p-3 rounded-t-lg"
-          style={{ backgroundColor: data.color || '#6366f1' }}
-        >
-          {getAppIcon(data.appName)}
-          <div className="flex-1">
-            <div className="text-white font-medium text-sm">{data.appName}</div>
-            <div className="text-white/80 text-xs">{data.category || 'App'}</div>
+        {getAppIcon(data?.appName || data?.app)}
+        <div className="flex-1">
+          <div className="text-white font-medium text-sm">
+            {data?.appName || data?.app || 'App'}
           </div>
-          <Settings className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
-        </div>
-
-        {/* Node Content */}
-        <div className="p-3 bg-gray-800 rounded-b-lg">
-          <div className="text-white text-sm font-medium mb-1">
-            {data.selectedFunction || 'Click to configure'}
-          </div>
-          <div className="text-gray-400 text-xs">
-            {data.functionDescription || 'No function selected'}
-          </div>
-          
-          {/* Status Indicators */}
-          <div className="flex gap-1 mt-2">
-            <div className={`w-2 h-2 rounded-full ${data.configured ? 'bg-green-500' : 'bg-yellow-500'}`} />
-            <div className={`w-2 h-2 rounded-full ${data.connected ? 'bg-blue-500' : 'bg-gray-500'}`} />
-            <div className={`w-2 h-2 rounded-full ${data.aiOptimized ? 'bg-purple-500' : 'bg-gray-500'}`} />
+          <div className="text-white/80 text-xs">
+            {data?.category || (configured ? 'Configured' : 'Tap to configure')}
           </div>
         </div>
-
-        {/* Connection Points */}
-        <div className="absolute -left-2 top-1/2 w-4 h-4 bg-gray-600 border-2 border-gray-400 rounded-full transform -translate-y-1/2" />
-        <div className="absolute -right-2 top-1/2 w-4 h-4 bg-gray-600 border-2 border-gray-400 rounded-full transform -translate-y-1/2" />
+        <Settings className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
       </div>
 
-      {/* Configuration Modal */}
-      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="max-w-2xl bg-gray-900 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: data.color }}
-              >
-                {getAppIcon(data.appName)}
-              </div>
-              <div>
-                <div className="text-white font-semibold">{data.appName} Configuration</div>
-                <div className="text-gray-400 text-sm">Configure function and parameters</div>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Function Selection */}
-            <div>
-              <Label className="text-white mb-2 block">Function</Label>
-              <Select value={data.selectedFunction} onValueChange={() => {}}>
-                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                  <SelectValue placeholder="Select function..." />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-600">
-                  {/* Gmail Functions */}
-                  {data.appName === 'Gmail' && (
-                    <>
-                      <SelectItem value="send_email">Send Email</SelectItem>
-                      <SelectItem value="search_emails">Search Emails</SelectItem>
-                      <SelectItem value="set_auto_reply">Set Auto Reply</SelectItem>
-                      <SelectItem value="reply_to_email">Reply to Email</SelectItem>
-                      <SelectItem value="add_label">Add Label</SelectItem>
-                    </>
-                  )}
-                  
-                  {/* Google Sheets Functions */}
-                  {data.appName === 'Google Sheets' && (
-                    <>
-                      <SelectItem value="append_row">Append Row</SelectItem>
-                      <SelectItem value="read_range">Read Range</SelectItem>
-                      <SelectItem value="update_range">Update Range</SelectItem>
-                      <SelectItem value="create_chart">Create Chart</SelectItem>
-                    </>
-                  )}
-                  
-                  {/* Slack Functions */}
-                  {data.appName === 'Slack' && (
-                    <>
-                      <SelectItem value="send_message">Send Message</SelectItem>
-                      <SelectItem value="create_channel">Create Channel</SelectItem>
-                      <SelectItem value="upload_file">Upload File</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Node Content */}
+      <div className="p-3 bg-gray-800 rounded-b-lg">
+        <div className="text-white text-sm font-medium mb-1 truncate">
+          {data?.function || data?.selectedFunction || 'Click to configure'}
+        </div>
+        <div className="text-gray-400 text-xs min-h-[32px]">
+          {description || 'No function selected yet'}
+        </div>
 
-            {/* AI Assistant */}
-            <div className="bg-purple-900/50 p-4 rounded-lg border border-purple-600">
-              <div className="flex items-center gap-2 mb-3">
-                <Brain className="w-5 h-5 text-purple-400" />
-                <span className="text-purple-300 font-medium">AI Assistant</span>
-                <Badge className="bg-purple-600 text-white">Smart Config</Badge>
-              </div>
-              <p className="text-gray-300 text-sm mb-3">
-                Let AI configure this node based on your workflow context
-              </p>
-              <Button 
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={() => {
-                  // Trigger AI configuration
-                  console.log('AI configuring node...');
-                }}
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Configure with AI
-              </Button>
-            </div>
+        {/* Status Indicators */}
+        <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+          <span className={`flex items-center gap-1 ${configured ? 'text-emerald-400' : 'text-yellow-400'}`}>
+            <div className={`w-2 h-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-yellow-500'}`} />
+            {configured ? 'Configured' : 'Needs setup'}
+          </span>
+          <span className={`flex items-center gap-1 ${hasConnection ? 'text-sky-400' : 'text-gray-500'}`}>
+            <div className={`w-2 h-2 rounded-full ${hasConnection ? 'bg-sky-500' : 'bg-gray-500'}`} />
+            {hasConnection ? 'Connected' : 'No connection'}
+          </span>
+          {isAiGenerated && (
+            <span className="flex items-center gap-1 text-purple-400">
+              <Wand2 className="w-3 h-3" />
+              AI
+            </span>
+          )}
+        </div>
+      </div>
 
-            {/* Parameters */}
-            <div>
-              <Label className="text-white mb-2 block">Parameters</Label>
-              <div className="space-y-3">
-                {data.selectedFunction === 'send_email' && (
-                  <>
-                    <div>
-                      <Label className="text-gray-300 text-sm">To</Label>
-                      <Input 
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder="recipient@example.com"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-gray-300 text-sm">Subject</Label>
-                      <Input 
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder="Email subject"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-gray-300 text-sm">Body</Label>
-                      <Textarea 
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder="Email content"
-                      />
-                    </div>
-                  </>
-                )}
-                
-                {data.selectedFunction === 'set_auto_reply' && (
-                  <>
-                    <div>
-                      <Label className="text-gray-300 text-sm">Auto Reply Message</Label>
-                      <Textarea 
-                        className="bg-gray-800 border-gray-600 text-white"
-                        placeholder="Thank you for your email. I will respond as soon as possible."
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-gray-300 text-sm">Duration</Label>
-                      <Select>
-                        <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
-                          <SelectValue placeholder="Select duration..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-600">
-                          <SelectItem value="1hour">1 Hour</SelectItem>
-                          <SelectItem value="1day">1 Day</SelectItem>
-                          <SelectItem value="1week">1 Week</SelectItem>
-                          <SelectItem value="indefinite">Until Disabled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t border-gray-700">
-              <Button 
-                className="bg-green-600 hover:bg-green-700 flex-1"
-                onClick={() => setIsConfigOpen(false)}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Configuration
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                onClick={() => setIsConfigOpen(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+      {/* Connection Points */}
+      <div className="absolute -left-2 top-1/2 w-4 h-4 bg-gray-600 border-2 border-gray-400 rounded-full transform -translate-y-1/2" />
+      <div className="absolute -right-2 top-1/2 w-4 h-4 bg-gray-600 border-2 border-gray-400 rounded-full transform -translate-y-1/2" />
+    </div>
   );
 };
 
 const nodeTypes: NodeTypes = {
   n8nNode: N8NNode,
+};
+
+const normalizeAppId = (raw?: string): string => {
+  if (!raw) return '';
+  const value = raw.toLowerCase().trim();
+  if (value.includes('gmail')) return 'gmail';
+  if (value.includes('sheet')) return 'google-sheets';
+  if (value.includes('calendar')) return 'google-calendar';
+  if (value.includes('drive')) return 'google-drive';
+  if (value.includes('slack')) return 'slack';
+  if (value.includes('shopify')) return 'shopify';
+  if (value.includes('stripe')) return 'stripe';
+  if (value.includes('asana')) return 'asana';
+  if (value.includes('trello')) return 'trello';
+  if (value.includes('hubspot')) return 'hubspot';
+  if (value.includes('salesforce')) return 'salesforce';
+  return value.replace(/\s+/g, '-');
 };
 
 interface AIThinkingStep {
@@ -302,6 +178,227 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [currentThinkingStep, setCurrentThinkingStep] = useState(0);
   const [showAIPanel, setShowAIPanel] = useState(true);
   const [showConversationalAI, setShowConversationalAI] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configNodeData, setConfigNodeData] = useState<any | null>(null);
+  const [configFunctions, setConfigFunctions] = useState<FunctionDefinition[]>([]);
+  const [configConnections, setConfigConnections] = useState<any[]>([]);
+  const [configOAuthProviders, setConfigOAuthProviders] = useState<any[]>([]);
+  const [dryRunResult, setDryRunResult] = useState<any | null>(null);
+  const [isDryRunning, setIsDryRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [workflowName, setWorkflowName] = useState<string>('Visual Builder Workflow');
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const authFetch = useAuthStore((state) => state.authFetch);
+  const token = useAuthStore((state) => state.token);
+  const dryRunStatus = useMemo(() => {
+    if (!dryRunResult) return null;
+    if (dryRunResult?.execution?.status) return dryRunResult.execution.status;
+    return dryRunResult.encounteredError ? 'failed' : 'completed';
+  }, [dryRunResult]);
+
+  const dryRunNodeSummaries = useMemo(() => {
+    if (!dryRunResult?.execution?.nodes) return [] as Array<{ nodeId: string; status: string; label: string; message?: string }>;
+    return Object.entries(dryRunResult.execution.nodes).map(([nodeId, details]: [string, any]) => ({
+      nodeId,
+      status: details?.status || 'unknown',
+      label: details?.label || nodeId,
+      message: details?.result?.summary || details?.result?.output?.summary || details?.error?.message || '',
+    }));
+  }, [dryRunResult]);
+
+  const lastSavedLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    try {
+      const date = new Date(lastSavedAt);
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+      return date.toLocaleString();
+    } catch {
+      return null;
+    }
+  }, [lastSavedAt]);
+
+  const buildGraphPayload = useCallback(
+    (identifier: string, nameOverride?: string) => {
+      const sanitizedNodes = nodes.map((node) => {
+        const cleanedData: Record<string, any> = { ...(node.data || {}) };
+
+        const canonicalApp = normalizeAppId(
+          cleanedData.app || cleanedData.appName || cleanedData.application
+        );
+        if (canonicalApp) {
+          cleanedData.app = canonicalApp;
+          cleanedData.appName = cleanedData.appName || canonicalApp;
+        }
+
+        const functionId =
+          cleanedData.function || cleanedData.selectedFunction || cleanedData.operation;
+        if (functionId) {
+          cleanedData.function = functionId;
+          cleanedData.operation = functionId;
+          cleanedData.selectedFunction = functionId;
+        }
+
+        const parameters: Record<string, any> = {
+          ...(cleanedData.parameters || cleanedData.params || {}),
+        };
+        const connectionId =
+          cleanedData.connectionId ||
+          cleanedData.auth?.connectionId ||
+          parameters.connectionId;
+        if (connectionId) {
+          cleanedData.connectionId = connectionId;
+          cleanedData.auth = { ...(cleanedData.auth || {}), connectionId };
+          parameters.connectionId = connectionId;
+        } else {
+          delete cleanedData.connectionId;
+          if (cleanedData.auth) {
+            delete cleanedData.auth.connectionId;
+          }
+          delete parameters.connectionId;
+        }
+
+        cleanedData.parameters = parameters;
+        cleanedData.params = parameters;
+        cleanedData.configured = Boolean(functionId);
+
+        delete cleanedData.aiOptimized;
+        delete cleanedData.functionDescription;
+        delete cleanedData.onConfigure;
+        delete cleanedData.color;
+        delete cleanedData.connected;
+
+        return {
+          id: String(node.id),
+          type: node.type,
+          position: node.position,
+          data: cleanedData,
+          sourcePosition: node.sourcePosition,
+          targetPosition: node.targetPosition,
+        } as Node;
+      });
+
+      return serializeGraphPayload({
+        nodes: sanitizedNodes,
+        edges,
+        workflowIdentifier: identifier,
+        specName: nameOverride || workflowName || 'Visual Builder Workflow',
+      });
+    },
+    [nodes, edges, workflowName]
+  );
+
+  const hydrateCanvasFromGraph = useCallback(
+    (graph: any) => {
+      if (!graph || !Array.isArray(graph.nodes) || graph.nodes.length === 0) {
+        setNodes([]);
+        setEdges([]);
+        setDryRunResult(null);
+        return;
+      }
+
+      const rfNodes: Node[] = graph.nodes.map((node: any, index: number) => {
+        const data: Record<string, any> = {
+          ...(node.data || {}),
+        };
+
+        const canonicalApp = normalizeAppId(
+          data.app || data.appName || node.app || node.appName
+        );
+        if (canonicalApp) {
+          data.app = canonicalApp;
+          data.appName = data.appName || node.appName || canonicalApp;
+        }
+
+        const functionId =
+          data.function || node.function || data.operation || data.selectedFunction;
+        if (functionId) {
+          data.function = functionId;
+          data.operation = functionId;
+          data.selectedFunction = functionId;
+        }
+
+        const parameters: Record<string, any> = {
+          ...(data.parameters || data.params || node.parameters || node.params || {}),
+        };
+        const connectionId =
+          data.connectionId || data.auth?.connectionId || parameters.connectionId;
+        if (connectionId) {
+          data.connectionId = connectionId;
+          data.auth = { ...(data.auth || {}), connectionId };
+          parameters.connectionId = connectionId;
+        } else {
+          delete data.connectionId;
+          if (data.auth) {
+            delete data.auth.connectionId;
+          }
+          delete parameters.connectionId;
+        }
+
+        data.parameters = parameters;
+        data.params = parameters;
+        data.configured = Boolean(data.function);
+        if (node.color && !data.color) {
+          data.color = node.color;
+        }
+        if (!data.label && node.label) {
+          data.label = node.label;
+        }
+        if (!data.functionDescription && (node.functionDescription || node.aiReason)) {
+          data.functionDescription = node.functionDescription || node.aiReason;
+        }
+
+        const position = node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number'
+          ? node.position
+          : { x: 100 + index * 260, y: 100 + (index % 2) * 160 };
+
+        return {
+          id: String(node.id ?? `node-${index}`),
+          type: 'n8nNode',
+          position,
+          data,
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        } as Node;
+      });
+
+      const rawEdges = Array.isArray(graph.edges)
+        ? graph.edges
+        : Array.isArray(graph.connections)
+        ? graph.connections
+        : [];
+
+      const rfEdges: Edge[] = rawEdges
+        .map((edge: any, index: number) => {
+          const source = edge.source ?? edge.from;
+          const target = edge.target ?? edge.to;
+          if (!source || !target) {
+            return null;
+          }
+
+          return {
+            id: String(edge.id ?? `edge-${index}-${source}-${target}`),
+            source: String(source),
+            target: String(target),
+            type: edge.type || 'smoothstep',
+            style: edge.style || { stroke: '#6366f1', strokeWidth: 2 },
+            markerEnd: edge.markerEnd || { type: MarkerType.ArrowClosed, color: '#6366f1' },
+            data: edge.data || {},
+            label: edge.label || edge.dataType || '',
+            labelStyle: edge.labelStyle || { fill: '#9CA3AF', fontSize: 12 },
+            labelBgStyle: edge.labelBgStyle || { fill: '#1F2937', fillOpacity: 0.8 },
+          } as Edge;
+        })
+        .filter(Boolean) as Edge[];
+
+      setNodes(rfNodes);
+      setEdges(rfEdges);
+      setDryRunResult(null);
+    },
+    [setNodes, setEdges]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -315,6 +412,306 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     },
     [setEdges]
   );
+
+  const openNodeConfigModal = useCallback(
+    async (node: Node) => {
+      const data = node.data || {};
+      const canonicalApp = normalizeAppId(data.app || data.appName || data.application);
+      const params = { ...(data.parameters || data.params || {}) };
+      const connectionId = data.connectionId || data.auth?.connectionId || params.connectionId;
+      const nodeType = String(node.type || '').startsWith('trigger') ? 'trigger' : 'action';
+
+      setConfigNodeData({
+        id: String(node.id),
+        type: nodeType,
+        appName: canonicalApp || 'gmail',
+        functionId: data.function || data.operation || data.selectedFunction,
+        label: data.label || data.appName || String(node.id),
+        parameters: params,
+        connectionId: connectionId,
+      });
+      setConfigFunctions([]);
+      setConfigConnections([]);
+      setConfigOAuthProviders([]);
+      setConfigOpen(true);
+
+      try {
+        if (canonicalApp) {
+          try {
+            const response = await fetch(`/api/functions/${encodeURIComponent(canonicalApp)}`);
+            if (response.ok) {
+              const payload = await response.json().catch(() => ({}));
+              const list = payload?.data?.functions || payload?.functions || [];
+              setConfigFunctions(Array.isArray(list) ? list : []);
+            } else {
+              setConfigFunctions([]);
+            }
+          } catch {
+            setConfigFunctions([]);
+          }
+        }
+
+        try {
+          if (token) {
+            const response = await authFetch('/api/connections');
+            const payload = await response.json().catch(() => ({}));
+            const list = payload?.connections || [];
+            setConfigConnections(Array.isArray(list) ? list : []);
+          } else {
+            setConfigConnections([]);
+          }
+        } catch {
+          setConfigConnections([]);
+        }
+
+        try {
+          const response = token ? await authFetch('/api/oauth/providers') : await fetch('/api/oauth/providers');
+          if (response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            const list = payload?.data?.providers || payload?.providers || [];
+            setConfigOAuthProviders(Array.isArray(list) ? list : []);
+          } else {
+            setConfigOAuthProviders([]);
+          }
+        } catch {
+          setConfigOAuthProviders([]);
+        }
+      } catch (error) {
+        console.error('Failed to load configuration metadata', error);
+      }
+    },
+    [authFetch, token]
+  );
+
+  const handleNodeConfigSave = useCallback(
+    (updated: any) => {
+      if (!updated?.id) {
+        setConfigOpen(false);
+        return;
+      }
+
+      setNodes((existingNodes) =>
+        existingNodes.map((node) => {
+          if (String(node.id) !== String(updated.id)) {
+            return node;
+          }
+
+          const baseData: Record<string, any> = { ...(node.data || {}) };
+          const params: Record<string, any> = { ...(baseData.parameters || baseData.params || {}) };
+
+          const canonicalApp = normalizeAppId(updated.appName || baseData.app || baseData.appName);
+          if (canonicalApp) {
+            baseData.app = canonicalApp;
+            baseData.appName = updated.appName || baseData.appName || canonicalApp;
+          }
+
+          if (updated.label) {
+            baseData.label = updated.label;
+          }
+
+          if (updated.functionId) {
+            baseData.function = updated.functionId;
+            baseData.operation = updated.functionId;
+            baseData.selectedFunction = updated.functionId;
+            if ((updated.type || '').toLowerCase() === 'action') {
+              baseData.actionId = updated.functionId;
+            }
+            if ((updated.type || '').toLowerCase() === 'trigger') {
+              baseData.triggerId = updated.functionId;
+            }
+          }
+
+          if (updated.parameters && typeof updated.parameters === 'object') {
+            Object.assign(params, updated.parameters);
+          }
+
+          const connectionId = updated.connectionId || params.connectionId;
+          if (connectionId) {
+            baseData.connectionId = connectionId;
+            baseData.auth = { ...(baseData.auth || {}), connectionId };
+            params.connectionId = connectionId;
+          } else {
+            delete baseData.connectionId;
+            if (baseData.auth) {
+              delete baseData.auth.connectionId;
+            }
+            if ('connectionId' in params) {
+              delete params.connectionId;
+            }
+          }
+
+          baseData.parameters = params;
+          baseData.params = params;
+          baseData.configured = Boolean(baseData.function);
+
+          return {
+            ...node,
+            data: baseData,
+          };
+        })
+      );
+
+      setConfigOpen(false);
+      setConfigNodeData(null);
+      toast.success('Node configuration saved');
+    },
+    [setNodes]
+  );
+
+  const runDryRun = useCallback(async () => {
+    if (!nodes.length) {
+      toast.error('Add at least one node before running a test');
+      return;
+    }
+
+    const unconfigured = nodes.filter((node) => !(node.data?.function));
+    if (unconfigured.length > 0) {
+      toast.error('Configure all nodes before running a test');
+      return;
+    }
+
+    setIsDryRunning(true);
+    setDryRunResult(null);
+
+    try {
+      const identifier = workflowId ?? `builder-${Date.now()}`;
+      const payload = buildGraphPayload(identifier);
+
+      const body = JSON.stringify({
+        workflowId: payload.id,
+        graph: payload,
+        options: { stopOnError: false },
+      });
+
+      const response = token
+        ? await authFetch('/api/executions/dry-run', { method: 'POST', body })
+        : await fetch('/api/executions/dry-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+          });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.success === false) {
+        const message = result?.message || result?.error || 'Dry run failed';
+        toast.error(message);
+        setDryRunResult(result);
+        return;
+      }
+
+      toast.success('Dry run completed');
+      setDryRunResult(result);
+    } catch (error: any) {
+      console.error('Dry run failed', error);
+      toast.error(error?.message || 'Unable to execute dry run');
+    } finally {
+      setIsDryRunning(false);
+    }
+  }, [nodes, workflowId, buildGraphPayload, authFetch, token]);
+
+  const saveWorkflow = useCallback(async () => {
+    if (!nodes.length) {
+      toast.error('Add at least one node before saving');
+      return;
+    }
+
+    const identifier = workflowId ?? `builder-${Date.now()}`;
+    const payload = buildGraphPayload(identifier);
+    const name = workflowName?.trim() || payload.name || 'Visual Builder Workflow';
+
+    const requestBody = {
+      id: identifier,
+      name,
+      graph: payload,
+      metadata: payload.metadata,
+    };
+
+    if (token) {
+      setIsSaving(true);
+      try {
+        const response = await authFetch('/api/flows/save', {
+          method: 'POST',
+          body: JSON.stringify(requestBody),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.success === false) {
+          const message = result?.error || 'Failed to save workflow';
+          toast.error(message);
+          return;
+        }
+
+        const savedId: string = result.workflowId || identifier;
+        setWorkflowId(savedId);
+        setWorkflowName(name);
+        const savedAt = new Date().toISOString();
+        setLastSavedAt(savedAt);
+        if (typeof window !== 'undefined') {
+          try {
+            const draft = {
+              id: savedId,
+              name,
+              savedAt,
+              graph: payload,
+            };
+            localStorage.setItem('automation.builder.draft', JSON.stringify(draft));
+          } catch (storageError) {
+            console.warn('Failed to persist local draft after save', storageError);
+          }
+        }
+        toast.success('Workflow saved');
+      } catch (error: any) {
+        const message = error?.message || 'Unable to save workflow';
+        toast.error(message);
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    try {
+      if (typeof window === 'undefined') {
+        throw new Error('Local storage is unavailable in this environment');
+      }
+      const savedAt = new Date().toISOString();
+      const draft = {
+        id: identifier,
+        name,
+        savedAt,
+        graph: payload,
+      };
+      localStorage.setItem('automation.builder.draft', JSON.stringify(draft));
+      setWorkflowId(identifier);
+      setWorkflowName(name);
+      setLastSavedAt(savedAt);
+      toast.success('Saved locally (sign in to sync)');
+    } catch (error: any) {
+      const message = error?.message || 'Failed to save locally';
+      toast.error(message);
+    }
+  }, [nodes, token, workflowId, workflowName, buildGraphPayload, authFetch]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      const raw = localStorage.getItem('automation.builder.draft');
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const graph = parsed?.graph;
+      if (graph?.nodes?.length) {
+        hydrateCanvasFromGraph(graph);
+        setWorkflowId(parsed?.id || graph.id || null);
+        setWorkflowName(parsed?.name || graph.name || 'Visual Builder Workflow');
+        setLastSavedAt(parsed?.savedAt || null);
+        setShowAIPanel(false);
+      }
+    } catch (error) {
+      console.warn('Failed to restore local builder draft', error);
+    }
+  }, [hydrateCanvasFromGraph]);
 
   const generateWorkflowWithThinking = async () => {
     if (!prompt.trim()) return;
@@ -403,41 +800,29 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
 
       if (response.ok) {
         const workflow = await response.json();
-        
-        // Convert to n8n-style nodes
-        const n8nNodes = workflow.nodes.map((node: any, index: number) => ({
-          id: node.id,
-          type: 'n8nNode',
-          position: { x: 100 + (index * 250), y: 100 + (index % 2) * 150 },
-          data: {
-            appName: node.app,
-            selectedFunction: node.function,
-            functionDescription: node.aiReason,
-            color: node.color,
-            configured: true,
-            connected: index > 0,
-            aiOptimized: true,
-            parameters: node.parameters
-          },
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left
-        }));
 
-        // Convert to n8n-style edges
-        const n8nEdges = workflow.connections.map((conn: any) => ({
-          id: conn.id,
-          source: conn.source,
-          target: conn.target,
-          type: 'smoothstep',
-          style: { stroke: '#6366f1', strokeWidth: 2 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#6366f1' },
-          label: conn.dataType || 'data',
-          labelStyle: { fill: '#9CA3AF', fontSize: 12 },
-          labelBgStyle: { fill: '#1F2937', fillOpacity: 0.8 }
-        }));
+        const baseNodes = workflow.nodes || workflow.graph?.nodes || [];
+        const graphLike = {
+          nodes: Array.isArray(baseNodes)
+            ? baseNodes.map((node: any) => ({
+                ...node,
+                data: node.data ? { ...node.data, aiOptimized: true } : node.data,
+                aiOptimized: true,
+              }))
+            : [],
+          edges: workflow.edges || workflow.graph?.edges || [],
+          connections: workflow.connections || workflow.graph?.connections || [],
+        };
 
-        setNodes(n8nNodes);
-        setEdges(n8nEdges);
+        hydrateCanvasFromGraph(graphLike);
+        setWorkflowId(
+          workflow.id || workflow.workflowId || workflow.graph?.id || null
+        );
+        setWorkflowName(
+          workflow.name || workflow.title || workflow.graph?.name || 'AI Generated Workflow'
+        );
+        setLastSavedAt(null);
+        setDryRunResult(null);
       }
     } catch (error) {
       console.error('Error generating workflow:', error);
@@ -452,6 +837,17 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     setEdges([]);
     setPrompt('');
     setShowAIPanel(true);
+    setDryRunResult(null);
+    setWorkflowId(null);
+    setWorkflowName('Visual Builder Workflow');
+    setLastSavedAt(null);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('automation.builder.draft');
+      }
+    } catch (error) {
+      console.warn('Failed to clear local builder draft', error);
+    }
   };
 
   return (
@@ -592,6 +988,9 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onInit={setReactFlowInstance}
+            onNodeClick={(_, node) => {
+              void openNodeConfigModal(node);
+            }}
             nodeTypes={nodeTypes}
             fitView
             className="bg-gray-900"
@@ -611,6 +1010,12 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-white text-xl font-bold">Workflow Builder</h1>
             <Badge className="bg-purple-600 text-white">AI-Powered</Badge>
+            <Input
+              value={workflowName}
+              onChange={(event) => setWorkflowName(event.target.value)}
+              className="h-8 w-60 bg-gray-800 border-gray-700 text-gray-100 text-sm"
+              placeholder="Workflow name"
+            />
           </div>
           
           <div className="flex items-center gap-3">
@@ -632,14 +1037,46 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
               <Trash2 className="w-4 h-4 mr-2" />
               Clear
             </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={nodes.length === 0 || isSaving}
+              onClick={saveWorkflow}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save
+                </>
+              )}
+            </Button>
             
             <Button 
               className="bg-green-600 hover:bg-green-700"
-              disabled={nodes.length === 0}
+              disabled={nodes.length === 0 || isDryRunning}
+              onClick={runDryRun}
             >
-              <Play className="w-4 h-4 mr-2" />
-              Deploy
+              {isDryRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Testing…
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Test Workflow
+                </>
+              )}
             </Button>
+            {lastSavedLabel && (
+              <span className="text-xs text-gray-500">
+                Last saved {lastSavedLabel}
+              </span>
+            )}
           </div>
         </div>
 
@@ -689,7 +1126,92 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Dry Run Result Panel */}
+        {dryRunResult && (
+          <div className="absolute bottom-6 right-6 w-[360px] z-20">
+            <Card className="bg-gray-950/90 border-gray-700 text-gray-100 shadow-xl">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    Dry Run {dryRunStatus ? dryRunStatus.toUpperCase() : ''}
+                  </CardTitle>
+                  <p className="text-xs text-gray-400">
+                    {dryRunResult?.execution?.summary || dryRunResult?.message || 'Execution preview available'}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-400 hover:text-white"
+                  onClick={() => setDryRunResult(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs uppercase tracking-wide text-gray-500">
+                  Node results
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {dryRunNodeSummaries.map(({ nodeId, status, label, message }) => (
+                    <div
+                      key={nodeId}
+                      className="rounded-md border border-gray-700 bg-gray-900/80 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between text-xs text-gray-300">
+                        <span className="font-medium truncate" title={label}>{label}</span>
+                        <span
+                          className={`text-[11px] font-semibold ${
+                            status === 'success'
+                              ? 'text-emerald-400'
+                              : status === 'error'
+                              ? 'text-red-400'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          {status.toUpperCase()}
+                        </span>
+                      </div>
+                      {message && (
+                        <p className="mt-1 text-xs text-gray-400 line-clamp-2" title={message}>
+                          {message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {dryRunNodeSummaries.length === 0 && (
+                    <p className="text-xs text-gray-500">
+                      No node level details available for this execution.
+                    </p>
+                  )}
+                </div>
+                {dryRunResult?.encounteredError && (
+                  <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                    Errors were encountered. Review node logs above.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
+
+      {/* Node configuration modal */}
+      {configOpen && configNodeData && (
+        <NodeConfigurationModal
+          isOpen={configOpen}
+          onClose={() => {
+            setConfigOpen(false);
+            setConfigNodeData(null);
+          }}
+          nodeData={configNodeData}
+          onSave={handleNodeConfigSave}
+          availableFunctions={configFunctions}
+          connections={configConnections}
+          oauthProviders={configOAuthProviders}
+        />
+      )}
     </div>
   );
 };
