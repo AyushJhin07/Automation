@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeAll } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { NodeConfigurationModal } from '../NodeConfigurationModal';
 
@@ -43,6 +44,74 @@ vi.mock('../DynamicParameterForm', () => {
 });
 
 describe('NodeConfigurationModal OAuth flow', () => {
+  it('prefers existing Gmail connections and skips OAuth relaunch on save', async () => {
+    const onSave = vi.fn();
+    const onConnectionCreated = vi.fn();
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    try {
+      render(
+        <NodeConfigurationModal
+          isOpen
+          onClose={vi.fn()}
+          nodeData={{
+            id: 'node-1',
+            type: 'action',
+            appName: 'gmail',
+            functionId: 'action.send',
+            label: 'Send email',
+            parameters: {},
+          }}
+          onSave={onSave}
+          availableFunctions={[
+            {
+              id: 'action.send',
+              name: 'Send Email',
+              description: 'Send a Gmail message',
+              category: 'action',
+            } as any,
+          ]}
+          connections={[
+            {
+              id: 'gmail-1',
+              name: 'Workspace Gmail',
+              provider: 'gmail',
+              status: 'connected',
+            } as any,
+          ]}
+          oauthProviders={[
+            {
+              name: 'gmail',
+              displayName: 'Gmail',
+              scopes: ['mail.send'],
+              configured: true,
+            },
+          ]}
+          onConnectionCreated={onConnectionCreated}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: /parameters/i })).toHaveAttribute('aria-selected', 'true');
+      });
+
+      const saveButton = await screen.findByRole('button', { name: /save/i });
+      expect(saveButton).toBeEnabled();
+
+      await userEvent.click(saveButton);
+
+      expect(windowOpenSpy).not.toHaveBeenCalled();
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connectionId: 'gmail-1',
+          functionId: 'action.send',
+        })
+      );
+    } finally {
+      windowOpenSpy.mockRestore();
+    }
+  });
+
   it('optimistically shows OAuth connections and enables saving without reload', async () => {
     const connectionId = 'conn-123';
     let resolveConnection: (value: any) => void = () => {};

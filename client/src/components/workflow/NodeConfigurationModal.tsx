@@ -43,6 +43,10 @@ interface Connection {
   status: 'connected' | 'expired' | 'error';
   lastTested?: string;
   scopes?: string[];
+  createdAt?: string | number;
+  updatedAt?: string | number;
+  lastUsedAt?: string | number;
+  insertedAt?: string | number;
 }
 
 interface OAuthProvider {
@@ -83,6 +87,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const [localConnections, setLocalConnections] = useState(connections);
   const authFetch = useAuthStore((state) => state.authFetch);
   const handledConnectionRef = useRef<string | null>(null);
+  const latestConnectionIdRef = useRef<string | null>(null);
 
   // Initialize state when modal opens
   useEffect(() => {
@@ -195,6 +200,73 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   }, [localConnections, selectedConnectionId]);
 
   useEffect(() => {
+    if (!isOpen || selectedConnectionId) {
+      return;
+    }
+
+    const targetProvider = nodeData.appName?.toLowerCase();
+    if (!targetProvider) {
+      return;
+    }
+
+    const isHealthy = (connection: Connection) => {
+      const status = String(connection.status || '').toLowerCase();
+      return !status || status === 'connected' || status === 'healthy' || status === 'active';
+    };
+
+    const viableConnections = appConnections.filter((conn) => {
+      if (!conn) return false;
+      const provider = String(conn.provider || '').toLowerCase();
+      if (provider !== targetProvider) return false;
+      return isHealthy(conn);
+    });
+
+    if (viableConnections.length === 0) {
+      return;
+    }
+
+    const getTimestamp = (conn: Connection): number => {
+      const candidates: Array<string | number | undefined> = [
+        conn.updatedAt,
+        conn.createdAt,
+        conn.lastUsedAt,
+        conn.insertedAt,
+        conn.lastTested,
+      ];
+
+      for (const value of candidates) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          return value;
+        }
+
+        if (typeof value === 'string') {
+          const ms = Date.parse(value);
+          if (!Number.isNaN(ms)) {
+            return ms;
+          }
+        }
+      }
+
+      return 0;
+    };
+
+    let preferred = viableConnections.find((conn) => conn.id === latestConnectionIdRef.current) || null;
+
+    if (!preferred) {
+      preferred = [...viableConnections].sort((a, b) => getTimestamp(b) - getTimestamp(a))[0] || null;
+    }
+
+    if (!preferred) {
+      return;
+    }
+
+    latestConnectionIdRef.current = preferred.id;
+    setSelectedConnectionId(preferred.id);
+    setSelectedConnection(preferred);
+    setActiveTab('parameters');
+  }, [appConnections, isOpen, nodeData.appName, selectedConnectionId]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -232,6 +304,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
       }
 
       handledConnectionRef.current = data.connectionId;
+      latestConnectionIdRef.current = data.connectionId;
 
       const connectionId: string = data.connectionId;
       const connectionLabel: string | undefined = data.label;
@@ -270,6 +343,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
                 return Array.from(map.values());
               });
               setSelectedConnection(resolvedConnection as Connection);
+              latestConnectionIdRef.current = resolvedConnection.id;
             })
             .catch(() => {
               toast.error('Connection created, but failed to refresh the connection list.');
@@ -286,6 +360,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
             return Array.from(map.values());
           });
           setSelectedConnection(resolvedConnection);
+          latestConnectionIdRef.current = resolvedConnection.id;
         }
       } catch (err) {
         toast.error('Connection created, but failed to refresh the connection list.');
@@ -350,7 +425,15 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
   // Handle parameter form submission
   const handleParameterSubmit = (values: Record<string, any>) => {
-    if (!selectedFunction || !selectedConnection) return;
+    if (!selectedFunction) return;
+
+    if (!selectedConnection) {
+      setActiveTab('connection');
+      if (oauthProvider && !isLoading) {
+        void handleOAuthConnect();
+      }
+      return;
+    }
 
     const updatedNodeData: NodeData = {
       ...nodeData,

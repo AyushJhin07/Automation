@@ -1851,7 +1851,22 @@ const GraphEditorContent = () => {
     const role = String(node?.type || '').startsWith('trigger') ? 'trigger' : 'action';
     const functionId = node?.data?.actionId || node?.data?.triggerId || node?.data?.function || node?.data?.operation;
     const params = node?.data?.parameters || node?.data?.params || {};
-    const connectionId = node?.data?.connectionId || node?.data?.auth?.connectionId || params?.connectionId;
+    let connectionId = node?.data?.connectionId || node?.data?.auth?.connectionId || params?.connectionId;
+
+    if (!connectionId && appName) {
+      const normalizedProvider = appName.toLowerCase();
+      const healthyConnection = (configConnections || []).find((connection: any) => {
+        if (!connection) return false;
+        const provider = String(connection.provider || connection.app || '').toLowerCase();
+        if (provider !== normalizedProvider) return false;
+        const status = String(connection.status || '').toLowerCase();
+        return !status || status === 'connected' || status === 'healthy' || status === 'active';
+      });
+
+      if (healthyConnection?.id) {
+        connectionId = healthyConnection.id;
+      }
+    }
 
     setConfigNodeData({
       id: String(node.id),
