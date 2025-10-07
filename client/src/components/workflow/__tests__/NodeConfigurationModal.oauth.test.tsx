@@ -120,76 +120,94 @@ describe('NodeConfigurationModal OAuth flow', () => {
         resolveConnection = resolve;
       })
     );
+    const onSave = vi.fn();
+    const onClose = vi.fn();
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
-    render(
-      <NodeConfigurationModal
-        isOpen
-        onClose={vi.fn()}
-        nodeData={{
-          id: 'node-1',
-          type: 'action',
-          appName: 'google-sheets',
-          functionId: 'action.append',
-          label: 'Google Sheets append',
-          parameters: {},
-        }}
-        onSave={vi.fn()}
-        availableFunctions={[
-          {
-            id: 'action.append',
-            name: 'Append Row',
-            description: 'Append a row to the sheet',
-            category: 'action',
-          } as any,
-        ]}
-        connections={[]}
-        oauthProviders={[
-          {
-            name: 'google-sheets',
-            displayName: 'Google Sheets',
-            scopes: ['spreadsheets.readonly'],
-            configured: true,
-          },
-        ]}
-        onConnectionCreated={onConnectionCreated}
-      />
-    );
+    try {
+      render(
+        <NodeConfigurationModal
+          isOpen
+          onClose={onClose}
+          nodeData={{
+            id: 'node-1',
+            type: 'action',
+            appName: 'google-sheets',
+            functionId: 'action.append',
+            label: 'Google Sheets append',
+            parameters: {},
+          }}
+          onSave={onSave}
+          availableFunctions={[
+            {
+              id: 'action.append',
+              name: 'Append Row',
+              description: 'Append a row to the sheet',
+              category: 'action',
+            } as any,
+          ]}
+          connections={[]}
+          oauthProviders={[
+            {
+              name: 'google-sheets',
+              displayName: 'Google Sheets',
+              scopes: ['spreadsheets.readonly'],
+              configured: true,
+            },
+          ]}
+          onConnectionCreated={onConnectionCreated}
+        />
+      );
 
-    await act(async () => {
-      window.dispatchEvent(
-        new MessageEvent('message', {
-          data: {
-            type: 'oauth:connection',
-            success: true,
-            provider: 'google-sheets',
-            connectionId,
-            label: 'Workspace Bot',
-          },
+      await act(async () => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: {
+              type: 'oauth:connection',
+              success: true,
+              provider: 'google-sheets',
+              connectionId,
+              label: 'Workspace Bot',
+              status: 'connected',
+            },
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(onConnectionCreated).toHaveBeenCalledWith(connectionId);
+      });
+
+      expect(await screen.findByText('Workspace Bot')).toBeInTheDocument();
+
+      const saveButton = await screen.findByRole('button', { name: /save/i });
+      expect(saveButton).toBeEnabled();
+
+      await userEvent.click(saveButton);
+
+      expect(windowOpenSpy).not.toHaveBeenCalled();
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connectionId,
         })
       );
-    });
+      expect(onClose).toHaveBeenCalled();
 
-    await waitFor(() => {
-      expect(onConnectionCreated).toHaveBeenCalledWith(connectionId);
-    });
-
-    expect(await screen.findByText('Workspace Bot')).toBeInTheDocument();
-
-    const saveButton = await screen.findByRole('button', { name: /save/i });
-    expect(saveButton).toBeEnabled();
-
-    act(() => {
-      resolveConnection({
-        id: connectionId,
-        name: 'Workspace Bot (Team)',
-        provider: 'google-sheets',
-        status: 'connected',
+      act(() => {
+        resolveConnection({
+          id: connectionId,
+          name: 'Workspace Bot (Team)',
+          provider: 'google-sheets',
+          status: 'connected',
+        });
       });
-    });
 
-    await waitFor(() => {
-      expect(screen.getByText('Workspace Bot (Team)')).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByText('Workspace Bot (Team)')).toBeInTheDocument();
+      });
+    } finally {
+      windowOpenSpy.mockRestore();
+    }
   });
 });
 

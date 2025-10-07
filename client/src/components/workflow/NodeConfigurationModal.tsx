@@ -1,7 +1,7 @@
 // NODE CONFIGURATION MODAL - ENHANCED WITH DYNAMIC FORMS AND OAUTH
 // Provides comprehensive node configuration with OAuth integration and real-time validation
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -40,7 +40,7 @@ interface Connection {
   id: string;
   name: string;
   provider: string;
-  status: 'connected' | 'expired' | 'error';
+  status: 'connected' | 'expired' | 'error' | 'healthy' | 'active' | 'disconnected' | string;
   lastTested?: string;
   scopes?: string[];
   createdAt?: string | number;
@@ -84,10 +84,16 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [activeTab, setActiveTab] = useState<'function' | 'connection' | 'parameters'>('function');
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
-  const [localConnections, setLocalConnections] = useState(connections);
+  const [localConnections, setLocalConnections] = useState<Connection[]>(() => connections ?? []);
   const authFetch = useAuthStore((state) => state.authFetch);
   const handledConnectionRef = useRef<string | null>(null);
   const latestConnectionIdRef = useRef<string | null>(null);
+
+  const isConnectionHealthy = useCallback((connection: Connection | null) => {
+    if (!connection) return false;
+    const status = String(connection.status || '').toLowerCase();
+    return !status || status === 'connected' || status === 'healthy' || status === 'active';
+  }, []);
 
   // Initialize state when modal opens
   useEffect(() => {
@@ -209,16 +215,11 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
       return;
     }
 
-    const isHealthy = (connection: Connection) => {
-      const status = String(connection.status || '').toLowerCase();
-      return !status || status === 'connected' || status === 'healthy' || status === 'active';
-    };
-
     const viableConnections = appConnections.filter((conn) => {
       if (!conn) return false;
       const provider = String(conn.provider || '').toLowerCase();
       if (provider !== targetProvider) return false;
-      return isHealthy(conn);
+      return isConnectionHealthy(conn);
     });
 
     if (viableConnections.length === 0) {
@@ -264,7 +265,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
     setSelectedConnectionId(preferred.id);
     setSelectedConnection(preferred);
     setActiveTab('parameters');
-  }, [appConnections, isOpen, nodeData.appName, selectedConnectionId]);
+  }, [appConnections, isOpen, isConnectionHealthy, nodeData.appName, selectedConnectionId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -308,70 +309,83 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
       const connectionId: string = data.connectionId;
       const connectionLabel: string | undefined = data.label;
-      const existing = localConnections.find((c) => c.id === connectionId);
-      const fallbackConnection: Connection = {
-        id: connectionId,
-        name: connectionLabel || 'New connection',
-        provider: nodeData.appName,
-        status: 'connected',
-      };
+      let resolvedConnection: Connection | null = null;
 
       setLocalConnections((prev) => {
+        const incomingConnection: Partial<Connection> = {
+          ...(typeof data.connection === 'object' && data.connection ? data.connection : {}),
+        };
+
+        if (!incomingConnection.id && typeof connectionId === 'string') {
+          incomingConnection.id = connectionId;
+        }
+
+        const existing = prev.find((c) => c.id === connectionId) || null;
+        const merged: Connection = {
+          id: String(connectionId),
+          name:
+            (incomingConnection.name as string | undefined) ||
+            connectionLabel ||
+            existing?.name ||
+            'New connection',
+          provider:
+            (incomingConnection.provider as string | undefined) ||
+            (typeof data.provider === 'string' ? data.provider : undefined) ||
+            existing?.provider ||
+            nodeData.appName,
+          status:
+            (incomingConnection.status as Connection['status']) ||
+            (typeof data.status === 'string' ? (data.status as Connection['status']) : undefined) ||
+            existing?.status ||
+            'connected',
+          scopes: incomingConnection.scopes || existing?.scopes,
+          lastTested: incomingConnection.lastTested || existing?.lastTested,
+          createdAt: incomingConnection.createdAt || existing?.createdAt,
+          updatedAt: incomingConnection.updatedAt || existing?.updatedAt,
+          lastUsedAt: incomingConnection.lastUsedAt || existing?.lastUsedAt,
+          insertedAt: incomingConnection.insertedAt || existing?.insertedAt,
+        };
+
+        resolvedConnection = merged;
+
         const map = new Map(prev.map((conn) => [conn.id, conn] as const));
-        map.set(connectionId, existing ? { ...existing, ...fallbackConnection } : fallbackConnection);
+        map.set(merged.id, { ...existing, ...merged });
         return Array.from(map.values());
       });
 
-      setSelectedConnectionId(connectionId);
-      setSelectedConnection(existing || fallbackConnection);
-      setActiveTab('parameters');
+      if (resolvedConnection) {
+        setSelectedConnectionId(resolvedConnection.id);
+        setSelectedConnection(resolvedConnection);
+        setActiveTab('parameters');
+      }
       setIsLoading(false);
       toast.success(connectionLabel ? `Connected ${connectionLabel}` : 'Connection created successfully');
 
-      try {
-        const result = onConnectionCreated(connectionId);
-        if (result && typeof (result as Promise<Connection | void>).then === 'function') {
-          (result as Promise<Connection | void>)
-            .then((resolvedConnection) => {
-              if (!resolvedConnection || typeof resolvedConnection !== 'object' || !('id' in resolvedConnection)) {
-                return;
-              }
+      Promise.resolve(onConnectionCreated(connectionId))
+        .then((refreshedConnection) => {
+          if (!refreshedConnection || typeof refreshedConnection !== 'object') {
+            return;
+          }
 
-              setLocalConnections((prev) => {
-                const map = new Map(prev.map((conn) => [conn.id, conn] as const));
-                map.set(resolvedConnection.id, resolvedConnection as Connection);
-                return Array.from(map.values());
-              });
-              setSelectedConnection(resolvedConnection as Connection);
-              latestConnectionIdRef.current = resolvedConnection.id;
-            })
-            .catch(() => {
-              toast.error('Connection created, but failed to refresh the connection list.');
-            });
-        } else if (
-          result &&
-          typeof result === 'object' &&
-          'id' in (result as Record<string, unknown>)
-        ) {
-          const resolvedConnection = result as Connection;
+          const connection = refreshedConnection as Connection;
+          latestConnectionIdRef.current = connection.id;
           setLocalConnections((prev) => {
             const map = new Map(prev.map((conn) => [conn.id, conn] as const));
-            map.set(resolvedConnection.id, resolvedConnection);
+            map.set(connection.id, { ...(map.get(connection.id) || {}), ...connection });
             return Array.from(map.values());
           });
-          setSelectedConnection(resolvedConnection);
-          latestConnectionIdRef.current = resolvedConnection.id;
-        }
-      } catch (err) {
-        toast.error('Connection created, but failed to refresh the connection list.');
-      }
+          setSelectedConnection(connection);
+        })
+        .catch(() => {
+          toast.error('Connection created, but failed to refresh the connection list.');
+        });
     };
 
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [connections, isOpen, localConnections, nodeData.appName, onConnectionCreated]);
+  }, [isOpen, nodeData.appName, onConnectionCreated]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -383,6 +397,11 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   // Initiate OAuth flow
   const handleOAuthConnect = async () => {
     if (!oauthProvider) return;
+
+    if (isConnectionHealthy(selectedConnection)) {
+      setActiveTab('parameters');
+      return;
+    }
 
     setIsLoading(true);
     handledConnectionRef.current = null;
@@ -427,9 +446,9 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const handleParameterSubmit = (values: Record<string, any>) => {
     if (!selectedFunction) return;
 
-    if (!selectedConnection) {
+    if (!selectedConnection || !isConnectionHealthy(selectedConnection)) {
       setActiveTab('connection');
-      if (oauthProvider && !isLoading) {
+      if (oauthProvider && !isLoading && !isConnectionHealthy(selectedConnection)) {
         void handleOAuthConnect();
       }
       return;

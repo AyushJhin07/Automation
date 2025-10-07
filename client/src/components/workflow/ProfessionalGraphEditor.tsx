@@ -1964,7 +1964,26 @@ const GraphEditorContent = () => {
         const list = Array.isArray(json?.connections) ? json.connections : [];
         setConfigConnections(list);
 
-        const connection = list.find((item: any) => item?.id === connectionId) ?? null;
+        let connection = list.find((item: any) => item?.id === connectionId) ?? null;
+
+        if (!connection) {
+          try {
+            const detailResponse = await authFetch(`/api/connections/${connectionId}`);
+            const detailJson = await detailResponse.json().catch(() => ({}));
+            const detailConnection = detailJson?.connection || detailJson?.data || null;
+
+            if (detailConnection && typeof detailConnection === 'object') {
+              connection = detailConnection;
+              setConfigConnections((prev) => {
+                const map = new Map(prev.map((item: any) => [item?.id, item] as const));
+                map.set(connectionId, detailConnection);
+                return Array.from(map.values());
+              });
+            }
+          } catch {
+            // Ignore detail fetch errors – we already refreshed the list.
+          }
+        }
 
         if (configOpen) {
           setConfigNodeData((prev) =>
