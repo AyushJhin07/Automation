@@ -79,7 +79,13 @@ When the queue is misconfigured (for example `QUEUE_DRIVER=inmemory` or a bad Re
 [dev:stack] Remove QUEUE_DRIVER=inmemory (reserved for isolated tests) and configure QUEUE_REDIS_HOST/PORT/DB so every process connects to the same Redis instance.
 ```
 
-After each child process announces itself, the parent probes `/api/health/queue` (API) or pings Redis directly (worker, scheduler, timers, rotation) to confirm every process is pointed at the same durable BullMQ driver before the stack is considered ready.
+`npm run dev:stack` now snapshots the queue configuration before launching any children. Each spawned process inherits that baseline and is immediately revalidated—if a child resolves a different `QUEUE_REDIS_*` target or falls back to `QUEUE_DRIVER=inmemory`, the supervisor logs the mismatch and stops the entire stack so you can fix the environment before jobs are lost. Common fixes include:
+
+- Removing per-terminal overrides like `QUEUE_REDIS_HOST=localhost npm run dev:worker` so every shell uses the same `.env.development` values.
+- Aligning `.env`, `.env.development`, and `.env.local` so duplicate keys do not mask each other.
+- Clearing stale exports (for example `export QUEUE_DRIVER=inmemory`) before restarting the stack.
+
+After each child process announces itself, the parent probes `/api/health/queue` (API) or pings Redis directly (worker, scheduler, timers, rotation) using that child's environment to confirm every process is pointed at the same durable BullMQ driver before the stack is considered ready.
 
 ## 5. Dev helper commands
 
