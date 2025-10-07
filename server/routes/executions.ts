@@ -19,6 +19,7 @@ import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
 import { productionDeployer } from '../core/ProductionDeployer.js';
 import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
 import { computeExecutionOrder, sanitizeGraphForExecution, summarizeDryRunError } from '../utils/workflowExecution.js';
+import { resolveAllowActionOnlyFlag } from '../utils/validationFlags.js';
 
 const router = Router();
 export const executionResumeRouter = Router({ mergeParams: true });
@@ -343,9 +344,7 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
       return res.status(400).json({ success: false, error: 'WORKFLOW_GRAPH_EMPTY' });
     }
 
-    const nodes = Array.isArray(graphSource.nodes) ? graphSource.nodes : [];
-    const hasTriggerNode = nodes.some((node: any) => typeof node?.type === 'string' && node.type.startsWith('trigger.'));
-    const allowActionOnly = !hasTriggerNode;
+    const allowActionOnly = resolveAllowActionOnlyFlag(req as any, graphSource);
 
     const timezone = payload.options?.timezone ?? 'UTC';
     const compilation = productionGraphCompiler.compile(graphSource, {
