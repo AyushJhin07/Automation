@@ -113,6 +113,7 @@ export interface CreateWorkflowExecutionInput {
   metadata?: Record<string, any> | null;
   startedAt?: Date;
   nodeResults?: Record<string, any> | null;
+  dedupeKey?: string | null;
 }
 
 export interface UpdateWorkflowExecutionInput {
@@ -340,6 +341,7 @@ export class WorkflowRepository {
       dataProcessed: 0,
       cost: 0,
       metadata: input.metadata ?? null,
+      dedupeKey: input.dedupeKey ?? null,
     } as MemoryExecutionRecord;
   }
 
@@ -1741,10 +1743,53 @@ export class WorkflowRepository {
       metadata: input.metadata ?? null,
       startedAt: input.startedAt ?? this.now(),
       nodeResults: input.nodeResults ?? null,
+      dedupeKey: input.dedupeKey ?? null,
     } as WorkflowExecutionInsert;
 
     const [stored] = await db.insert(workflowExecutions).values(values).returning();
     return stored;
+  }
+
+  public static async findActiveExecutionByDedupe(
+    workflowId: string,
+    organizationId: string,
+    dedupeKey: string,
+  ): Promise<WorkflowExecutionRow | null> {
+    const trimmedKey = dedupeKey.trim();
+    if (!trimmedKey) {
+      return null;
+    }
+
+    const normalizedOrgId = this.ensureOrganizationId(organizationId);
+
+    if (!this.isDatabaseEnabled()) {
+      for (const execution of this.memoryExecutions.values()) {
+        if (
+          execution.workflowId === workflowId &&
+          execution.organizationId === normalizedOrgId &&
+          execution.dedupeKey === trimmedKey &&
+          ['queued', 'running', 'succeeded'].includes(execution.status)
+        ) {
+          return execution;
+        }
+      }
+      return null;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(workflowExecutions)
+      .where(
+        and(
+          eq(workflowExecutions.workflowId, workflowId),
+          eq(workflowExecutions.organizationId, normalizedOrgId),
+          eq(workflowExecutions.dedupeKey, trimmedKey),
+          inArray(workflowExecutions.status, ['queued', 'running', 'succeeded']),
+        ),
+      )
+      .limit(1);
+
+    return existing ?? null;
   }
 
   public static async claimNextQueuedExecution(

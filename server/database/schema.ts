@@ -14,7 +14,7 @@ import {
   serial,
   primaryKey,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import type { WorkflowResumeState, WorkflowTimerPayload } from '../types/workflowTimers';
 
 export type OrganizationPlan =
@@ -668,6 +668,7 @@ export const workflowExecutions = pgTable(
     // Execution context for ALL applications
     triggerType: text('trigger_type').notNull(), // manual, scheduled, webhook, email, etc.
     triggerData: json('trigger_data').$type<Record<string, any>>(),
+    dedupeKey: text('dedupe_key'),
     
     // Results and errors for ALL applications
     nodeResults: json('node_results').$type<Record<string, any>>(),
@@ -715,6 +716,9 @@ export const workflowExecutions = pgTable(
     startedAtIdx: index('executions_started_at_idx').on(table.startedAt),
     durationIdx: index('executions_duration_idx').on(table.duration),
     triggerTypeIdx: index('executions_trigger_type_idx').on(table.triggerType),
+    dedupeIdx: uniqueIndex('workflow_executions_dedupe_idx')
+      .on(table.workflowId, table.dedupeKey)
+      .where(sql`dedupe_key IS NOT NULL AND status IN ('queued','running','succeeded')`),
     
     // PII and security indexes for ALL applications
     piiIdx: index('executions_pii_idx').on(table.processedPii),

@@ -472,9 +472,17 @@ export const checkQuota = (apiCalls: number = 1, tokens: number = 0) => {
  * Rate limiting middleware (basic implementation)
  */
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const LOCALHOST_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 export const rateLimit = (maxRequests: number, windowMs: number) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (process.env.NODE_ENV !== 'production') {
+      const candidateIp = req.ip || '';
+      if (LOCALHOST_IPS.has(candidateIp)) {
+        return next();
+      }
+    }
+
     const key = req.user?.id || req.ip;
     const now = Date.now();
     

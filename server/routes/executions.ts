@@ -149,6 +149,12 @@ const manualRunSchema = z.object({
   triggerType: z.string().min(1).optional(),
   triggerData: z.record(z.any()).optional(),
   initialData: z.any().optional(),
+  dedupeKey: z
+    .string()
+    .trim()
+    .min(1, 'dedupeKey must be a non-empty string')
+    .max(128, 'dedupeKey is too long')
+    .optional(),
 });
 
 const dryRunSchema = z.object({
@@ -286,6 +292,7 @@ router.post('/', requirePermission('workflow:deploy'), async (req, res) => {
       triggerType: payload.triggerType ?? 'manual',
       triggerData: payload.triggerData ?? null,
       initialData: payload.initialData,
+      dedupeKey: payload.dedupeKey ?? null,
     });
 
     auditLogService.record({
@@ -641,6 +648,10 @@ router.get('/:executionId/nodes', requirePermission('execution:read'), async (re
       return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
     }
 
+    if (!isUuid(req.params.executionId)) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
+    }
+
     const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);
     if (!execution) {
       return res.status(404).json({ success: false, error: 'Execution not found' });
@@ -661,6 +672,10 @@ router.get('/:executionId', requirePermission('execution:read'), async (req, res
     const organizationId = (req as any)?.organizationId;
     if (!organizationId) {
       return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
+    }
+
+    if (!isUuid(req.params.executionId)) {
+      return res.status(404).json({ success: false, error: 'Execution not found' });
     }
 
     const execution = await runExecutionManager.getExecution(req.params.executionId, organizationId);

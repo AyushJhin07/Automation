@@ -1,6 +1,6 @@
 import express, { type Express, type Request, type Response } from 'express';
 import cors, { type CorsOptions } from 'cors';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from "./storage";
 import { registerGoogleAppsRoutes } from "./googleAppsAPI";
@@ -59,7 +59,7 @@ import { WorkflowRepository } from './workflow/WorkflowRepository.js';
 import { registerDeploymentPrerequisiteRoutes } from "./routes/deployment-prerequisites.js";
 import { organizationService } from "./services/OrganizationService";
 import type { OrganizationLimits } from './database/schema.js';
-import { connectorDefinitions, db } from './database/schema.js';
+import { connectorDefinitions, db, webhookLogs } from './database/schema.js';
 import { env } from './env';
 import organizationSecurityRoutes from "./routes/organization-security";
 import organizationConnectorRoutes from "./routes/organization-connectors";
@@ -3457,6 +3457,48 @@ export async function registerRoutes(app: Express): Promise<void> {
 
     return webhookManager.handleWebhook(webhookId, payload, headers, rawBody);
   };
+
+  app.post('/api/triggers/webhook/:token', async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      const { token } = req.params;
+      const headers = req.headers as Record<string, string>;
+      const payload = req.body;
+      const rawBody = (req as any).rawBody ?? (payload ? JSON.stringify(payload) : undefined);
+
+      const success = await webhookManager.handleWebhook(token, payload, headers, rawBody);
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          error: 'Webhook token not found',
+          webhookId: token,
+          responseTime: Date.now() - startTime,
+        });
+      }
+
+      const [latestLog] = await db
+        .select({ executionId: webhookLogs.executionId })
+        .from(webhookLogs)
+        .where(eq(webhookLogs.webhookId, token))
+        .orderBy(desc(webhookLogs.createdAt))
+        .limit(1);
+
+      return res.json({
+        success: true,
+        executionId: latestLog?.executionId ?? null,
+        webhookId: token,
+        responseTime: Date.now() - startTime,
+      });
+    } catch (error) {
+      console.error('❌ Webhook token handling error:', getErrorMessage(error));
+      return res.status(500).json({
+        success: false,
+        error: getErrorMessage(error),
+        responseTime: Date.now() - startTime,
+      });
+    }
+  });
 
   // Generic webhook handler (handles all incoming webhooks)
   app.post('/api/webhooks/:webhookId', async (req, res) => {

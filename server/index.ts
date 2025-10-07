@@ -15,6 +15,7 @@ import { redactSecrets } from './utils/redact';
 import { runWithRequestContext, getRequestContext } from './utils/ExecutionContext';
 import { connectorRegistry } from './ConnectorRegistry';
 import { registerRoutes } from './routes';
+import { health as healthRoutes } from './routes/health';
 import { setupVite, serveStatic, log } from './vite';
 import { runStartupChecks } from './runtime/startupChecks';
 import './observability/index.js';
@@ -50,6 +51,8 @@ app.use((req, res, next) => {
   }
   return urlencodedParser(req, res, next);
 });
+
+app.use('/api', healthRoutes);
 
 app.use((req, res, next) => {
   const routeSnapshot = req.path;
@@ -275,26 +278,39 @@ app.use((req, res, next) => {
   const host = process.env.HOST ?? (env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
   const publicUrl = env.SERVER_PUBLIC_URL || `http://${host === '0.0.0.0' ? 'localhost' : host}:${parsedPort}`;
 
+  let reusePortEnabled = env.NODE_ENV === 'production';
+
+  const onListening = () => {
+    log(`serving on ${host}:${parsedPort}`);
+    if (publicUrl) {
+      log(`public url: ${publicUrl}`);
+    }
+  };
+
+  const listen = () => {
+    const options = reusePortEnabled
+      ? { port: parsedPort, host, reusePort: true as const }
+      : { port: parsedPort, host };
+    server.listen(options, onListening);
+  };
+
   server.on('error', (error: NodeJS.ErrnoException) => {
     if (error.code === 'EADDRINUSE') {
       console.error(`❌ Port ${parsedPort} is already in use. Set PORT to a free port.`);
-    } else {
-      console.error('❌ Failed to start HTTP server:', error);
+      process.exit(1);
+      return;
     }
+
+    if (error.code === 'ENOTSUP' && reusePortEnabled) {
+      console.warn('⚠️ SO_REUSEPORT unsupported on this platform; retrying without reusePort.');
+      reusePortEnabled = false;
+      listen();
+      return;
+    }
+
+    console.error('❌ Failed to start HTTP server:', error);
     process.exit(1);
   });
 
-  server.listen(
-    {
-      port: parsedPort,
-      host,
-      reusePort: env.NODE_ENV === 'production',
-    },
-    () => {
-      log(`serving on ${host}:${parsedPort}`);
-      if (publicUrl) {
-        log(`public url: ${publicUrl}`);
-      }
-    },
-  );
+  listen();
 })();

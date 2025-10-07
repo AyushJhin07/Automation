@@ -61,6 +61,7 @@ export type QueueRunRequest = {
   organizationId: string;
   initialData?: any;
   resumeState?: WorkflowResumeState | null;
+  dedupeKey?: string | null;
   replay?: {
     sourceExecutionId: string;
     mode: 'full' | 'node';
@@ -489,10 +490,22 @@ class ExecutionQueueService {
     const sanitizedInitialData =
       req.initialData !== undefined ? sanitizeLogPayload(req.initialData) : undefined;
     const sanitizedResumeState = req.resumeState ? sanitizeLogPayload(req.resumeState) : undefined;
+    const dedupeKey = typeof req.dedupeKey === 'string' ? req.dedupeKey.trim() : undefined;
 
     const workflowRecord = await WorkflowRepository.getWorkflowById(req.workflowId, req.organizationId);
     if (!workflowRecord || !workflowRecord.graph) {
       throw new Error(`Workflow ${req.workflowId} not found or missing graph for organization ${req.organizationId}`);
+    }
+
+    if (dedupeKey) {
+      const existingExecution = await WorkflowRepository.findActiveExecutionByDedupe(
+        req.workflowId,
+        req.organizationId,
+        dedupeKey,
+      );
+      if (existingExecution) {
+        return { executionId: existingExecution.id };
+      }
     }
 
     const connectors = connectorConcurrencyService.extractConnectorsFromGraph(
@@ -518,6 +531,15 @@ class ExecutionQueueService {
 
     if (sanitizedResumeState !== undefined) {
       baseMetadata.resumeState = sanitizedResumeState;
+    }
+
+    if (dedupeKey) {
+      baseMetadata.deterministicKeys = {
+        ...(baseMetadata.deterministicKeys ?? {}),
+        execution: {
+          dedupeKey,
+        },
+      };
     }
 
     if (req.replay) {
@@ -615,6 +637,7 @@ class ExecutionQueueService {
         triggerType: req.triggerType ?? 'manual',
         triggerData: req.triggerData ?? null,
         metadata: baseMetadata,
+        dedupeKey,
       });
 
       await WorkflowRepository.updateWorkflowExecution(
@@ -657,6 +680,7 @@ class ExecutionQueueService {
         triggerType: req.triggerType ?? 'manual',
         triggerData: req.triggerData ?? null,
         metadata: baseMetadata,
+        dedupeKey,
       });
 
       const concurrencyError = new ConnectorConcurrencyExceededError({
@@ -711,6 +735,7 @@ class ExecutionQueueService {
         triggerType: req.triggerType ?? 'manual',
         triggerData: req.triggerData ?? null,
         metadata: baseMetadata,
+        dedupeKey,
       });
 
       const quotaError = new ExecutionQuotaExceededError({
@@ -771,6 +796,7 @@ class ExecutionQueueService {
       triggerType: req.triggerType ?? (sanitizedResumeState ? 'resume' : 'manual'),
       triggerData: req.triggerData ?? null,
       metadata: baseMetadata,
+      dedupeKey,
     });
 
     if (!this.isDbEnabled()) {

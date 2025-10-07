@@ -1465,6 +1465,7 @@ export class WebhookManager {
           source: event.source,
         },
         organizationId: event.organizationId,
+        dedupeKey: event.dedupeToken ?? null,
       };
 
       const deterministicKeys = this.buildDeterministicKeysForEvent(event);

@@ -1,3 +1,6 @@
+import dns from 'node:dns/promises';
+import net from 'node:net';
+
 import { rateLimiter, type RateLimitRules, type RateLimitScope } from './RateLimiter';
 import { retryManager } from '../core/RetryManager.js';
 import {
@@ -72,6 +75,154 @@ export interface TransportResult {
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 
+const BLOCKED_IPV4_RANGES: Array<{ base: string; bits: number }> = [
+  { base: '0.0.0.0', bits: 8 },
+  { base: '10.0.0.0', bits: 8 },
+  { base: '100.64.0.0', bits: 10 },
+  { base: '127.0.0.0', bits: 8 },
+  { base: '169.254.0.0', bits: 16 },
+  { base: '172.16.0.0', bits: 12 },
+  { base: '192.168.0.0', bits: 16 },
+];
+
+const BLOCKED_IPV6_RANGES: Array<{ base: string; bits: number }> = [
+  { base: '::', bits: 128 },
+  { base: '::1', bits: 128 },
+  { base: 'fc00::', bits: 7 },
+  { base: 'fe80::', bits: 10 },
+];
+
+function ipv4ToInt(address: string): number | null {
+  const parts = address.split('.');
+  if (parts.length !== 4) {
+    return null;
+  }
+  let value = 0;
+  for (const part of parts) {
+    const segment = Number(part);
+    if (!Number.isInteger(segment) || segment < 0 || segment > 255) {
+      return null;
+    }
+    value = (value << 8) + segment;
+  }
+  return value >>> 0;
+}
+
+function ipv4InRange(address: number, base: number, bits: number): boolean {
+  if (bits <= 0) {
+    return true;
+  }
+  const mask = bits >= 32 ? 0xffffffff : (~((1 << (32 - bits)) - 1) >>> 0);
+  return (address & mask) === (base & mask);
+}
+
+function expandIpv6(address: string): string[] | null {
+  const lower = address.toLowerCase();
+  const parts = lower.split('::');
+  if (parts.length > 2) {
+    return null;
+  }
+
+  const head = parts[0] ? parts[0].split(':').filter(Boolean) : [];
+  const tail = parts.length === 2 && parts[1] ? parts[1].split(':').filter(Boolean) : [];
+  const missing = 8 - (head.length + tail.length);
+  if (missing < 0) {
+    return null;
+  }
+
+  const zeros = new Array(missing).fill('0');
+  return [...head, ...zeros, ...tail].map((segment) => segment.padStart(4, '0'));
+}
+
+function ipv6ToBigInt(address: string): bigint | null {
+  const expanded = expandIpv6(address);
+  if (!expanded || expanded.length !== 8) {
+    return null;
+  }
+  const hex = expanded.join('');
+  try {
+    return BigInt(`0x${hex}`);
+  } catch {
+    return null;
+  }
+}
+
+function ipv6InRange(target: bigint, base: bigint, bits: number): boolean {
+  if (bits <= 0) {
+    return true;
+  }
+  const shift = 128 - bits;
+  return (target >> BigInt(shift)) === (base >> BigInt(shift));
+}
+
+function isBlockedAddress(address: string, family: number): boolean {
+  if (family === 4) {
+    const numeric = ipv4ToInt(address);
+    if (numeric === null) {
+      return true;
+    }
+    return BLOCKED_IPV4_RANGES.some((range) => {
+      const baseNumeric = ipv4ToInt(range.base);
+      return baseNumeric !== null && ipv4InRange(numeric, baseNumeric, range.bits);
+    });
+  }
+
+  if (family === 6) {
+    const numeric = ipv6ToBigInt(address);
+    if (numeric === null) {
+      return true;
+    }
+    return BLOCKED_IPV6_RANGES.some((range) => {
+      const baseNumeric = ipv6ToBigInt(range.base);
+      return baseNumeric !== null && ipv6InRange(numeric, baseNumeric, range.bits);
+    });
+  }
+
+  return true;
+}
+
+async function assertSafeUrl(urlStr: string): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    throw new Error('Invalid URL');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Protocol not allowed');
+  }
+
+  const hostname = parsed.hostname;
+  if (!hostname || hostname === 'localhost') {
+    throw new Error('Target not allowed');
+  }
+
+  const literalFamily = net.isIP(hostname);
+  const addresses: Array<{ address: string; family: number }> = [];
+
+  if (literalFamily) {
+    addresses.push({ address: hostname, family: literalFamily });
+  } else {
+    try {
+      const resolved = await dns.lookup(hostname, { all: true });
+      addresses.push(...resolved);
+    } catch {
+      throw new Error('Failed to resolve target');
+    }
+  }
+
+  if (addresses.length === 0) {
+    throw new Error('Failed to resolve target');
+  }
+
+  for (const entry of addresses) {
+    if (isBlockedAddress(entry.address, entry.family)) {
+      throw new Error('Target not allowed');
+    }
+  }
+}
+
 class HttpTransport {
   public async request(options: TransportRequestOptions): Promise<TransportResult> {
     const fetchImpl = options.fetch ?? fetch;
@@ -86,6 +237,8 @@ class HttpTransport {
     const connectorId = rateLimitContext?.connectorId ?? 'unknown';
     const connectionId = rateLimitContext?.connectionId ?? null;
     const organizationId = rateLimitContext?.organizationId ?? null;
+
+    await assertSafeUrl(options.url);
 
     if (rateLimitContext?.policyScope && rateLimitContext.policyScope !== 'connector') {
       recordConnectorRatePolicyOverride({

@@ -16,6 +16,7 @@ import {
   resolveOrganizationContext,
 } from '../utils/organizationContext.js';
 import { resolveAllowActionOnlyFlag } from '../utils/validationFlags.js';
+import { rateLimit } from '../middleware/auth.js';
 
 export const workflowReadRouter = Router();
 
@@ -565,7 +566,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
   }
 });
 
-workflowReadRouter.post('/workflows/validate', async (req, res) => {
+workflowReadRouter.post('/workflows/validate', rateLimit(60, 60_000), async (req, res) => {
   const organizationContext = resolveOrganizationContext(req as any, res);
   if (!organizationContext.organizationId) {
     return;

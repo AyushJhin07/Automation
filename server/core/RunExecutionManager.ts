@@ -1218,7 +1218,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       conditions.push(lte(executionLogs.startTime, query.dateTo));
     }
     if (query.organizationId) {
-      conditions.push(eq(workflows.organizationId, query.organizationId));
+      conditions.push(eq(workflows.organizationId, sql`${query.organizationId}::uuid`));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1238,7 +1238,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const rows = await database
       .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .leftJoin(workflows, eq(workflows.id, sql`${executionLogs.workflowId}::uuid`))
       .where(whereClause)
       .orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn))
       .limit(limit)
@@ -1247,7 +1247,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const [{ value: total = 0 } = { value: 0 }] = await database
       .select({ value: sql<number>`count(*)` })
       .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .leftJoin(workflows, eq(workflows.id, sql`${executionLogs.workflowId}::uuid`))
       .where(whereClause)
       .limit(1);
 
@@ -1326,7 +1326,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const rows = await database
       .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .leftJoin(workflows, eq(workflows.id, sql`${executionLogs.workflowId}::uuid`))
       .where(
         organizationId
           ? and(eq(executionLogs.correlationId, correlationId), eq(workflows.organizationId, organizationId))
@@ -1390,7 +1390,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const rows = await database
       .select({ execution: executionLogs, organizationId: workflows.organizationId })
       .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
+      .leftJoin(workflows, eq(workflows.id, sql`${executionLogs.workflowId}::uuid`))
       .where(
         organizationId
           ? and(gte(executionLogs.startTime, cutoff), eq(workflows.organizationId, organizationId))
@@ -1643,12 +1643,21 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
     const database = this.getDb();
     if (!database) return undefined;
 
-    const rows = await database
-      .select({ execution: executionLogs, organizationId: workflows.organizationId })
-      .from(executionLogs)
-      .leftJoin(workflows, eq(workflows.id, executionLogs.workflowId))
-      .where(eq(executionLogs.executionId, executionId))
-      .limit(1);
+    let rows;
+    try {
+      rows = await database
+        .select({ execution: executionLogs, organizationId: workflows.organizationId })
+        .from(executionLogs)
+        .leftJoin(
+          workflows,
+          eq(workflows.id, sql`${executionLogs.workflowId}::uuid`),
+        )
+        .where(eq(executionLogs.executionId, executionId))
+        .limit(1);
+    } catch (error) {
+      console.warn('[RunExecutionManager] Failed to load execution row:', error);
+      return undefined;
+    }
 
     const row = rows[0];
     if (!row) {
