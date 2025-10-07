@@ -1630,11 +1630,15 @@ const GraphEditorContent = () => {
   );
 
   const validateWorkflowGraph = useCallback(
-    async (graphPayload: NodeGraph): Promise<WorkflowValidationResult> => {
+    async (
+      graphPayload: NodeGraph,
+      signal?: AbortSignal
+    ): Promise<WorkflowValidationResult> => {
       try {
         const response = await authFetch('/api/workflows/validate', {
           method: 'POST',
           body: JSON.stringify({ graph: graphPayload }),
+          signal,
         });
 
         const json = await response.json().catch(() => ({}));
@@ -1654,6 +1658,9 @@ const GraphEditorContent = () => {
           warnings,
         };
       } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          throw error;
+        }
         console.error('Failed to validate workflow graph:', error);
         return {
           valid: false,
@@ -2105,10 +2112,11 @@ const GraphEditorContent = () => {
       activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
     const payload = createGraphPayload(workflowIdentifier);
 
+    const abortController = new AbortController();
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const result = await validateWorkflowGraph(payload);
+          const result = await validateWorkflowGraph(payload, abortController.signal);
           if (cancelled) {
             return;
           }
@@ -2126,7 +2134,7 @@ const GraphEditorContent = () => {
             error: undefined,
           });
         } catch (error: any) {
-          if (cancelled) {
+          if (cancelled || error?.name === 'AbortError') {
             return;
           }
           setWorkflowValidation({
@@ -2142,6 +2150,7 @@ const GraphEditorContent = () => {
 
     return () => {
       cancelled = true;
+      abortController.abort();
       window.clearTimeout(timer);
     };
   }, [
