@@ -195,6 +195,69 @@ try {
     'dry-run validation should not report missing trigger errors for action-only drafts',
   );
 
+  const manualPreviewResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-workflow-preview': 'manual-preview',
+    },
+    body: JSON.stringify({
+      manual: true,
+      mode: 'manual-preview',
+      graph: {
+        id: 'gmail-manual-preview',
+        name: 'Gmail Manual Preview',
+        nodes: [
+          {
+            id: 'gmail-action',
+            type: 'action.gmail.send',
+            params: {
+              recipient: 'manual-preview@example.com',
+              subject: 'Preview Subject',
+              body: 'Preview body',
+            },
+            data: {
+              label: 'Send Gmail',
+              app: 'gmail',
+              nodeType: 'action.gmail.send',
+              type: 'action.gmail.send',
+              parameters: {
+                recipient: 'manual-preview@example.com',
+                subject: 'Preview Subject',
+                body: 'Preview body',
+              },
+            },
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+      },
+    }),
+  });
+
+  assert.equal(
+    manualPreviewResponse.status,
+    200,
+    'manual preview validation should respond with 200',
+  );
+  const manualPreviewBody = await manualPreviewResponse.json();
+  assert.equal(
+    manualPreviewBody.success,
+    true,
+    'manual preview validation should return success payload',
+  );
+  const manualPreviewErrors = Array.isArray(manualPreviewBody?.validation?.errors)
+    ? manualPreviewBody.validation.errors
+    : [];
+  const manualTriggerErrors = manualPreviewErrors.filter((error: any) =>
+    typeof error?.message === 'string' && error.message.toLowerCase().includes('trigger'),
+  );
+  assert.equal(
+    manualTriggerErrors.length,
+    0,
+    'manual preview validation should not report missing trigger errors for Gmail-only drafts',
+  );
+
   const inactiveValidateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
     method: 'POST',
     headers: {
