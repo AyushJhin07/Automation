@@ -2,6 +2,7 @@
 // Beautiful visual workflow builder with smooth animations
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Node,
   Edge,
@@ -1406,6 +1407,7 @@ const GraphEditorContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isDryRunInProgress, setIsDryRunInProgress] = useState(false);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -1447,6 +1449,7 @@ const GraphEditorContent = () => {
     notes: '',
   });
   const [promotionError, setPromotionError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const updateNodeValidation = useCallback(
     (errors: ValidationError[], options: { focus?: boolean } = {}) => {
@@ -1834,6 +1837,113 @@ const GraphEditorContent = () => {
     });
   }, [nodes, edges, spec]);
 
+  const computeInitialRunData = useCallback(() => {
+    const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
+    const candidates: Array<any> = [];
+
+    if (metadata) {
+      candidates.push(
+        metadata.initialData,
+        metadata.sampleData,
+        metadata.previewSample,
+        metadata.triggerSample,
+        metadata.manualRunData,
+      );
+    }
+
+    if (spec && typeof spec === 'object') {
+      const specRecord = spec as Record<string, any>;
+      candidates.push(specRecord.initialData, specRecord.sampleData);
+    }
+
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object') {
+        return candidate;
+      }
+    }
+
+    return {};
+  }, [spec]);
+
+  const determineWorkflowIdentifier = useCallback((): string => {
+    let workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current;
+
+    if (!workflowIdentifier) {
+      workflowIdentifier = `local-${Date.now()}`;
+    }
+
+    fallbackWorkflowIdRef.current = workflowIdentifier;
+
+    if (activeWorkflowId !== workflowIdentifier) {
+      setActiveWorkflowId(workflowIdentifier);
+    }
+
+    try {
+      localStorage.setItem('lastWorkflowId', workflowIdentifier);
+    } catch (error) {
+      console.warn('Unable to persist workflow id:', error);
+    }
+
+    return workflowIdentifier;
+  }, [activeWorkflowId, setActiveWorkflowId]);
+
+  const prepareWorkflowForExecution = useCallback(async (): Promise<{ workflowId: string; payload: NodeGraph } | null> => {
+    if (nodes.length === 0) {
+      return null;
+    }
+
+    if (!ensureSupportedNodes()) {
+      return null;
+    }
+
+    const missingConnectionNode = nodes.find((node) => nodeRequiresConnection(node));
+    if (missingConnectionNode) {
+      const missingLabel = missingConnectionNode.data?.label || missingConnectionNode.id;
+      const message = `Connect an account for "${missingLabel}" before running`;
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      await openNodeConfigModal(missingConnectionNode);
+      return null;
+    }
+
+    const workflowIdentifier = determineWorkflowIdentifier();
+    const payload = createGraphPayload(workflowIdentifier);
+
+    setRunBanner(null);
+
+    const validationResult = await validateWorkflowGraph(payload);
+    const blockingErrors = validationResult.errors.filter((error) => isErrorSeverity((error as any)?.severity));
+
+    if (!validationResult.valid || blockingErrors.length > 0) {
+      updateNodeValidation(validationResult.errors, { focus: true });
+      const detail =
+        blockingErrors[0]?.message ??
+        validationResult.message ??
+        'Resolve validation issues before running.';
+      const bannerMessage =
+        blockingErrors.length > 0
+          ? `Resolve validation issues before running: ${detail}`
+          : detail;
+      setRunBanner({ type: 'error', message: bannerMessage });
+      toast.error(bannerMessage);
+      return null;
+    }
+
+    updateNodeValidation([], { focus: false });
+
+    return { workflowId: workflowIdentifier, payload };
+  }, [
+    nodes,
+    ensureSupportedNodes,
+    nodeRequiresConnection,
+    determineWorkflowIdentifier,
+    createGraphPayload,
+    validateWorkflowGraph,
+    updateNodeValidation,
+    setRunBanner,
+    openNodeConfigModal,
+  ]);
+
   // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
   useEffect(() => {
     const loadWorkflowFromStorage = async () => {
@@ -2165,60 +2275,108 @@ const GraphEditorContent = () => {
   }, [setNodes]);
   
   const onRunWorkflow = useCallback(async () => {
-    if (nodes.length === 0) {
+    const prepared = await prepareWorkflowForExecution();
+    if (!prepared) {
       return;
     }
 
-    if (!ensureSupportedNodes()) {
-      return;
-    }
-
-    const missingConnectionNode = nodes.find((node) => nodeRequiresConnection(node));
-    if (missingConnectionNode) {
-      const missingLabel = missingConnectionNode.data?.label || missingConnectionNode.id;
-      const message = `Connect an account for "${missingLabel}" before running`;
+    const savedWorkflowId = await onSaveWorkflow();
+    if (!savedWorkflowId) {
+      const message = 'Save the workflow before running.';
       setRunBanner({ type: 'error', message });
       toast.error(message);
-      await openNodeConfigModal(missingConnectionNode);
       return;
     }
-
-    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
-    if (!activeWorkflowId || activeWorkflowId !== workflowIdentifier) {
-      setActiveWorkflowId(workflowIdentifier);
-    }
-
-    try {
-      localStorage.setItem('lastWorkflowId', workflowIdentifier);
-    } catch (error) {
-      console.warn('Unable to persist workflow id:', error);
-    }
-
-    const payload = createGraphPayload(workflowIdentifier);
-
-    setRunBanner(null);
-
-    const validationResult = await validateWorkflowGraph(payload);
-    const blockingErrors = validationResult.errors.filter((error) => isErrorSeverity((error as any)?.severity));
-
-    if (!validationResult.valid || blockingErrors.length > 0) {
-      updateNodeValidation(validationResult.errors, { focus: true });
-      const detail =
-        blockingErrors[0]?.message ??
-        validationResult.message ??
-        'Resolve validation issues before running.';
-      const bannerMessage =
-        blockingErrors.length > 0
-          ? `Resolve validation issues before running: ${detail}`
-          : detail;
-      setRunBanner({ type: 'error', message: bannerMessage });
-      toast.error(bannerMessage);
-      return;
-    }
-
-    updateNodeValidation([], { focus: false });
 
     setIsRunning(true);
+
+    try {
+      const initialData = computeInitialRunData();
+      const response = await authFetch('/api/executions', {
+        method: 'POST',
+        body: JSON.stringify({
+          workflowId: savedWorkflowId,
+          triggerType: 'manual',
+          initialData,
+        }),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as Record<string, any>;
+
+      if (!response.ok || !result?.success || !result?.executionId) {
+        let message: string;
+
+        if (response.status === 401) {
+          await logout(true);
+          message = 'Sign in to run workflows.';
+        } else if (response.status === 404) {
+          message = 'Workflow not found. Save the workflow before running.';
+        } else if (response.status === 503 || result?.error === 'QUEUE_UNAVAILABLE') {
+          const queueTarget = result?.details?.target ? ` (${result.details.target})` : '';
+          message =
+            result?.message ||
+            `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
+        } else if (result?.error === 'EXECUTION_QUOTA_EXCEEDED') {
+          message =
+            result?.message ||
+            'Execution quota exceeded. Wait for the current window to reset before trying again.';
+        } else if (result?.error === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
+          message =
+            result?.message ||
+            'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
+        } else if (result?.error === 'USAGE_QUOTA_EXCEEDED') {
+          const quotaType = result?.details?.quotaType
+            ? String(result.details.quotaType).replace(/_/g, ' ').toLowerCase()
+            : 'usage';
+          message =
+            result?.message ||
+            `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
+        } else {
+          message =
+            result?.message ||
+            result?.error ||
+            `Failed to enqueue workflow execution (status ${response.status}).`;
+        }
+
+        setRunBanner({ type: 'error', message });
+        toast.error(message);
+        return;
+      }
+
+      const successMessage = 'Workflow execution enqueued. Redirecting to run viewer…';
+      setRunBanner({ type: 'success', message: successMessage });
+      toast.success(successMessage);
+      navigate(`/runs/${result.executionId}`);
+    } catch (error: any) {
+      const message = error?.message || 'Failed to enqueue workflow execution';
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+    } finally {
+      setIsRunning(false);
+      setTimeout(() => {
+        resetExecutionHighlights();
+      }, 1200);
+    }
+  }, [
+    prepareWorkflowForExecution,
+    onSaveWorkflow,
+    setRunBanner,
+    computeInitialRunData,
+    authFetch,
+    logout,
+    navigate,
+    resetExecutionHighlights,
+  ]);
+
+  const onDryRunWorkflow = useCallback(async () => {
+    const prepared = await prepareWorkflowForExecution();
+    if (!prepared) {
+      return;
+    }
+
+    const { workflowId: workflowIdentifier, payload } = prepared;
+
+    setIsDryRunInProgress(true);
 
     setNodes((nds) =>
       nds.map((node) => {
@@ -2230,8 +2388,8 @@ const GraphEditorContent = () => {
             executionStatus: 'idle',
             isRunning: false,
             isCompleted: false,
-            executionError: null
-          }
+            executionError: null,
+          },
         };
       })
     );
@@ -2242,13 +2400,12 @@ const GraphEditorContent = () => {
     try {
       const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
         method: 'POST',
-        body: JSON.stringify({ graph: payload })
+        body: JSON.stringify({ graph: payload }),
       });
 
       if (!response.ok) {
         let message = 'Failed to execute workflow';
         try {
-          // Prefer plain text to surface 401/403 details; fallback to JSON
           const text = await response.text();
           if (text) {
             message = `Execute failed: ${response.status} ${text}`;
@@ -2284,7 +2441,7 @@ const GraphEditorContent = () => {
               executionStatus: 'running',
               executionError: null,
               isRunning: true,
-              isCompleted: false
+              isCompleted: false,
             }));
             break;
           case 'node-complete':
@@ -2299,8 +2456,8 @@ const GraphEditorContent = () => {
                 result: event.result,
                 logs: event.result?.logs || [],
                 preview: event.result?.preview,
-                finishedAt: event.result?.finishedAt || event.timestamp
-              }
+                finishedAt: event.result?.finishedAt || event.timestamp,
+              },
             }));
             break;
           case 'node-error':
@@ -2313,8 +2470,8 @@ const GraphEditorContent = () => {
               lastExecution: {
                 status: 'error',
                 error: event.error,
-                finishedAt: event.timestamp
-              }
+                finishedAt: event.timestamp,
+              },
             }));
             break;
           case 'deployment':
@@ -2352,11 +2509,15 @@ const GraphEditorContent = () => {
 
       const finalSummary = summaryEvent ?? {
         success: !encounteredError,
-        message: encounteredError ? 'Workflow run completed with errors' : 'Workflow run completed successfully'
+        message: encounteredError
+          ? 'Workflow run completed with errors'
+          : 'Workflow run completed successfully',
       };
 
       const bannerType = finalSummary.success ? 'success' : 'error';
-      const bannerMessage = finalSummary.message || (finalSummary.success ? 'Workflow executed successfully' : 'Workflow execution failed');
+      const bannerMessage =
+        finalSummary.message ||
+        (finalSummary.success ? 'Workflow executed successfully' : 'Workflow execution failed');
 
       setRunBanner({ type: bannerType, message: bannerMessage });
       if (bannerType === 'success') {
@@ -2370,22 +2531,18 @@ const GraphEditorContent = () => {
       toast.error(message);
       encounteredError = true;
     } finally {
-      setIsRunning(false);
+      setIsDryRunInProgress(false);
       setTimeout(() => {
         resetExecutionHighlights();
       }, 1200);
     }
   }, [
-    nodes,
-    ensureSupportedNodes,
-    activeWorkflowId,
-    createGraphPayload,
-    validateWorkflowGraph,
-    updateNodeValidation,
+    prepareWorkflowForExecution,
+    authFetch,
     updateNodeExecution,
-    resetExecutionHighlights,
     setNodes,
-    setActiveWorkflowId,
+    setRunBanner,
+    resetExecutionHighlights,
   ]);
 
   const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
@@ -2623,13 +2780,13 @@ const GraphEditorContent = () => {
                 <div className="flex items-center gap-2">
                   <Button
                     onClick={onRunWorkflow}
-                    disabled={isRunning || nodes.length === 0}
+                    disabled={isRunning || isDryRunInProgress || nodes.length === 0}
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     {isRunning ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Running...
+                        Enqueuing…
                       </>
                     ) : (
                       <>
@@ -2638,7 +2795,26 @@ const GraphEditorContent = () => {
                       </>
                     )}
                   </Button>
-                  
+
+                  <Button
+                    variant="outline"
+                    onClick={onDryRunWorkflow}
+                    disabled={isDryRunInProgress || isRunning || nodes.length === 0}
+                    className="bg-amber-500/10 text-amber-200 border-amber-400 hover:bg-amber-500/20 hover:text-white"
+                  >
+                    {isDryRunInProgress ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Validating…
+                      </>
+                    ) : (
+                      <>
+                        <Activity className="w-4 h-4 mr-2" />
+                        Validate / Dry Run
+                      </>
+                    )}
+                  </Button>
+
                   <Button
                     variant="outline"
                     onClick={() => {
