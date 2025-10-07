@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Brain,
   Sparkles,
@@ -53,6 +54,10 @@ import { toast } from 'sonner';
 import { serializeGraphPayload } from '@/components/workflow/graphPayload';
 import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
 import type { FunctionDefinition } from '@/components/workflow/DynamicParameterForm';
+import { useQueueHealth } from '@/hooks/useQueueHealth';
+import { collectNodeConfigurationErrors } from '@/components/workflow/nodeConfigurationValidation';
+import type { ValidationError } from '@shared/nodeGraphSchema';
+import clsx from 'clsx';
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -166,6 +171,14 @@ interface AIThinkingStep {
   status: 'pending' | 'processing' | 'complete';
 }
 
+type WorkflowValidationState = {
+  status: 'idle' | 'validating' | 'valid' | 'invalid';
+  errors: ValidationError[];
+  blockingErrors: ValidationError[];
+  message?: string;
+  error?: string;
+};
+
 export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -194,11 +207,105 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
+  const {
+    health: queueHealth,
+    status: queueStatus,
+    isLoading: isQueueHealthLoading,
+    error: queueHealthError,
+  } = useQueueHealth({ intervalMs: 30000 });
+  const queueReady = queueStatus === 'pass';
+  const queueGuidance = 'Start worker & scheduler processes to run workflows.';
+  const queueStatusMessage = useMemo(() => {
+    if (queueReady) {
+      return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
+    }
+    const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
+    const suffix = detail.endsWith('.') ? '' : '.';
+    if (detail.includes(queueGuidance)) {
+      return detail;
+    }
+    return `${detail}${suffix} ${queueGuidance}`.trim();
+  }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
+  const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
+    status: 'idle',
+    errors: [],
+    blockingErrors: [],
+    message: undefined,
+    error: undefined,
+  });
   const dryRunStatus = useMemo(() => {
     if (!dryRunResult) return null;
     if (dryRunResult?.execution?.status) return dryRunResult.execution.status;
     return dryRunResult.encounteredError ? 'failed' : 'completed';
   }, [dryRunResult]);
+
+  const runDisableReason = useMemo(() => {
+    if (!token) {
+      return 'Sign in to run workflows.';
+    }
+    if (nodes.length === 0) {
+      return 'Add at least one node before running.';
+    }
+    if (!queueReady) {
+      return queueStatusMessage;
+    }
+    if (combinedBlockingErrors.length > 0) {
+      return combinedBlockingErrors[0]?.message;
+    }
+    if (workflowValidation.status === 'validating' || workflowValidation.status === 'idle') {
+      return 'Validating workflow…';
+    }
+    if (workflowValidation.status === 'invalid') {
+      return (
+        workflowValidation.message ||
+        workflowValidation.error ||
+        'Resolve validation issues before running.'
+      );
+    }
+    return undefined;
+  }, [
+    token,
+    nodes.length,
+    queueReady,
+    queueStatusMessage,
+    combinedBlockingErrors,
+    workflowValidation.status,
+    workflowValidation.message,
+    workflowValidation.error,
+  ]);
+
+  const runDisabled =
+    isRunningWorkflow ||
+    nodes.length === 0 ||
+    !token ||
+    !queueReady ||
+    combinedBlockingErrors.length > 0 ||
+    workflowValidation.status !== 'valid';
+
+  const runButtonInner = isRunningWorkflow ? (
+    <>
+      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      Running…
+    </>
+  ) : (
+    <>
+      <Zap className="w-4 h-4 mr-2" />
+      Run Workflow
+    </>
+  );
+
+  const queueBadgeLabel = queueReady
+    ? 'Queue ready'
+    : isQueueHealthLoading
+      ? 'Checking queue…'
+      : 'Queue offline';
+  const queueBadgeTone = queueReady
+    ? 'bg-emerald-600 text-white'
+    : isQueueHealthLoading
+      ? 'bg-amber-500 text-white'
+      : 'bg-red-600 text-white';
+  const queueBadgePulse = !queueReady && !isQueueHealthLoading;
+  const queueBadgeTooltip = queueStatusMessage;
 
   const dryRunNodeSummaries = useMemo(() => {
     if (!dryRunResult?.execution?.nodes) return [] as Array<{ nodeId: string; status: string; label: string; message?: string }>;
@@ -291,6 +398,34 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       });
     },
     [nodes, edges, workflowName]
+  );
+
+  const nodeRequiresConnection = useCallback(
+    (node: Node): boolean => {
+      if (!node) {
+        return false;
+      }
+      const role = String(node.type || (node.data as any)?.role || '').toLowerCase();
+      if (role.includes('trigger') || role.includes('transform')) {
+        return false;
+      }
+      const data: any = node.data || {};
+      const params: any = data.parameters || data.params || {};
+      const connectionId = data.connectionId || data.auth?.connectionId || params.connectionId;
+      const hasInlineCredentials = Boolean(data.credentials || params.credentials);
+      return !connectionId && !hasInlineCredentials;
+    },
+    []
+  );
+
+  const nodeConfigurationErrors = useMemo(
+    () => collectNodeConfigurationErrors(nodes as any[], { nodeRequiresConnection }),
+    [nodes, nodeRequiresConnection]
+  );
+
+  const nodeBlockingErrors = useMemo(
+    () => nodeConfigurationErrors.filter((error) => error.severity === 'error'),
+    [nodeConfigurationErrors]
   );
 
   const hydrateCanvasFromGraph = useCallback(
@@ -402,6 +537,109 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     },
     [setNodes, setEdges]
   );
+
+  useEffect(() => {
+    if (nodes.length === 0) {
+      setWorkflowValidation({
+        status: 'valid',
+        errors: [],
+        blockingErrors: [],
+        message: undefined,
+        error: undefined,
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setWorkflowValidation((previous) => ({
+      ...previous,
+      status: 'validating',
+      error: undefined,
+    }));
+
+    const identifier = workflowId ?? `builder-${Date.now()}`;
+    const payload = buildGraphPayload(identifier);
+    const body = JSON.stringify({ graph: payload });
+    const controller = new AbortController();
+
+    const triggerValidation = async () => {
+      try {
+        const response = token
+          ? await authFetch('/api/workflows/validate', {
+              method: 'POST',
+              body,
+              signal: controller.signal,
+            })
+          : await fetch('/api/workflows/validate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body,
+              signal: controller.signal,
+            });
+        const json = await response.json().catch(() => ({}));
+        if (cancelled) {
+          return;
+        }
+        if (!response.ok || json?.success === false) {
+          const message = json?.message || json?.error || 'Unable to validate workflow';
+          setWorkflowValidation({
+            status: 'invalid',
+            errors: [],
+            blockingErrors: [],
+            message,
+            error: undefined,
+          });
+          return;
+        }
+        const validation = json?.validation ?? {};
+        const errors = Array.isArray(validation.errors)
+          ? (validation.errors as ValidationError[])
+          : [];
+        const blockingErrors = errors.filter((error) => error?.severity === 'error');
+        setWorkflowValidation({
+          status: blockingErrors.length === 0 && validation.valid !== false ? 'valid' : 'invalid',
+          errors,
+          blockingErrors,
+          message: validation.message ?? json?.message,
+          error: undefined,
+        });
+      } catch (error: any) {
+        if (cancelled) {
+          return;
+        }
+        setWorkflowValidation({
+          status: 'invalid',
+          errors: [],
+          blockingErrors: [],
+          message: undefined,
+          error: error?.message || 'Unable to validate workflow',
+        });
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      void triggerValidation();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [nodes, workflowId, buildGraphPayload, authFetch, token]);
+
+  const combinedBlockingErrors = useMemo(() => {
+    const seen = new Set<string>();
+    const blocking: ValidationError[] = [];
+    [...nodeBlockingErrors, ...workflowValidation.blockingErrors].forEach((error) => {
+      const key = `${error.nodeId ?? 'global'}|${error.path}|${error.message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        blocking.push(error);
+      }
+    });
+    return blocking;
+  }, [nodeBlockingErrors, workflowValidation.blockingErrors]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -567,9 +805,10 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return;
     }
 
-    const unconfigured = nodes.filter((node) => !(node.data?.function));
-    if (unconfigured.length > 0) {
-      toast.error('Configure all nodes before running a test');
+    if (nodeBlockingErrors.length > 0) {
+      toast.error(
+        nodeBlockingErrors[0]?.message || 'Configure all nodes before running a test'
+      );
       return;
     }
 
@@ -610,7 +849,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     } finally {
       setIsDryRunning(false);
     }
-  }, [nodes, workflowId, buildGraphPayload, authFetch, token]);
+  }, [nodes, nodeBlockingErrors, workflowId, buildGraphPayload, authFetch, token]);
 
   const runWorkflow = useCallback(async () => {
     if (!nodes.length) {
@@ -618,14 +857,28 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return;
     }
 
-    const unconfigured = nodes.filter((node) => !(node.data?.function));
-    if (unconfigured.length > 0) {
-      toast.error('Configure all nodes before running');
+    if (!queueReady) {
+      toast.error(queueStatusMessage);
+      return;
+    }
+
+    const blockingError = combinedBlockingErrors[0];
+    if (blockingError) {
+      toast.error(blockingError.message || 'Resolve configuration issues before running.');
       return;
     }
 
     if (!token) {
       toast.error('Sign in to run workflows');
+      return;
+    }
+
+    if (workflowValidation.status !== 'valid') {
+      toast.error(
+        workflowValidation.message ||
+          workflowValidation.error ||
+          'Resolve validation issues before running.'
+      );
       return;
     }
 
@@ -712,7 +965,21 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     } finally {
       setIsRunningWorkflow(false);
     }
-  }, [nodes, token, workflowId, workflowName, buildGraphPayload, authFetch, navigate]);
+  }, [
+    nodes,
+    token,
+    workflowId,
+    workflowName,
+    buildGraphPayload,
+    authFetch,
+    navigate,
+    queueReady,
+    queueStatusMessage,
+    combinedBlockingErrors,
+    workflowValidation.status,
+    workflowValidation.message,
+    workflowValidation.error,
+  ]);
 
   const saveWorkflow = useCallback(async () => {
     if (!nodes.length) {
@@ -1160,27 +1427,60 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
               )}
             </Button>
 
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={!token || nodes.length === 0 || isRunningWorkflow}
-              onClick={runWorkflow}
-            >
-              {isRunningWorkflow ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Running…
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 mr-2" />
-                  Run Workflow
-                </>
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Badge
+                    className={clsx(
+                      'px-2 py-1 text-xs uppercase tracking-wide border',
+                      queueBadgeTone,
+                      queueBadgePulse && 'animate-pulse'
+                    )}
+                  >
+                    {queueBadgeLabel}
+                  </Badge>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>{queueBadgeTooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {runDisableReason ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      disabled={runDisabled}
+                      onClick={runWorkflow}
+                    >
+                      {runButtonInner}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>{runDisableReason}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={runDisabled}
+                onClick={runWorkflow}
+              >
+                {runButtonInner}
+              </Button>
+            )}
 
             <Button
               className="bg-green-600 hover:bg-green-700"
-              disabled={nodes.length === 0 || isDryRunning || isRunningWorkflow}
+              disabled={
+                nodes.length === 0 ||
+                isDryRunning ||
+                isRunningWorkflow ||
+                nodeBlockingErrors.length > 0
+              }
               onClick={runDryRun}
             >
               {isDryRunning ? (

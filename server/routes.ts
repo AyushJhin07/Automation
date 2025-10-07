@@ -1254,6 +1254,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/health/queue', async (_req, res) => {
+    try {
+      const health = await checkQueueHealth();
+      res.json({ success: true, health });
+    } catch (error) {
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
   // Export connector schemas (all or by appId)
   app.get('/api/schema/export', async (req, res) => {
     try {
