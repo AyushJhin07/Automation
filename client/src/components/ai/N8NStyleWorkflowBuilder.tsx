@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Node,
   Edge,
@@ -185,12 +186,14 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [configOAuthProviders, setConfigOAuthProviders] = useState<any[]>([]);
   const [dryRunResult, setDryRunResult] = useState<any | null>(null);
   const [isDryRunning, setIsDryRunning] = useState(false);
+  const [isRunningWorkflow, setIsRunningWorkflow] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState<string>('Visual Builder Workflow');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
+  const navigate = useNavigate();
   const dryRunStatus = useMemo(() => {
     if (!dryRunResult) return null;
     if (dryRunResult?.execution?.status) return dryRunResult.execution.status;
@@ -608,6 +611,108 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       setIsDryRunning(false);
     }
   }, [nodes, workflowId, buildGraphPayload, authFetch, token]);
+
+  const runWorkflow = useCallback(async () => {
+    if (!nodes.length) {
+      toast.error('Add at least one node before running');
+      return;
+    }
+
+    const unconfigured = nodes.filter((node) => !(node.data?.function));
+    if (unconfigured.length > 0) {
+      toast.error('Configure all nodes before running');
+      return;
+    }
+
+    if (!token) {
+      toast.error('Sign in to run workflows');
+      return;
+    }
+
+    setIsRunningWorkflow(true);
+
+    try {
+      const identifier = workflowId ?? `builder-${Date.now()}`;
+      const payload = buildGraphPayload(identifier);
+      const name = workflowName?.trim() || payload.name || 'Visual Builder Workflow';
+
+      const saveResponse = await authFetch('/api/flows/save', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: identifier,
+          name,
+          graph: payload,
+          metadata: payload.metadata,
+        }),
+      });
+      const saveResult = await saveResponse.json().catch(() => ({}));
+      if (!saveResponse.ok || saveResult?.success === false) {
+        const message = saveResult?.message || saveResult?.error || 'Failed to save workflow';
+        toast.error(message);
+        return;
+      }
+
+      const savedWorkflowId: string = saveResult?.workflowId || identifier;
+      setWorkflowId(savedWorkflowId);
+      setWorkflowName(name);
+      const savedAt = new Date().toISOString();
+      setLastSavedAt(savedAt);
+      if (typeof window !== 'undefined') {
+        try {
+          const draft = {
+            id: savedWorkflowId,
+            name,
+            savedAt,
+            graph: payload,
+          };
+          localStorage.setItem('automation.builder.draft', JSON.stringify(draft));
+        } catch (storageError) {
+          console.warn('Failed to persist local draft after run save', storageError);
+        }
+      }
+
+      const executionResponse = await authFetch('/api/executions', {
+        method: 'POST',
+        body: JSON.stringify({
+          workflowId: savedWorkflowId,
+          triggerType: 'manual',
+          initialData: null,
+        }),
+      });
+      const executionPayload = await executionResponse.json().catch(() => ({}));
+
+      if (executionResponse.status === 503) {
+        const message =
+          executionPayload?.message ||
+          'The execution queue is unavailable. Please try again later.';
+        toast.error(message);
+        return;
+      }
+
+      if (!executionResponse.ok || executionPayload?.success === false) {
+        const message =
+          executionPayload?.message ||
+          executionPayload?.error ||
+          'Failed to run workflow';
+        toast.error(message);
+        return;
+      }
+
+      const executionId: string | undefined =
+        executionPayload?.executionId || executionPayload?.data?.executionId;
+
+      toast.success('Workflow execution started');
+
+      if (executionId) {
+        navigate(`/runs/${executionId}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to run workflow', error);
+      toast.error(error?.message || 'Unable to run workflow');
+    } finally {
+      setIsRunningWorkflow(false);
+    }
+  }, [nodes, token, workflowId, workflowName, buildGraphPayload, authFetch, navigate]);
 
   const saveWorkflow = useCallback(async () => {
     if (!nodes.length) {
@@ -1054,10 +1159,28 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
                 </>
               )}
             </Button>
-            
-            <Button 
+
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={!token || nodes.length === 0 || isRunningWorkflow}
+              onClick={runWorkflow}
+            >
+              {isRunningWorkflow ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Running…
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Run Workflow
+                </>
+              )}
+            </Button>
+
+            <Button
               className="bg-green-600 hover:bg-green-700"
-              disabled={nodes.length === 0 || isDryRunning}
+              disabled={nodes.length === 0 || isDryRunning || isRunningWorkflow}
               onClick={runDryRun}
             >
               {isDryRunning ? (
@@ -1068,7 +1191,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-2" />
-                  Test Workflow
+                  Dry Run
                 </>
               )}
             </Button>
