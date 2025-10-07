@@ -578,7 +578,60 @@ workflowReadRouter.post('/workflows/validate', async (req, res) => {
 
   try {
     const sanitizedGraph = sanitizeGraphForExecution(graphPayload);
-    const validation = simpleGraphValidator.validate(sanitizedGraph as any);
+
+    const toArray = (value: string | string[] | undefined): string[] =>
+      Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+
+    const matchesPreviewToken = (value: unknown): boolean => {
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return (
+          normalized === 'preview' ||
+          normalized === 'dry-run' ||
+          normalized === 'manual' ||
+          normalized === 'action-only'
+        );
+      }
+      return false;
+    };
+
+    const headerPreviewValues = [
+      ...toArray(req.headers['x-workflow-preview']),
+      ...toArray(req.headers['x-workflow-validation-mode']),
+      ...toArray(req.headers['x-execution-mode']),
+      ...toArray(req.headers['x-run-mode']),
+    ];
+
+    const headerFlag = headerPreviewValues.some((value) => {
+      const normalized = value.trim().toLowerCase();
+      return matchesPreviewToken(value) || normalized === 'true' || normalized === '1' || normalized === 'yes';
+    });
+
+    const requestBody = (req.body && typeof req.body === 'object') ? req.body as Record<string, any> : {};
+    const metadata = graphPayload && typeof graphPayload === 'object' && graphPayload.metadata && typeof graphPayload.metadata === 'object'
+      ? graphPayload.metadata as Record<string, any>
+      : undefined;
+
+    const metadataFlag = metadata
+      ? Boolean(
+          metadata.runPreview === true ||
+          metadata.preview === true ||
+          metadata.dryRun === true ||
+          metadata.manual === true ||
+          matchesPreviewToken(metadata.mode) ||
+          matchesPreviewToken(metadata.validationMode)
+        )
+      : false;
+
+    const bodyFlag = Boolean(
+      requestBody.dryRun === true ||
+      requestBody.manual === true ||
+      matchesPreviewToken(requestBody.mode)
+    );
+
+    const allowActionOnly = headerFlag || metadataFlag || bodyFlag;
+
+    const validation = simpleGraphValidator.validate(sanitizedGraph as any, { allowActionOnly });
     const errors = Array.isArray(validation.errors) ? validation.errors : [];
     const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
     const securityWarnings = Array.isArray(validation.securityWarnings)
