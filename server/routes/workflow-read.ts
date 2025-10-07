@@ -188,6 +188,8 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
   try {
     const { id } = req.params;
+    const requestBody = req.body && typeof req.body === 'object' ? (req.body as Record<string, any>) : {};
+    const requestedWorkflowId = typeof requestBody.requestedId === 'string' ? requestBody.requestedId : id;
 
     if (!id) {
       return res.status(400).json({ success: false, error: 'Workflow ID is required' });
@@ -201,8 +203,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     applyResolvedOrganizationToRequest(req as any, organizationContext);
     organizationId = organizationContext.organizationId;
 
-    let workflowId = id;
-    const requestedWorkflowId = id;
+    let workflowId = requestedWorkflowId || id;
 
     console.log(`▶️ Received execution request for workflow ${requestedWorkflowId}`);
 
@@ -297,6 +298,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     }
 
     res.setHeader('X-Resolved-Workflow-Id', workflowId);
+    res.setHeader('X-Requested-Workflow-Id', requestedWorkflowId);
 
     const compilation = productionGraphCompiler.compile(graphSource, {
       includeLogging: true,

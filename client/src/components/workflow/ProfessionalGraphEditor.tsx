@@ -160,6 +160,10 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
   error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (value: unknown): value is string =>
+  typeof value === 'string' && UUID_REGEX.test(value);
+
 type WorkflowValidationState = {
   status: 'idle' | 'validating' | 'valid' | 'invalid';
   errors: ValidationError[];
@@ -2108,15 +2112,34 @@ const GraphEditorContent = () => {
       error: undefined,
     }));
 
-    const workflowIdentifier =
-      activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
-    const payload = createGraphPayload(workflowIdentifier);
-
     const abortController = new AbortController();
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const result = await validateWorkflowGraph(payload, abortController.signal);
+          const provisionalId =
+            activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+          const draftPayload = createGraphPayload(provisionalId);
+
+          const ensured = await ensureWorkflowId(draftPayload);
+          if (cancelled) {
+            return;
+          }
+
+          if (!ensured) {
+            setWorkflowValidation({
+              status: 'invalid',
+              errors: [],
+              blockingErrors: [],
+              message: undefined,
+              error: 'Unable to resolve workflow identifier for validation',
+            });
+            return;
+          }
+
+          const { workflowId: resolvedWorkflowId, payload: ensuredPayload } = ensured;
+          const validationPayload = ensuredPayload ?? { ...draftPayload, id: resolvedWorkflowId };
+
+          const result = await validateWorkflowGraph(validationPayload, abortController.signal);
           if (cancelled) {
             return;
           }
@@ -2161,6 +2184,7 @@ const GraphEditorContent = () => {
     validateWorkflowGraph,
     updateNodeValidation,
     createValidationSignature,
+    ensureWorkflowId,
   ]);
 
   useEffect(() => {
@@ -2308,15 +2332,16 @@ const GraphEditorContent = () => {
         return stored;
       };
 
+      const payloadIdentifier = typeof payload?.id === 'string' ? payload.id : undefined;
+
       let workflowIdentifier =
+        (isUuid(payloadIdentifier) ? payloadIdentifier : undefined) ??
         activeWorkflowId ??
         fallbackWorkflowIdRef.current ??
         getStoredIdentifier() ??
         `local-${Date.now()}`;
 
-      const isLocalIdentifier = workflowIdentifier.startsWith('local-');
-
-      if (!isLocalIdentifier) {
+      if (isUuid(workflowIdentifier)) {
         updateResolvedId(workflowIdentifier);
         const ensuredPayload = payload
           ? { ...payload, id: workflowIdentifier }
@@ -2324,8 +2349,11 @@ const GraphEditorContent = () => {
         return { workflowId: workflowIdentifier, payload: ensuredPayload };
       }
 
+      const requestedIdentifier = workflowIdentifier;
+
       const body: Record<string, any> = {
         name: payload?.name ?? 'Untitled Workflow',
+        requestedId: requestedIdentifier,
       };
 
       if (payload) {
