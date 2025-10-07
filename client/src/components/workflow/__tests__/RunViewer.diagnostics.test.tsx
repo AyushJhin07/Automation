@@ -1,9 +1,27 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, waitFor, within, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 
 import { RunViewer } from '../RunViewer';
+
+const authFetchMock = vi.fn<typeof fetch>();
+const logoutMock = vi.fn();
+const toastMock = vi.fn();
+
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: (selector: (state: any) => any) =>
+    selector({
+      authFetch: authFetchMock,
+      logout: logoutMock,
+    }),
+}));
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: toastMock,
+  }),
+}));
 
 const sampleExecution = {
   executionId: 'exec-1',
@@ -55,58 +73,56 @@ const sampleExecution = {
   },
 };
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
+beforeEach(() => {
+  authFetchMock.mockReset();
+  logoutMock.mockReset();
+  toastMock.mockReset();
 });
 
-function mockFetch(detailResponse: any, detailStatus = 200) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+afterEach(() => {
+  cleanup();
+});
+
+function jsonResponse(body: any, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function mockAuthFetch(detailResponse: any, detailStatus = 200) {
+  authFetchMock.mockImplementation((input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
     if (url.startsWith('/api/executions?')) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, executions: [sampleExecution] }),
-      } as unknown as Response);
+      return Promise.resolve(
+        jsonResponse({ success: true, executions: [sampleExecution] })
+      );
     }
 
     if (url === '/api/executions/exec-1') {
-      return Promise.resolve({
-        ok: detailStatus >= 200 && detailStatus < 300,
-        status: detailStatus,
-        json: async () => detailResponse,
-      } as unknown as Response);
+      return Promise.resolve(jsonResponse(detailResponse, detailStatus));
     }
 
     if (url.startsWith('/api/workflows/')) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, events: [] }),
-      } as unknown as Response);
+      return Promise.resolve(jsonResponse({ success: true, events: [] }));
     }
 
     if (url.startsWith('/api/admin/executions')) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, entries: [] }),
-      } as unknown as Response);
+      return Promise.resolve(jsonResponse({ success: true, entries: [] }));
     }
 
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true }),
-    } as unknown as Response);
+    if (url.includes('/verification-failures')) {
+      return Promise.resolve(jsonResponse({ success: true, failures: [] }));
+    }
+
+    return Promise.resolve(jsonResponse({ success: true }));
   });
 }
 
 describe('RunViewer execution diagnostics', () => {
   it('renders logs, stdout, and diagnostics when execution details load', async () => {
-    mockFetch({
+    mockAuthFetch({
       success: true,
       execution: {
         nodeResults: {
@@ -140,7 +156,7 @@ describe('RunViewer execution diagnostics', () => {
   });
 
   it('shows an error message when execution details cannot be loaded', async () => {
-    mockFetch({ success: false, error: 'details unavailable' });
+    mockAuthFetch({ success: false, error: 'details unavailable' });
 
     render(<RunViewer />);
 
