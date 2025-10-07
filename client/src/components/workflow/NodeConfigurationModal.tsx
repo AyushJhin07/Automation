@@ -60,6 +60,7 @@ interface NodeConfigurationModalProps {
   availableFunctions: FunctionDefinition[];
   connections: Connection[];
   oauthProviders: OAuthProvider[];
+  onConnectionCreated: (connectionId: string) => void | Promise<void>;
 }
 
 export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
@@ -69,10 +70,12 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   onSave,
   availableFunctions,
   connections,
-  oauthProviders
+  oauthProviders,
+  onConnectionCreated
 }) => {
   const [selectedFunction, setSelectedFunction] = useState<FunctionDefinition | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [activeTab, setActiveTab] = useState<'function' | 'connection' | 'parameters'>('function');
@@ -87,7 +90,8 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
       setSelectedFunction(func || null);
 
       // Find selected connection
-      const conn = connections.find(c => c.id === nodeData.connectionId);
+      setSelectedConnectionId(nodeData.connectionId || null);
+      const conn = connections.find(c => c.id === (nodeData.connectionId || null));
       setSelectedConnection(conn || null);
 
       // Set parameter values
@@ -128,6 +132,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
   // Handle connection selection
   const handleConnectionSelect = (conn: Connection) => {
+    setSelectedConnectionId(conn.id);
     setSelectedConnection(conn);
     setActiveTab('parameters');
     if (typeof window !== 'undefined') {
@@ -165,22 +170,91 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!selectedConnectionId) {
+      setSelectedConnection(null);
+      return;
+    }
+
+    const conn = connections.find((c) => c.id === selectedConnectionId);
+    if (conn) {
+      setSelectedConnection(conn);
+    }
+  }, [connections, selectedConnectionId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.type !== 'oauth:connection') {
+        return;
+      }
+
+      if (data.provider && typeof data.provider === 'string') {
+        const normalizedProvider = String(data.provider).toLowerCase();
+        if (normalizedProvider !== nodeData.appName.toLowerCase()) {
+          return;
+        }
+      }
+
+      if (data.success && data.connectionId) {
+        const connectionId: string = data.connectionId;
+        const connectionLabel: string | undefined = data.label;
+        const existing = connections.find((c) => c.id === connectionId);
+        const fallbackConnection: Connection = {
+          id: connectionId,
+          name: connectionLabel || 'New connection',
+          provider: nodeData.appName,
+          status: 'connected',
+        };
+
+        setSelectedConnectionId(connectionId);
+        setSelectedConnection(existing || fallbackConnection);
+        setActiveTab('parameters');
+        setIsLoading(false);
+        toast.success(connectionLabel ? `Connected ${connectionLabel}` : 'Connection created successfully');
+
+        try {
+          const result = onConnectionCreated(connectionId);
+          if (result && typeof (result as Promise<void>).then === 'function') {
+            (result as Promise<void>).catch(() => {
+              toast.error('Failed to refresh connections after creation');
+            });
+          }
+        } catch (err) {
+          toast.error('Failed to refresh connections after creation');
+        }
+      } else {
+        setIsLoading(false);
+        const errorMessage = data?.error || data?.userInfoError || 'OAuth connection failed';
+        toast.error(errorMessage);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [connections, isOpen, nodeData.appName, onConnectionCreated]);
+
   // Initiate OAuth flow
   const handleOAuthConnect = async () => {
     if (!oauthProvider) return;
 
     setIsLoading(true);
+    let shouldResetLoading = true;
     try {
       const response = await authFetch('/api/oauth/authorize', {
         method: 'POST',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           provider: oauthProvider.name,
           additionalParams: nodeData.appName === 'shopify' ? { shop: 'your-shop' } : undefined
         })
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         // Open OAuth popup
         const popup = window.open(
@@ -189,21 +263,20 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
           'width=600,height=700,scrollbars=yes,resizable=yes'
         );
 
-        // Listen for OAuth completion
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            // Refresh connections list
-            window.location.reload();
-          }
-        }, 1000);
+        if (!popup) {
+          toast.error('Unable to open OAuth window. Please enable pop-ups and try again.');
+        } else {
+          shouldResetLoading = false;
+        }
       } else {
         toast.error(`OAuth initialization failed: ${result.error}`);
       }
     } catch (error) {
       toast.error('Failed to initialize OAuth flow');
     } finally {
-      setIsLoading(false);
+      if (shouldResetLoading) {
+        setIsLoading(false);
+      }
     }
   };
 

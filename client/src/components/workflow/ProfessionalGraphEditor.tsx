@@ -1822,6 +1822,28 @@ const GraphEditorContent = () => {
     }
   };
 
+  const handleConnectionCreated = useCallback(
+    async (connectionId: string) => {
+      if (!token) return;
+
+      try {
+        const response = await authFetch('/api/connections');
+        const json = await response.json().catch(() => ({}));
+        const list = Array.isArray(json?.connections) ? json.connections : [];
+        setConfigConnections(list);
+
+        if (configOpen) {
+          setConfigNodeData((prev) =>
+            prev ? { ...prev, connectionId } : prev
+          );
+        }
+      } catch (error) {
+        toast.error('Connection created, but failed to refresh the connection list.');
+      }
+    },
+    [authFetch, configOpen, token]
+  );
+
   const handleNodeConfigSave = (updated: any) => {
     // Persist selected function, connectionId, and parameters back into node data
     setNodes((nds) =>
@@ -3801,6 +3823,7 @@ const GraphEditorContent = () => {
           availableFunctions={configFunctions}
           connections={configConnections}
           oauthProviders={configOAuthProviders}
+          onConnectionCreated={handleConnectionCreated}
         />
       )}
     </div>
