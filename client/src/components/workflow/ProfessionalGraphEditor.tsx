@@ -1,7 +1,7 @@
 // PROFESSIONAL N8N-STYLE GRAPH EDITOR
 // Beautiful visual workflow builder with smooth animations
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo, useContext, createContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Node,
@@ -260,7 +260,16 @@ const isErrorSeverity = (severity?: string): boolean => {
   return normalized === 'error';
 };
 
-const NodeValidationBanner: React.FC<{ errors?: ValidationError[] }> = ({ errors }) => {
+const ValidationFixContext = createContext<((nodeId: string) => void) | null>(null);
+
+interface NodeValidationBannerProps {
+  errors?: ValidationError[];
+  nodeId?: string;
+  nodeLabel?: string;
+  onFix?: (nodeId: string) => void;
+}
+
+const NodeValidationBanner: React.FC<NodeValidationBannerProps> = ({ errors, nodeId, nodeLabel, onFix }) => {
   const issues = Array.isArray(errors)
     ? errors.filter((issue) => isErrorSeverity((issue as any)?.severity))
     : [];
@@ -271,12 +280,36 @@ const NodeValidationBanner: React.FC<{ errors?: ValidationError[] }> = ({ errors
 
   const [firstIssue, ...rest] = issues;
   const additionalCount = rest.length;
+  const resolvedFirstNodeId = firstIssue ? getNodeIdFromValidationError(firstIssue) : null;
+  const targetNodeId = resolvedFirstNodeId ?? nodeId ?? null;
+  const handleFixClick = () => {
+    if (targetNodeId && onFix) {
+      onFix(targetNodeId);
+    }
+  };
+  const showFixButton = Boolean(onFix && targetNodeId);
+  const fixLabel = additionalCount > 0 && nodeLabel ? `Fix ${nodeLabel}` : 'Fix';
+  const additionalLabel = additionalCount === 1 ? 'issue' : 'issues';
+  const additionalButtonText = nodeLabel
+    ? `+${additionalCount} more ${additionalLabel} for ${nodeLabel}`
+    : `+${additionalCount} more ${additionalLabel}`;
 
   return (
     <div className="mb-3 rounded-lg border border-red-500/80 bg-red-500/90 px-3 py-2 text-white shadow-md">
-      <div className="flex items-center gap-2 text-xs font-semibold">
-        <AlertTriangle className="h-3.5 w-3.5" />
-        <span>Needs attention</span>
+      <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          <span>Needs attention</span>
+        </div>
+        {showFixButton && (
+          <button
+            type="button"
+            onClick={handleFixClick}
+            className="rounded-md border border-white/50 bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white transition hover:bg-white/20"
+          >
+            {fixLabel}
+          </button>
+        )}
       </div>
       {firstIssue?.message && (
         <p className="mt-1 text-[11px] leading-snug text-red-50/95">{firstIssue.message}</p>
@@ -289,13 +322,15 @@ const NodeValidationBanner: React.FC<{ errors?: ValidationError[] }> = ({ errors
                 type="button"
                 className="mt-2 text-[11px] font-medium text-red-50/90 underline decoration-dotted underline-offset-2 transition-colors hover:text-white"
               >
-                +{additionalCount} more issue{additionalCount > 1 ? 's' : ''}
+                {additionalButtonText}
               </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <ul className="space-y-1 text-xs text-slate-100">
                 {rest.map((issue, index) => (
-                  <li key={`${issue.path ?? 'issue'}-${index}`}>{issue.message}</li>
+                  <li key={`${issue.path ?? 'issue'}-${index}`}>
+                    {nodeLabel ? `${nodeLabel}: ${issue.message}` : issue.message}
+                  </li>
                 ))}
               </ul>
             </TooltipContent>
@@ -339,6 +374,7 @@ type WorkflowValidationResult = {
 
 export const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const fixValidation = useContext(ValidationFixContext);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const statusLabel = STATUS_LABELS[status];
   const ringClass = STATUS_RING[status];
@@ -382,7 +418,11 @@ export const TriggerNode = ({ data, selected }: { data: any; selected: boolean }
 
         {/* Content */}
         <div className="text-white">
-          <NodeValidationBanner errors={validationErrors} />
+          <NodeValidationBanner
+            errors={validationErrors}
+            nodeLabel={data.label}
+            onFix={fixValidation ?? undefined}
+          />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-green-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -432,6 +472,7 @@ export const TriggerNode = ({ data, selected }: { data: any; selected: boolean }
 
 export const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const fixValidation = useContext(ValidationFixContext);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
@@ -482,7 +523,11 @@ export const ActionNode = ({ data, selected }: { data: any; selected: boolean })
 
         {/* Content */}
         <div className="text-white">
-          <NodeValidationBanner errors={validationErrors} />
+          <NodeValidationBanner
+            errors={validationErrors}
+            nodeLabel={data.label}
+            onFix={fixValidation ?? undefined}
+          />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-blue-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -541,6 +586,7 @@ export const ActionNode = ({ data, selected }: { data: any; selected: boolean })
 
 export const TransformNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const fixValidation = useContext(ValidationFixContext);
   const status = (data?.executionStatus ?? 'idle') as ExecutionStatus;
   const ringClass = STATUS_RING[status];
   const indicatorClass = STATUS_INDICATOR[status];
@@ -584,7 +630,11 @@ export const TransformNode = ({ data, selected }: { data: any; selected: boolean
 
         {/* Content */}
         <div className="text-white">
-          <NodeValidationBanner errors={validationErrors} />
+          <NodeValidationBanner
+            errors={validationErrors}
+            nodeLabel={data.label}
+            onFix={fixValidation ?? undefined}
+          />
           <h3 className="font-bold text-base mb-1">{data.label}</h3>
           <p className="text-purple-100 text-xs mb-2 opacity-90">{data.description}</p>
 
@@ -1821,6 +1871,28 @@ const GraphEditorContent = () => {
       setConfigLoading(false);
     }
   };
+
+  const handleFixValidationError = useCallback(
+    (nodeId: string) => {
+      if (!nodeId) {
+        return;
+      }
+
+      setSelectedNodeId(nodeId);
+      setNodes((nds) =>
+        nds.map((node) => ({
+          ...node,
+          selected: String(node.id) === String(nodeId),
+        }))
+      );
+
+      const targetNode = nodes.find((node) => String(node.id) === String(nodeId));
+      if (targetNode) {
+        void openNodeConfigModal(targetNode);
+      }
+    },
+    [nodes, openNodeConfigModal, setNodes]
+  );
 
   const handleConnectionCreated = useCallback(
     async (connectionId: string) => {
@@ -3197,58 +3269,59 @@ const GraphEditorContent = () => {
         </div>
         
         {/* ReactFlow */}
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          selectionOnDrag={false}
-          multiSelectionKeyCode={null}
-          panActivationKeyCode={null}
-          onPaneClick={(e) => {
-            const el = e.target as HTMLElement;
-            // Don't clear selection if clicking inside the parameters panel or any input elements
-            if (el && typeof el.closest === 'function') {
-              if (el.closest('[data-inspector]') ||
-                  el.closest('.nodrag') || 
-                  el.closest('input') || 
-                  el.closest('textarea') || 
-                  el.closest('select') ||
-                  el.closest('button') ||
-                  el.closest('.nopan')) {
-                return;
+        <ValidationFixContext.Provider value={handleFixValidationError}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            selectionOnDrag={false}
+            multiSelectionKeyCode={null}
+            panActivationKeyCode={null}
+            onPaneClick={(e) => {
+              const el = e.target as HTMLElement;
+              // Don't clear selection if clicking inside the parameters panel or any input elements
+              if (el && typeof el.closest === 'function') {
+                if (el.closest('[data-inspector]') ||
+                    el.closest('.nodrag') ||
+                    el.closest('input') ||
+                    el.closest('textarea') ||
+                    el.closest('select') ||
+                    el.closest('button') ||
+                    el.closest('.nopan')) {
+                  return;
+                }
               }
-            }
-            // Clear selection only when clicking the actual canvas
-            setSelectedNodeId(null);
-            setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
-          }}
-          fitView
-          attributionPosition="bottom-left"
-          className="bg-gray-100"
-        >
-          <Background 
-            color="#e2e8f0" 
-            gap={20} 
-            size={1}
-            style={{ backgroundColor: '#f3f4f6' }}
-          />
-          <Controls 
-            className="bg-white border-gray-200 shadow-sm"
-            style={{ 
-              button: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#374151' }
+              // Clear selection only when clicking the actual canvas
+              setSelectedNodeId(null);
+              setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
             }}
-          />
-          <MiniMap 
-            className="bg-white border border-gray-200 rounded-lg shadow-sm"
-            nodeColor="#3b82f6"
-            maskColor="rgba(248, 250, 252, 0.8)"
-          />
-          
+            fitView
+            attributionPosition="bottom-left"
+            className="bg-gray-100"
+          >
+            <Background
+              color="#e2e8f0"
+              gap={20}
+              size={1}
+              style={{ backgroundColor: '#f3f4f6' }}
+            />
+            <Controls
+              className="bg-white border-gray-200 shadow-sm"
+              style={{
+                button: { backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#374151' }
+              }}
+            />
+            <MiniMap
+              className="bg-white border border-gray-200 rounded-lg shadow-sm"
+              nodeColor="#3b82f6"
+              maskColor="rgba(248, 250, 252, 0.8)"
+            />
+
           {/* Welcome Modal Popup */}
           {showWelcomeModal && nodes.length === 0 && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 ease-out p-4">
@@ -3303,7 +3376,8 @@ const GraphEditorContent = () => {
               </div>
             </div>
           )}
-        </ReactFlow>
+          </ReactFlow>
+        </ValidationFixContext.Provider>
       </div>
       
       {/* Node Properties Panel - Enterprise Design */}
