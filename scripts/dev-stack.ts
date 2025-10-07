@@ -3,8 +3,6 @@ import process from 'node:process';
 import IORedis, { type RedisOptions } from 'ioredis';
 import { Client } from 'pg';
 
-import { getRedisConnectionOptions } from '../server/queue/BullMQFactory.js';
-
 type ManagedProcess = {
   script: string;
   child: ChildProcess;
@@ -103,13 +101,23 @@ async function main() {
 
   const exitPromises = scriptsToRun.map((script) => {
     return new Promise<void>((resolve) => {
-      const childEnv = { ...process.env };
-      if (script === 'dev:api') {
-        if (!('ENABLE_INLINE_WORKER' in childEnv)) {
-          childEnv.ENABLE_INLINE_WORKER = 'false';
-        }
-        childEnv.DISABLE_INLINE_WORKER_AUTOSTART = 'true';
-      }
+  const childEnv: NodeJS.ProcessEnv = { ...process.env };
+  if (script === 'dev:api') {
+    if (!('ENABLE_INLINE_WORKER' in childEnv)) {
+      childEnv.ENABLE_INLINE_WORKER = 'false';
+    }
+    childEnv.DISABLE_INLINE_WORKER_AUTOSTART = 'true';
+  }
+
+  try {
+    ensureQueueTargetConsistency(`${script} environment preflight`, childEnv);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    exitCode = exitCode || 1;
+    terminateAll();
+    return;
+  }
 
       const child = spawn(npmCommand, ['run', script], {
         stdio: 'inherit',
@@ -121,7 +129,7 @@ async function main() {
 
       child.on('spawn', () => {
         log(`Started ${script}`);
-        verifyQueueDriverForChild(script).catch((error) => {
+        verifyQueueDriverForChild(script, childEnv).catch((error) => {
           const message = error instanceof Error ? error.message : String(error);
           console.error(`${logPrefix} Queue verification failed after starting ${script}: ${message}`);
           exitCode = exitCode || 1;
@@ -216,8 +224,8 @@ async function runDatabaseMigrations(): Promise<void> {
   log('Database migrations applied successfully.');
 }
 
-function resolveQueueDriver(): string {
-  const override = process.env.QUEUE_DRIVER?.toLowerCase().trim();
+function resolveQueueDriver(envSource: NodeJS.ProcessEnv = process.env): string {
+  const override = envSource.QUEUE_DRIVER?.toLowerCase().trim();
   if (!override) {
     return 'bullmq';
   }
@@ -239,48 +247,84 @@ function describeRedisTarget(connection: RedisOptions): string {
   return `${scheme}://${username}${hostValue}:${portValue}/${dbValue}`;
 }
 
-function createQueueConfigurationSnapshot(): QueueConfigurationSnapshot {
-  const rawConnection = getRedisConnectionOptions();
-  const sanitized: RedisOptions = {
-    ...rawConnection,
-    host: typeof rawConnection.host === 'string' ? rawConnection.host.trim() : rawConnection.host,
+function createQueueConfigurationSnapshot(envSource: NodeJS.ProcessEnv = process.env): QueueConfigurationSnapshot {
+  const driver = resolveQueueDriver(envSource);
+  const rawHost = envSource.QUEUE_REDIS_HOST;
+  const host = typeof rawHost === 'string' && rawHost.trim().length > 0 ? rawHost.trim() : '127.0.0.1';
+  const port = parseInteger(envSource.QUEUE_REDIS_PORT, 6379);
+  const db = parseInteger(envSource.QUEUE_REDIS_DB, 0);
+
+  const connection: RedisOptions = {
+    host,
+    port,
+    db,
   };
 
-  if (typeof sanitized.port !== 'number' || !Number.isFinite(sanitized.port)) {
-    const parsed = Number.parseInt(String(rawConnection.port ?? ''), 10);
-    sanitized.port = Number.isFinite(parsed) ? parsed : Number.NaN;
+  if (envSource.QUEUE_REDIS_USERNAME) {
+    connection.username = envSource.QUEUE_REDIS_USERNAME;
   }
 
-  if (typeof sanitized.db !== 'number' || !Number.isFinite(sanitized.db)) {
-    const parsed = Number.parseInt(String(rawConnection.db ?? ''), 10);
-    sanitized.db = Number.isFinite(parsed) ? parsed : Number.NaN;
+  if (envSource.QUEUE_REDIS_PASSWORD) {
+    connection.password = envSource.QUEUE_REDIS_PASSWORD;
+  }
+
+  const tlsFlag = envSource.QUEUE_REDIS_TLS?.toLowerCase() ?? '';
+  if (tlsFlag === 'true') {
+    connection.tls = {};
   }
 
   return {
-    driver: resolveQueueDriver(),
-    connection: sanitized,
-    target: describeRedisTarget(sanitized),
+    driver,
+    connection,
+    target: describeRedisTarget(connection),
   };
 }
 
-function getQueueConfiguration(): QueueConfigurationSnapshot {
+function getQueueConfiguration(envSource?: NodeJS.ProcessEnv): QueueConfigurationSnapshot {
+  if (envSource) {
+    return createQueueConfigurationSnapshot(envSource);
+  }
+
   if (!cachedQueueConfiguration) {
     cachedQueueConfiguration = createQueueConfigurationSnapshot();
   }
+
   return cachedQueueConfiguration;
 }
 
-function ensureQueueTargetConsistency(context: string): void {
+function ensureQueueTargetConsistency(context: string, envSource: NodeJS.ProcessEnv = process.env): void {
   if (!cachedQueueConfiguration) {
     cachedQueueConfiguration = createQueueConfigurationSnapshot();
-    return;
   }
 
-  const latest = createQueueConfigurationSnapshot();
-  if (latest.target !== cachedQueueConfiguration.target) {
+  const initial = cachedQueueConfiguration;
+  const candidate = getQueueConfiguration(envSource);
+
+  const driver = candidate.driver;
+  if (driver === 'inmemory') {
     throw new QueueReadinessError(
       [
-        `${logPrefix} ${context} resolved Redis target ${latest.target}, which differs from the initial ${cachedQueueConfiguration.target}.`,
+        `${logPrefix} ${context} resolved QUEUE_DRIVER=inmemory, but dev:stack requires a shared BullMQ Redis instance.`,
+        `${logPrefix} Resolved Redis target: ${candidate.target}`,
+        `${logPrefix} Remove the in-memory override so every process connects to the same durable Redis.`,
+      ].join('\n'),
+    );
+  }
+
+  if (driver !== 'bullmq') {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} ${context} resolved unsupported QUEUE_DRIVER "${driver}". dev:stack only supports BullMQ.`,
+        `${logPrefix} Resolved Redis target: ${candidate.target}`,
+        `${logPrefix} Align the child environment with the initial dev:stack configuration.`,
+      ].join('\n'),
+    );
+  }
+
+  if (candidate.target !== initial.target) {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} ${context} resolved Redis target ${candidate.target}, which differs from the initial ${initial.target}.`,
         `${logPrefix} Align QUEUE_REDIS_HOST/PORT/DB (and optional credentials/TLS) so every process points at the same Redis instance.`,
       ].join('\n'),
     );
@@ -382,18 +426,18 @@ function parseInteger(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-async function pingRedisForProbe(context: string): Promise<void> {
-  const configuration = getQueueConfiguration();
-  const client = new IORedis(configuration.connection);
+async function pingRedisForProbe(context: string, configuration?: QueueConfigurationSnapshot): Promise<void> {
+  const snapshot = configuration ?? getQueueConfiguration();
+  const client = new IORedis(snapshot.connection);
 
   try {
     await client.ping();
-    log(`${context} verified Redis connectivity at ${configuration.target}.`);
+    log(`${context} verified Redis connectivity at ${snapshot.target}.`);
   } catch (error) {
     const explanation = error instanceof Error ? error.message : String(error);
     throw new QueueReadinessError(
       [
-        `${logPrefix} ${context} failed to reach Redis at ${configuration.target}: ${explanation}`,
+        `${logPrefix} ${context} failed to reach Redis at ${snapshot.target}: ${explanation}`,
         `${logPrefix} Ensure the process can reach Redis and that QUEUE_REDIS_* values match across all dev:stack children.`,
       ].join('\n'),
       error instanceof Error ? { cause: error } : undefined,
@@ -407,11 +451,11 @@ async function pingRedisForProbe(context: string): Promise<void> {
   }
 }
 
-async function probeApiQueueHealth(): Promise<void> {
-  const host = process.env.HOST ?? '127.0.0.1';
-  const port = process.env.PORT ?? '5000';
-  const origin = process.env.DEV_STACK_API_ORIGIN ?? `http://${host}:${port}`;
-  const path = process.env.DEV_STACK_QUEUE_HEALTH_PATH ?? '/api/health/queue';
+async function probeApiQueueHealth(envSource: NodeJS.ProcessEnv = process.env): Promise<void> {
+  const host = envSource.HOST ?? process.env.HOST ?? '127.0.0.1';
+  const port = envSource.PORT ?? process.env.PORT ?? '5000';
+  const origin = envSource.DEV_STACK_API_ORIGIN ?? process.env.DEV_STACK_API_ORIGIN ?? `http://${host}:${port}`;
+  const path = envSource.DEV_STACK_QUEUE_HEALTH_PATH ?? process.env.DEV_STACK_QUEUE_HEALTH_PATH ?? '/api/health/queue';
 
   let url: URL;
   try {
@@ -423,8 +467,14 @@ async function probeApiQueueHealth(): Promise<void> {
     );
   }
 
-  const timeoutMs = parseInteger(process.env.DEV_STACK_QUEUE_HEALTH_TIMEOUT_MS, 60000);
-  const intervalMs = parseInteger(process.env.DEV_STACK_QUEUE_HEALTH_INTERVAL_MS, 1000);
+  const timeoutMs = parseInteger(
+    envSource.DEV_STACK_QUEUE_HEALTH_TIMEOUT_MS ?? process.env.DEV_STACK_QUEUE_HEALTH_TIMEOUT_MS,
+    60000,
+  );
+  const intervalMs = parseInteger(
+    envSource.DEV_STACK_QUEUE_HEALTH_INTERVAL_MS ?? process.env.DEV_STACK_QUEUE_HEALTH_INTERVAL_MS,
+    1000,
+  );
   const startedAt = Date.now();
   let lastLogged: string | null = null;
 
@@ -491,25 +541,25 @@ async function probeApiQueueHealth(): Promise<void> {
   }
 }
 
-async function verifyQueueDriverForChild(script: string): Promise<void> {
+async function verifyQueueDriverForChild(script: string, envSource: NodeJS.ProcessEnv): Promise<void> {
   if (shuttingDown) {
     return;
   }
 
-  ensureQueueTargetConsistency(`${script} queue probe`);
+  ensureQueueTargetConsistency(`${script} queue probe`, envSource);
 
-  const configuration = getQueueConfiguration();
+  const configuration = getQueueConfiguration(envSource);
   if (configuration.driver !== 'bullmq') {
     // Preflight would have already failed, but guard to avoid noisy probes during shutdown.
     return;
   }
 
   if (script === 'dev:api') {
-    await probeApiQueueHealth();
+    await probeApiQueueHealth(envSource);
     return;
   }
 
-  await pingRedisForProbe(`dev:stack ${script}`);
+  await pingRedisForProbe(`dev:stack ${script}`, configuration);
 }
 
 async function ensureDatabaseIsReachable() {
