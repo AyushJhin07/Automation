@@ -2513,7 +2513,58 @@ const GraphEditorContent = () => {
     setSelectedNodeId(String(node.id));
     setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
   }, [setNodes]);
-  
+
+  const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
+    if (nodes.length === 0) {
+      toast.error('Add at least one node before saving');
+      return null;
+    }
+
+    if (!ensureSupportedNodes()) {
+      return null;
+    }
+
+    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const payload = createGraphPayload(workflowIdentifier);
+
+    setSaveState('saving');
+    try {
+      const response = await authFetch('/api/flows/save', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: workflowIdentifier,
+          name: payload.name,
+          graph: payload,
+          metadata: payload.metadata
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        const message = result?.error || (response.status === 401 ? 'Sign in to save workflows' : 'Failed to save workflow');
+        if (response.status === 401) {
+          await logout(true);
+        }
+        throw new Error(message);
+      }
+
+      const savedId = result.workflowId || workflowIdentifier;
+      setActiveWorkflowId(savedId);
+      try {
+        localStorage.setItem('lastWorkflowId', savedId);
+      } catch (error) {
+        console.warn('Unable to persist workflow id after save:', error);
+      }
+      toast.success('Workflow saved');
+      return savedId;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to save workflow');
+      return null;
+    } finally {
+      setSaveState('idle');
+    }
+  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, authFetch, logout, setActiveWorkflowId]);
+
   const onRunWorkflow = useCallback(async () => {
     if (!queueReady) {
       const message = queueStatusMessage;
@@ -2792,57 +2843,6 @@ const GraphEditorContent = () => {
     setRunBanner,
     resetExecutionHighlights,
   ]);
-
-  const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
-    if (nodes.length === 0) {
-      toast.error('Add at least one node before saving');
-      return null;
-    }
-
-    if (!ensureSupportedNodes()) {
-      return null;
-    }
-
-    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
-    const payload = createGraphPayload(workflowIdentifier);
-
-    setSaveState('saving');
-    try {
-      const response = await authFetch('/api/flows/save', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: workflowIdentifier,
-          name: payload.name,
-          graph: payload,
-          metadata: payload.metadata
-        })
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result?.success) {
-        const message = result?.error || (response.status === 401 ? 'Sign in to save workflows' : 'Failed to save workflow');
-        if (response.status === 401) {
-          await logout(true);
-        }
-        throw new Error(message);
-      }
-
-      const savedId = result.workflowId || workflowIdentifier;
-      setActiveWorkflowId(savedId);
-      try {
-        localStorage.setItem('lastWorkflowId', savedId);
-      } catch (error) {
-        console.warn('Unable to persist workflow id after save:', error);
-      }
-      toast.success('Workflow saved');
-      return savedId;
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to save workflow');
-      return null;
-    } finally {
-      setSaveState('idle');
-    }
-  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, authFetch, logout, setActiveWorkflowId]);
 
   const handlePromotionDialogOpenChange = useCallback(
     (open: boolean) => {
