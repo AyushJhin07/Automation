@@ -2260,27 +2260,98 @@ const GraphEditorContent = () => {
     return {};
   }, [spec]);
 
-  const determineWorkflowIdentifier = useCallback((): string => {
-    let workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current;
+  const ensureWorkflowId = useCallback(
+    async (
+      payload?: NodeGraph,
+    ): Promise<{ workflowId: string; payload?: NodeGraph } | null> => {
+      const updateResolvedId = (resolvedId: string) => {
+        fallbackWorkflowIdRef.current = resolvedId;
+        setActiveWorkflowId((prev) => (prev === resolvedId ? prev : resolvedId));
+        try {
+          localStorage.setItem('lastWorkflowId', resolvedId);
+        } catch (error) {
+          console.warn('Unable to persist workflow id:', error);
+        }
+      };
 
-    if (!workflowIdentifier) {
-      workflowIdentifier = `local-${Date.now()}`;
-    }
+      const getStoredIdentifier = (): string | undefined => {
+        let stored: string | undefined;
+        try {
+          stored = localStorage.getItem('lastWorkflowId') ?? undefined;
+        } catch (error) {
+          console.warn('Unable to read workflow id from storage:', error);
+        }
+        return stored;
+      };
 
-    fallbackWorkflowIdRef.current = workflowIdentifier;
+      let workflowIdentifier =
+        activeWorkflowId ??
+        fallbackWorkflowIdRef.current ??
+        getStoredIdentifier() ??
+        `local-${Date.now()}`;
 
-    if (activeWorkflowId !== workflowIdentifier) {
-      setActiveWorkflowId(workflowIdentifier);
-    }
+      const isLocalIdentifier = workflowIdentifier.startsWith('local-');
 
-    try {
-      localStorage.setItem('lastWorkflowId', workflowIdentifier);
-    } catch (error) {
-      console.warn('Unable to persist workflow id:', error);
-    }
+      if (!isLocalIdentifier) {
+        updateResolvedId(workflowIdentifier);
+        const ensuredPayload = payload
+          ? { ...payload, id: workflowIdentifier }
+          : undefined;
+        return { workflowId: workflowIdentifier, payload: ensuredPayload };
+      }
 
-    return workflowIdentifier;
-  }, [activeWorkflowId, setActiveWorkflowId]);
+      const body: Record<string, any> = {
+        name: payload?.name ?? 'Untitled Workflow',
+      };
+
+      if (payload) {
+        const graphForCreation: any = { ...payload };
+        delete graphForCreation.id;
+        body.graph = graphForCreation;
+        if (payload.metadata !== undefined) {
+          body.metadata = payload.metadata;
+        }
+      }
+
+      let response: Response | null = null;
+      try {
+        response = await authFetch('/api/flows/save', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      } catch (error: any) {
+        throw new Error(error?.message || 'Failed to initialize workflow identifier');
+      }
+
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as Record<string, any>;
+
+      if (!response.ok || !result?.success || typeof result.workflowId !== 'string') {
+        const message =
+          result?.error ||
+          (response.status === 401
+            ? 'Sign in to manage workflows before continuing.'
+            : 'Failed to initialize workflow identifier');
+
+        if (response.status === 401) {
+          await logout(true);
+        }
+
+        throw new Error(message);
+      }
+
+      const resolvedId = result.workflowId;
+      updateResolvedId(resolvedId);
+
+      const ensuredPayload = payload
+        ? { ...payload, id: resolvedId }
+        : undefined;
+
+      return { workflowId: resolvedId, payload: ensuredPayload };
+    },
+    [activeWorkflowId, authFetch, logout, setActiveWorkflowId],
+  );
 
   const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
     if (nodes.length === 0) {
@@ -2292,11 +2363,19 @@ const GraphEditorContent = () => {
       return null;
     }
 
-    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
-    const payload = createGraphPayload(workflowIdentifier);
+    const provisionalId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const draftPayload = createGraphPayload(provisionalId);
 
     setSaveState('saving');
     try {
+      const ensured = await ensureWorkflowId(draftPayload);
+      if (!ensured) {
+        throw new Error('Unable to resolve workflow identifier');
+      }
+
+      const { workflowId: workflowIdentifier, payload: ensuredPayload } = ensured;
+      const payload = ensuredPayload ?? { ...draftPayload, id: workflowIdentifier };
+
       const response = await authFetch('/api/flows/save', {
         method: 'POST',
         body: JSON.stringify({
@@ -2331,7 +2410,17 @@ const GraphEditorContent = () => {
     } finally {
       setSaveState('idle');
     }
-  }, [nodes, ensureSupportedNodes, activeWorkflowId, createGraphPayload, authFetch, logout, setActiveWorkflowId]);
+  }, [
+    nodes,
+    ensureSupportedNodes,
+    activeWorkflowId,
+    fallbackWorkflowIdRef,
+    createGraphPayload,
+    ensureWorkflowId,
+    authFetch,
+    logout,
+    setActiveWorkflowId,
+  ]);
 
   const prepareWorkflowForExecution = useCallback(async (): Promise<{ workflowId: string; payload: NodeGraph } | null> => {
     if (nodes.length === 0) {
@@ -2364,8 +2453,16 @@ const GraphEditorContent = () => {
       return null;
     }
 
-    const workflowIdentifier = determineWorkflowIdentifier();
-    const payload = createGraphPayload(workflowIdentifier);
+    const provisionalId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const draftPayload = createGraphPayload(provisionalId);
+
+    const ensured = await ensureWorkflowId(draftPayload);
+    if (!ensured) {
+      return null;
+    }
+
+    const { workflowId: workflowIdentifier, payload: ensuredPayload } = ensured;
+    const payload = ensuredPayload ?? { ...draftPayload, id: workflowIdentifier };
 
     setRunBanner(null);
 
@@ -2396,8 +2493,10 @@ const GraphEditorContent = () => {
     nodeRequiresConnection,
     nodeBlockingErrors,
     nodeConfigurationErrors,
-    determineWorkflowIdentifier,
+    activeWorkflowId,
+    fallbackWorkflowIdRef,
     createGraphPayload,
+    ensureWorkflowId,
     validateWorkflowGraph,
     updateNodeValidation,
     setRunBanner,
@@ -2747,7 +2846,9 @@ const GraphEditorContent = () => {
     }
 
     const savedWorkflowId = await onSaveWorkflow();
-    if (!savedWorkflowId) {
+    const workflowIdentifier = savedWorkflowId ?? prepared.workflowId;
+
+    if (!workflowIdentifier) {
       const message = 'Save the workflow before running.';
       setRunBanner({ type: 'error', message });
       toast.error(message);
@@ -2761,7 +2862,7 @@ const GraphEditorContent = () => {
       const response = await authFetch('/api/executions', {
         method: 'POST',
         body: JSON.stringify({
-          workflowId: savedWorkflowId,
+          workflowId: workflowIdentifier,
           triggerType: 'manual',
           initialData,
         }),
