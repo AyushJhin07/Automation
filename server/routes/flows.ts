@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import {
@@ -15,6 +16,8 @@ import {
 } from '../utils/organizationContext.js';
 
 const router = Router();
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const persistFlow = async (req: Request, res: Response) => {
   try {
@@ -27,10 +30,25 @@ const persistFlow = async (req: Request, res: Response) => {
 
     const payload = req.body ?? {};
     const graph = payload.graph ?? payload;
-    const providedId = typeof payload.id === 'string' ? payload.id : (typeof payload.workflowId === 'string' ? payload.workflowId : undefined);
+    const providedId =
+      typeof payload.id === 'string'
+        ? payload.id
+        : typeof payload.workflowId === 'string'
+          ? payload.workflowId
+          : undefined;
+    const resolvedId = providedId && uuidRegex.test(providedId) ? providedId : randomUUID();
+
+    if (payload && typeof payload === 'object') {
+      payload.id = resolvedId;
+      payload.workflowId = resolvedId;
+    }
+
+    if (graph && typeof graph === 'object') {
+      graph.id = resolvedId;
+    }
 
     const saved = await WorkflowRepository.saveWorkflowGraph({
-      id: providedId,
+      id: resolvedId,
       userId: (req as any)?.user?.id ?? payload.userId,
       organizationId: organizationContext.organizationId,
       name: payload.name ?? graph?.name ?? 'Untitled Workflow',
@@ -43,6 +61,7 @@ const persistFlow = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
+      id: saved.id,
       workflowId: saved.id,
       workflow: saved,
     });
