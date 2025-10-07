@@ -60,7 +60,7 @@ interface NodeConfigurationModalProps {
   availableFunctions: FunctionDefinition[];
   connections: Connection[];
   oauthProviders: OAuthProvider[];
-  onConnectionCreated: (connectionId: string) => void | Promise<void>;
+  onConnectionCreated: (connectionId: string) => Connection | void | Promise<Connection | void>;
 }
 
 export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
@@ -80,6 +80,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [activeTab, setActiveTab] = useState<'function' | 'connection' | 'parameters'>('function');
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
+  const [localConnections, setLocalConnections] = useState(connections);
   const authFetch = useAuthStore((state) => state.authFetch);
   const handledConnectionRef = useRef<string | null>(null);
 
@@ -92,7 +93,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
       // Find selected connection
       setSelectedConnectionId(nodeData.connectionId || null);
-      const conn = connections.find(c => c.id === (nodeData.connectionId || null));
+      const conn = localConnections.find(c => c.id === (nodeData.connectionId || null));
       setSelectedConnection(conn || null);
 
       // Set parameter values
@@ -107,7 +108,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
         setActiveTab('parameters');
       }
     }
-  }, [isOpen, nodeData, availableFunctions, connections]);
+  }, [isOpen, nodeData, availableFunctions, localConnections]);
 
   // Filter functions by node type
   const filteredFunctions = availableFunctions.filter(func => 
@@ -115,7 +116,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   );
 
   // Filter connections by app
-  const appConnections = connections.filter(conn => 
+  const appConnections = localConnections.filter(conn =>
     conn.provider.toLowerCase() === nodeData.appName.toLowerCase()
   );
 
@@ -172,16 +173,26 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   };
 
   useEffect(() => {
+    setLocalConnections((prev) => {
+      const map = new Map(prev.map((conn) => [conn.id, conn] as const));
+      for (const conn of connections) {
+        map.set(conn.id, conn);
+      }
+      return Array.from(map.values());
+    });
+  }, [connections]);
+
+  useEffect(() => {
     if (!selectedConnectionId) {
       setSelectedConnection(null);
       return;
     }
 
-    const conn = connections.find((c) => c.id === selectedConnectionId);
+    const conn = localConnections.find((c) => c.id === selectedConnectionId);
     if (conn) {
       setSelectedConnection(conn);
     }
-  }, [connections, selectedConnectionId]);
+  }, [localConnections, selectedConnectionId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -224,13 +235,19 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
       const connectionId: string = data.connectionId;
       const connectionLabel: string | undefined = data.label;
-      const existing = connections.find((c) => c.id === connectionId);
+      const existing = localConnections.find((c) => c.id === connectionId);
       const fallbackConnection: Connection = {
         id: connectionId,
         name: connectionLabel || 'New connection',
         provider: nodeData.appName,
         status: 'connected',
       };
+
+      setLocalConnections((prev) => {
+        const map = new Map(prev.map((conn) => [conn.id, conn] as const));
+        map.set(connectionId, existing ? { ...existing, ...fallbackConnection } : fallbackConnection);
+        return Array.from(map.values());
+      });
 
       setSelectedConnectionId(connectionId);
       setSelectedConnection(existing || fallbackConnection);
@@ -240,10 +257,35 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
 
       try {
         const result = onConnectionCreated(connectionId);
-        if (result && typeof (result as Promise<void>).then === 'function') {
-          (result as Promise<void>).catch(() => {
-            toast.error('Connection created, but failed to refresh the connection list.');
+        if (result && typeof (result as Promise<Connection | void>).then === 'function') {
+          (result as Promise<Connection | void>)
+            .then((resolvedConnection) => {
+              if (!resolvedConnection || typeof resolvedConnection !== 'object' || !('id' in resolvedConnection)) {
+                return;
+              }
+
+              setLocalConnections((prev) => {
+                const map = new Map(prev.map((conn) => [conn.id, conn] as const));
+                map.set(resolvedConnection.id, resolvedConnection as Connection);
+                return Array.from(map.values());
+              });
+              setSelectedConnection(resolvedConnection as Connection);
+            })
+            .catch(() => {
+              toast.error('Connection created, but failed to refresh the connection list.');
+            });
+        } else if (
+          result &&
+          typeof result === 'object' &&
+          'id' in (result as Record<string, unknown>)
+        ) {
+          const resolvedConnection = result as Connection;
+          setLocalConnections((prev) => {
+            const map = new Map(prev.map((conn) => [conn.id, conn] as const));
+            map.set(resolvedConnection.id, resolvedConnection);
+            return Array.from(map.values());
           });
+          setSelectedConnection(resolvedConnection);
         }
       } catch (err) {
         toast.error('Connection created, but failed to refresh the connection list.');
@@ -254,7 +296,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [connections, isOpen, nodeData.appName, onConnectionCreated]);
+  }, [connections, isOpen, localConnections, nodeData.appName, onConnectionCreated]);
 
   useEffect(() => {
     if (!isOpen) {
