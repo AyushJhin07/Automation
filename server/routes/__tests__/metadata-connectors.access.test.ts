@@ -157,20 +157,36 @@ try {
     authenticatedBody?.data?.connectors ?? authenticatedBody?.connectors ?? [];
   assert(Array.isArray(authenticatedConnectors) && authenticatedConnectors.length > 0);
 
-  const connectorWithAuthConfig = authenticatedConnectors.find(
-    (connector: any) => connector?.authentication?.config,
-  );
-  assert(connectorWithAuthConfig, 'expected full metadata to include authentication config');
-  assert(
-    'pricingTier' in connectorWithAuthConfig,
-    'full metadata should include entitlement details',
-  );
-  assert(
-    connectorWithAuthConfig.lifecycle?.raw,
-    'full metadata should include lifecycle raw metadata',
-  );
+  authenticatedConnectors.forEach((connector: any) => {
+    assert.equal(
+      connector.pricingTier ?? null,
+      null,
+      'authenticated catalog should omit entitlement tiers',
+    );
+    if (Array.isArray(connector.scopes)) {
+      assert.equal(
+        connector.scopes.length,
+        0,
+        'authenticated catalog scopes should be empty',
+      );
+    }
+    if (connector.authentication) {
+      assert.equal(
+        connector.authentication.config ?? null,
+        null,
+        'authenticated catalog should not expose authentication config',
+      );
+    }
+    if (connector.lifecycle) {
+      assert.equal(
+        'raw' in connector.lifecycle,
+        false,
+        'authenticated catalog should not expose lifecycle raw metadata',
+      );
+    }
+  });
 
-  console.log('Metadata catalog exposes sanitized anonymous access and full authenticated metadata.');
+  console.log('Metadata catalog exposes sanitized metadata for anonymous and authenticated access.');
 } catch (error) {
   exitCode = 1;
   console.error(error);

@@ -9,7 +9,7 @@ import { workflowBuildRouter } from "./routes/workflow.build";
 import aiRouter from "./routes/ai";
 import appSchemaRoutes from "./routes/app-schemas.js";
 import googleSheetsRoutes from "./routes/google-sheets.js";
-import metadataRoutes from "./routes/metadata.js";
+import metadataRoutes, { metadataCatalogRouter } from "./routes/metadata.js";
 import aiAssistRoutes from "./routes/ai-assist.js";
 import templateRoutes from "./routes/templates.js";
 import collaborationRoutes from "./routes/collaboration.js";
@@ -342,6 +342,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   }
 
   app.use('/api/google', googleSheetsRoutes);
+  app.use('/api', metadataCatalogRouter);
   app.use('/api/metadata', metadataRoutes);
   
   // P1-7: AI assist functionality routes
