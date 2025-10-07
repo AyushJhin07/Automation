@@ -250,8 +250,64 @@ describe("ProfessionalGraphEditor validation gating", () => {
     });
 
     expect(screen.getByText("URL is required")).toBeInTheDocument();
-    expect(screen.getByText("+1 more issue")).toBeInTheDocument();
+    expect(screen.getByText("+1 more issue for Call API")).toBeInTheDocument();
     expectNoExecuteCall();
+  });
+
+  it("opens node configuration when clicking Fix on validation banner", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/registry/catalog")) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes("/api/workflows/validate")) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: {
+              valid: false,
+              errors: [
+                {
+                  nodeId: "action-1",
+                  path: "/nodes/action-1/params/url",
+                  message: "URL is required",
+                  severity: "error",
+                },
+                {
+                  nodeId: "action-1",
+                  path: "/nodes/action-1/params/method",
+                  message: "Choose an HTTP method",
+                  severity: "error",
+                },
+              ],
+              warnings: [],
+            },
+          })
+        );
+      }
+      if (url.includes("/api/functions/built_in")) {
+        return Promise.resolve(jsonResponse({ data: { functions: [] } }));
+      }
+      if (url.includes("/api/oauth/providers")) {
+        return Promise.resolve(jsonResponse({ data: { providers: [] } }));
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    await clickRunWorkflow();
+
+    const fixButton = await screen.findByRole("button", { name: /Fix Call API/i });
+    fireEvent.click(fixButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("Configure built_in action")).toBeInTheDocument();
+      expect(
+        screen.getByText("Choose the action function for built_in")
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows a banner when cycles are detected", async () => {
