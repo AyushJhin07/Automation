@@ -21,6 +21,13 @@ const workflowRepositoryModule = await import('../../workflow/WorkflowRepository
 const originalSaveWorkflowGraph = workflowRepositoryModule.WorkflowRepository.saveWorkflowGraph;
 
 let capturedSavePayload: any = null;
+const capturedRequestContexts: Array<{
+  path: string;
+  status: string | undefined;
+  id: string | undefined;
+  role: string | undefined;
+  plan: string | undefined;
+}> = [];
 
 (workflowRepositoryModule.WorkflowRepository as any).saveWorkflowGraph = async (
   payload: any,
@@ -35,6 +42,23 @@ let capturedSavePayload: any = null;
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (
+      req.path === '/api/flows/save' ||
+      req.path === '/api/workflows/validate'
+    ) {
+      capturedRequestContexts.push({
+        path: req.path,
+        status: (req as any).organizationStatus,
+        id: (req as any).organizationId,
+        role: (req as any).organizationRole,
+        plan: (req as any).organizationPlan,
+      });
+    }
+  });
+  next();
+});
 
 let server: Server | null = null;
 let exitCode = 0;
@@ -73,6 +97,13 @@ try {
     'dev-org',
     'dev fallback should inject the development organization id for flow saves',
   );
+  const flowContext = capturedRequestContexts.find((entry) => entry.path === '/api/flows/save');
+  assert.ok(flowContext, 'flow save should record a captured organization context');
+  assert.equal(
+    flowContext?.status,
+    'active',
+    'dev fallback should mark the flow save organization status as active',
+  );
 
   const validateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
     method: 'POST',
@@ -103,6 +134,20 @@ try {
   );
   const validateBody = await validateResponse.json();
   assert.equal(validateBody.success, true, 'workflow validation should return success payload');
+  const validateContext = capturedRequestContexts.find(
+    (entry) => entry.path === '/api/workflows/validate',
+  );
+  assert.ok(validateContext, 'workflow validation should record a captured organization context');
+  assert.equal(
+    validateContext?.status,
+    'active',
+    'dev fallback should mark the workflow validation organization status as active',
+  );
+  assert.equal(
+    validateContext?.id,
+    'dev-org',
+    'dev fallback should inject the development organization id for workflow validation',
+  );
 
   console.log(
     'Development organization fallback allows unauthenticated flow saves and workflow validation.',

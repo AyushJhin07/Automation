@@ -113,6 +113,105 @@ const devUser = buildDevUser();
 
 const shouldUseDevFallback = () => process.env.NODE_ENV === 'development' && Boolean(devUser);
 
+const DEFAULT_DEV_ORGANIZATION_ID = devUser?.organizationId ?? 'dev-org';
+const DEFAULT_DEV_ORGANIZATION_ROLE = devUser?.organizationRole ?? 'owner';
+const DEFAULT_DEV_ORGANIZATION_PLAN: OrganizationPlan =
+  (devUser?.organizationPlan as OrganizationPlan | undefined) ?? 'enterprise';
+const DEFAULT_DEV_ORGANIZATION_STATUS: OrganizationStatus =
+  (devUser?.organizationStatus as OrganizationStatus | undefined) ?? 'active';
+const DEFAULT_DEV_ORGANIZATION_LIMITS: OrganizationLimits =
+  devUser?.organizationLimits ?? {
+    maxWorkflows: 1000,
+    maxExecutions: 1000000,
+    maxUsers: 1000,
+    maxStorage: 500 * 1024,
+    maxConcurrentExecutions: 100,
+    maxExecutionsPerMinute: 10000,
+  };
+const DEFAULT_DEV_ORGANIZATION_USAGE: OrganizationUsageMetrics =
+  devUser?.organizationUsage ?? {
+    workflowExecutions: 0,
+    apiCalls: 0,
+    storageUsed: 0,
+    usersActive: 1,
+    llmTokens: 0,
+    llmCostUSD: 0,
+    concurrentExecutions: 0,
+    executionsInCurrentWindow: 0,
+  };
+
+const applyDevelopmentOrganizationDefaults = (req: Request) => {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  const activeOrganization = req.user?.activeOrganization;
+
+  const resolvedOrganizationId =
+    req.organizationId ||
+    req.user?.organizationId ||
+    activeOrganization?.id ||
+    DEFAULT_DEV_ORGANIZATION_ID;
+
+  const resolvedRole =
+    req.organizationRole ||
+    req.user?.organizationRole ||
+    activeOrganization?.role ||
+    DEFAULT_DEV_ORGANIZATION_ROLE;
+
+  const resolvedPlan: OrganizationPlan =
+    req.organizationPlan ||
+    (req.user?.organizationPlan as OrganizationPlan | undefined) ||
+    (activeOrganization?.plan as OrganizationPlan | undefined) ||
+    DEFAULT_DEV_ORGANIZATION_PLAN;
+
+  const resolvedStatus: OrganizationStatus =
+    req.organizationStatus ||
+    (req.user?.organizationStatus as OrganizationStatus | undefined) ||
+    (activeOrganization?.status as OrganizationStatus | undefined) ||
+    DEFAULT_DEV_ORGANIZATION_STATUS;
+
+  const resolvedLimits: OrganizationLimits =
+    req.organizationLimits ||
+    req.user?.organizationLimits ||
+    activeOrganization?.limits ||
+    DEFAULT_DEV_ORGANIZATION_LIMITS;
+
+  const resolvedUsage: OrganizationUsageMetrics =
+    req.organizationUsage ||
+    req.user?.organizationUsage ||
+    activeOrganization?.usage ||
+    DEFAULT_DEV_ORGANIZATION_USAGE;
+
+  req.organizationId = resolvedOrganizationId;
+  req.organizationRole = resolvedRole;
+  req.organizationPlan = resolvedPlan;
+  req.organizationStatus = resolvedStatus || 'active';
+  req.organizationLimits = resolvedLimits;
+  req.organizationUsage = resolvedUsage;
+
+  const resolvedPermissions =
+    (req.permissions && req.permissions.length > 0)
+      ? req.permissions
+      : (req.user?.permissions && req.user.permissions.length > 0)
+        ? req.user.permissions
+        : getPermissionsForRole(resolvedRole || DEFAULT_DEV_ORGANIZATION_ROLE);
+  req.permissions = resolvedPermissions;
+
+  if (req.user) {
+    req.user = {
+      ...req.user,
+      organizationId: req.user.organizationId ?? resolvedOrganizationId,
+      organizationRole: req.user.organizationRole ?? resolvedRole,
+      organizationPlan: req.user.organizationPlan ?? resolvedPlan,
+      organizationStatus: req.user.organizationStatus ?? resolvedStatus,
+      organizationLimits: req.user.organizationLimits ?? resolvedLimits,
+      organizationUsage: req.user.organizationUsage ?? resolvedUsage,
+      permissions: req.user.permissions ?? resolvedPermissions,
+    };
+  }
+};
+
 /**
  * Authentication middleware - verifies JWT token
  */
@@ -139,6 +238,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         req.organizationUsage = devUser.organizationUsage;
         req.permissions = permissions;
         setRequestUser(devUser.id);
+        applyDevelopmentOrganizationDefaults(req);
         return next();
       }
       return res.status(401).json({
@@ -168,6 +268,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     req.organizationUsage = user.organizationUsage;
     req.permissions = permissions;
     setRequestUser(user.id);
+    applyDevelopmentOrganizationDefaults(req);
     next();
 
   } catch (error) {
@@ -206,6 +307,17 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         req.organizationUsage = user.organizationUsage;
         req.permissions = permissions;
         setRequestUser(user.id);
+      } else if (shouldUseDevFallback() && devUser) {
+        const permissions = getPermissionsForRole(devUser.organizationRole);
+        req.user = { ...devUser, permissions };
+        req.organizationId = devUser.organizationId;
+        req.organizationRole = devUser.organizationRole;
+        req.organizationPlan = devUser.organizationPlan as OrganizationPlan;
+        req.organizationStatus = devUser.organizationStatus as OrganizationStatus;
+        req.organizationLimits = devUser.organizationLimits;
+        req.organizationUsage = devUser.organizationUsage;
+        req.permissions = permissions;
+        setRequestUser(devUser.id);
       }
     } else if (shouldUseDevFallback() && devUser) {
       const permissions = getPermissionsForRole(devUser.organizationRole);
@@ -220,6 +332,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       setRequestUser(devUser.id);
     }
 
+    applyDevelopmentOrganizationDefaults(req);
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
@@ -233,6 +346,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationUsage = devUser.organizationUsage;
       req.permissions = permissions;
       setRequestUser(devUser.id);
+      applyDevelopmentOrganizationDefaults(req);
       next();
     } else {
       next();
