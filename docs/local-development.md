@@ -71,6 +71,16 @@ The default configuration in `.env.example` assumes PostgreSQL and Redis are run
   so the dedicated worker process can take over.
 - Consult `docs/operations/queue.md` if you need advanced Redis/BullMQ tuning.
 
+When the queue is misconfigured (for example `QUEUE_DRIVER=inmemory` or a bad Redis host/port), the supervisor exits before spawning the children and prints the resolved DSN plus remediation steps, e.g.:
+
+```
+[dev:stack] dev:stack requires a durable BullMQ queue driver. QUEUE_DRIVER=inmemory keeps jobs in process memory and will drop work on restart.
+[dev:stack] Resolved Redis target: redis://127.0.0.1:6379/0
+[dev:stack] Remove QUEUE_DRIVER=inmemory (reserved for isolated tests) and configure QUEUE_REDIS_HOST/PORT/DB so every process connects to the same Redis instance.
+```
+
+After each child process announces itself, the parent probes `/api/health/queue` (API) or pings Redis directly (worker, scheduler, timers, rotation) to confirm every process is pointed at the same durable BullMQ driver before the stack is considered ready.
+
 ## 5. Dev helper commands
 
 These commands speed up local smoke testing once the stack is running:
