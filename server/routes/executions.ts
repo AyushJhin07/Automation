@@ -343,12 +343,16 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
       return res.status(400).json({ success: false, error: 'WORKFLOW_GRAPH_EMPTY' });
     }
 
+    const nodes = Array.isArray(graphSource.nodes) ? graphSource.nodes : [];
+    const hasTriggerNode = nodes.some((node: any) => typeof node?.type === 'string' && node.type.startsWith('trigger.'));
+    const allowActionOnly = !hasTriggerNode;
+
     const timezone = payload.options?.timezone ?? 'UTC';
     const compilation = productionGraphCompiler.compile(graphSource, {
       includeLogging: true,
       includeErrorHandling: true,
       timezone,
-    });
+    }, { allowActionOnly });
 
     if (!compilation.success) {
       return res.status(422).json({
@@ -384,7 +388,6 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
       };
     }
 
-    const nodes = Array.isArray(graphSource.nodes) ? graphSource.nodes : [];
     const edges = Array.isArray(graphSource.edges) ? graphSource.edges : [];
     const nodeMap = new Map(nodes.map((node: any) => [String(node.id), node]));
     const order = computeExecutionOrder(nodes, edges);

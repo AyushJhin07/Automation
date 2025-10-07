@@ -3,6 +3,10 @@ import addFormats from 'ajv-formats';
 import graphSchema from '../../schemas/graph.schema.json';
 import { NodeGraph, ValidationError, ValidationResult } from '../../shared/nodeGraphSchema';
 
+export interface ValidatorOptions {
+  allowActionOnly?: boolean;
+}
+
 export class SimpleGraphValidator {
   private ajv: Ajv;
 
@@ -27,7 +31,7 @@ export class SimpleGraphValidator {
     console.log('✅ SimpleGraphValidator initialized with AJV schema validation');
   }
 
-  public validate(graph: NodeGraph): ValidationResult {
+  public validate(graph: NodeGraph, options: ValidatorOptions = {}): ValidationResult {
     const errors: ValidationError[] = [];
 
     try {
@@ -35,7 +39,7 @@ export class SimpleGraphValidator {
       errors.push(...this.validateAgainstSchema(graph));
 
       // 2. Basic structural validation
-      errors.push(...this.validateStructure(graph));
+      errors.push(...this.validateStructure(graph, options));
 
       // 3. Node validation
       for (const node of graph.nodes) {
@@ -122,8 +126,10 @@ export class SimpleGraphValidator {
     return errors;
   }
 
-  private validateStructure(graph: NodeGraph): ValidationError[] {
+  private validateStructure(graph: NodeGraph, options: ValidatorOptions): ValidationError[] {
     const errors: ValidationError[] = [];
+
+    const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
 
     if (!graph.id || typeof graph.id !== 'string') {
       errors.push({
@@ -157,12 +163,23 @@ export class SimpleGraphValidator {
       });
     }
 
-    if (graph.nodes.length === 0) {
+    if (nodes.length === 0) {
       errors.push({
         path: '/nodes',
         message: 'Graph must contain at least one node',
         severity: 'error'
       });
+    }
+
+    if (nodes.length > 0 && !options.allowActionOnly) {
+      const hasTriggerNode = nodes.some((node) => typeof node?.type === 'string' && node.type.startsWith('trigger.'));
+      if (!hasTriggerNode) {
+        errors.push({
+          path: '/nodes',
+          message: 'Graph must contain at least one trigger node',
+          severity: 'error'
+        });
+      }
     }
 
     return errors;
