@@ -1868,8 +1868,11 @@ const GraphEditorContent = () => {
             );
           }
         }
+
+        return connection ?? undefined;
       } catch (error) {
         toast.error('Connection created, but failed to refresh the connection list.');
+        throw error;
       }
     },
     [authFetch, configNodeData?.id, configOpen, setNodes, token]
