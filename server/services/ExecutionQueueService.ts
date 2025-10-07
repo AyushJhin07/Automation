@@ -13,6 +13,7 @@ import {
   getActiveQueueDriver,
   getRedisConnectionOptions,
   registerQueueTelemetry,
+  type QueueJobCounts,
   type Queue,
   type QueueEvents,
   type Worker,
@@ -79,6 +80,20 @@ type ExecutionLeaseTelemetry = {
   renewCount: number | null;
 };
 
+type EnvironmentWarning = {
+  id: string;
+  message: string;
+  since: string;
+  queueDepth?: number;
+};
+
+type ObservedWorkerHeartbeat = {
+  workerId: string | null;
+  heartbeatAt: string;
+  inline: boolean;
+  region: OrganizationRegion;
+};
+
 type ExecutionQueueTelemetrySnapshot = {
   started: boolean;
   databaseEnabled: boolean;
@@ -102,6 +117,8 @@ type ExecutionQueueTelemetrySnapshot = {
   metrics: {
     queueDepths: ReturnType<typeof getQueueDepthSnapshot>;
   };
+  lastObservedHeartbeat: (ObservedWorkerHeartbeat & { ageMs: number | null }) | null;
+  environmentWarnings: EnvironmentWarning[];
 };
 
 class UsageQuotaExceededError extends Error {
@@ -156,6 +173,11 @@ class ExecutionQueueService {
   private readonly workerHeartbeatKey: string;
   private workerHeartbeatClient: IORedis | null = null;
   private workerHeartbeatTimer: NodeJS.Timeout | null = null;
+  private externalConsumerMonitorTimer: NodeJS.Timeout | null = null;
+  private externalConsumerMonitorEnabled = false;
+  private missingConsumerPollsWithoutHeartbeat = 0;
+  private readonly environmentWarnings = new Map<string, EnvironmentWarning>();
+  private latestObservedHeartbeat: ObservedWorkerHeartbeat | null = null;
 
   private constructor() {
     const configuredConcurrency = Number.parseInt(
@@ -309,6 +331,18 @@ class ExecutionQueueService {
       }
     );
 
+    const heartbeatSnapshot = (() => {
+      if (!this.latestObservedHeartbeat) {
+        return null;
+      }
+
+      const ageMs = this.computeHeartbeatAgeMs(this.latestObservedHeartbeat.heartbeatAt);
+      return {
+        ...this.latestObservedHeartbeat,
+        ageMs,
+      };
+    })();
+
     return {
       started: this.started,
       databaseEnabled: this.isDbEnabled(),
@@ -332,7 +366,88 @@ class ExecutionQueueService {
       metrics: {
         queueDepths,
       },
+      lastObservedHeartbeat: heartbeatSnapshot,
+      environmentWarnings: Array.from(this.environmentWarnings.values()).map((warning) => ({
+        ...warning,
+        queueDepth:
+          typeof warning.queueDepth === 'number' && Number.isFinite(warning.queueDepth)
+            ? warning.queueDepth
+            : undefined,
+      })),
     };
+  }
+
+  public enableExternalConsumerMonitor(): void {
+    if (this.externalConsumerMonitorEnabled) {
+      return;
+    }
+
+    this.externalConsumerMonitorEnabled = true;
+
+    if (getActiveQueueDriver() !== 'bullmq' || this.isInlineWorkerEnabled()) {
+      return;
+    }
+
+    const parsedInterval = Number.parseInt(
+      process.env.QUEUE_CONSUMER_MONITOR_INTERVAL_MS ?? '10000',
+      10,
+    );
+    const pollIntervalMs = Number.isFinite(parsedInterval) ? Math.max(5000, parsedInterval) : 10000;
+    const parsedBacklog = Number.parseInt(
+      process.env.QUEUE_CONSUMER_BACKLOG_WARNING ?? '5',
+      10,
+    );
+    const backlogThreshold = Number.isFinite(parsedBacklog) ? Math.max(1, parsedBacklog) : 5;
+    const parsedPolls = Number.parseInt(process.env.QUEUE_CONSUMER_MISSING_POLLS ?? '3', 10);
+    const pollsBeforeWarning = Number.isFinite(parsedPolls) ? Math.max(1, parsedPolls) : 3;
+    const warningId = 'missing-consumer';
+
+    const runCheck = async () => {
+      try {
+        const queue = this.ensureQueue(this.workerQueueName);
+        const counts = (await queue.getJobCounts()) as QueueJobCounts<ExecutionQueueName>;
+        updateQueueDepthMetric(queue.name, counts);
+
+        const totals = this.resolveQueueTotals(counts);
+        const heartbeat = await this.readLatestWorkerHeartbeat();
+
+        if (heartbeat) {
+          this.latestObservedHeartbeat = heartbeat;
+        }
+
+        const ageMs = heartbeat ? this.computeHeartbeatAgeMs(heartbeat.heartbeatAt) : null;
+        const hasConsumer =
+          heartbeat !== null &&
+          ageMs !== null &&
+          ageMs <= Math.max(this.heartbeatTimeoutMs * 2, pollIntervalMs * 3);
+
+        if (totals.backlog >= backlogThreshold && !hasConsumer) {
+          this.missingConsumerPollsWithoutHeartbeat += 1;
+          if (this.missingConsumerPollsWithoutHeartbeat >= pollsBeforeWarning) {
+            this.recordEnvironmentWarning(
+              warningId,
+              `Queue backlog (${totals.backlog}) detected but no worker heartbeats observed. Start the worker, scheduler, timers, and encryption-rotation processes.`,
+              totals.backlog,
+            );
+          }
+        } else {
+          if (this.missingConsumerPollsWithoutHeartbeat > 0) {
+            this.missingConsumerPollsWithoutHeartbeat = 0;
+          }
+          this.clearEnvironmentWarning(warningId);
+        }
+      } catch (error) {
+        console.warn(
+          '[ExecutionQueueService] External consumer monitor failed:',
+          getErrorMessage(error),
+        );
+      }
+    };
+
+    void runCheck();
+    this.externalConsumerMonitorTimer = setInterval(() => {
+      void runCheck();
+    }, pollIntervalMs);
   }
 
   private async acquireRunningSlotWithBackoff(
@@ -986,6 +1101,14 @@ class ExecutionQueueService {
     const timeoutMs = Math.max(0, options.timeoutMs ?? 30000);
 
     this.shutdownPromise = (async () => {
+      if (this.externalConsumerMonitorTimer) {
+        clearInterval(this.externalConsumerMonitorTimer);
+        this.externalConsumerMonitorTimer = null;
+      }
+      this.externalConsumerMonitorEnabled = false;
+      this.missingConsumerPollsWithoutHeartbeat = 0;
+      this.environmentWarnings.clear();
+
       const closeWorker = async () => {
         if (!this.worker) {
           return;
@@ -1164,6 +1287,7 @@ class ExecutionQueueService {
     }
 
     if (stage === 'shutdown') {
+      this.latestObservedHeartbeat = null;
       try {
         await client.del(this.workerHeartbeatKey);
       } catch (error) {
@@ -1188,11 +1312,123 @@ class ExecutionQueueService {
 
     try {
       await client.set(this.workerHeartbeatKey, JSON.stringify(payload), 'PX', ttlMs);
+      this.latestObservedHeartbeat = {
+        workerId: typeof payload.workerId === 'string' ? payload.workerId : this.worker?.id ?? null,
+        heartbeatAt: payload.updatedAt,
+        inline: payload.inline,
+        region: payload.region,
+      };
     } catch (error) {
       console.warn(
         `[ExecutionQueueService] Failed to publish worker heartbeat (${stage}):`,
         getErrorMessage(error)
       );
+    }
+  }
+
+  private resolveQueueTotals(
+    counts: QueueJobCounts<ExecutionQueueName>
+  ): { backlog: number; total: number } {
+    const coerce = (value: unknown): number => {
+      return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    };
+
+    const backlog = coerce(counts.waiting) + coerce(counts.delayed);
+    const totalFromCounts = coerce((counts as Record<string, unknown>).total);
+    const derivedTotal =
+      totalFromCounts > 0
+        ? totalFromCounts
+        : backlog + coerce(counts.active) + coerce(counts.paused);
+
+    return { backlog, total: derivedTotal };
+  }
+
+  private computeHeartbeatAgeMs(heartbeatAt: string): number | null {
+    if (!heartbeatAt) {
+      return null;
+    }
+
+    const parsed = Date.parse(heartbeatAt);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    return Math.max(0, Date.now() - parsed);
+  }
+
+  private recordEnvironmentWarning(id: string, message: string, queueDepth?: number): void {
+    const existing = this.environmentWarnings.get(id);
+    const since = existing?.since ?? new Date().toISOString();
+    this.environmentWarnings.set(id, { id, message, since, queueDepth });
+
+    if (!existing) {
+      console.warn(`[ExecutionQueueService] ${message}`);
+    }
+  }
+
+  private clearEnvironmentWarning(id: string): void {
+    if (this.environmentWarnings.delete(id)) {
+      console.log(`[ExecutionQueueService] Queue consumer warning cleared (${id}).`);
+    }
+  }
+
+  private parseWorkerHeartbeatPayload(raw: string | null): ObservedWorkerHeartbeat | null {
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const data = JSON.parse(raw) as {
+        workerId?: string;
+        inline?: boolean;
+        updatedAt?: string;
+        timestamp?: string;
+        region?: string;
+      };
+      const heartbeatIso = data.updatedAt ?? data.timestamp;
+      const parsed = heartbeatIso ? Date.parse(heartbeatIso) : NaN;
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+
+      return {
+        workerId: typeof data.workerId === 'string' ? data.workerId : null,
+        heartbeatAt: new Date(parsed).toISOString(),
+        inline: Boolean(data.inline),
+        region: (data.region as OrganizationRegion | undefined) ?? this.workerRegion,
+      };
+    } catch (error) {
+      console.warn(
+        '[ExecutionQueueService] Unable to parse worker heartbeat payload:',
+        getErrorMessage(error)
+      );
+      return null;
+    }
+  }
+
+  private async readLatestWorkerHeartbeat(): Promise<ObservedWorkerHeartbeat | null> {
+    if (getActiveQueueDriver() !== 'bullmq') {
+      return null;
+    }
+
+    const connection = getRedisConnectionOptions(this.workerRegion);
+    const client = new IORedis(connection);
+
+    try {
+      const raw = await client.get(this.workerHeartbeatKey);
+      return this.parseWorkerHeartbeatPayload(raw);
+    } catch (error) {
+      console.warn(
+        '[ExecutionQueueService] Failed to read worker heartbeat payload:',
+        getErrorMessage(error)
+      );
+      return null;
+    } finally {
+      try {
+        await client.quit();
+      } catch {
+        client.disconnect();
+      }
     }
   }
 
@@ -1222,35 +1458,18 @@ class ExecutionQueueService {
     try {
       while (Date.now() <= deadline) {
         const raw = await client.get(this.workerHeartbeatKey);
-        if (raw) {
-          try {
-            const data = JSON.parse(raw) as {
-              workerId?: string;
-              inline?: boolean;
-              updatedAt?: string;
-              timestamp?: string;
-              region?: string;
+        const heartbeat = this.parseWorkerHeartbeatPayload(raw);
+        if (heartbeat) {
+          const ageMs = this.computeHeartbeatAgeMs(heartbeat.heartbeatAt);
+          if (ageMs !== null && ageMs <= maxAgeMs) {
+            this.latestObservedHeartbeat = heartbeat;
+            return {
+              workerId: heartbeat.workerId,
+              heartbeatAt: heartbeat.heartbeatAt,
+              ageMs,
+              inline: heartbeat.inline,
+              region: heartbeat.region,
             };
-            const heartbeatIso = data.updatedAt ?? data.timestamp;
-            const parsed = heartbeatIso ? Date.parse(heartbeatIso) : NaN;
-            if (Number.isFinite(parsed)) {
-              const ageMs = Date.now() - parsed;
-              if (ageMs <= maxAgeMs) {
-                return {
-                  workerId: typeof data.workerId === 'string' ? data.workerId : null,
-                  heartbeatAt: new Date(parsed).toISOString(),
-                  ageMs,
-                  inline: Boolean(data.inline),
-                  region:
-                    (data.region as OrganizationRegion | undefined) ?? this.workerRegion,
-                };
-              }
-            }
-          } catch (error) {
-            console.warn(
-              '[ExecutionQueueService] Unable to parse worker heartbeat payload:',
-              getErrorMessage(error)
-            );
           }
         }
 

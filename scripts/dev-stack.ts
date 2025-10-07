@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import process from 'node:process';
 import IORedis from 'ioredis';
+import { Client } from 'pg';
 
 import { getRedisConnectionOptions } from '../server/queue/BullMQFactory.js';
 
@@ -17,7 +18,7 @@ class QueueReadinessError extends Error {
 }
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const scriptsToRun = ['dev:api', 'dev:scheduler', 'dev:worker', 'dev:rotation'];
+const scriptsToRun = ['dev:api', 'dev:worker', 'dev:scheduler', 'dev:timers', 'dev:rotation'];
 const managedProcesses: ManagedProcess[] = [];
 
 let shuttingDown = false;
@@ -73,6 +74,7 @@ async function main() {
   setupSignalHandlers();
 
   await ensureRedisIsReachable();
+  await ensureDatabaseIsReachable();
 
   try {
     await runDatabaseMigrations();
@@ -213,6 +215,71 @@ async function ensureRedisIsReachable() {
       await client.quit();
     } catch {
       client.disconnect();
+    }
+
+    if (shouldExit) {
+      terminateAll();
+      process.exit(process.exitCode ?? 1);
+    }
+  }
+}
+
+async function ensureDatabaseIsReachable() {
+  if (process.env.SKIP_DB_VALIDATION === 'true') {
+    log('Skipping database connectivity check because SKIP_DB_VALIDATION=true.');
+    return;
+  }
+
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    log('DATABASE_URL is not set. Skipping connectivity precheck.');
+    return;
+  }
+
+  const maskedTarget = (() => {
+    try {
+      const url = new URL(connectionString);
+      if (url.password) {
+        url.password = '******';
+      }
+      return url.toString();
+    } catch (error) {
+      const explanation = error instanceof Error ? error.message : String(error);
+      log(`Unable to mask DATABASE_URL (${explanation}). Falling back to raw value.`);
+      return connectionString.replace(/:(?<secret>[^:@/]+)@/, ':******@');
+    }
+  })();
+
+  log(`Checking database connectivity at ${maskedTarget}...`);
+
+  const parsedTimeout = Number.parseInt(process.env.DEV_STACK_DB_TIMEOUT_MS ?? '5000', 10);
+  const connectionTimeoutMillis = Number.isFinite(parsedTimeout) ? parsedTimeout : 5000;
+
+  const client = new Client({
+    connectionString,
+    connectionTimeoutMillis,
+  });
+
+  let shouldExit = false;
+
+  try {
+    await client.connect();
+    await client.query('select 1');
+    log('Database connection verified.');
+  } catch (error) {
+    const explanation = error instanceof Error ? error.message : String(error);
+    console.error(
+      `${logPrefix} Unable to reach Postgres at ${maskedTarget}: ${explanation}`,
+      `\n${logPrefix} Start Postgres with 'docker compose -f docker-compose.dev.yml up postgres' or provide a reachable DATABASE_URL.`,
+    );
+    process.exitCode = 1;
+    shouldExit = true;
+  } finally {
+    try {
+      await client.end();
+    } catch (error) {
+      const explanation = error instanceof Error ? error.message : String(error);
+      log(`Failed to close database client cleanly: ${explanation}`);
     }
 
     if (shouldExit) {

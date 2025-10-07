@@ -106,6 +106,38 @@ services:
       jaeger:
         condition: service_started
 
+  timers:
+    image: node:22
+    working_dir: /app
+    command: npm run dev:timers
+    environment:
+      <<: *node-environment
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  encryption-rotation:
+    image: node:22
+    working_dir: /app
+    command: npm run dev:rotation
+    environment:
+      <<: *node-environment
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
 volumes:
   postgres-data:
   redis-data:

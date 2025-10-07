@@ -19,11 +19,12 @@ redis-server --daemonize yes
 npm run dev:stack
 ```
 
-`dev:stack` runs `drizzle-kit push`, verifies Redis availability, and starts:
+`dev:stack` runs `drizzle-kit push`, verifies Redis and Postgres connectivity up front, and starts:
 
 - `npm run dev:api`
 - `npm run dev:worker`
 - `npm run dev:scheduler`
+- `npm run dev:timers`
 - `npm run dev:rotation`
 
 Inline worker is disabled in this mode, so queue health maps to the dedicated worker process.

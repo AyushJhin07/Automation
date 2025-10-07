@@ -201,6 +201,8 @@ app.use((req, res, next) => {
     } else {
       console.log('🏭 Inline execution worker disabled. Expecting external worker process.');
     }
+
+    executionQueueService.enableExternalConsumerMonitor();
   } catch (error) {
     console.warn('⚠️ Failed to configure execution queue:', (error as any)?.message || error);
 

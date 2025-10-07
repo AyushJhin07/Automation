@@ -23,6 +23,8 @@ your managed secret store (see `docs/operations/secret-management.md`) or the de
 
 All queues created via the factory automatically honour these settings.
 
+> ⚠️ **Redis is mandatory outside of unit tests.** The API, workers, and developer stack all fail fast when `QUEUE_REDIS_*` targets are unreachable. `npm run dev:stack` now verifies both Redis and Postgres connectivity before launching so missing infrastructure is reported immediately.【F:scripts/dev-stack.ts†L37-L160】
+
 ## Worker processes
 
 Builds now emit separate entry points for the API (`dist/index.js`), the execution worker
@@ -67,6 +69,8 @@ Starting the scheduler before the worker is acceptable, but the worker must be o
 backlog grows. The [`/api/health/queue/heartbeat`](../../server/routes/production-health.ts) probe
 confirms that the worker heartbeat is current and the queue depth is draining.
 
+When the API is running without the dedicated worker processes (for example, only the `web` dyno is online), the runtime now polls queue depth and worker heartbeats. If backlog builds with no consumers, it logs `[ExecutionQueueService]` warnings and exposes them via `/api/admin/workers/status` so the Admin UI renders a banner instructing operators to start the missing processes.【F:server/services/ExecutionQueueService.ts†L292-L333】【F:client/src/components/automation/WorkerStatusPanel.tsx†L1-L220】 Once a worker heartbeat appears or the backlog drains, the warning clears automatically.
+
 If you prefer to co-locate everything inside the API process for a lightweight environment, export
 `ENABLE_INLINE_WORKER=true` (or `INLINE_EXECUTION_WORKER=true`) before starting the server. In
 development this flag now defaults to `true` when unset so local API boots automatically start the
@@ -106,6 +110,10 @@ export QUEUE_REDIS_DB=0
 ```
 
 When TLS or authentication is required, set `QUEUE_REDIS_USERNAME`, `QUEUE_REDIS_PASSWORD`, and `QUEUE_REDIS_TLS=true` accordingly. Set `QUEUE_DRIVER=inmemory` only for automated tests that do not start the real workers; production and developer workflows should use Redis.
+
+### Local-only fallback
+
+Set `QUEUE_DRIVER=inmemory` only for ephemeral demos or automated tests that never start the worker fleet. The in-memory queue keeps jobs in the API process, so crashes or restarts will lose work and the scheduler cannot fan out timers. Production health endpoints flag this mode as non-durable and the Admin UI renders a warning banner so operators can see that Redis has been bypassed.【F:server/services/QueueHealthService.ts†L81-L112】【F:client/src/components/automation/WorkerStatusPanel.tsx†L1-L220】 Always revert to Redis-backed BullMQ before exercising shared environments or running integration tests.
 
 ## Queue health & readiness
 
