@@ -4,6 +4,7 @@ import { render, screen, waitFor, within, fireEvent, cleanup } from '@testing-li
 import React from 'react';
 
 import { RunViewer } from '../RunViewer';
+import { useAuthStore } from '@/store/authStore';
 
 const sampleExecution = {
   executionId: 'exec-1',
@@ -60,7 +61,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function mockFetch(detailResponse: any, detailStatus = 200) {
+function mockFetch(detailResponse: any, detailStatus = 200, execution: any = sampleExecution) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -68,7 +69,7 @@ function mockFetch(detailResponse: any, detailStatus = 200) {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ success: true, executions: [sampleExecution] }),
+        json: async () => ({ success: true, executions: [execution] }),
       } as unknown as Response);
     }
 
@@ -156,5 +157,55 @@ describe('RunViewer execution diagnostics', () => {
     fireEvent.click(inspectButton);
 
     await waitFor(() => expect(screen.getByText('details unavailable')).toBeInTheDocument());
+  });
+
+  it('renders a resume button for waiting nodes and posts resume credentials', async () => {
+    const resumeCallback =
+      '/api/runs/exec-1/nodes/node-1/resume?token=token-123&signature=sig-456';
+    const waitingExecution = {
+      ...sampleExecution,
+      status: 'waiting' as const,
+      nodeExecutions: sampleExecution.nodeExecutions.map((node) => ({
+        ...node,
+        status: 'running' as const,
+        waitingForCallback: true,
+        resume: {
+          waiting: true,
+          callbackUrl: resumeCallback,
+          token: 'token-123',
+          signature: 'sig-456',
+          expiresAt: new Date().toISOString(),
+        },
+      })),
+    };
+
+    mockFetch({ success: true, execution: { nodeResults: {} } }, 200, waitingExecution);
+
+    const originalAuthFetch = useAuthStore.getState().authFetch;
+    const authFetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    } as unknown as Response);
+    useAuthStore.setState((state) => ({ ...state, authFetch: authFetchMock }));
+
+    try {
+      render(<RunViewer />);
+
+      const resumeButton = await screen.findByRole('button', { name: /Resume/i });
+      fireEvent.click(resumeButton);
+
+      await waitFor(() => expect(authFetchMock).toHaveBeenCalled());
+
+      expect(authFetchMock.mock.calls[0]?.[0]).toContain(
+        '/api/runs/exec-1/nodes/node-1/resume'
+      );
+      const requestInit = authFetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+      expect(requestInit?.method).toBe('POST');
+      const payload = requestInit?.body ? JSON.parse(requestInit.body as string) : {};
+      expect(payload).toMatchObject({ resumeToken: 'token-123', resumeSignature: 'sig-456' });
+    } finally {
+      useAuthStore.setState((state) => ({ ...state, authFetch: originalAuthFetch }));
+    }
   });
 });

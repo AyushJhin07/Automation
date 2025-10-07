@@ -13,6 +13,14 @@ import { sanitizeLogPayload, appendTimelineEvent, coerceTimeline } from '../util
 import { logAction } from '../utils/actionLog';
 import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
 
+export interface NodeResumeMetadata {
+  waiting: boolean;
+  callbackUrl?: string;
+  token?: string;
+  signature?: string;
+  expiresAt?: Date;
+}
+
 export interface NodeExecution {
   nodeId: string;
   nodeType: string;
@@ -56,6 +64,8 @@ export interface NodeExecution {
     [key: string]: any;
   };
   timeline: Array<Record<string, any>>;
+  waitingForCallback?: boolean;
+  resume?: NodeResumeMetadata;
 }
 
 export interface WorkflowExecution {
@@ -1669,6 +1679,17 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
 
   private mapExecutionRow(row: ExecutionLogRow, nodes: NodeExecution[]): WorkflowExecution {
     const metadata = this.normalizeExecutionMetadata(row.metadata);
+    const nodeExecutions = nodes.map((node) => {
+      const resume = this.buildNodeResumeMetadata(node.nodeId, metadata);
+      if (!resume) {
+        return node;
+      }
+      return {
+        ...node,
+        waitingForCallback: resume.waiting,
+        resume,
+      };
+    });
 
     return {
       executionId: row.executionId,
@@ -1682,16 +1703,56 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       duration: row.durationMs ?? undefined,
       triggerType: row.triggerType ?? undefined,
       triggerData: row.triggerData ?? undefined,
-      totalNodes: row.totalNodes ?? nodes.length,
-      completedNodes: row.completedNodes ?? nodes.filter((node) => node.status === 'succeeded').length,
-      failedNodes: row.failedNodes ?? nodes.filter((node) => node.status === 'failed').length,
-      nodeExecutions: nodes,
+      totalNodes: row.totalNodes ?? nodeExecutions.length,
+      completedNodes:
+        row.completedNodes ?? nodeExecutions.filter((node) => node.status === 'succeeded').length,
+      failedNodes: row.failedNodes ?? nodeExecutions.filter((node) => node.status === 'failed').length,
+      nodeExecutions,
       finalOutput: row.finalOutput ?? undefined,
       error: row.error ?? undefined,
       correlationId: row.correlationId ?? '',
       tags: row.tags ?? [],
       timeline: coerceTimeline(row.timeline),
       metadata,
+    };
+  }
+
+  private buildNodeResumeMetadata(
+    nodeId: string,
+    metadata: WorkflowExecution['metadata']
+  ): NodeResumeMetadata | undefined {
+    const callbacks = metadata.resumeCallbacks ?? {};
+    const entry = callbacks[nodeId];
+    if (!entry || typeof entry.callbackUrl !== 'string' || entry.callbackUrl.trim().length === 0) {
+      return undefined;
+    }
+
+    let token: string | undefined;
+    let signature: string | undefined;
+
+    try {
+      const parsed = new URL(entry.callbackUrl, 'http://localhost');
+      const params = parsed.searchParams;
+      token =
+        params.get('resumeToken') ??
+        params.get('resume_token') ??
+        params.get('token') ??
+        undefined;
+      signature =
+        params.get('resumeSignature') ??
+        params.get('resume_signature') ??
+        params.get('signature') ??
+        undefined;
+    } catch {
+      // Ignore malformed callback URLs and continue returning basic metadata.
+    }
+
+    return {
+      waiting: true,
+      callbackUrl: entry.callbackUrl,
+      token: token ?? undefined,
+      signature: signature ?? undefined,
+      expiresAt: entry.expiresAt,
     };
   }
 

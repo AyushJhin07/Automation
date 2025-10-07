@@ -9,11 +9,13 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { 
-  Play, 
-  Pause, 
-  RefreshCw, 
-  Clock, 
+import { useAuthStore } from '@/store/authStore';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Play,
+  Pause,
+  RefreshCw,
+  Clock,
   CheckCircle, 
   XCircle, 
   AlertTriangle,
@@ -71,6 +73,14 @@ interface NodeExecution {
     tokensUsed?: number;
     httpStatusCode?: number;
     headers?: Record<string, string>;
+  };
+  waitingForCallback?: boolean;
+  resume?: {
+    waiting: boolean;
+    callbackUrl?: string;
+    token?: string;
+    signature?: string;
+    expiresAt?: string | Date;
   };
 }
 
@@ -145,6 +155,8 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   workflowId: initialWorkflowId,
   onClose
 }) => {
+  const authFetch = useAuthStore((state) => state.authFetch);
+  const { toast: pushToast } = useToast();
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeExecution | null>(null);
@@ -449,6 +461,62 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       console.error('Failed to retry node:', error);
     }
   };
+
+  const resumeNode = useCallback(
+    async (executionId: string, node: NodeExecution) => {
+      if (!node.resume?.token) {
+        pushToast({
+          variant: 'destructive',
+          title: 'Resume token unavailable',
+          description: 'This node cannot be resumed because no resume token is attached to the execution metadata.',
+        });
+        return;
+      }
+
+      try {
+        const payload: Record<string, string> = { resumeToken: node.resume.token };
+        if (node.resume.signature) {
+          payload.resumeSignature = node.resume.signature;
+        }
+
+        const response = await authFetch(
+          `/api/runs/${executionId}/nodes/${node.nodeId}/resume`,
+          {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          }
+        );
+
+        let body: any = null;
+        try {
+          body = await response.json();
+        } catch {
+          body = null;
+        }
+
+        if (!response.ok || (body && body.success === false)) {
+          const message =
+            body?.message ||
+            body?.error ||
+            `Failed to resume node (${response.status}${response.statusText ? ` ${response.statusText}` : ''})`;
+          throw new Error(message);
+        }
+
+        pushToast({
+          title: 'Resume requested',
+          description: 'The workflow will resume processing shortly.',
+        });
+        loadExecutions();
+      } catch (error: any) {
+        pushToast({
+          variant: 'destructive',
+          title: 'Resume failed',
+          description: error?.message ?? 'Unable to resume this node. Please try again.',
+        });
+      }
+    },
+    [authFetch, loadExecutions, pushToast]
+  );
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -905,6 +973,18 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                 >
                                   <RefreshCw className="w-4 h-4 mr-1" />
                                   Retry
+                                </Button>
+                              )}
+
+                              {(node.waitingForCallback || node.resume?.waiting) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => resumeNode(selectedExecution.executionId, node)}
+                                  className="text-green-600"
+                                >
+                                  <Play className="w-4 h-4 mr-1" />
+                                  Resume
                                 </Button>
                               )}
 

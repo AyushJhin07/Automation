@@ -667,7 +667,7 @@ Authorization: Bearer <token>
   "success": true,
   "execution": {
     "id": "exec-456",
-    "workflowId": "wf-789", 
+    "workflowId": "wf-789",
     "status": "completed",
     "startedAt": "2024-01-20T15:30:00Z",
     "completedAt": "2024-01-20T15:30:28Z",
@@ -681,7 +681,7 @@ Authorization: Bearer <token>
       },
       {
         "id": "gmail-1",
-        "status": "completed", 
+        "status": "completed",
         "duration": 15,
         "output": {"emailsFound": 3}
       },
@@ -699,6 +699,37 @@ Authorization: Bearer <token>
   }
 }
 ```
+
+### **Resume Waiting Node Execution**
+
+Resume an execution step that is waiting on an external callback. The Run Viewer UI now surfaces a **Resume** button for nodes with waiting callbacks, and the payload uses the `resumeToken` (and optional `resumeSignature`) included in `execution.metadata.resumeCallbacks[nodeId]`.
+
+```http
+POST /api/runs/{executionId}/nodes/{nodeId}/resume
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "resumeToken": "token-123",
+  "resumeSignature": "sig-456"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "executionId": "exec-456",
+  "nodeId": "gmail-1"
+}
+```
+
+**Possible errors:**
+
+* `400 RESUME_TOKEN_INVALID` – missing or malformed resume token.
+* `403 RESUME_TOKEN_INVALID` – token/signature pair is not valid for the specified node.
+* `410 RESUME_TOKEN_EXPIRED` – callback token is no longer valid; request a new one.
+* `500 FAILED_TO_RESUME` – queue enqueue failed; retry after investigating worker/queue health.
 
 ### **Get Workflow Metrics**
 
