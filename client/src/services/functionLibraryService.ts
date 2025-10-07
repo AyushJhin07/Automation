@@ -27,20 +27,6 @@ class FunctionLibraryService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   /**
-   * Get authentication headers
-   */
-  private getAuthHeaders(): Record<string, string> {
-    const token = authStore.getState().token;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-    if (token && token !== 'null' && token !== 'undefined') {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-  }
-
-  /**
    * Check if cache is valid for an app
    */
   private isCacheValid(appName: string): boolean {
@@ -61,9 +47,7 @@ class FunctionLibraryService {
    */
   async getSupportedApplications(): Promise<string[]> {
     try {
-      const response = await fetch('/api/registry/catalog?implemented=true', {
-        headers: this.getAuthHeaders()
-      });
+      const response = await authStore.getState().authFetch('/api/registry/catalog?implemented=true');
 
       const result = await response.json();
 
@@ -92,9 +76,9 @@ class FunctionLibraryService {
     }
 
     try {
-      const response = await fetch(`/api/registry/functions/${encodeURIComponent(appName)}`, {
-        headers: this.getAuthHeaders()
-      });
+      const response = await authStore.getState().authFetch(
+        `/api/registry/functions/${encodeURIComponent(appName)}`
+      );
 
       if (!response.ok) {
         if (response.status === 404) {

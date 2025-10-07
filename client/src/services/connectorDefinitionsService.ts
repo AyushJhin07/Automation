@@ -40,21 +40,6 @@ export const normalizeConnectorId = (value: string | undefined | null): string =
     .replace(/[^a-z0-9]+/g, '-');
 };
 
-const buildHeaders = (): HeadersInit => {
-  const { token, activeOrganizationId } = authStore.getState();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-  if (token && token !== 'null' && token !== 'undefined') {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  if (activeOrganizationId) {
-    headers['X-Organization-Id'] = activeOrganizationId;
-  }
-
-  return headers;
-};
-
 const clonePlainObject = <T = Record<string, any>>(value: any): T | undefined => {
   if (!value || typeof value !== 'object') {
     return undefined;
@@ -171,8 +156,8 @@ const normalizeConnectorPayload = (raw: any): ConnectorDefinitionMap => {
   throw new Error('Unsupported connector definition payload format');
 };
 
-const fetchFromMetadataEndpoint = async (headers: HeadersInit): Promise<ConnectorDefinitionMap> => {
-  const response = await fetch('/api/metadata/v1/connectors', { headers });
+const fetchFromMetadataEndpoint = async (): Promise<ConnectorDefinitionMap> => {
+  const response = await authStore.getState().authFetch('/api/metadata/v1/connectors');
   if (!response.ok) {
     throw new Error(`Failed to fetch connector metadata (${response.status})`);
   }
@@ -186,8 +171,8 @@ const fetchFromMetadataEndpoint = async (headers: HeadersInit): Promise<Connecto
   return normalizeConnectorPayload(connectors);
 };
 
-const fetchFromRegistryCatalog = async (headers: HeadersInit): Promise<ConnectorDefinitionMap> => {
-  const response = await fetch('/api/registry/catalog?implemented=true', { headers });
+const fetchFromRegistryCatalog = async (): Promise<ConnectorDefinitionMap> => {
+  const response = await authStore.getState().authFetch('/api/registry/catalog?implemented=true');
   if (!response.ok) {
     throw new Error(`Failed to fetch registry catalog (${response.status})`);
   }
@@ -212,17 +197,15 @@ export const getConnectorDefinitions = async (forceRefresh = false): Promise<Con
     return inFlightRequest;
   }
 
-  const headers = buildHeaders();
-
   inFlightRequest = (async () => {
     try {
-      const definitions = await fetchFromMetadataEndpoint(headers);
+      const definitions = await fetchFromMetadataEndpoint();
       cachedDefinitions = definitions;
       cacheExpiresAt = Date.now() + CACHE_DURATION_MS;
       return definitions;
     } catch (error) {
       console.warn('[ConnectorDefinitionsService] Falling back to registry catalog:', error);
-      const definitions = await fetchFromRegistryCatalog(headers);
+      const definitions = await fetchFromRegistryCatalog();
       cachedDefinitions = definitions;
       cacheExpiresAt = Date.now() + CACHE_DURATION_MS;
       return definitions;

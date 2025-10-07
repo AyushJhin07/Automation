@@ -55,9 +55,25 @@ type AuthState = StoredAuthState & {
 
 const STORAGE_KEY = 'automation.auth.v1';
 
+const sanitizeToken = (token?: string): string | undefined => {
+  if (typeof token !== 'string') {
+    return token ?? undefined;
+  }
+  const normalized = token.trim();
+  if (normalized === '' || normalized === 'undefined' || normalized === 'null') {
+    return undefined;
+  }
+  return normalized;
+};
+
+const sanitizeStoredAuthState = (state: StoredAuthState): StoredAuthState => ({
+  ...state,
+  token: sanitizeToken(state.token),
+});
+
 const persistState = (state: StoredAuthState) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeStoredAuthState(state)));
   } catch (error) {
     console.warn('Failed to persist auth state', error);
   }
@@ -69,8 +85,8 @@ const restoreState = (): StoredAuthState => {
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as StoredAuthState;
+    if (raw == null || raw === '') return {};
+    return sanitizeStoredAuthState(JSON.parse(raw) as StoredAuthState);
   } catch (error) {
     console.warn('Failed to restore auth state', error);
     return {};
@@ -153,7 +169,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   logout: async (silent = false) => {
-    const token = get().token;
+    const token = sanitizeToken(get().token);
     try {
       if (token) {
         await fetch('/api/auth/logout', {
@@ -183,7 +199,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   authFetch: async (input, init) => {
-    const token = get().token;
+    const token = sanitizeToken(get().token);
     const organizationId = get().activeOrganizationId;
     const headers = new Headers(init?.headers);
     if (!headers.has('Content-Type') && init?.body && !(init.body instanceof FormData)) {
