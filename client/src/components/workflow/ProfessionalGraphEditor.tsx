@@ -107,6 +107,8 @@ import { useAuthStore } from '@/store/authStore';
 import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
+import { useQueueHealth } from '@/hooks/useQueueHealth';
+import { collectNodeConfigurationErrors } from './nodeConfigurationValidation';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -155,6 +157,14 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
   running: 'bg-amber-300 animate-pulse shadow-[0_0_10px_rgba(251,191,36,0.7)]',
   success: 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]',
   error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
+};
+
+type WorkflowValidationState = {
+  status: 'idle' | 'validating' | 'valid' | 'invalid';
+  errors: ValidationError[];
+  blockingErrors: ValidationError[];
+  message?: string;
+  error?: string;
 };
 
 
@@ -1408,6 +1418,13 @@ const GraphEditorContent = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isDryRunInProgress, setIsDryRunInProgress] = useState(false);
+  const {
+    health: queueHealth,
+    status: queueStatus,
+    isLoading: isQueueHealthLoading,
+    error: queueHealthError,
+  } = useQueueHealth({ intervalMs: 30000 });
+  const queueReady = queueStatus === 'pass';
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -1428,6 +1445,18 @@ const GraphEditorContent = () => {
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
+  const queueGuidance = 'Start worker & scheduler processes to run workflows.';
+  const queueStatusMessage = useMemo(() => {
+    if (queueReady) {
+      return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
+    }
+    const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
+    const suffix = detail.endsWith('.') ? '' : '.';
+    if (detail.includes(queueGuidance)) {
+      return detail;
+    }
+    return `${detail}${suffix} ${queueGuidance}`.trim();
+  }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
   const [catalog, setCatalog] = useState<any | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [refreshConnectorsFlag, setRefreshConnectorsFlag] = useState(false);
@@ -1450,6 +1479,20 @@ const GraphEditorContent = () => {
   });
   const [promotionError, setPromotionError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
+    status: 'idle',
+    errors: [],
+    blockingErrors: [],
+    message: undefined,
+    error: undefined,
+  });
+  const validationSignatureRef = useRef<string>('');
+  const createValidationSignature = useCallback((errors: ValidationError[]): string => {
+    return errors
+      .map((error) => `${error.nodeId ?? 'global'}|${error.path}|${error.message}|${error.severity}`)
+      .sort()
+      .join(';');
+  }, []);
 
   const updateNodeValidation = useCallback(
     (errors: ValidationError[], options: { focus?: boolean } = {}) => {
@@ -1610,6 +1653,16 @@ const GraphEditorContent = () => {
     const hasInlineCredentials = Boolean(data.credentials || params.credentials);
     return !connectionId && !hasInlineCredentials;
   }, []);
+
+  const nodeConfigurationErrors = useMemo(
+    () => collectNodeConfigurationErrors(nodes as any[], { nodeRequiresConnection }),
+    [nodes, nodeRequiresConnection]
+  );
+
+  const nodeBlockingErrors = useMemo(
+    () => nodeConfigurationErrors.filter((error) => isErrorSeverity(error.severity)),
+    [nodeConfigurationErrors]
+  );
 
   const allowedApps = useMemo(() => {
     const set = new Set<string>(supportedApps);
@@ -1837,6 +1890,179 @@ const GraphEditorContent = () => {
     });
   }, [nodes, edges, spec]);
 
+  const combinedValidationErrors = useMemo(() => {
+    const seen = new Set<string>();
+    const combined: ValidationError[] = [];
+    [...nodeConfigurationErrors, ...workflowValidation.errors].forEach((error) => {
+      const key = `${error.nodeId ?? 'global'}|${error.path}|${error.message}|${error.severity}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(error);
+      }
+    });
+    return combined;
+  }, [nodeConfigurationErrors, workflowValidation.errors]);
+
+  useEffect(() => {
+    if (nodes.length === 0) {
+      setWorkflowValidation({
+        status: 'valid',
+        errors: [],
+        blockingErrors: [],
+        message: undefined,
+        error: undefined,
+      });
+      const signature = createValidationSignature([]);
+      validationSignatureRef.current = signature;
+      updateNodeValidation([], { focus: false });
+      return;
+    }
+
+    let cancelled = false;
+    setWorkflowValidation((previous) => ({
+      ...previous,
+      status: 'validating',
+      error: undefined,
+    }));
+
+    const workflowIdentifier =
+      activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const payload = createGraphPayload(workflowIdentifier);
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const result = await validateWorkflowGraph(payload);
+          if (cancelled) {
+            return;
+          }
+          const errors = Array.isArray(result.errors)
+            ? (result.errors as ValidationError[])
+            : [];
+          const blockingErrors = errors.filter((error) =>
+            isErrorSeverity((error as any)?.severity)
+          );
+          setWorkflowValidation({
+            status: blockingErrors.length === 0 && result.valid ? 'valid' : 'invalid',
+            errors,
+            blockingErrors,
+            message: result.message,
+            error: undefined,
+          });
+        } catch (error: any) {
+          if (cancelled) {
+            return;
+          }
+          setWorkflowValidation({
+            status: 'invalid',
+            errors: [],
+            blockingErrors: [],
+            message: undefined,
+            error: error?.message ?? 'Unable to validate workflow',
+          });
+        }
+      })();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    nodes,
+    edges,
+    activeWorkflowId,
+    createGraphPayload,
+    validateWorkflowGraph,
+    updateNodeValidation,
+    createValidationSignature,
+  ]);
+
+  useEffect(() => {
+    const signature = createValidationSignature(combinedValidationErrors);
+    if (validationSignatureRef.current !== signature) {
+      validationSignatureRef.current = signature;
+      updateNodeValidation(combinedValidationErrors, { focus: false });
+    }
+  }, [combinedValidationErrors, updateNodeValidation, createValidationSignature]);
+
+  const combinedBlockingErrors = useMemo(() => {
+    const seen = new Set<string>();
+    const blocking: ValidationError[] = [];
+    [...nodeBlockingErrors, ...workflowValidation.blockingErrors].forEach((error) => {
+      const key = `${error.nodeId ?? 'global'}|${error.path}|${error.message}|${error.severity}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        blocking.push(error);
+      }
+    });
+    return blocking;
+  }, [nodeBlockingErrors, workflowValidation.blockingErrors]);
+
+  const runDisableReason = useMemo(() => {
+    if (!queueReady) {
+      return queueStatusMessage;
+    }
+    if (nodes.length === 0) {
+      return 'Add at least one node before running.';
+    }
+    if (combinedBlockingErrors.length > 0) {
+      return combinedBlockingErrors[0]?.message;
+    }
+    if (workflowValidation.status === 'validating' || workflowValidation.status === 'idle') {
+      return 'Validating workflow…';
+    }
+    if (workflowValidation.status === 'invalid') {
+      return (
+        workflowValidation.message ||
+        workflowValidation.error ||
+        'Resolve validation issues before running.'
+      );
+    }
+    return undefined;
+  }, [
+    queueReady,
+    queueStatusMessage,
+    nodes.length,
+    combinedBlockingErrors,
+    workflowValidation.status,
+    workflowValidation.message,
+    workflowValidation.error,
+  ]);
+
+  const runDisabled =
+    isRunning ||
+    isDryRunInProgress ||
+    nodes.length === 0 ||
+    !queueReady ||
+    combinedBlockingErrors.length > 0 ||
+    workflowValidation.status !== 'valid';
+
+  const runButtonInner = isRunning ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+      Enqueuing…
+    </>
+  ) : (
+    <>
+      <Play className="w-4 h-4 mr-2" />
+      Run Workflow
+    </>
+  );
+
+  const queueBadgeLabel = queueReady
+    ? 'Queue ready'
+    : isQueueHealthLoading
+      ? 'Checking queue…'
+      : 'Queue offline';
+  const queueBadgeTone = queueReady
+    ? 'bg-emerald-600 text-white'
+    : isQueueHealthLoading
+      ? 'bg-amber-500 text-white'
+      : 'bg-red-600 text-white';
+  const queueBadgePulse = !queueReady && !isQueueHealthLoading;
+  const queueBadgeTooltip = queueStatusMessage;
+
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
     const candidates: Array<any> = [];
@@ -1906,6 +2132,18 @@ const GraphEditorContent = () => {
       return null;
     }
 
+    const firstNonConnectionError = nodeBlockingErrors.find(
+      (error) => !error.path.includes('/metadata/connection')
+    );
+    if (firstNonConnectionError) {
+      const message =
+        firstNonConnectionError.message || 'Resolve configuration issues before running.';
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      updateNodeValidation(nodeConfigurationErrors, { focus: true });
+      return null;
+    }
+
     const workflowIdentifier = determineWorkflowIdentifier();
     const payload = createGraphPayload(workflowIdentifier);
 
@@ -1936,6 +2174,8 @@ const GraphEditorContent = () => {
     nodes,
     ensureSupportedNodes,
     nodeRequiresConnection,
+    nodeBlockingErrors,
+    nodeConfigurationErrors,
     determineWorkflowIdentifier,
     createGraphPayload,
     validateWorkflowGraph,
@@ -2275,6 +2515,12 @@ const GraphEditorContent = () => {
   }, [setNodes]);
   
   const onRunWorkflow = useCallback(async () => {
+    if (!queueReady) {
+      const message = queueStatusMessage;
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      return;
+    }
     const prepared = await prepareWorkflowForExecution();
     if (!prepared) {
       return;
@@ -2358,6 +2604,8 @@ const GraphEditorContent = () => {
       }, 1200);
     }
   }, [
+    queueReady,
+    queueStatusMessage,
     prepareWorkflowForExecution,
     onSaveWorkflow,
     setRunBanner,
@@ -2778,23 +3026,51 @@ const GraphEditorContent = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button
-                    onClick={onRunWorkflow}
-                    disabled={isRunning || isDryRunInProgress || nodes.length === 0}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {isRunning ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Enqueuing…
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        Run Workflow
-                      </>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Badge
+                          className={clsx(
+                            'px-2 py-1 text-xs uppercase tracking-wide border',
+                            queueBadgeTone,
+                            queueBadgePulse && 'animate-pulse'
+                          )}
+                        >
+                          {queueBadgeLabel}
+                        </Badge>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>{queueBadgeTooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {runDisableReason ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            onClick={onRunWorkflow}
+                            disabled={runDisabled}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            {runButtonInner}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>{runDisableReason}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      onClick={onRunWorkflow}
+                      disabled={runDisabled}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {runButtonInner}
+                    </Button>
+                  )}
 
                   <Button
                     variant="outline"

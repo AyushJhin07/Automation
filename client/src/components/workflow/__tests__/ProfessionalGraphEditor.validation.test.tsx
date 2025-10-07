@@ -44,6 +44,14 @@ vi.mock("../SmartParametersPanel", () => ({
   syncNodeParameters: (data: any, params: any) => ({ ...(data ?? {}), parameters: params, params }),
 }));
 
+const refreshQueueHealthMock = vi.fn();
+let queueHealthReturn: any;
+const useQueueHealthMock = vi.fn(() => queueHealthReturn);
+
+vi.mock('@/hooks/useQueueHealth', () => ({
+  useQueueHealth: (...args: any[]) => useQueueHealthMock(...args),
+}));
+
 const loadEditor = () => import("../ProfessionalGraphEditor");
 
 const jsonResponse = (body: any, status = 200) =>
@@ -131,6 +139,20 @@ beforeEach(() => {
     unobserve() {}
     disconnect() {}
   };
+  queueHealthReturn = {
+    health: {
+      status: 'pass',
+      durable: true,
+      message: 'Redis connection healthy',
+      latencyMs: 5,
+      checkedAt: new Date().toISOString(),
+    },
+    status: 'pass',
+    isLoading: false,
+    error: null,
+    refresh: refreshQueueHealthMock,
+  };
+  useQueueHealthMock.mockReturnValue(queueHealthReturn);
 });
 
 afterEach(() => {
@@ -139,6 +161,8 @@ afterEach(() => {
   toastSuccess.mockReset();
   toastError.mockReset();
   toastWarning.mockReset();
+  useQueueHealthMock.mockReset();
+  refreshQueueHealthMock.mockReset();
 });
 
 const extractUrl = (input: any): string => {
@@ -321,5 +345,90 @@ describe("ProfessionalGraphEditor validation gating", () => {
 
     expect(fetchCallsForPath("/execute").length).toBeGreaterThan(0);
     expect(screen.queryByText("Needs attention")).toBeNull();
+  });
+
+  it('disables the run button when queue health fails', async () => {
+    queueHealthReturn = {
+      health: {
+        status: 'fail',
+        durable: true,
+        message: 'Redis ping failed',
+        latencyMs: 12,
+        checkedAt: new Date().toISOString(),
+      },
+      status: 'fail',
+      isLoading: false,
+      error: null,
+      refresh: refreshQueueHealthMock,
+    };
+    useQueueHealthMock.mockReturnValue(queueHealthReturn);
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    await waitFor(() => {
+      expect(authCallsForPath('/api/workflows/validate').length).toBeGreaterThan(0);
+    });
+
+    const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+  });
+
+  it('disables the run button when node configuration metadata is missing', async () => {
+    const raw = localStorage.getItem('draftWorkflow');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.nodes?.[1]) {
+        delete parsed.nodes[1].data.function;
+        delete parsed.nodes[1].data.operation;
+      }
+      localStorage.setItem('draftWorkflow', JSON.stringify(parsed));
+    }
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    await waitFor(() => {
+      expect(authCallsForPath('/api/workflows/validate').length).toBeGreaterThan(0);
+    });
+
+    const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
   });
 });
