@@ -202,51 +202,25 @@ router.post(
   }
 });
 
-const enforceMetadataPermission = requirePermission('integration:metadata:read');
+export const metadataCatalogRouter = Router();
 
-const listConnectorMetadata = async (
-  req: any,
-  res: any,
-  publicCatalog: boolean,
-) => {
+metadataCatalogRouter.get('/metadata/v1/connectors', optionalAuth, async (req, res) => {
   try {
     const registry = ConnectorRegistry.getInstance();
     const connectors = await registry.listConnectors({
       includeExperimental: true,
       includeHidden: false,
-      organizationId: publicCatalog ? undefined : req?.organizationId,
     });
 
     const payload = connectors.map((entry: any) =>
-      serializeConnector(entry, { publicCatalog })
+      serializeConnector(entry, { publicCatalog: true })
     );
-    return res.json({ success: true, data: { connectors: payload } });
+
+    return res.json({ connectors: payload });
   } catch (error) {
-    console.error('Failed to list connector metadata:', error);
-    return res.status(500).json({ success: false, error: getErrorMessage(error) });
+    console.error('Failed to list public connector metadata:', error);
+    return res.status(500).json({ error: getErrorMessage(error) });
   }
-};
-
-router.get('/v1/connectors', optionalAuth, (req, res, next) => {
-  const publicCatalog = !req.user;
-
-  const execute = () =>
-    listConnectorMetadata(req, res, publicCatalog).catch((error: unknown) => {
-      console.error('Failed to process connector metadata request:', error);
-      next(error);
-    });
-
-  if (!publicCatalog) {
-    enforceMetadataPermission(req, res, (err?: unknown) => {
-      if (err) {
-        return next(err);
-      }
-      execute();
-    });
-    return;
-  }
-
-  return execute();
 });
 
 export default router;
