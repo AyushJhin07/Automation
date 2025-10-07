@@ -2,6 +2,7 @@
  * ChatGPT Fix 1: Workflow Read Routes for Graph Editor Handoff
  */
 
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
 import { productionGraphCompiler } from '../core/ProductionGraphCompiler.js';
@@ -16,6 +17,11 @@ import {
 } from '../utils/organizationContext.js';
 
 export const workflowReadRouter = Router();
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && UUID_REGEX.test(value);
 
 
 
@@ -195,16 +201,34 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     applyResolvedOrganizationToRequest(req as any, organizationContext);
     organizationId = organizationContext.organizationId;
 
-    console.log(`▶️ Received execution request for workflow ${id}`);
+    let workflowId = id;
+    const requestedWorkflowId = id;
+
+    console.log(`▶️ Received execution request for workflow ${requestedWorkflowId}`);
 
     const providedGraph = req.body?.graph;
     let graphSource: any = null;
 
     if (providedGraph) {
       const sanitizedProvided = sanitizeGraphForExecution(providedGraph);
-      sanitizedProvided.id = sanitizedProvided.id || id;
+      const sanitizedGraphId = typeof sanitizedProvided?.id === 'string' ? sanitizedProvided.id : null;
+
+      if (!isUuid(workflowId)) {
+        if (isUuid(sanitizedGraphId)) {
+          workflowId = sanitizedGraphId;
+        } else {
+          workflowId = randomUUID();
+        }
+      }
+
+      if (!isUuid(workflowId)) {
+        workflowId = randomUUID();
+      }
+
+      sanitizedProvided.id = workflowId;
+
       await WorkflowRepository.saveWorkflowGraph({
-        id,
+        id: workflowId,
         userId: (req as any)?.user?.id,
         organizationId,
         name: sanitizedProvided?.name ?? sanitizedProvided?.graph?.name,
@@ -213,14 +237,24 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
         metadata: sanitizedProvided?.metadata ?? null,
       });
       graphSource = sanitizedProvided;
-      console.log(`💾 Stored provided graph for workflow ${id} before execution preview`);
+
+      if (workflowId !== requestedWorkflowId) {
+        console.log(`💾 Assigned workflow id ${workflowId} for request ${requestedWorkflowId} before execution preview`);
+      } else {
+        console.log(`💾 Stored provided graph for workflow ${workflowId} before execution preview`);
+      }
     } else {
-      const stored = await WorkflowRepository.getWorkflowById(id, organizationId);
+      if (!isUuid(workflowId)) {
+        return res.status(400).json({ success: false, error: `Workflow ID is invalid: ${workflowId}` });
+      }
+
+      const stored = await WorkflowRepository.getWorkflowById(workflowId, organizationId);
       if (!stored) {
-        return res.status(404).json({ success: false, error: `Workflow not found: ${id}` });
+        return res.status(404).json({ success: false, error: `Workflow not found: ${workflowId}` });
       }
 
       graphSource = sanitizeGraphForExecution((stored as any).graph ?? stored);
+      graphSource.id = graphSource.id || workflowId;
     }
 
     if (!graphSource || !Array.isArray(graphSource.nodes) || graphSource.nodes.length === 0) {
@@ -230,7 +264,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     const requestOptions = (req.body?.options && typeof req.body.options === 'object') ? req.body.options : {};
     executionStart = Date.now();
     const executionRecord = await WorkflowRepository.createWorkflowExecution({
-      workflowId: id,
+      workflowId,
       userId: (req as any)?.user?.id,
       organizationId,
       status: 'started',
@@ -262,6 +296,8 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       }
     }
 
+    res.setHeader('X-Resolved-Workflow-Id', workflowId);
+
     const compilation = productionGraphCompiler.compile(graphSource, {
       includeLogging: true,
       includeErrorHandling: true,
@@ -269,7 +305,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     });
 
     if (!compilation.success) {
-      console.warn(`⚠️ Compilation failed for workflow ${id}:`, compilation.error);
+      console.warn(`⚠️ Compilation failed for workflow ${workflowId}:`, compilation.error);
       executionFailed = true;
       if (executionRecordId) {
         await WorkflowRepository.updateWorkflowExecution(executionRecordId, {
@@ -293,8 +329,8 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     let deploymentPreview = { success: true, logs: [] as string[], error: undefined as string | undefined };
     try {
       const previewResult = await productionDeployer.deploy(compilation.files, {
-        projectName: graphSource.name || id,
-        description: `Dry run preview for workflow ${id}`,
+        projectName: graphSource.name || workflowId,
+        description: `Dry run preview for workflow ${workflowId}`,
         dryRun: true
       });
 
@@ -330,9 +366,9 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     const order = computeExecutionOrder(nodes, edges);
     const results: Record<string, any> = {};
     const nodeOutputs: Record<string, any> = {};
-    const executionId = `${id}-${Date.now()}`;
+    const executionId = `${workflowId}-${Date.now()}`;
     const runtimeContext = {
-      workflowId: id,
+      workflowId,
       executionId,
       userId: (req as any)?.user?.id,
       organizationId: (req as any)?.organizationId,
@@ -345,8 +381,14 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     let encounteredError = !deploymentPreview.success;
 
     sendEvent({
+      type: 'workflow-id',
+      workflowId,
+      requestedWorkflowId,
+    });
+
+    sendEvent({
       type: 'start',
-      workflowId: id,
+      workflowId,
       executionId,
       nodeCount: nodes.length,
       requiredScopes: compilation.requiredScopes,
@@ -357,7 +399,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     if (deploymentPreview.logs.length > 0) {
       sendEvent({
         type: 'deployment',
-        workflowId: id,
+        workflowId,
         executionId,
         success: deploymentPreview.success,
         logs: deploymentPreview.logs.slice(0, 25),
@@ -375,10 +417,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
       const label = node.label || node.data?.label || nodeId;
 
-      console.log(`⏱️ [${id}] Running node ${nodeId} (${label})`);
+      console.log(`⏱️ [${workflowId}] Running node ${nodeId} (${label})`);
       sendEvent({
         type: 'node-start',
-        workflowId: id,
+        workflowId,
         nodeId,
         label
       });
@@ -409,14 +451,14 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
         sendEvent({
           type: 'node-complete',
-          workflowId: id,
+          workflowId,
           executionId,
           nodeId,
           label,
           result: eventResult
         });
 
-        console.log(`✅ [${id}] Completed node ${nodeId}`);
+        console.log(`✅ [${workflowId}] Completed node ${nodeId}`);
       } catch (error: any) {
         encounteredError = true;
 
@@ -434,10 +476,10 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
           error: errorPayload,
         };
 
-        console.error(`❌ [${id}] Node ${nodeId} failed:`, message);
+        console.error(`❌ [${workflowId}] Node ${nodeId} failed:`, message);
         sendEvent({
           type: 'node-error',
-          workflowId: id,
+          workflowId,
           executionId,
           nodeId,
           label,
@@ -451,8 +493,8 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
     }
 
     const summaryMessage = encounteredError
-      ? `Workflow ${id} completed with errors`
-      : `Workflow ${id} executed successfully`;
+      ? `Workflow ${workflowId} completed with errors`
+      : `Workflow ${workflowId} executed successfully`;
 
     const finalStatus = encounteredError ? 'failed' : 'completed';
     const completionTime = new Date();
@@ -476,7 +518,7 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 
     sendEvent({
       type: 'summary',
-      workflowId: id,
+      workflowId,
       executionId,
       success: !encounteredError,
       message: summaryMessage,
