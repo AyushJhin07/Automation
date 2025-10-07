@@ -139,6 +139,62 @@ try {
     'workflow validation should run with an active organization context',
   );
 
+  const dryRunValidateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      graph: {
+        id: 'action-only-preview',
+        name: 'Action Only Preview',
+        nodes: [
+          {
+            id: 'action-1',
+            type: 'action.gmail.send',
+            params: {
+              recipient: 'preview@example.com',
+            },
+            data: {
+              label: 'Send Gmail',
+              app: 'gmail',
+              nodeType: 'action.gmail.send',
+              type: 'action.gmail.send',
+              parameters: {
+                recipient: 'preview@example.com',
+              },
+            },
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+        metadata: {
+          runPreview: true,
+          mode: 'preview',
+        },
+      },
+    }),
+  });
+
+  assert.equal(
+    dryRunValidateResponse.status,
+    200,
+    'action-only dry run validation should respond with 200',
+  );
+  const dryRunValidateBody = await dryRunValidateResponse.json();
+  assert.equal(dryRunValidateBody.success, true, 'dry-run validation should return success payload');
+  const dryRunErrors = Array.isArray(dryRunValidateBody?.validation?.errors)
+    ? dryRunValidateBody.validation.errors
+    : [];
+  const triggerErrors = dryRunErrors.filter((error: any) =>
+    typeof error?.message === 'string' && error.message.toLowerCase().includes('trigger'),
+  );
+  assert.equal(
+    triggerErrors.length,
+    0,
+    'dry-run validation should not report missing trigger errors for action-only drafts',
+  );
+
   const inactiveValidateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
     method: 'POST',
     headers: {

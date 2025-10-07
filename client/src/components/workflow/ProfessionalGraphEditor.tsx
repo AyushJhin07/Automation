@@ -3357,24 +3357,36 @@ const GraphEditorContent = () => {
                     </Button>
                   )}
 
-                  <Button
-                    variant="outline"
-                    onClick={onDryRunWorkflow}
-                    disabled={isDryRunInProgress || isRunning || nodes.length === 0}
-                    className="bg-amber-500/10 text-amber-200 border-amber-400 hover:bg-amber-500/20 hover:text-white"
-                  >
-                    {isDryRunInProgress ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Validating…
-                      </>
-                    ) : (
-                      <>
-                        <Activity className="w-4 h-4 mr-2" />
-                        Validate / Dry Run
-                      </>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button
+                          variant="outline"
+                          onClick={onDryRunWorkflow}
+                          disabled={isDryRunInProgress || isRunning || nodes.length === 0}
+                          className="bg-amber-500/10 text-amber-200 border-amber-400 hover:bg-amber-500/20 hover:text-white"
+                        >
+                          {isDryRunInProgress ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                              Validating…
+                            </>
+                          ) : (
+                            <>
+                              <Activity className="w-4 h-4 mr-2" />
+                              Validate / Dry Run
+                            </>
+                          )}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>
+                        Dry runs can validate action-only drafts, but promoting to production still
+                        requires at least one trigger node.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
 
                   <Button
                     variant="outline"
