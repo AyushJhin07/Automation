@@ -119,6 +119,55 @@ const devUser = buildDevUser();
 
 const shouldUseDevFallback = () => process.env.NODE_ENV === 'development' && Boolean(devUser);
 
+const applyDevOrganizationSafetyNet = (req: Request) => {
+  if (process.env.NODE_ENV === 'production' || !req.user || !devUser) {
+    return;
+  }
+
+  const fallbackRole = devUser.organizationRole || devUser.role;
+
+  const resolvedOrganizationId = req.organizationId
+    ?? req.user.organizationId
+    ?? devUser.organizationId;
+  const resolvedOrganizationRole = req.organizationRole
+    ?? req.user.organizationRole
+    ?? fallbackRole;
+  const resolvedOrganizationPlan = req.organizationPlan
+    ?? (req.user.organizationPlan as OrganizationPlan | undefined)
+    ?? (devUser.organizationPlan as OrganizationPlan | undefined);
+  const resolvedOrganizationLimits = req.organizationLimits
+    ?? req.user.organizationLimits
+    ?? devUser.organizationLimits;
+  const resolvedOrganizationUsage = req.organizationUsage
+    ?? req.user.organizationUsage
+    ?? devUser.organizationUsage;
+
+  req.organizationId = resolvedOrganizationId;
+  req.organizationRole = resolvedOrganizationRole;
+  req.organizationPlan = resolvedOrganizationPlan;
+  req.organizationStatus = 'active';
+  req.organizationLimits = resolvedOrganizationLimits;
+  req.organizationUsage = resolvedOrganizationUsage;
+
+  req.user = {
+    ...req.user,
+    organizationId: req.user.organizationId ?? resolvedOrganizationId,
+    organizationRole: req.user.organizationRole ?? resolvedOrganizationRole,
+    organizationPlan: (req.user.organizationPlan
+      ?? resolvedOrganizationPlan) as OrganizationPlan,
+    organizationStatus: 'active',
+    organizationLimits: req.user.organizationLimits ?? resolvedOrganizationLimits,
+    organizationUsage: req.user.organizationUsage ?? resolvedOrganizationUsage,
+  };
+
+  if (!req.permissions || req.permissions.length === 0) {
+    const permissionRole = resolvedOrganizationRole || req.user.organizationRole || req.user.role;
+    const permissions = getPermissionsForRole(permissionRole);
+    req.permissions = permissions;
+    req.user.permissions = permissions;
+  }
+};
+
 /**
  * Authentication middleware - verifies JWT token
  */
@@ -146,6 +195,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         req.organizationUsage = devUser.organizationUsage;
         req.permissions = permissions;
         setRequestUser(devUser.id);
+        applyDevOrganizationSafetyNet(req);
         return next();
       }
       return res.status(401).json({
@@ -175,6 +225,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     req.organizationUsage = user.organizationUsage;
     req.permissions = permissions;
     setRequestUser(user.id);
+    applyDevOrganizationSafetyNet(req);
     next();
 
   } catch (error) {
@@ -214,7 +265,9 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         req.permissions = permissions;
         setRequestUser(user.id);
       }
-    } else if (shouldUseDevFallback() && devUser) {
+    }
+
+    if (!req.user && shouldUseDevFallback() && devUser) {
       const permissions = devUser.permissions
         ?? getPermissionsForRole(devUser.organizationRole || devUser.role);
       req.user = { ...devUser, permissions };
@@ -228,6 +281,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       setRequestUser(devUser.id);
     }
 
+    applyDevOrganizationSafetyNet(req);
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
@@ -242,6 +296,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.organizationUsage = devUser.organizationUsage;
       req.permissions = permissions;
       setRequestUser(devUser.id);
+      applyDevOrganizationSafetyNet(req);
       next();
     } else {
       next();

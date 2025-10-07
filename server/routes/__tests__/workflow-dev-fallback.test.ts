@@ -35,7 +35,11 @@ let capturedSavePayload: any = null;
 
 const app = express();
 app.use(express.json());
-app.use((req, _res, next) => {
+
+let flowSaveStatus: string | null = null;
+let workflowValidateStatus: string | null = null;
+
+app.use((req, res, next) => {
   const organizationIdHeader = req.headers['x-organization-id'];
   const organizationStatusHeader = req.headers['x-organization-status'];
 
@@ -46,6 +50,17 @@ app.use((req, _res, next) => {
   if (typeof organizationStatusHeader === 'string') {
     (req as any).organizationStatus = organizationStatusHeader;
   }
+
+  res.on('finish', () => {
+    const originalUrl = req.originalUrl || '';
+    if (req.method === 'POST' && originalUrl.startsWith('/api/flows/save')) {
+      flowSaveStatus = (req as any).organizationStatus ?? null;
+    }
+
+    if (req.method === 'POST' && originalUrl.startsWith('/api/workflows/validate')) {
+      workflowValidateStatus = (req as any).organizationStatus ?? null;
+    }
+  });
 
   next();
 });
@@ -82,6 +97,7 @@ try {
   assert.equal(flowResponse.status, 200, 'flows save should succeed without auth in development');
   const flowBody = await flowResponse.json();
   assert.equal(flowBody.success, true, 'flows save should return success');
+  assert.equal(flowSaveStatus, 'active', 'flow save should run with an active organization context');
   assert.equal(
     capturedSavePayload?.organizationId,
     'dev-org',
@@ -117,6 +133,11 @@ try {
   );
   const validateBody = await validateResponse.json();
   assert.equal(validateBody.success, true, 'workflow validation should return success payload');
+  assert.equal(
+    workflowValidateStatus,
+    'active',
+    'workflow validation should run with an active organization context',
+  );
 
   const inactiveValidateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
     method: 'POST',
@@ -152,6 +173,11 @@ try {
     inactiveValidateBody.success,
     true,
     'workflow validation should return success payload when forcing active fallback',
+  );
+  assert.equal(
+    workflowValidateStatus,
+    'active',
+    'workflow validation should override inactive organization status with active fallback',
   );
 
   console.log(
