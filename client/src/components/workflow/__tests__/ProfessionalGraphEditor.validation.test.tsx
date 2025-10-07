@@ -73,6 +73,15 @@ const streamResponse = (events: any[]) => {
   } as Response;
 };
 
+const buildQueueHealth = (overrides: Partial<any> = {}) => ({
+  status: 'pass',
+  durable: true,
+  message: 'Queue ready',
+  latencyMs: 1,
+  checkedAt: new Date().toISOString(),
+  ...overrides,
+});
+
 const seedDraftWorkflow = () => {
   const draftWorkflow = {
     id: "draft-1",
@@ -114,6 +123,9 @@ let fetchMock: ReturnType<typeof vi.fn>;
 const clickRunWorkflow = async () => {
   const buttons = await screen.findAllByRole("button", { name: /run workflow/i });
   const runButton = buttons[0];
+  await waitFor(() => {
+    expect(runButton).not.toBeDisabled();
+  });
   fireEvent.click(runButton);
   return runButton;
 };
@@ -174,6 +186,9 @@ describe("ProfessionalGraphEditor validation gating", () => {
   it("blocks runs when required parameters are missing", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health/queue")) {
+        return Promise.resolve(jsonResponse({ success: true, data: buildQueueHealth() }));
+      }
       if (url.includes("/api/registry/catalog")) {
         return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
       }
@@ -208,8 +223,6 @@ describe("ProfessionalGraphEditor validation gating", () => {
     const { default: ProfessionalGraphEditor } = await loadEditor();
     render(<ProfessionalGraphEditor />);
 
-    await clickRunWorkflow();
-
     await waitFor(() => {
       expect(authFetchMock).toHaveBeenCalled();
     });
@@ -218,13 +231,15 @@ describe("ProfessionalGraphEditor validation gating", () => {
       expect(authCallsForPath("/api/workflows/validate").length).toBeGreaterThan(0);
     });
 
+    const runButton = await screen.findByRole("button", { name: /Run Workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+    expect(runButton).toHaveAttribute("title", expect.stringContaining("Resolve validation"));
+
     await waitFor(() => {
       expect(screen.getByText("Needs attention")).toBeInTheDocument();
-      expect(
-        screen.getByText("Resolve validation issues before running: URL is required")
-      ).toBeInTheDocument();
     });
-
     expect(screen.getByText("URL is required")).toBeInTheDocument();
     expect(screen.getByText("+1 more issue")).toBeInTheDocument();
     expectNoExecuteCall();
@@ -233,6 +248,9 @@ describe("ProfessionalGraphEditor validation gating", () => {
   it("shows a banner when cycles are detected", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health/queue")) {
+        return Promise.resolve(jsonResponse({ success: true, data: buildQueueHealth() }));
+      }
       if (url.includes("/api/registry/catalog")) {
         return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
       }
@@ -260,20 +278,15 @@ describe("ProfessionalGraphEditor validation gating", () => {
     const { default: ProfessionalGraphEditor } = await loadEditor();
     render(<ProfessionalGraphEditor />);
 
-    await clickRunWorkflow();
-
     await waitFor(() => {
       expect(authCallsForPath("/api/workflows/validate").length).toBeGreaterThan(0);
     });
 
+    const runButton = await screen.findByRole("button", { name: /Run Workflow/i });
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Resolve validation issues before running: Graph contains cycles which are not allowed"
-        )
-      ).toBeInTheDocument();
+      expect(runButton).toBeDisabled();
     });
-
+    expect(runButton).toHaveAttribute("title", expect.stringContaining("Graph contains cycles"));
     expect(screen.queryByText("Needs attention")).toBeNull();
     expectNoExecuteCall();
   });
@@ -281,6 +294,9 @@ describe("ProfessionalGraphEditor validation gating", () => {
   it("streams execution when validation passes", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health/queue")) {
+        return Promise.resolve(jsonResponse({ success: true, data: buildQueueHealth() }));
+      }
       if (url.includes("/api/registry/catalog")) {
         return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
       }
@@ -321,5 +337,98 @@ describe("ProfessionalGraphEditor validation gating", () => {
 
     expect(fetchCallsForPath("/execute").length).toBeGreaterThan(0);
     expect(screen.queryByText("Needs attention")).toBeNull();
+  });
+
+  it("disables run when queue health fails", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health/queue")) {
+        return Promise.resolve(
+          jsonResponse({ success: true, data: buildQueueHealth({ status: 'fail', message: 'Workers offline' }) })
+        );
+      }
+      if (url.includes("/api/registry/catalog")) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes("/api/workflows/validate")) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: {
+              valid: true,
+              errors: [],
+              warnings: [],
+            },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    await waitFor(() => {
+      expect(authCallsForPath("/api/workflows/validate").length).toBeGreaterThan(0);
+    });
+
+    const runButton = await screen.findByRole("button", { name: /Run Workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+    expect(runButton).toHaveAttribute("title", expect.stringContaining("Workers offline"));
+    expect(runButton).toHaveAttribute("title", expect.stringContaining("Start worker"));
+    expectNoExecuteCall();
+  });
+
+  it("disables run when nodes lack connection metadata", async () => {
+    const stored = JSON.parse(localStorage.getItem("draftWorkflow") ?? "null");
+    if (stored && stored.nodes?.[1]) {
+      delete stored.nodes[1].data.connectionId;
+      if (stored.nodes[1].data?.auth) {
+        delete stored.nodes[1].data.auth.connectionId;
+      }
+      if (stored.nodes[1].data?.parameters) {
+        delete stored.nodes[1].data.parameters.connectionId;
+      }
+      localStorage.setItem("draftWorkflow", JSON.stringify(stored));
+    }
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/health/queue")) {
+        return Promise.resolve(jsonResponse({ success: true, data: buildQueueHealth() }));
+      }
+      if (url.includes("/api/registry/catalog")) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes("/api/workflows/validate")) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: {
+              valid: true,
+              errors: [],
+              warnings: [],
+            },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const runButton = await screen.findByRole("button", { name: /Run Workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+    expect(runButton).toHaveAttribute("title", expect.stringContaining("Connect an account"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Connect an account for/)).toBeInTheDocument();
+    });
+    expectNoExecuteCall();
   });
 });

@@ -104,6 +104,7 @@ import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
 import { useAuthStore } from '@/store/authStore';
 import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
+import { useQueueHealth } from '@/hooks/useQueueHealth';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 
@@ -1447,6 +1448,16 @@ const GraphEditorContent = () => {
     notes: '',
   });
   const [promotionError, setPromotionError] = useState<string | null>(null);
+  const { queueHealth, isQueueReady, isLoading: queueHealthLoading, error: queueHealthError } = useQueueHealth();
+  const [graphValidationState, setGraphValidationState] = useState<{
+    status: 'idle' | 'checking' | 'valid' | 'invalid';
+    blockingErrors: ValidationError[];
+    message?: string;
+  }>({
+    status: 'idle',
+    blockingErrors: [],
+    message: undefined,
+  });
 
   const updateNodeValidation = useCallback(
     (errors: ValidationError[], options: { focus?: boolean } = {}) => {
@@ -1833,6 +1844,152 @@ const GraphEditorContent = () => {
       metadata,
     });
   }, [nodes, edges, spec]);
+
+  useEffect(() => {
+    if (nodes.length === 0) {
+      updateNodeValidation([], { focus: false });
+      setGraphValidationState({
+        status: 'invalid',
+        blockingErrors: [],
+        message: 'Add at least one node before running',
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setGraphValidationState((prev) => ({
+      status: 'checking',
+      blockingErrors: prev.blockingErrors,
+      message: prev.message,
+    }));
+
+    const timeoutId = window.setTimeout(() => {
+      const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? 'local-preview';
+      const payload = createGraphPayload(workflowIdentifier);
+
+      void validateWorkflowGraph(payload)
+        .then((result) => {
+          if (cancelled) {
+            return;
+          }
+
+          const connectionErrors: ValidationError[] = nodes
+            .filter((node) => nodeRequiresConnection(node))
+            .map((node) => ({
+              nodeId: String(node.id),
+              path: `/nodes/${node.id}/auth/connectionId`,
+              message: `Connect an account for "${node.data?.label || node.id}" before running`,
+              severity: 'error',
+            }));
+
+          const combinedErrors = [...result.errors, ...connectionErrors];
+          updateNodeValidation(combinedErrors, { focus: false });
+
+          const blockingErrors = combinedErrors.filter((error) => isErrorSeverity((error as any)?.severity));
+          setGraphValidationState({
+            status: blockingErrors.length === 0 && result.valid ? 'valid' : 'invalid',
+            blockingErrors,
+            message:
+              blockingErrors[0]?.message ??
+              result.message ??
+              (connectionErrors[0]?.message ?? undefined),
+          });
+        })
+        .catch((error: any) => {
+          if (cancelled) {
+            return;
+          }
+          setGraphValidationState({
+            status: 'invalid',
+            blockingErrors: [],
+            message: error?.message || 'Unable to validate workflow',
+          });
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    nodes,
+    edges,
+    activeWorkflowId,
+    createGraphPayload,
+    validateWorkflowGraph,
+    updateNodeValidation,
+    nodeRequiresConnection,
+  ]);
+
+  const missingConnectionNode = useMemo(() => {
+    return nodes.find((node) => nodeRequiresConnection(node));
+  }, [nodes, nodeRequiresConnection]);
+
+  const defaultQueueTooltip = 'Start worker & scheduler processes to run workflows';
+  const queueStatusMessage = useMemo(() => {
+    if (isQueueReady) {
+      return null;
+    }
+
+    const baseMessage = queueHealth?.message || queueHealthError || null;
+    if (queueHealthLoading && !baseMessage) {
+      return 'Checking worker readiness…';
+    }
+
+    if (baseMessage) {
+      return baseMessage.toLowerCase().includes('start worker')
+        ? baseMessage
+        : `${baseMessage} Start worker & scheduler processes to run workflows.`;
+    }
+
+    return defaultQueueTooltip;
+  }, [
+    isQueueReady,
+    queueHealth?.message,
+    queueHealth?.status,
+    queueHealth?.durable,
+    queueHealthError,
+    queueHealthLoading,
+  ]);
+
+  const runDisabledReason = useMemo(() => {
+    if (isRunning) {
+      return 'Workflow run in progress';
+    }
+    if (!nodes.length) {
+      return 'Add at least one node before running';
+    }
+    if (!isQueueReady) {
+      return queueStatusMessage || defaultQueueTooltip;
+    }
+    if (graphValidationState.status === 'checking') {
+      return 'Validating workflow…';
+    }
+    if (graphValidationState.blockingErrors.length > 0) {
+      return (
+        graphValidationState.blockingErrors[0]?.message || 'Resolve validation issues before running'
+      );
+    }
+    if (graphValidationState.status === 'invalid' && graphValidationState.message) {
+      return graphValidationState.message;
+    }
+    if (missingConnectionNode) {
+      const label = missingConnectionNode.data?.label || missingConnectionNode.id;
+      return `Connect an account for "${label}" before running`;
+    }
+    return null;
+  }, [
+    isRunning,
+    nodes.length,
+    isQueueReady,
+    queueStatusMessage,
+    graphValidationState.blockingErrors,
+    graphValidationState.status,
+    graphValidationState.message,
+    missingConnectionNode,
+  ]);
+
+  const isRunDisabled = Boolean(runDisabledReason);
 
   // P1-8: Enhanced Graph Editor autoload robustness (scanner-safe version)
   useEffect(() => {
@@ -2621,24 +2778,38 @@ const GraphEditorContent = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button
-                    onClick={onRunWorkflow}
-                    disabled={isRunning || nodes.length === 0}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {isRunning ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Running...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        Run Workflow
-                      </>
-                    )}
-                  </Button>
-                  
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            onClick={onRunWorkflow}
+                            disabled={isRunDisabled}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            title={runDisabledReason ?? undefined}
+                          >
+                            {isRunning ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                Running...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Run Workflow
+                              </>
+                            )}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {isRunDisabled && runDisabledReason ? (
+                        <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                          {runDisabledReason}
+                        </TooltipContent>
+                      ) : null}
+                    </Tooltip>
+                  </TooltipProvider>
+
                   <Button
                     variant="outline"
                     onClick={() => {

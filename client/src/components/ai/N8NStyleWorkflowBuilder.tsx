@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Brain,
   Sparkles,
@@ -52,6 +53,9 @@ import { toast } from 'sonner';
 import { serializeGraphPayload } from '@/components/workflow/graphPayload';
 import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
 import type { FunctionDefinition } from '@/components/workflow/DynamicParameterForm';
+import { useQueueHealth } from '@/hooks/useQueueHealth';
+import type { NodeGraph, ValidationError } from '@shared/nodeGraphSchema';
+import clsx from 'clsx';
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -74,14 +78,30 @@ const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
     return <IconComponent className="w-6 h-6 text-white" />;
   };
 
-  const configured = Boolean(data?.function);
+  const validationErrors = Array.isArray(data?.validationErrors)
+    ? (data.validationErrors as ValidationError[])
+    : [];
+  const hasValidationErrors = validationErrors.length > 0;
+  const firstValidationMessage = validationErrors[0]?.message;
+
+  const configured = Boolean(data?.function) && !hasValidationErrors;
   const hasConnection = Boolean(data?.connectionId);
   const isAiGenerated = Boolean(data?.aiOptimized);
   const description = data?.functionDescription || data?.description;
+  const configurationLabel = hasValidationErrors
+    ? 'Needs attention'
+    : configured
+      ? 'Configured'
+      : 'Tap to configure';
 
   return (
     <div
-      className="relative bg-gray-800 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-all cursor-pointer group"
+      className={clsx(
+        'relative bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all cursor-pointer group',
+        hasValidationErrors
+          ? 'border border-red-500/70 ring-2 ring-red-500/40'
+          : 'border border-gray-600'
+      )}
       style={{ width: '200px', minHeight: '80px' }}
     >
       {/* Node Header */}
@@ -94,8 +114,8 @@ const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
           <div className="text-white font-medium text-sm">
             {data?.appName || data?.app || 'App'}
           </div>
-          <div className="text-white/80 text-xs">
-            {data?.category || (configured ? 'Configured' : 'Tap to configure')}
+          <div className={clsx('text-xs', hasValidationErrors ? 'text-amber-200' : 'text-white/80')}>
+            {data?.category || configurationLabel}
           </div>
         </div>
         <Settings className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
@@ -112,9 +132,16 @@ const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
 
         {/* Status Indicators */}
         <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-          <span className={`flex items-center gap-1 ${configured ? 'text-emerald-400' : 'text-yellow-400'}`}>
-            <div className={`w-2 h-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-yellow-500'}`} />
-            {configured ? 'Configured' : 'Needs setup'}
+          <span
+            className={clsx('flex items-center gap-1', hasValidationErrors ? 'text-amber-400' : configured ? 'text-emerald-400' : 'text-yellow-400')}
+          >
+            <div
+              className={clsx(
+                'w-2 h-2 rounded-full',
+                hasValidationErrors ? 'bg-amber-500 animate-pulse' : configured ? 'bg-emerald-500' : 'bg-yellow-500'
+              )}
+            />
+            {hasValidationErrors ? 'Needs attention' : configured ? 'Configured' : 'Needs setup'}
           </span>
           <span className={`flex items-center gap-1 ${hasConnection ? 'text-sky-400' : 'text-gray-500'}`}>
             <div className={`w-2 h-2 rounded-full ${hasConnection ? 'bg-sky-500' : 'bg-gray-500'}`} />
@@ -127,6 +154,15 @@ const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
             </span>
           )}
         </div>
+
+        {hasValidationErrors ? (
+          <div className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11px] text-amber-50">
+            <p className="font-semibold text-amber-100">Needs attention</p>
+            {firstValidationMessage ? (
+              <p className="mt-1 leading-snug text-amber-100/90">{firstValidationMessage}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* Connection Points */}
@@ -138,6 +174,38 @@ const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
 
 const nodeTypes: NodeTypes = {
   n8nNode: N8NNode,
+};
+
+const isErrorSeverity = (severity?: string): boolean => {
+  if (!severity) {
+    return true;
+  }
+  const normalized = severity.toLowerCase();
+  return normalized !== 'warn' && normalized !== 'warning';
+};
+
+const parseNodeIdFromPath = (path?: string | null): string | null => {
+  if (!path || typeof path !== 'string') {
+    return null;
+  }
+
+  const normalized = path.replace(/^[#/]+/, '').replace(/[\[\]]/g, '.');
+  const tokens = normalized.split(/[./]/).filter(Boolean);
+
+  const nodesIndex = tokens.indexOf('nodes');
+  if (nodesIndex !== -1 && tokens[nodesIndex + 1]) {
+    return tokens[nodesIndex + 1];
+  }
+
+  const fallback = tokens.find((token) => token.startsWith('node-') || token.startsWith('trigger') || token.startsWith('action'));
+  return fallback ?? null;
+};
+
+const getNodeIdFromValidationError = (error: ValidationError): string | null => {
+  if (error?.nodeId) {
+    return String(error.nodeId);
+  }
+  return parseNodeIdFromPath(error?.path);
 };
 
 const normalizeAppId = (raw?: string): string => {
@@ -191,6 +259,17 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
+  const validationWorkflowIdRef = useRef<string>(`builder-${Date.now()}`);
+  const { queueHealth, isQueueReady, isLoading: queueHealthLoading, error: queueHealthError } = useQueueHealth();
+  const [graphValidationState, setGraphValidationState] = useState<{
+    status: 'idle' | 'checking' | 'valid' | 'invalid';
+    blockingErrors: ValidationError[];
+    message?: string;
+  }>({
+    status: 'idle',
+    blockingErrors: [],
+    message: undefined,
+  });
   const dryRunStatus = useMemo(() => {
     if (!dryRunResult) return null;
     if (dryRunResult?.execution?.status) return dryRunResult.execution.status;
@@ -219,6 +298,119 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return null;
     }
   }, [lastSavedAt]);
+
+  const nodeRequiresConnection = useCallback(
+    (node: Node): boolean => {
+      if (!node) {
+        return false;
+      }
+
+      const data: any = node.data || {};
+      const category = String(data.category || node.type || '').toLowerCase();
+      if (category.includes('trigger') || category.includes('start')) {
+        return false;
+      }
+
+      const appId = String(data.app || data.appName || '').toLowerCase();
+      const builtinApps = new Set(['core', 'built_in', 'built-in', 'time', 'ai']);
+      if (builtinApps.has(appId)) {
+        return false;
+      }
+
+      const params: any = data.parameters || data.params || {};
+      const connectionId = data.connectionId || data.auth?.connectionId || params.connectionId;
+      const hasInlineCredentials = Boolean(data.credentials || params.credentials);
+      const hasFunction = Boolean(
+        data.function ||
+          data.selectedFunction ||
+          data.operation ||
+          (typeof node.type === 'string' && node.type.toLowerCase().includes('action'))
+      );
+
+      if (!hasFunction) {
+        return false;
+      }
+
+      return !connectionId && !hasInlineCredentials;
+    },
+    []
+  );
+
+  const applyValidationToNodes = useCallback(
+    (errors: ValidationError[]) => {
+      const map = new Map<string, ValidationError[]>();
+      errors.forEach((error) => {
+        if (!isErrorSeverity((error as any)?.severity)) {
+          return;
+        }
+        const nodeId = getNodeIdFromValidationError(error);
+        if (!nodeId) {
+          return;
+        }
+        if (!map.has(nodeId)) {
+          map.set(nodeId, []);
+        }
+        map.get(nodeId)!.push(error);
+      });
+
+      setNodes((current) =>
+        current.map((node) => {
+          const nodeErrors = map.get(String(node.id)) ?? [];
+          if (nodeErrors.length === 0) {
+            if (node.data?.validationErrors) {
+              const nextData = { ...(node.data || {}) };
+              delete nextData.validationErrors;
+              return { ...node, data: nextData };
+            }
+            return node;
+          }
+
+          const nextData = { ...(node.data || {}) };
+          nextData.validationErrors = nodeErrors;
+          return { ...node, data: nextData };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const validateWorkflowGraph = useCallback(
+    async (graph: NodeGraph): Promise<{ valid: boolean; errors: ValidationError[]; message?: string }> => {
+      try {
+        const body = JSON.stringify({ graph });
+        const response = token
+          ? await authFetch('/api/workflows/validate', { method: 'POST', body })
+          : await fetch('/api/workflows/validate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body,
+            });
+
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json?.success) {
+          const message = json?.error || 'Unable to validate workflow';
+          return { valid: false, errors: [], message };
+        }
+
+        const validation = json.validation ?? {};
+        const errors = Array.isArray(validation.errors) ? (validation.errors as ValidationError[]) : [];
+        const blockingErrors = errors.filter((error) => isErrorSeverity((error as any)?.severity));
+
+        return {
+          valid: validation.valid !== false && blockingErrors.length === 0,
+          errors,
+          message: validation.message,
+        };
+      } catch (error: any) {
+        return {
+          valid: false,
+          errors: [],
+          message: error?.message || 'Unable to validate workflow',
+        };
+      }
+    },
+    [authFetch, token]
+  );
 
   const buildGraphPayload = useCallback(
     (identifier: string, nameOverride?: string) => {
@@ -264,6 +456,10 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
         cleanedData.params = parameters;
         cleanedData.configured = Boolean(functionId);
 
+        if (cleanedData.validationErrors) {
+          delete cleanedData.validationErrors;
+        }
+
         delete cleanedData.aiOptimized;
         delete cleanedData.functionDescription;
         delete cleanedData.onConfigure;
@@ -290,6 +486,168 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     [nodes, edges, workflowName]
   );
 
+  useEffect(() => {
+    if (!nodes.length) {
+      applyValidationToNodes([]);
+      setGraphValidationState({
+        status: 'invalid',
+        blockingErrors: [],
+        message: 'Add at least one node before testing',
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setGraphValidationState((prev) => ({
+      status: 'checking',
+      blockingErrors: prev.blockingErrors,
+      message: prev.message,
+    }));
+
+    const timeoutId = window.setTimeout(() => {
+      const workflowIdentifier = validationWorkflowIdRef.current;
+      const payload = buildGraphPayload(workflowIdentifier);
+
+      void validateWorkflowGraph(payload)
+        .then((result) => {
+          if (cancelled) {
+            return;
+          }
+
+          const connectionErrors: ValidationError[] = nodes
+            .filter((node) => nodeRequiresConnection(node))
+            .map((node) => ({
+              nodeId: String(node.id),
+              path: `/nodes/${node.id}/auth/connectionId`,
+              message: `Connect an account for "${node.data?.label || node.id}"`,
+              severity: 'error',
+            }));
+
+          const configurationErrors: ValidationError[] = nodes
+            .filter((node) => {
+              const data: any = node.data || {};
+              const category = String(data.category || node.type || '').toLowerCase();
+              if (category.includes('trigger') || category.includes('start')) {
+                return false;
+              }
+              return !Boolean(data.function || data.selectedFunction || data.operation);
+            })
+            .map((node) => ({
+              nodeId: String(node.id),
+              path: `/nodes/${node.id}/function`,
+              message: `Select a function for "${node.data?.label || node.id}"`,
+              severity: 'error',
+            }));
+
+          const localErrors = [...connectionErrors, ...configurationErrors];
+          const combinedErrors = [...result.errors, ...localErrors];
+          applyValidationToNodes(combinedErrors);
+
+          const blockingErrors = combinedErrors.filter((error) => isErrorSeverity((error as any)?.severity));
+          setGraphValidationState({
+            status: blockingErrors.length === 0 && result.valid ? 'valid' : 'invalid',
+            blockingErrors,
+            message:
+              blockingErrors[0]?.message ??
+              result.message ??
+              (localErrors[0]?.message ?? undefined),
+          });
+        })
+        .catch((error: any) => {
+          if (cancelled) {
+            return;
+          }
+          setGraphValidationState({
+            status: 'invalid',
+            blockingErrors: [],
+            message: error?.message || 'Unable to validate workflow',
+          });
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    nodes,
+    edges,
+    buildGraphPayload,
+    validateWorkflowGraph,
+    applyValidationToNodes,
+    nodeRequiresConnection,
+  ]);
+
+  const missingConnectionNode = useMemo(() => {
+    return nodes.find((node) => nodeRequiresConnection(node));
+  }, [nodes, nodeRequiresConnection]);
+
+  const defaultQueueTooltip = 'Start worker & scheduler processes to run workflows';
+  const queueStatusMessage = useMemo(() => {
+    if (isQueueReady) {
+      return null;
+    }
+
+    const baseMessage = queueHealth?.message || queueHealthError || null;
+    if (queueHealthLoading && !baseMessage) {
+      return 'Checking worker readiness…';
+    }
+
+    if (baseMessage) {
+      return baseMessage.toLowerCase().includes('start worker')
+        ? baseMessage
+        : `${baseMessage} Start worker & scheduler processes to run workflows.`;
+    }
+
+    return defaultQueueTooltip;
+  }, [
+    isQueueReady,
+    queueHealth?.message,
+    queueHealth?.status,
+    queueHealth?.durable,
+    queueHealthError,
+    queueHealthLoading,
+  ]);
+
+  const runDisabledReason = useMemo(() => {
+    if (isDryRunning) {
+      return 'Workflow test in progress';
+    }
+    if (!nodes.length) {
+      return 'Add at least one node before testing';
+    }
+    if (!isQueueReady) {
+      return queueStatusMessage || defaultQueueTooltip;
+    }
+    if (graphValidationState.status === 'checking') {
+      return 'Validating workflow…';
+    }
+    if (graphValidationState.blockingErrors.length > 0) {
+      return (
+        graphValidationState.blockingErrors[0]?.message || 'Resolve validation issues before testing'
+      );
+    }
+    if (graphValidationState.status === 'invalid' && graphValidationState.message) {
+      return graphValidationState.message;
+    }
+    if (missingConnectionNode) {
+      const label = (missingConnectionNode.data as any)?.label || missingConnectionNode.id;
+      return `Connect an account for "${label}"`;
+    }
+    return null;
+  }, [
+    isDryRunning,
+    nodes.length,
+    isQueueReady,
+    queueStatusMessage,
+    graphValidationState.blockingErrors,
+    graphValidationState.status,
+    graphValidationState.message,
+    missingConnectionNode,
+  ]);
+
+  const isRunDisabled = Boolean(runDisabledReason);
+
   const hydrateCanvasFromGraph = useCallback(
     (graph: any) => {
       if (!graph || !Array.isArray(graph.nodes) || graph.nodes.length === 0) {
@@ -303,6 +661,10 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
         const data: Record<string, any> = {
           ...(node.data || {}),
         };
+
+        if (data.validationErrors) {
+          delete data.validationErrors;
+        }
 
         const canonicalApp = normalizeAppId(
           data.app || data.appName || node.app || node.appName
@@ -1055,23 +1417,37 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
               )}
             </Button>
             
-            <Button 
-              className="bg-green-600 hover:bg-green-700"
-              disabled={nodes.length === 0 || isDryRunning}
-              onClick={runDryRun}
-            >
-              {isDryRunning ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Testing…
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Test Workflow
-                </>
-              )}
-            </Button>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={isRunDisabled}
+                      onClick={runDryRun}
+                      title={runDisabledReason ?? undefined}
+                    >
+                      {isDryRunning ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Testing…
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Test Workflow
+                        </>
+                      )}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {isRunDisabled && runDisabledReason ? (
+                  <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                    {runDisabledReason}
+                  </TooltipContent>
+                ) : null}
+              </Tooltip>
+            </TooltipProvider>
             {lastSavedLabel && (
               <span className="text-xs text-gray-500">
                 Last saved {lastSavedLabel}
