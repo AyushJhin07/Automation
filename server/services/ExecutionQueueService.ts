@@ -1816,6 +1816,8 @@ class ExecutionQueueService {
                       [result.waitingNode.id]: {
                         callbackUrl: tokenResult.callbackUrl,
                         expiresAt: tokenResult.expiresAt.toISOString(),
+                        token: tokenResult.token,
+                        signature: tokenResult.signature,
                       },
                     },
                     stepCounts,

@@ -13,6 +13,13 @@ import { sanitizeLogPayload, appendTimelineEvent, coerceTimeline } from '../util
 import { logAction } from '../utils/actionLog';
 import { retryManager, CircuitBreakerSnapshot } from './RetryManager';
 
+interface ResumeCallbackMetadata {
+  callbackUrl: string;
+  expiresAt?: Date;
+  token?: string;
+  signature?: string;
+}
+
 export interface NodeExecution {
   nodeId: string;
   nodeType: string;
@@ -53,6 +60,17 @@ export interface NodeExecution {
     connectorId?: string;
     circuitState?: CircuitBreakerSnapshot;
     metadataSnapshots?: WorkflowNodeMetadataSnapshot[];
+    waitingForCallback?: boolean;
+    resumeToken?: string;
+    resumeSignature?: string;
+    resumeCallbackUrl?: string;
+    resumeExpiresAt?: Date;
+    resume?: {
+      token?: string;
+      signature?: string;
+      callbackUrl?: string;
+      expiresAt?: Date;
+    };
     [key: string]: any;
   };
   timeline: Array<Record<string, any>>;
@@ -98,7 +116,7 @@ export interface WorkflowExecution {
     }>;
     nextResumeAt?: Date;
     waitReason?: string;
-    resumeCallbacks?: Record<string, { callbackUrl: string; expiresAt?: Date }>;
+    resumeCallbacks?: Record<string, ResumeCallbackMetadata>;
   };
 }
 
@@ -1552,7 +1570,9 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
             Object.entries(metadata.resumeCallbacks).map(([nodeId, entry]) => [
               nodeId,
               {
-                ...entry,
+                callbackUrl: entry.callbackUrl,
+                token: entry.token,
+                signature: entry.signature,
                 expiresAt: entry.expiresAt ? entry.expiresAt.toISOString() : undefined,
               },
             ]),
@@ -1585,7 +1605,10 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
             : typeof entry?.expiresAt === 'string' && entry.expiresAt
             ? new Date(entry.expiresAt)
             : undefined;
-        return [nodeId, { callbackUrl, expiresAt }];
+        const token = typeof entry?.token === 'string' && entry.token ? entry.token : undefined;
+        const signature =
+          typeof entry?.signature === 'string' && entry.signature ? entry.signature : undefined;
+        return [nodeId, { callbackUrl, expiresAt, token, signature }];
       }),
     );
 
@@ -1669,6 +1692,38 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
 
   private mapExecutionRow(row: ExecutionLogRow, nodes: NodeExecution[]): WorkflowExecution {
     const metadata = this.normalizeExecutionMetadata(row.metadata);
+    const resumeCallbacks = metadata.resumeCallbacks ?? {};
+
+    const nodesWithResumeMetadata = Object.keys(resumeCallbacks).length
+      ? nodes.map((node) => {
+          const resumeEntry = resumeCallbacks[node.nodeId];
+          if (!resumeEntry) {
+            return node;
+          }
+
+          const resumeExpiresAt = resumeEntry.expiresAt instanceof Date ? resumeEntry.expiresAt : undefined;
+          const updatedMetadata = {
+            ...node.metadata,
+            waitingForCallback: true,
+            resumeCallbackUrl: resumeEntry.callbackUrl || node.metadata.resumeCallbackUrl,
+            resumeToken: resumeEntry.token ?? node.metadata.resumeToken,
+            resumeSignature: resumeEntry.signature ?? node.metadata.resumeSignature,
+            resumeExpiresAt: resumeExpiresAt ?? node.metadata.resumeExpiresAt,
+            resume: {
+              ...(node.metadata.resume || {}),
+              token: resumeEntry.token ?? node.metadata.resume?.token,
+              signature: resumeEntry.signature ?? node.metadata.resume?.signature,
+              callbackUrl: resumeEntry.callbackUrl || node.metadata.resume?.callbackUrl,
+              expiresAt: resumeExpiresAt ?? node.metadata.resume?.expiresAt,
+            },
+          };
+
+          return {
+            ...node,
+            metadata: updatedMetadata,
+          };
+        })
+      : nodes;
 
     return {
       executionId: row.executionId,
@@ -1685,7 +1740,7 @@ class DatabaseExecutionLogStore implements ExecutionLogStore {
       totalNodes: row.totalNodes ?? nodes.length,
       completedNodes: row.completedNodes ?? nodes.filter((node) => node.status === 'succeeded').length,
       failedNodes: row.failedNodes ?? nodes.filter((node) => node.status === 'failed').length,
-      nodeExecutions: nodes,
+      nodeExecutions: nodesWithResumeMetadata,
       finalOutput: row.finalOutput ?? undefined,
       error: row.error ?? undefined,
       correlationId: row.correlationId ?? '',
