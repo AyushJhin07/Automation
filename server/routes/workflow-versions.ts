@@ -2,32 +2,21 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
+import {
+  applyResolvedOrganizationToRequest,
+  resolveOrganizationContext,
+} from '../utils/organizationContext.js';
 
 const router = Router();
 
-const requireOrganizationContext = (req: Request, res: Response): string | null => {
-  const organizationId = (req as any)?.organizationId;
-  const organizationStatus = (req as any)?.organizationStatus;
-
-  if (!organizationId) {
-    res.status(403).json({ success: false, error: 'Organization context is required' });
-    return null;
-  }
-
-  if (organizationStatus && organizationStatus !== 'active') {
-    res.status(403).json({ success: false, error: 'Organization is not active' });
-    return null;
-  }
-
-  return organizationId;
-};
-
 router.post('/:workflowId/versions/:versionId/promote', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const target = typeof req.body?.target === 'string' ? req.body.target : 'test';
     const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : null;
@@ -35,7 +24,7 @@ router.post('/:workflowId/versions/:versionId/promote', async (req, res) => {
 
     const promotion = await WorkflowRepository.promoteVersionToEnvironment({
       workflowId: req.params.workflowId,
-      organizationId,
+      organizationId: organizationContext.organizationId!,
       versionId: req.params.versionId,
       targetEnvironment: target,
       userId: (req as any)?.user?.id,
@@ -52,16 +41,18 @@ router.post('/:workflowId/versions/:versionId/promote', async (req, res) => {
 
 router.post('/:workflowId/versions/:versionId/validate', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const targetEnvironment = typeof req.body?.targetEnvironment === 'string' ? req.body.targetEnvironment : 'test';
 
     const result = await WorkflowRepository.getVersionDiffAgainstEnvironment({
       workflowId: req.params.workflowId,
-      organizationId,
+      organizationId: organizationContext.organizationId!,
       versionId: req.params.versionId,
       targetEnvironment,
     });

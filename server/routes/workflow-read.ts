@@ -10,25 +10,12 @@ import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/
 import { getErrorMessage } from '../types/common.js';
 import { simpleGraphValidator } from '../core/SimpleGraphValidator.js';
 import { computeExecutionOrder, sanitizeGraphForExecution } from '../utils/workflowExecution.js';
+import {
+  applyResolvedOrganizationToRequest,
+  resolveOrganizationContext,
+} from '../utils/organizationContext.js';
 
 export const workflowReadRouter = Router();
-
-const requireOrganizationContext = (req: any, res: any): string | null => {
-  const organizationId = req?.organizationId;
-  const organizationStatus = req?.organizationStatus;
-
-  if (!organizationId) {
-    res.status(403).json({ success: false, error: 'Organization context is required' });
-    return null;
-  }
-
-  if (organizationStatus && organizationStatus !== 'active') {
-    res.status(403).json({ success: false, error: 'Organization is not active' });
-    return null;
-  }
-
-  return organizationId;
-};
 
 
 
@@ -44,12 +31,17 @@ workflowReadRouter.get('/workflows/:id', async (req, res) => {
       });
     }
 
-    const organizationId = requireOrganizationContext(req as any, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req as any, res);
+    if (!organizationContext.organizationId) {
       return;
     }
 
-    const workflowRecord = await WorkflowRepository.getWorkflowById(id, organizationId);
+    applyResolvedOrganizationToRequest(req as any, organizationContext);
+
+    const workflowRecord = await WorkflowRepository.getWorkflowById(
+      id,
+      organizationContext.organizationId,
+    );
 
     if (!workflowRecord) {
       return res.status(404).json({
@@ -86,16 +78,18 @@ workflowReadRouter.get('/workflows/:id', async (req, res) => {
 workflowReadRouter.get('/workflows/:id/versions', async (req, res) => {
   try {
     const { id } = req.params;
-    const organizationId = requireOrganizationContext(req as any, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req as any, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req as any, organizationContext);
 
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
 
     const history = await WorkflowRepository.listWorkflowVersions({
       workflowId: id,
-      organizationId,
+      organizationId: organizationContext.organizationId,
       limit,
     });
 
@@ -112,10 +106,12 @@ workflowReadRouter.get('/workflows/:id/versions', async (req, res) => {
 // List all stored workflows (for debugging)
 workflowReadRouter.get('/workflows', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req as any, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req as any, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req as any, organizationContext);
 
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     const offset = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
@@ -127,7 +123,7 @@ workflowReadRouter.get('/workflows', async (req, res) => {
       offset,
       search,
       userId: userIdQuery ?? (req as any)?.user?.id,
-      organizationId,
+      organizationId: organizationContext.organizationId,
     });
 
     res.json({
@@ -152,12 +148,17 @@ workflowReadRouter.get('/workflows', async (req, res) => {
 workflowReadRouter.delete('/workflows/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const organizationId = requireOrganizationContext(req as any, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req as any, res);
+    if (!organizationContext.organizationId) {
       return;
     }
 
-    const deleted = await WorkflowRepository.deleteWorkflow(id, organizationId);
+    applyResolvedOrganizationToRequest(req as any, organizationContext);
+
+    const deleted = await WorkflowRepository.deleteWorkflow(
+      id,
+      organizationContext.organizationId,
+    );
 
     res.json({
       success: true,
@@ -186,10 +187,13 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Workflow ID is required' });
     }
 
-    organizationId = requireOrganizationContext(req as any, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req as any, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req as any, organizationContext);
+    organizationId = organizationContext.organizationId;
 
     console.log(`▶️ Received execution request for workflow ${id}`);
 
@@ -515,10 +519,12 @@ workflowReadRouter.post('/workflows/:id/execute', async (req, res) => {
 });
 
 workflowReadRouter.post('/workflows/validate', async (req, res) => {
-  const organizationId = requireOrganizationContext(req as any, res);
-  if (!organizationId) {
+  const organizationContext = resolveOrganizationContext(req as any, res);
+  if (!organizationContext.organizationId) {
     return;
   }
+
+  applyResolvedOrganizationToRequest(req as any, organizationContext);
 
   const graphPayload = (req.body && typeof req.body === 'object' && 'graph' in req.body)
     ? (req.body as any).graph

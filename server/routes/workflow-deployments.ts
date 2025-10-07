@@ -2,32 +2,21 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
+import {
+  applyResolvedOrganizationToRequest,
+  resolveOrganizationContext,
+} from '../utils/organizationContext.js';
 
 const router = Router();
 
-const requireOrganizationContext = (req: Request, res: Response): string | null => {
-  const organizationId = (req as any)?.organizationId;
-  const organizationStatus = (req as any)?.organizationStatus;
-
-  if (!organizationId) {
-    res.status(403).json({ success: false, error: 'Organization context is required' });
-    return null;
-  }
-
-  if (organizationStatus && organizationStatus !== 'active') {
-    res.status(403).json({ success: false, error: 'Organization is not active' });
-    return null;
-  }
-
-  return organizationId;
-};
-
 router.post('/:workflowId/publish', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const environment = typeof req.body?.environment === 'string' ? req.body.environment : 'production';
     const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId : undefined;
@@ -35,7 +24,7 @@ router.post('/:workflowId/publish', async (req, res) => {
 
     const result = await WorkflowRepository.publishWorkflowVersion({
       workflowId: req.params.workflowId,
-      organizationId,
+      organizationId: organizationContext.organizationId!,
       environment,
       versionId,
       userId: (req as any)?.user?.id,
@@ -51,14 +40,16 @@ router.post('/:workflowId/publish', async (req, res) => {
 
 router.get('/:workflowId/diff/:environment', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
 
+    applyResolvedOrganizationToRequest(req, organizationContext);
+
     const diff = await WorkflowRepository.getWorkflowDiff({
       workflowId: req.params.workflowId,
-      organizationId,
+      organizationId: organizationContext.organizationId!,
       environment: req.params.environment,
     });
 
@@ -71,10 +62,12 @@ router.get('/:workflowId/diff/:environment', async (req, res) => {
 
 router.post('/:workflowId/rollback', async (req, res) => {
   try {
-    const organizationId = requireOrganizationContext(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const environment = typeof req.body?.environment === 'string' ? req.body.environment : undefined;
     if (!environment) {
@@ -86,7 +79,7 @@ router.post('/:workflowId/rollback', async (req, res) => {
 
     const result = await WorkflowRepository.rollbackDeployment({
       workflowId: req.params.workflowId,
-      organizationId,
+      organizationId: organizationContext.organizationId!,
       environment,
       userId: (req as any)?.user?.id,
       deploymentId,

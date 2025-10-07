@@ -9,38 +9,21 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 import { WorkflowRepository } from '../workflow/WorkflowRepository.js';
+import {
+  applyResolvedOrganizationToRequest,
+  resolveOrganizationContext,
+} from '../utils/organizationContext.js';
 
 const router = Router();
 
-const requireActiveOrganization = (req: Request, res: Response): string | null => {
-  const organizationId = (req as any)?.organizationId;
-  const organizationStatus = (req as any)?.organizationStatus;
-
-  if (!organizationId) {
-    res.status(403).json({
-      success: false,
-      error: 'Organization context is required',
-    });
-    return null;
-  }
-
-  if (organizationStatus && organizationStatus !== 'active') {
-    res.status(403).json({
-      success: false,
-      error: 'Organization is not active',
-    });
-    return null;
-  }
-
-  return organizationId;
-};
-
 const persistFlow = async (req: Request, res: Response) => {
   try {
-    const organizationId = requireActiveOrganization(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const payload = req.body ?? {};
     const graph = payload.graph ?? payload;
@@ -49,7 +32,7 @@ const persistFlow = async (req: Request, res: Response) => {
     const saved = await WorkflowRepository.saveWorkflowGraph({
       id: providedId,
       userId: (req as any)?.user?.id ?? payload.userId,
-      organizationId,
+      organizationId: organizationContext.organizationId,
       name: payload.name ?? graph?.name ?? 'Untitled Workflow',
       description: payload.description ?? graph?.description ?? payload?.metadata?.description ?? null,
       graph,
@@ -90,12 +73,17 @@ router.put('/:id', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const organizationId = requireActiveOrganization(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
 
-    const workflow = await WorkflowRepository.getWorkflowById(req.params.id, organizationId);
+    applyResolvedOrganizationToRequest(req, organizationContext);
+
+    const workflow = await WorkflowRepository.getWorkflowById(
+      req.params.id,
+      organizationContext.organizationId,
+    );
 
     if (!workflow) {
       return res.status(404).json({
@@ -121,10 +109,12 @@ router.get('/:id', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const organizationId = requireActiveOrganization(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
+
+    applyResolvedOrganizationToRequest(req, organizationContext);
 
     const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
     const offset = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
@@ -136,7 +126,7 @@ router.get('/', async (req, res) => {
       offset,
       search,
       userId,
-      organizationId,
+      organizationId: organizationContext.organizationId,
     });
 
     const flows = workflows.map((workflow) => ({
@@ -172,12 +162,17 @@ router.get('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const organizationId = requireActiveOrganization(req, res);
-    if (!organizationId) {
+    const organizationContext = resolveOrganizationContext(req, res);
+    if (!organizationContext.organizationId) {
       return;
     }
 
-    const deleted = await WorkflowRepository.deleteWorkflow(req.params.id, organizationId);
+    applyResolvedOrganizationToRequest(req, organizationContext);
+
+    const deleted = await WorkflowRepository.deleteWorkflow(
+      req.params.id,
+      organizationContext.organizationId,
+    );
 
     if (!deleted) {
       return res.status(404).json({
