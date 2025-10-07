@@ -59,6 +59,7 @@ vi.mock('@/hooks/useWorkerHeartbeat', () => ({
 }));
 
 const loadEditor = () => import("../ProfessionalGraphEditor");
+const VALIDATION_DEBOUNCE_MS = 600;
 
 const jsonResponse = (body: any, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -517,6 +518,7 @@ describe("ProfessionalGraphEditor validation gating", () => {
   });
 
   it('only resolves the latest validation request when edits happen rapidly', async () => {
+    const DEBOUNCE_MS = VALIDATION_DEBOUNCE_MS;
     vi.useFakeTimers();
     const validationRequests: Array<{
       resolve: (value: Response) => void;
@@ -560,7 +562,7 @@ describe("ProfessionalGraphEditor validation gating", () => {
       const labelInput = await screen.findByPlaceholderText('Enter node label...');
 
       await act(async () => {
-        vi.advanceTimersByTime(300);
+        vi.advanceTimersByTime(DEBOUNCE_MS);
         await Promise.resolve();
       });
 
@@ -573,7 +575,7 @@ describe("ProfessionalGraphEditor validation gating", () => {
       });
 
       await act(async () => {
-        vi.advanceTimersByTime(300);
+        vi.advanceTimersByTime(DEBOUNCE_MS);
         await Promise.resolve();
       });
 
@@ -595,6 +597,76 @@ describe("ProfessionalGraphEditor validation gating", () => {
 
       await waitFor(() => {
         expect(resolvedRequests).toEqual([1]);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('debounces validation requests until the user pauses editing', async () => {
+    const DEBOUNCE_MS = VALIDATION_DEBOUNCE_MS;
+    vi.useFakeTimers();
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    try {
+      const { default: ProfessionalGraphEditor } = await loadEditor();
+      render(<ProfessionalGraphEditor />);
+
+      const labelInput = await screen.findByPlaceholderText('Enter node label...');
+
+      await act(async () => {
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+        await Promise.resolve();
+      });
+
+      authFetchMock.mockClear();
+
+      await act(async () => {
+        fireEvent.change(labelInput, { target: { value: 'First change' } });
+        fireEvent.blur(labelInput);
+      });
+
+      await act(async () => {
+        fireEvent.change(labelInput, { target: { value: 'Second change' } });
+        fireEvent.blur(labelInput);
+      });
+
+      await act(async () => {
+        fireEvent.change(labelInput, { target: { value: 'Final change' } });
+        fireEvent.blur(labelInput);
+      });
+
+      expect(authCallsForPath('/api/workflows/validate').length).toBe(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(DEBOUNCE_MS - 50);
+        await Promise.resolve();
+      });
+
+      expect(authCallsForPath('/api/workflows/validate').length).toBe(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(50);
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(authCallsForPath('/api/workflows/validate').length).toBe(1);
       });
     } finally {
       vi.useRealTimers();
