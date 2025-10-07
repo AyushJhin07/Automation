@@ -35,6 +35,20 @@ let capturedSavePayload: any = null;
 
 const app = express();
 app.use(express.json());
+app.use((req, _res, next) => {
+  const organizationIdHeader = req.headers['x-organization-id'];
+  const organizationStatusHeader = req.headers['x-organization-status'];
+
+  if (typeof organizationIdHeader === 'string') {
+    (req as any).organizationId = organizationIdHeader;
+  }
+
+  if (typeof organizationStatusHeader === 'string') {
+    (req as any).organizationStatus = organizationStatusHeader;
+  }
+
+  next();
+});
 
 let server: Server | null = null;
 let exitCode = 0;
@@ -103,6 +117,42 @@ try {
   );
   const validateBody = await validateResponse.json();
   assert.equal(validateBody.success, true, 'workflow validation should return success payload');
+
+  const inactiveValidateResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-organization-id': 'dev-org',
+      'x-organization-status': 'inactive',
+    },
+    body: JSON.stringify({
+      graph: {
+        id: 'validate-flow-inactive',
+        name: 'Validate Flow Inactive',
+        nodes: [
+          {
+            id: 'node-1',
+            type: 'trigger',
+            data: { label: 'Start' },
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+      },
+    }),
+  });
+
+  assert.equal(
+    inactiveValidateResponse.status,
+    200,
+    'workflow validation should succeed for inactive dev organizations',
+  );
+  const inactiveValidateBody = await inactiveValidateResponse.json();
+  assert.equal(
+    inactiveValidateBody.success,
+    true,
+    'workflow validation should return success payload when forcing active fallback',
+  );
 
   console.log(
     'Development organization fallback allows unauthenticated flow saves and workflow validation.',
