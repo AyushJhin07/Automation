@@ -15,6 +15,7 @@
     "dev:worker": "NODE_ENV=development tsx watch server/workers/execution.ts",
     "dev:rotation": "NODE_ENV=development tsx watch server/workers/encryption-rotation.ts",
     "dev:scheduler": "NODE_ENV=development tsx watch server/workers/scheduler.ts",
+    "dev:timers": "NODE_ENV=development tsx watch server/workers/timerDispatcher.ts",
     "dev:stack": "tsx scripts/dev-stack.ts",
     "dev:bootstrap": "tsx scripts/dev-bootstrap.ts",
     "dev:smoke": "tsx scripts/dev-smoke-run.ts",

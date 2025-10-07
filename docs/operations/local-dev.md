@@ -32,7 +32,7 @@ Launch the full stack with a single command:
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-The compose file starts Postgres, Redis, Jaeger, and three Node.js processes bound to the local workspace:
+The compose file starts Postgres, Redis, Jaeger, and five Node.js processes bound to the local workspace:
 
 | Service    | Command                | Ports exposed | Purpose |
 | ---------- | --------------------- | ------------- | ------- |
@@ -42,6 +42,10 @@ The compose file starts Postgres, Redis, Jaeger, and three Node.js processes bou
 | api        | `npm run dev:api`      | `5000`        | HTTP + Vite frontend dev server (defaults to inline worker) |
 | worker     | `npm run dev:worker`   | _internal_    | Workflow execution worker |
 | scheduler  | `npm run dev:scheduler`| _internal_    | Polling trigger scheduler |
+| timers     | `npm run dev:timers`   | _internal_    | Dispatches delayed/timer jobs |
+| encryption-rotation | `npm run dev:rotation` | _internal_ | Rotates envelope encryption keys for stored secrets |
+
+`npm run dev:stack` orchestrates these processes, verifies Postgres and Redis connectivity up front, and exits immediately with remediation hints when either service is unavailable so you do not accidentally run the API without its dependencies.【F:scripts/dev-stack.ts†L37-L160】
 
 Jaeger’s UI is available at [http://localhost:16686](http://localhost:16686). The API listens on [http://localhost:5000](http://localhost:5000).
 
@@ -60,7 +64,7 @@ export QUEUE_REDIS_DB=0
 
 The defaults in `.env.example` mirror these values so host-based processes connect to `localhost`. When you run inside the Compose network, override `QUEUE_REDIS_HOST` to `redis` (the service name) or whichever hostname your containers should reach.
 
-With Redis enabled, start the worker (`npm run dev:worker`) and scheduler (`npm run dev:scheduler`) alongside the API so queued jobs are actually processed. In development the API now auto-enables the inline execution worker when `ENABLE_INLINE_WORKER` is not set. Export `ENABLE_INLINE_WORKER=false` (or rely on `npm run dev:stack`, which sets it for the API process) whenever you want the dedicated worker process to take over. The readiness probe at `http://localhost:5000/api/health/ready` returns `503` if Redis is unreachable or the queue is running in in-memory mode, making it easy to verify durability before exercising workflows.【F:server/routes/production-health.ts†L35-L103】 The same startup routine now also fails fast when no execution worker heartbeat is detected in development/CI so missing workers surface quickly; override with `SKIP_WORKER_HEARTBEAT_CHECK=true` only for exceptional automation or smoke-test containers.
+With Redis enabled, start the worker (`npm run dev:worker`), scheduler (`npm run dev:scheduler`), timers (`npm run dev:timers`), and encryption rotation process (`npm run dev:rotation`) alongside the API so queued jobs are actually processed and cryptographic housekeeping continues in the background. In development the API now auto-enables the inline execution worker when `ENABLE_INLINE_WORKER` is not set. Export `ENABLE_INLINE_WORKER=false` (or rely on `npm run dev:stack`, which sets it for the API process) whenever you want the dedicated worker process to take over. The readiness probe at `http://localhost:5000/api/health/ready` returns `503` if Redis is unreachable or the queue is running in in-memory mode, making it easy to verify durability before exercising workflows.【F:server/routes/production-health.ts†L35-L103】 The same startup routine now also fails fast when no execution worker heartbeat is detected in development/CI so missing workers surface quickly; override with `SKIP_WORKER_HEARTBEAT_CHECK=true` only for exceptional automation or smoke-test containers.
 
 ## Observability
 

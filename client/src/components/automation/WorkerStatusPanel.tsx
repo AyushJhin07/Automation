@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, Clock, HeartPulse, Server } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -20,6 +21,13 @@ type WorkerStatusResponse = {
   queueDepth?: unknown;
   queue_depth?: unknown;
   data?: unknown;
+};
+
+type EnvironmentWarningMessage = {
+  id: string;
+  message: string;
+  since?: string | null;
+  queueDepth?: number;
 };
 
 const QUEUE_DEPTH_WARNING = 100;
@@ -136,6 +144,7 @@ const formatTimestamp = (iso?: string): string => {
 export default function WorkerStatusPanel() {
   const authFetch = useAuthStore((state) => state.authFetch);
   const [workers, setWorkers] = useState<WorkerStatus[]>([]);
+  const [environmentWarnings, setEnvironmentWarnings] = useState<EnvironmentWarningMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -153,17 +162,107 @@ export default function WorkerStatusPanel() {
       }
 
       const payload = (await response.json().catch(() => ({}))) as WorkerStatusResponse | any[];
-      let list = toWorkerList(payload).map(normalizeWorker);
-
-      if (
-        !list.length &&
+      const rootPayload =
         payload &&
+        typeof payload === 'object' &&
         !Array.isArray(payload) &&
-        typeof payload === 'object'
-      ) {
-        const fallback = normalizeWorker(payload as Record<string, unknown>, 0);
-        if (fallback.queueDepth !== 0 || fallback.heartbeatAt) {
-          list = [fallback];
+        'data' in (payload as Record<string, unknown>)
+          ? ((payload as Record<string, any>).data ?? {})
+          : payload;
+
+      const executionTelemetry =
+        rootPayload &&
+        typeof rootPayload === 'object' &&
+        !Array.isArray(rootPayload) &&
+        'executionWorker' in (rootPayload as Record<string, unknown>)
+          ? (rootPayload as any).executionWorker
+          : undefined;
+
+      const rawWarnings = Array.isArray(executionTelemetry?.environmentWarnings)
+        ? executionTelemetry.environmentWarnings
+        : Array.isArray((rootPayload as any)?.environmentWarnings)
+          ? (rootPayload as any).environmentWarnings
+          : [];
+      const normalizedWarnings = (rawWarnings as any[]).map((warning, index) => {
+        const id = typeof warning?.id === 'string' ? warning.id : `warning-${index}`;
+        const message = typeof warning?.message === 'string' ? warning.message : '';
+        const since = typeof warning?.since === 'string' ? warning.since : null;
+        const queueDepth =
+          typeof warning?.queueDepth === 'number' && Number.isFinite(warning.queueDepth)
+            ? warning.queueDepth
+            : undefined;
+        return { id, message, since, queueDepth } satisfies EnvironmentWarningMessage;
+      }).filter((warning) => warning.message.length > 0);
+      setEnvironmentWarnings(normalizedWarnings);
+
+      const sumState = (value: unknown): number => {
+        return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+      };
+
+      let list: WorkerStatus[] = [];
+
+      if (executionTelemetry && typeof executionTelemetry === 'object') {
+        const queueDepths = (executionTelemetry as any)?.metrics?.queueDepths ?? {};
+        const totalQueueDepth = Object.values(queueDepths).reduce((acc, depth) => {
+          if (!depth || typeof depth !== 'object') {
+            return acc;
+          }
+
+          const record = depth as Record<string, unknown>;
+          if (typeof record.total === 'number' && Number.isFinite(record.total)) {
+            return acc + (record.total as number);
+          }
+
+          return (
+            acc +
+            sumState(record.waiting) +
+            sumState(record.delayed) +
+            sumState(record.active) +
+            sumState(record.paused)
+          );
+        }, 0);
+
+        const heartbeat = (executionTelemetry as any)?.lastObservedHeartbeat;
+        if (heartbeat && typeof heartbeat.heartbeatAt === 'string') {
+          const workerEntry = normalizeWorker(
+            {
+              id: heartbeat.workerId ?? 'execution-worker',
+              name: heartbeat.inline ? 'Inline execution worker' : 'Execution worker',
+              queueDepth: totalQueueDepth,
+              heartbeatAt: heartbeat.heartbeatAt,
+            },
+            0,
+          );
+          workerEntry.queueDepth = totalQueueDepth;
+          list = [workerEntry];
+        } else if (totalQueueDepth > 0) {
+          const queueEntry = normalizeWorker(
+            {
+              id: 'execution-queue',
+              name: 'Execution queue (no consumers)',
+              queueDepth: totalQueueDepth,
+            },
+            0,
+          );
+          queueEntry.isHeartbeatStale = true;
+          list = [queueEntry];
+        }
+      }
+
+      if (!list.length) {
+        const fallbackPayload = rootPayload ?? payload;
+        list = toWorkerList(fallbackPayload).map(normalizeWorker);
+
+        if (
+          !list.length &&
+          fallbackPayload &&
+          !Array.isArray(fallbackPayload) &&
+          typeof fallbackPayload === 'object'
+        ) {
+          const fallback = normalizeWorker(fallbackPayload as Record<string, unknown>, 0);
+          if (fallback.queueDepth !== 0 || fallback.heartbeatAt) {
+            list = [fallback];
+          }
         }
       }
 
@@ -203,6 +302,7 @@ export default function WorkerStatusPanel() {
     } catch (caughtError: any) {
       const message = caughtError?.message || 'Unable to load worker status';
       setError(message);
+      setEnvironmentWarnings([]);
     } finally {
       setIsLoading(false);
     }
@@ -246,6 +346,34 @@ export default function WorkerStatusPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {environmentWarnings.length > 0 ? (
+          <div className="space-y-2">
+            {environmentWarnings.map((warning) => (
+              <Alert
+                key={warning.id}
+                variant="destructive"
+                className="border-red-200 bg-red-50 text-red-700"
+              >
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+                <AlertTitle>Queue consumers unavailable</AlertTitle>
+                <AlertDescription className="space-y-1">
+                  <p>{warning.message}</p>
+                  {typeof warning.queueDepth === 'number' ? (
+                    <p className="text-xs text-red-700/80">
+                      Current queue depth: {warning.queueDepth}
+                    </p>
+                  ) : null}
+                  {warning.since ? (
+                    <p className="text-xs text-red-700/80">
+                      Detected at {formatTimestamp(warning.since)}
+                    </p>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        ) : null}
+
         {error ? (
           <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <AlertTriangle className="h-5 w-5 text-red-500" aria-hidden />
