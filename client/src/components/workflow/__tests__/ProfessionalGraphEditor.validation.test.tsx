@@ -1,7 +1,7 @@
 import React from "react";
 import "@testing-library/jest-dom/vitest";
 import { describe, expect, it, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
@@ -514,6 +514,91 @@ describe("ProfessionalGraphEditor validation gating", () => {
     await waitFor(() => {
       expect(runButton).toBeDisabled();
     });
+  });
+
+  it('only resolves the latest validation request when edits happen rapidly', async () => {
+    vi.useFakeTimers();
+    const validationRequests: Array<{
+      resolve: (value: Response) => void;
+      reject: (reason?: any) => void;
+      signal?: AbortSignal;
+    }> = [];
+    const abortedRequests: number[] = [];
+    const resolvedRequests: number[] = [];
+
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return new Promise<Response>((resolve, reject) => {
+          const signal = init?.signal as AbortSignal | undefined;
+          const index = validationRequests.length;
+          const entry = {
+            signal,
+            resolve: (value: Response) => {
+              resolvedRequests.push(index);
+              resolve(value);
+            },
+            reject,
+          };
+          validationRequests.push(entry);
+          signal?.addEventListener('abort', () => {
+            abortedRequests.push(index);
+            reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+          });
+        });
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    try {
+      const { default: ProfessionalGraphEditor } = await loadEditor();
+      render(<ProfessionalGraphEditor />);
+
+      const labelInput = await screen.findByPlaceholderText('Enter node label...');
+
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+        await Promise.resolve();
+      });
+
+      expect(validationRequests).toHaveLength(1);
+      expect(validationRequests[0].signal?.aborted ?? false).toBe(false);
+
+      await act(async () => {
+        fireEvent.change(labelInput, { target: { value: 'First change' } });
+        fireEvent.blur(labelInput);
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+        await Promise.resolve();
+      });
+
+      expect(validationRequests).toHaveLength(2);
+
+      await waitFor(() => {
+        expect(abortedRequests).toEqual([0]);
+      });
+
+      await act(async () => {
+        validationRequests[1].resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(resolvedRequests).toEqual([1]);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('disables the run button when worker telemetry reports no active workers', async () => {
