@@ -600,7 +600,10 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
 
     const identifier = workflowId ?? `builder-${Date.now()}`;
     const payload = buildGraphPayload(identifier);
-    const body = JSON.stringify({ graph: payload });
+    const body = JSON.stringify({
+      graph: payload,
+      options: { preview: true },
+    });
     const controller = new AbortController();
 
     const triggerValidation = async () => {

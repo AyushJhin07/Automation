@@ -195,6 +195,63 @@ try {
     'dry-run validation should not report missing trigger errors for action-only drafts',
   );
 
+  const optionsPreviewResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      options: { preview: true },
+      graph: {
+        id: 'options-preview-action-only',
+        name: 'Options Preview Action Only',
+        nodes: [
+          {
+            id: 'action-options-1',
+            type: 'action.gmail.send',
+            params: {
+              recipient: 'options-preview@example.com',
+            },
+            data: {
+              label: 'Send Gmail',
+              app: 'gmail',
+              nodeType: 'action.gmail.send',
+              type: 'action.gmail.send',
+              parameters: {
+                recipient: 'options-preview@example.com',
+              },
+            },
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+      },
+    }),
+  });
+
+  assert.equal(
+    optionsPreviewResponse.status,
+    200,
+    'options preview validation should respond with 200',
+  );
+  const optionsPreviewBody = await optionsPreviewResponse.json();
+  assert.equal(
+    optionsPreviewBody.success,
+    true,
+    'options preview validation should return success payload',
+  );
+  const optionsPreviewErrors = Array.isArray(optionsPreviewBody?.validation?.errors)
+    ? optionsPreviewBody.validation.errors
+    : [];
+  const optionsTriggerErrors = optionsPreviewErrors.filter((error: any) =>
+    typeof error?.message === 'string' && error.message.toLowerCase().includes('trigger'),
+  );
+  assert.equal(
+    optionsTriggerErrors.length,
+    0,
+    'options preview validation should not report missing trigger errors for action-only drafts',
+  );
+
   const manualPreviewResponse = await fetch(`${baseUrl}/api/workflows/validate`, {
     method: 'POST',
     headers: {
