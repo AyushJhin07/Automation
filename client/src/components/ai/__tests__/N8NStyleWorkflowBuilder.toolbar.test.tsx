@@ -22,6 +22,12 @@ vi.mock('@/hooks/useQueueHealth', () => ({
   useQueueHealth: (...args: any[]) => queueHealthMock(...args),
 }));
 
+const workerHeartbeatMock = vi.fn();
+vi.mock('@/hooks/useWorkerHeartbeat', () => ({
+  useWorkerHeartbeat: (...args: any[]) => workerHeartbeatMock(...args),
+  WORKER_FLEET_GUIDANCE: 'Start the execution worker and scheduler processes to run workflows.',
+}));
+
 vi.mock('@/components/workflow/NodeConfigurationModal', () => ({
   NodeConfigurationModal: () => null,
 }));
@@ -72,6 +78,7 @@ const sampleDraft = {
 describe('N8NStyleWorkflowBuilder toolbar gating', () => {
   beforeEach(() => {
     queueHealthMock.mockReset();
+    workerHeartbeatMock.mockReset();
     authFetchMock.mockReset();
     logoutMock.mockReset();
     localStorage.clear();
@@ -94,6 +101,26 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
       error: null,
       refresh: vi.fn(),
     });
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 1,
+        healthyWorkers: 1,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: true,
+        schedulerHealthy: true,
+        timerHealthy: true,
+      },
+      scheduler: null,
+      queue: null,
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
     authFetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/workflows/validate')) {
@@ -107,6 +134,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
 
   afterEach(() => {
     queueHealthMock.mockReset();
+    workerHeartbeatMock.mockReset();
     authFetchMock.mockReset();
     localStorage.clear();
   });
@@ -139,6 +167,42 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     });
   });
 
+  it('disables the run button when no workers are reporting', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 0,
+        healthyWorkers: 0,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: false,
+        schedulerHealthy: false,
+        timerHealthy: false,
+      },
+      scheduler: null,
+      queue: null,
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Start the execution worker and scheduler processes to run workflows.')
+      ).toBeInTheDocument();
+    });
+  });
   it('keeps the run button disabled when nodes require configuration', async () => {
     const draft = JSON.parse(localStorage.getItem('automation.builder.draft') || 'null');
     if (draft?.nodes?.[1]) {

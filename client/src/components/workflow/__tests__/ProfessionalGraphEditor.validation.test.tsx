@@ -52,6 +52,12 @@ vi.mock('@/hooks/useQueueHealth', () => ({
   useQueueHealth: (...args: any[]) => useQueueHealthMock(...args),
 }));
 
+const workerHeartbeatMock = vi.fn();
+vi.mock('@/hooks/useWorkerHeartbeat', () => ({
+  useWorkerHeartbeat: (...args: any[]) => workerHeartbeatMock(...args),
+  WORKER_FLEET_GUIDANCE: 'Start the execution worker and scheduler processes to run workflows.',
+}));
+
 const loadEditor = () => import("../ProfessionalGraphEditor");
 
 const jsonResponse = (body: any, status = 200) =>
@@ -153,11 +159,33 @@ beforeEach(() => {
     refresh: refreshQueueHealthMock,
   };
   useQueueHealthMock.mockReturnValue(queueHealthReturn);
+  workerHeartbeatMock.mockReset();
+  workerHeartbeatMock.mockReturnValue({
+    workers: [],
+    environmentWarnings: [],
+    summary: {
+      totalWorkers: 1,
+      healthyWorkers: 1,
+      staleWorkers: 0,
+      totalQueueDepth: 0,
+      maxQueueDepth: 0,
+      hasExecutionWorker: true,
+      schedulerHealthy: true,
+      timerHealthy: true,
+    },
+    scheduler: null,
+    queue: null,
+    lastUpdated: new Date().toISOString(),
+    isLoading: false,
+    error: null,
+    refresh: vi.fn(),
+  });
 });
 
 afterEach(() => {
   fetchMock.mockReset();
   authFetchMock.mockReset();
+  workerHeartbeatMock.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
   toastWarning.mockReset();
@@ -485,6 +513,43 @@ describe("ProfessionalGraphEditor validation gating", () => {
     const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
     await waitFor(() => {
       expect(runButton).toBeDisabled();
+    });
+  });
+
+  it('disables the run button when worker telemetry reports no active workers', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 0,
+        healthyWorkers: 0,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: false,
+        schedulerHealthy: false,
+        timerHealthy: false,
+      },
+      scheduler: null,
+      queue: null,
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Start the execution worker and scheduler processes to run workflows.')
+      ).toBeInTheDocument();
     });
   });
 });
