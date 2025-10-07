@@ -1,4 +1,4 @@
-import { simpleGraphValidator } from './SimpleGraphValidator';
+import { simpleGraphValidator, type ValidatorOptions } from './SimpleGraphValidator';
 import { compilerTemplates, NodeData } from './CompilerTemplates';
 
 export interface CompilerOptions {
@@ -30,12 +30,12 @@ export interface CompilerResult {
 
 export class ProductionGraphCompiler {
 
-  public compile(graph: any, options: CompilerOptions = {}): CompilerResult {
+  public compile(graph: any, options: CompilerOptions = {}, validationOptions: ValidatorOptions = {}): CompilerResult {
     try {
       console.log(`🔧 Compiling graph: ${graph.name || graph.id}`);
 
       // Validate graph first
-      const validation = simpleGraphValidator.validate(graph);
+      const validation = simpleGraphValidator.validate(graph, validationOptions);
       if (!validation.valid) {
         return {
           success: false,

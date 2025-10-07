@@ -324,6 +324,9 @@ Content-Type: application/json
 }
 ```
 
+> ℹ️ Dry runs accept action-only graphs (with no trigger node) to support quick previews. Production
+> executions still require at least one trigger and return validation errors when it is missing.
+
 **Error responses:**
 
 * `400 WORKFLOW_GRAPH_EMPTY` – workflow does not have nodes to simulate.

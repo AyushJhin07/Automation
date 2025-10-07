@@ -82,6 +82,10 @@ These commands speed up local smoke testing once the stack is running:
 - `npm run dev:smoke` reuses the bootstrap credentials, fetches the most recently updated
   workflow, and POSTs to `/api/executions` with the right headers. Expect an HTTP `202` and an
   `executionId` when the queue is healthy.
+- `POST /api/executions/dry-run` simulates the currently edited graph and streams per-node
+  previews without touching external systems. Dry runs now tolerate action-only graphs (no
+  trigger node) so builders can QA a single action in isolation; full executions still require a
+  valid trigger and will fail validation without one.
 - `curl http://localhost:5000/api/production/queue/heartbeat` checks Redis connectivity and the
   worker heartbeat. The readiness probe (`/api/production/ready`) returns `503` in development
   until you flip `NODE_ENV` to `production`; rely on the queue heartbeat during local work.
