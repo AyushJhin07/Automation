@@ -439,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api', productionHealthRoutes);
   
   // ChatGPT Fix: Flow storage routes for AI Builder → Graph Editor handoff
-  app.use('/api/flows', flowRoutes);
+  app.use('/api/flows', optionalAuth, flowRoutes);
 
   // Organization role management APIs
   app.use('/api/organizations', organizationRoleRoutes);
