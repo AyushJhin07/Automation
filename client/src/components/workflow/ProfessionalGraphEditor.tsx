@@ -1738,7 +1738,10 @@ const GraphEditorContent = () => {
       try {
         const response = await authFetch('/api/workflows/validate', {
           method: 'POST',
-          body: JSON.stringify({ graph: graphPayload }),
+          body: JSON.stringify({
+            graph: graphPayload,
+            options: { preview: true },
+          }),
           signal,
         });
 
