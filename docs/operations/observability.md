@@ -125,3 +125,16 @@ If the collector is unreachable you will see retry attempts, but the process
 should remain running with instrumentation active. Use this check in CI/CD to
 validate configuration before rolling out a release, optionally overriding the
 timeout with `OBSERVABILITY_BOOT_TIMEOUT_MS`.
+
+## Run viewer resume controls
+
+The in-product run viewer now exposes a **Resume** control beside the existing
+retry button for workflow nodes that are waiting on an external callback. When
+the runtime issues a resume token the execution metadata stores the
+token/signature pair along with the callback URL and expiration timestamp. The
+UI surfaces this state as a resumable node and posts the credentials to
+`POST /api/runs/{executionId}/nodes/{nodeId}/resume` so operators can manually
+enqueue the resume job if a webhook is lost or delayed. Successful submissions
+refresh the execution timeline and render a confirmation toast; failures keep
+the node expanded and display the error so the operator can retry after
+validating the token.

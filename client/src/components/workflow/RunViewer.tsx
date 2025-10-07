@@ -73,6 +73,17 @@ interface NodeExecution {
     tokensUsed?: number;
     httpStatusCode?: number;
     headers?: Record<string, string>;
+    waitingForCallback?: boolean;
+    resumeToken?: string;
+    resumeSignature?: string;
+    resumeCallbackUrl?: string;
+    resumeExpiresAt?: string | Date;
+    resume?: {
+      token?: string;
+      signature?: string;
+      callbackUrl?: string;
+      expiresAt?: string | Date;
+    };
   };
 }
 
@@ -564,6 +575,55 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     }
   };
 
+  const resumeNode = async (
+    executionId: string,
+    nodeId: string,
+    resumeMetadata?: { token?: string; signature?: string }
+  ) => {
+    try {
+      const payload: Record<string, string> = {};
+      if (resumeMetadata?.token) {
+        payload.resumeToken = resumeMetadata.token;
+      }
+      if (resumeMetadata?.signature) {
+        payload.resumeSignature = resumeMetadata.signature;
+      }
+
+      const response = await authFetch(`/api/runs/${executionId}/nodes/${nodeId}/resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await parseJsonSafe(response);
+      if (!response.ok || !(data as any)?.success) {
+        const message = (data as any)?.error || 'Failed to resume node';
+        const handled = await handleAuthorizationError(response, message);
+        if (!handled) {
+          toast({
+            variant: 'destructive',
+            title: 'Resume failed',
+            description: message,
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: 'Resume enqueued',
+        description: 'The node will continue once the callback is processed.',
+      });
+      loadExecutions();
+    } catch (error) {
+      console.error('Failed to resume node:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Resume failed',
+        description:
+          error instanceof Error ? error.message : 'Unable to resume node. Please try again.',
+      });
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -940,20 +1000,31 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                     </div>
                   )}
                   {selectedExecution.nodeExecutions.map((node, index) => {
-                    const detail = nodeDetails[node.nodeId] ?? null;
-                    const detailOutput = detail?.output ?? node.output ?? null;
-                    const outputIsObject =
-                      detailOutput && typeof detailOutput === 'object' && !Array.isArray(detailOutput);
-                    const detailStdout =
-                      detail?.stdout ??
-                      (outputIsObject && typeof (detailOutput as any).stdout === 'string'
-                        ? (detailOutput as any).stdout
-                        : null);
-                    const detailLogs = detail?.logs ?? [];
-                    const detailDiagnostics = detail?.diagnostics ?? null;
+                  const detail = nodeDetails[node.nodeId] ?? null;
+                  const detailOutput = detail?.output ?? node.output ?? null;
+                  const outputIsObject =
+                    detailOutput && typeof detailOutput === 'object' && !Array.isArray(detailOutput);
+                  const detailStdout =
+                    detail?.stdout ??
+                    (outputIsObject && typeof (detailOutput as any).stdout === 'string'
+                      ? (detailOutput as any).stdout
+                      : null);
+                  const detailLogs = detail?.logs ?? [];
+                  const detailDiagnostics = detail?.diagnostics ?? null;
+                  const resumeCredentials = {
+                    token: node.metadata.resume?.token ?? node.metadata.resumeToken,
+                    signature: node.metadata.resume?.signature ?? node.metadata.resumeSignature,
+                  };
+                  const nodeWaitingForCallback = Boolean(
+                    node.metadata.waitingForCallback ||
+                      node.metadata.resume?.callbackUrl ||
+                      node.metadata.resumeCallbackUrl ||
+                      node.metadata.resume?.token ||
+                      node.metadata.resumeToken,
+                  );
 
-                    return (
-                      <div
+                  return (
+                    <div
                         key={node.nodeId ?? index}
                         className="border border-slate-200 rounded-lg overflow-hidden"
                       >
@@ -1009,7 +1080,25 @@ export const RunViewer: React.FC<RunViewerProps> = ({
                                 <Eye className="w-4 h-4 mr-1" />
                                 Inspect
                               </Button>
-                              
+
+                              {nodeWaitingForCallback && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    resumeNode(
+                                      selectedExecution.executionId,
+                                      node.nodeId,
+                                      resumeCredentials,
+                                    )
+                                  }
+                                  className="text-emerald-600"
+                                >
+                                  <Play className="w-4 h-4 mr-1" />
+                                  Resume
+                                </Button>
+                              )}
+
                               {node.status === 'failed' && (
                                 <Button
                                   variant="outline"
