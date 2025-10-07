@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -145,6 +147,11 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   workflowId: initialWorkflowId,
   onClose
 }) => {
+  const { toast } = useToast();
+  const { authFetch, logout } = useAuthStore((state) => ({
+    authFetch: state.authFetch,
+    logout: state.logout,
+  }));
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeExecution | null>(null);
@@ -164,10 +171,45 @@ export const RunViewer: React.FC<RunViewerProps> = ({
   const [auditEvents, setAuditEvents] = useState<ExecutionAuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
+  const parseJsonSafe = useCallback(async (response: Response) => {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }, []);
+
+  const handleAuthorizationError = useCallback(
+    async (response: Response, fallbackMessage: string) => {
+      const description = fallbackMessage || `Request failed with status ${response.status}`;
+      if (response.status === 401) {
+        toast({
+          variant: 'destructive',
+          title: 'Session expired',
+          description: description || 'Please sign in again to continue.',
+        });
+        await logout(true);
+        return true;
+      }
+
+      if (response.status === 403) {
+        toast({
+          variant: 'destructive',
+          title: 'Access denied',
+          description: description || 'You do not have permission to perform this action.',
+        });
+        return true;
+      }
+
+      return false;
+    },
+    [logout, toast]
+  );
+
   // Load executions
   useEffect(() => {
     loadExecutions();
-  }, [initialExecutionId, initialWorkflowId]);
+  }, [loadExecutions]);
 
   useEffect(() => {
     const loadDuplicateEvents = async () => {
@@ -177,11 +219,22 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       }
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `/api/workflows/${selectedExecution.workflowId}/duplicate-events?limit=10`
         );
-        const data = await response.json();
-        if (data.success) {
+        const data = await parseJsonSafe(response);
+
+        if (!response.ok) {
+          const message = (data as any)?.error || 'Failed to load duplicate events';
+          const handled = await handleAuthorizationError(response, message);
+          if (!handled) {
+            console.error('Failed to load duplicate events:', message);
+          }
+          setDuplicateEvents([]);
+          return;
+        }
+
+        if ((data as any).success) {
           setDuplicateEvents(Array.isArray(data.events) ? data.events : []);
         } else {
           setDuplicateEvents([]);
@@ -193,7 +246,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     };
 
     loadDuplicateEvents();
-  }, [selectedExecution]);
+  }, [authFetch, handleAuthorizationError, parseJsonSafe, selectedExecution]);
 
   useEffect(() => {
     const loadVerificationFailures = async () => {
@@ -224,12 +277,23 @@ export const RunViewer: React.FC<RunViewerProps> = ({
           params.set('workflowId', selectedExecution.workflowId);
         }
 
-        const response = await fetch(
+        const response = await authFetch(
           `/api/webhooks/${webhookId}/verification-failures?${params.toString()}`
         );
-        const data = await response.json();
+        const data = await parseJsonSafe(response);
 
-        if (response.ok && data.success) {
+        if (!response.ok) {
+          const message = (data as any)?.error || 'Failed to load verification failures';
+          const handled = await handleAuthorizationError(response, message);
+          if (!handled) {
+            console.error('Failed to load verification failures:', message);
+            setVerificationError(message);
+          }
+          setVerificationFailures([]);
+          return;
+        }
+
+        if ((data as any).success) {
           const entries = Array.isArray(data.failures)
             ? (data.failures as any[]).map((entry) => ({
                 id: String(entry.id),
@@ -273,7 +337,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     };
 
     loadVerificationFailures();
-  }, [selectedExecution]);
+  }, [authFetch, handleAuthorizationError, parseJsonSafe, selectedExecution]);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,14 +355,25 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       setDetailsLoading(true);
       setDetailsError(null);
       try {
-        const response = await fetch(`/api/executions/${selectedExecution.executionId}`);
-        const data = await response.json();
+        const response = await authFetch(`/api/executions/${selectedExecution.executionId}`);
+        const data = await parseJsonSafe(response);
 
         if (cancelled) {
           return;
         }
 
-        if (response.ok && data.success && data.execution?.nodeResults) {
+        if (!response.ok) {
+          const message = (data as any)?.error || 'Failed to load execution details';
+          const handled = await handleAuthorizationError(response, message);
+          if (!handled) {
+            console.error('Failed to load execution details:', message);
+            setDetailsError(message);
+          }
+          setNodeDetails({});
+          return;
+        }
+
+        if ((data as any).success && (data as any).execution?.nodeResults) {
           const normalized: Record<string, NodeExecutionDetail> = {};
           const entries = data.execution.nodeResults as Record<string, any>;
 
@@ -342,7 +417,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
           setDetailsError(null);
         } else {
           setNodeDetails({});
-          setDetailsError(data.error ?? 'Failed to load execution details');
+          setDetailsError((data as any)?.error ?? 'Failed to load execution details');
         }
       } catch (error) {
         console.error('Failed to load execution details:', error);
@@ -362,7 +437,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedExecution]);
+  }, [authFetch, handleAuthorizationError, parseJsonSafe, selectedExecution]);
 
   const loadAuditEvents = useCallback(async () => {
     setAuditLoading(true);
@@ -374,9 +449,19 @@ export const RunViewer: React.FC<RunViewerProps> = ({
         params.set('requestId', requestId);
       }
 
-      const response = await fetch(`/api/admin/executions?${params.toString()}`);
-      const data = await response.json();
-      if (data.success && Array.isArray(data.entries)) {
+      const response = await authFetch(`/api/admin/executions?${params.toString()}`);
+      const data = await parseJsonSafe(response);
+      if (!response.ok) {
+        const message = (data as any)?.error || 'Failed to load audit events';
+        const handled = await handleAuthorizationError(response, message);
+        if (!handled) {
+          console.error('Failed to load audit events:', message);
+        }
+        setAuditEvents([]);
+        return;
+      }
+
+      if ((data as any).success && Array.isArray(data.entries)) {
         setAuditEvents(data.entries as ExecutionAuditEvent[]);
       } else {
         setAuditEvents([]);
@@ -387,13 +472,13 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     } finally {
       setAuditLoading(false);
     }
-  }, [selectedExecution?.metadata?.requestId, selectedExecution?.correlationId]);
+  }, [authFetch, handleAuthorizationError, parseJsonSafe, selectedExecution?.metadata?.requestId, selectedExecution?.correlationId]);
 
   useEffect(() => {
     loadAuditEvents();
   }, [loadAuditEvents]);
 
-  const loadExecutions = async () => {
+  const loadExecutions = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -401,11 +486,22 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       if (initialWorkflowId) params.set('workflowId', initialWorkflowId);
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
-      const response = await fetch(`/api/executions?${params}`);
-      const data = await response.json();
-      
+      const response = await authFetch(`/api/executions?${params}`);
+      const data = await parseJsonSafe(response);
+
+      if (!response.ok) {
+        const message = (data as any)?.error || 'Failed to load executions';
+        const handled = await handleAuthorizationError(response, message);
+        if (!handled) {
+          console.error('Failed to load executions:', message);
+        }
+        setExecutions([]);
+        setSelectedExecution(null);
+        return;
+      }
+
       setExecutions(data.executions || []);
-      
+
       // Auto-select first execution or specific one
       if (data.executions?.length > 0) {
         const targetExecution = initialExecutionId 
@@ -418,7 +514,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [authFetch, handleAuthorizationError, initialExecutionId, initialWorkflowId, parseJsonSafe, statusFilter]);
 
   const selectedNodeDetail = selectedNode ? nodeDetails[selectedNode.nodeId] ?? null : null;
   const inspectorOutput = selectedNodeDetail?.output ?? selectedNode?.output ?? null;
@@ -434,7 +530,16 @@ export const RunViewer: React.FC<RunViewerProps> = ({
 
   const retryExecution = async (executionId: string) => {
     try {
-      await fetch(`/api/executions/${executionId}/retry`, { method: 'POST' });
+      const response = await authFetch(`/api/executions/${executionId}/retry`, { method: 'POST' });
+      const data = await parseJsonSafe(response);
+      if (!response.ok) {
+        const message = (data as any)?.error || 'Failed to retry execution';
+        const handled = await handleAuthorizationError(response, message);
+        if (!handled) {
+          console.error('Failed to retry execution:', message);
+        }
+        return;
+      }
       loadExecutions(); // Refresh data
     } catch (error) {
       console.error('Failed to retry execution:', error);
@@ -443,7 +548,16 @@ export const RunViewer: React.FC<RunViewerProps> = ({
 
   const retryNode = async (executionId: string, nodeId: string) => {
     try {
-      await fetch(`/api/executions/${executionId}/nodes/${nodeId}/retry`, { method: 'POST' });
+      const response = await authFetch(`/api/executions/${executionId}/nodes/${nodeId}/retry`, { method: 'POST' });
+      const data = await parseJsonSafe(response);
+      if (!response.ok) {
+        const message = (data as any)?.error || 'Failed to retry node';
+        const handled = await handleAuthorizationError(response, message);
+        if (!handled) {
+          console.error('Failed to retry node:', message);
+        }
+        return;
+      }
       loadExecutions(); // Refresh data
     } catch (error) {
       console.error('Failed to retry node:', error);
