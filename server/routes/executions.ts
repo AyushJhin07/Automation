@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 
@@ -20,6 +21,9 @@ import { productionDeployer } from '../core/ProductionDeployer.js';
 import { workflowRuntimeService, WorkflowNodeExecutionError } from '../workflow/WorkflowRuntimeService.js';
 import { computeExecutionOrder, sanitizeGraphForExecution, summarizeDryRunError } from '../utils/workflowExecution.js';
 import { resolveAllowActionOnlyFlag } from '../utils/validationFlags.js';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID_REGEX.test(value);
 
 const router = Router();
 export const executionResumeRouter = Router({ mergeParams: true });
@@ -328,10 +332,11 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
 
   try {
     let graphSource: any;
+    const requestedWorkflowId = payload.workflowId;
+    let resolvedWorkflowId = payload.workflowId;
 
     if (payload.graph) {
       graphSource = sanitizeGraphForExecution(payload.graph);
-      graphSource.id = graphSource.id || payload.workflowId;
     } else {
       const workflowRecord = await WorkflowRepository.getWorkflowById(payload.workflowId, organizationId);
       if (!workflowRecord || !workflowRecord.graph) {
@@ -339,6 +344,42 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
       }
       graphSource = sanitizeGraphForExecution(workflowRecord.graph);
     }
+
+    const candidateGraphId = typeof graphSource?.id === 'string' ? graphSource.id : undefined;
+    if (isUuid(candidateGraphId)) {
+      resolvedWorkflowId = candidateGraphId;
+    }
+
+    if (!isUuid(resolvedWorkflowId)) {
+      resolvedWorkflowId = randomUUID();
+    }
+
+    if (!graphSource || typeof graphSource !== 'object') {
+      return res.status(400).json({ success: false, error: 'WORKFLOW_GRAPH_EMPTY' });
+    }
+
+    if (graphSource.id !== resolvedWorkflowId) {
+      graphSource = { ...graphSource, id: resolvedWorkflowId };
+    }
+
+    if (!isUuid(requestedWorkflowId) || !isUuid(candidateGraphId)) {
+      try {
+        await WorkflowRepository.saveWorkflowGraph({
+          id: resolvedWorkflowId,
+          userId: (req as any)?.user?.id,
+          organizationId,
+          name: graphSource?.name ?? payload?.name ?? 'Untitled Workflow',
+          description: graphSource?.description ?? graphSource?.metadata?.description ?? null,
+          graph: graphSource,
+          metadata: graphSource?.metadata ?? null,
+        });
+      } catch (error) {
+        console.error('Failed to persist workflow graph during dry-run:', getErrorMessage(error));
+        return res.status(500).json({ success: false, error: 'FAILED_TO_PREPARE_WORKFLOW', message: getErrorMessage(error) });
+      }
+    }
+
+    res.setHeader('X-Resolved-Workflow-Id', resolvedWorkflowId);
 
     if (!graphSource || !Array.isArray(graphSource.nodes) || graphSource.nodes.length === 0) {
       return res.status(400).json({ success: false, error: 'WORKFLOW_GRAPH_EMPTY' });
@@ -369,8 +410,8 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
 
     try {
       const previewResult = await productionDeployer.deploy(compilation.files, {
-        projectName: graphSource.name || payload.workflowId,
-        description: `Dry run preview for workflow ${graphSource.id || payload.workflowId}`,
+        projectName: graphSource.name || resolvedWorkflowId,
+        description: `Dry run preview for workflow ${graphSource.id || resolvedWorkflowId}`,
         dryRun: true,
       });
 
@@ -391,7 +432,7 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
     const nodeMap = new Map(nodes.map((node: any) => [String(node.id), node]));
     const order = computeExecutionOrder(nodes, edges);
     const runtimeContext = {
-      workflowId: graphSource.id || payload.workflowId,
+      workflowId: graphSource.id || resolvedWorkflowId,
       executionId: `dryrun-${Date.now()}`,
       userId: (req as any)?.user?.id,
       organizationId,
@@ -497,6 +538,7 @@ router.post('/dry-run', requirePermission('execution:read'), async (req, res) =>
       requiredScopes: compilation.requiredScopes ?? [],
       encounteredError,
       nodes: nodeSummaries,
+      requestedWorkflowId,
     });
   } catch (error) {
     console.error('Failed to perform workflow dry run:', getErrorMessage(error));
