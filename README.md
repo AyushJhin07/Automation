@@ -29,6 +29,16 @@ npm run dev:stack
 
 Inline worker is disabled in this mode, so queue health maps to the dedicated worker process.
 
+If Redis is misconfigured or `QUEUE_DRIVER=inmemory`, `dev:stack` now fails fast with guidance similar to:
+
+```
+[dev:stack] dev:stack requires a durable BullMQ queue driver. QUEUE_DRIVER=inmemory keeps jobs in process memory and will drop work on restart.
+[dev:stack] Resolved Redis target: redis://127.0.0.1:6379/0
+[dev:stack] Remove QUEUE_DRIVER=inmemory (reserved for isolated tests) and configure QUEUE_REDIS_HOST/PORT/DB so every process connects to the same Redis instance.
+```
+
+After each child process starts, the supervisor pings `/api/health/queue` (for the API) or Redis directly to make sure every component is pointed at the same durable BullMQ driver before declaring the stack ready.
+
 ## Health Checks
 
 - Queue heartbeat: `curl http://localhost:5000/api/production/queue/heartbeat`

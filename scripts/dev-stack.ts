@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import process from 'node:process';
-import IORedis from 'ioredis';
+import IORedis, { type RedisOptions } from 'ioredis';
 import { Client } from 'pg';
 
 import { getRedisConnectionOptions } from '../server/queue/BullMQFactory.js';
@@ -23,6 +23,14 @@ const managedProcesses: ManagedProcess[] = [];
 
 let shuttingDown = false;
 let exitCode = 0;
+
+type QueueConfigurationSnapshot = {
+  driver: string;
+  connection: RedisOptions;
+  target: string;
+};
+
+let cachedQueueConfiguration: QueueConfigurationSnapshot | null = null;
 
 process.env.NODE_ENV ??= 'development';
 
@@ -73,7 +81,15 @@ async function delay(ms: number) {
 async function main() {
   setupSignalHandlers();
 
-  await ensureRedisIsReachable();
+  try {
+    await ensureRedisIsReachable();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    exitCode = exitCode || 1;
+    return;
+  }
+
   await ensureDatabaseIsReachable();
 
   try {
@@ -102,7 +118,16 @@ async function main() {
 
       const managed: ManagedProcess = { script, child };
       managedProcesses.push(managed);
-      log(`Started ${script}`);
+
+      child.on('spawn', () => {
+        log(`Started ${script}`);
+        verifyQueueDriverForChild(script).catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`${logPrefix} Queue verification failed after starting ${script}: ${message}`);
+          exitCode = exitCode || 1;
+          terminateAll();
+        });
+      });
 
       let settled = false;
 
@@ -191,37 +216,300 @@ async function runDatabaseMigrations(): Promise<void> {
   log('Database migrations applied successfully.');
 }
 
+function resolveQueueDriver(): string {
+  const override = process.env.QUEUE_DRIVER?.toLowerCase().trim();
+  if (!override) {
+    return 'bullmq';
+  }
+  return override;
+}
+
+function describeRedisTarget(connection: RedisOptions): string {
+  const scheme = connection.tls ? 'rediss' : 'redis';
+  const hostValue = typeof connection.host === 'string' && connection.host.trim().length > 0
+    ? connection.host.trim()
+    : '<unset-host>';
+  const username = connection.username ? `${connection.username}@` : '';
+  const formatNumber = (value: unknown, fallback: string): string => {
+    return typeof value === 'number' && Number.isFinite(value) ? value.toString() : fallback;
+  };
+  const portValue = formatNumber(connection.port, '<invalid-port>');
+  const dbValue = formatNumber(connection.db, '<invalid-db>');
+
+  return `${scheme}://${username}${hostValue}:${portValue}/${dbValue}`;
+}
+
+function createQueueConfigurationSnapshot(): QueueConfigurationSnapshot {
+  const rawConnection = getRedisConnectionOptions();
+  const sanitized: RedisOptions = {
+    ...rawConnection,
+    host: typeof rawConnection.host === 'string' ? rawConnection.host.trim() : rawConnection.host,
+  };
+
+  if (typeof sanitized.port !== 'number' || !Number.isFinite(sanitized.port)) {
+    const parsed = Number.parseInt(String(rawConnection.port ?? ''), 10);
+    sanitized.port = Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+
+  if (typeof sanitized.db !== 'number' || !Number.isFinite(sanitized.db)) {
+    const parsed = Number.parseInt(String(rawConnection.db ?? ''), 10);
+    sanitized.db = Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+
+  return {
+    driver: resolveQueueDriver(),
+    connection: sanitized,
+    target: describeRedisTarget(sanitized),
+  };
+}
+
+function getQueueConfiguration(): QueueConfigurationSnapshot {
+  if (!cachedQueueConfiguration) {
+    cachedQueueConfiguration = createQueueConfigurationSnapshot();
+  }
+  return cachedQueueConfiguration;
+}
+
+function ensureQueueTargetConsistency(context: string): void {
+  if (!cachedQueueConfiguration) {
+    cachedQueueConfiguration = createQueueConfigurationSnapshot();
+    return;
+  }
+
+  const latest = createQueueConfigurationSnapshot();
+  if (latest.target !== cachedQueueConfiguration.target) {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} ${context} resolved Redis target ${latest.target}, which differs from the initial ${cachedQueueConfiguration.target}.`,
+        `${logPrefix} Align QUEUE_REDIS_HOST/PORT/DB (and optional credentials/TLS) so every process points at the same Redis instance.`,
+      ].join('\n'),
+    );
+  }
+}
+
+function assertValidRedisConnection(connection: RedisOptions, target: string): void {
+  const host = typeof connection.host === 'string' ? connection.host.trim() : '';
+  if (!host) {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} Resolved Redis host is empty.`,
+        `${logPrefix} Resolved Redis target: ${target}`,
+        `${logPrefix} Set QUEUE_REDIS_HOST to the hostname or IP address of your Redis instance.`,
+      ].join('\n'),
+    );
+  }
+
+  const port = connection.port;
+  if (typeof port !== 'number' || !Number.isInteger(port) || port <= 0 || port >= 65536) {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} Resolved Redis port is invalid (${port}).`,
+        `${logPrefix} Resolved Redis target: ${target}`,
+        `${logPrefix} Set QUEUE_REDIS_PORT to an integer between 1 and 65535.`,
+      ].join('\n'),
+    );
+  }
+
+  const db = connection.db;
+  if (typeof db !== 'number' || !Number.isInteger(db) || db < 0) {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} Resolved Redis database index is invalid (${db}).`,
+        `${logPrefix} Resolved Redis target: ${target}`,
+        `${logPrefix} Set QUEUE_REDIS_DB to a non-negative integer.`,
+      ].join('\n'),
+    );
+  }
+}
+
 async function ensureRedisIsReachable() {
-  const connection = getRedisConnectionOptions();
-  const target = `${connection.host ?? '127.0.0.1'}:${connection.port ?? 6379}/${connection.db ?? 0}`;
-  log(`Checking Redis connectivity at ${target}...`);
+  const configuration = getQueueConfiguration();
+  const { connection } = configuration;
+  const driver = configuration.driver;
+  const target = configuration.target;
+
+  log(`Resolved queue driver "${driver}" with Redis target ${target}.`);
+
+  if (driver === 'inmemory') {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} dev:stack requires a durable BullMQ queue driver. QUEUE_DRIVER=inmemory keeps jobs in process memory and will drop work on restart.`,
+        `${logPrefix} Resolved Redis target: ${target}`,
+        `${logPrefix} Remove QUEUE_DRIVER=inmemory (reserved for isolated tests) and configure QUEUE_REDIS_HOST/PORT/DB so every process connects to the same Redis instance.`,
+        `${logPrefix} Start Redis with 'docker compose -f docker-compose.dev.yml up redis' or install it locally before rerunning dev:stack.`,
+      ].join('\n'),
+    );
+  }
+
+  if (driver && driver !== 'bullmq') {
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} Unsupported QUEUE_DRIVER value "${driver}" detected. dev:stack only supports the durable BullMQ driver.`,
+        `${logPrefix} Resolved Redis target: ${target}`,
+        `${logPrefix} Remove the unsupported QUEUE_DRIVER override or set it to "bullmq".`,
+      ].join('\n'),
+    );
+  }
+
+  assertValidRedisConnection(connection, target);
 
   const client = new IORedis(connection);
-  let shouldExit = false;
 
   try {
     await client.ping();
     log(`Redis connection verified at ${target}.`);
   } catch (error) {
     const explanation = error instanceof Error ? error.message : String(error);
-    console.error(
-      `${logPrefix} Unable to reach Redis at ${target}: ${explanation}`,
-      `\n${logPrefix} Start Redis with 'docker compose -f docker-compose.dev.yml up redis' or install it locally (docs/operations/local-dev.md#queue-configuration).`
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} Unable to reach Redis at ${target}: ${explanation}`,
+        `${logPrefix} Start Redis with 'docker compose -f docker-compose.dev.yml up redis' or install it locally.`,
+        `${logPrefix} Confirm QUEUE_REDIS_HOST/PORT/DB (and optional QUEUE_REDIS_USERNAME/QUEUE_REDIS_PASSWORD/QUEUE_REDIS_TLS) match your environment.`,
+      ].join('\n'),
+      error instanceof Error ? { cause: error } : undefined,
     );
-    process.exitCode = 1;
-    shouldExit = true;
   } finally {
     try {
       await client.quit();
     } catch {
       client.disconnect();
     }
+  }
+}
 
-    if (shouldExit) {
-      terminateAll();
-      process.exit(process.exitCode ?? 1);
+function parseInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+async function pingRedisForProbe(context: string): Promise<void> {
+  const configuration = getQueueConfiguration();
+  const client = new IORedis(configuration.connection);
+
+  try {
+    await client.ping();
+    log(`${context} verified Redis connectivity at ${configuration.target}.`);
+  } catch (error) {
+    const explanation = error instanceof Error ? error.message : String(error);
+    throw new QueueReadinessError(
+      [
+        `${logPrefix} ${context} failed to reach Redis at ${configuration.target}: ${explanation}`,
+        `${logPrefix} Ensure the process can reach Redis and that QUEUE_REDIS_* values match across all dev:stack children.`,
+      ].join('\n'),
+      error instanceof Error ? { cause: error } : undefined,
+    );
+  } finally {
+    try {
+      await client.quit();
+    } catch {
+      client.disconnect();
     }
   }
+}
+
+async function probeApiQueueHealth(): Promise<void> {
+  const host = process.env.HOST ?? '127.0.0.1';
+  const port = process.env.PORT ?? '5000';
+  const origin = process.env.DEV_STACK_API_ORIGIN ?? `http://${host}:${port}`;
+  const path = process.env.DEV_STACK_QUEUE_HEALTH_PATH ?? '/api/health/queue';
+
+  let url: URL;
+  try {
+    url = new URL(path, origin);
+  } catch (error) {
+    const explanation = error instanceof Error ? error.message : String(error);
+    throw new QueueReadinessError(
+      `${logPrefix} Unable to construct queue health URL (${explanation}). Check DEV_STACK_API_ORIGIN and DEV_STACK_QUEUE_HEALTH_PATH.`,
+    );
+  }
+
+  const timeoutMs = parseInteger(process.env.DEV_STACK_QUEUE_HEALTH_TIMEOUT_MS, 60000);
+  const intervalMs = parseInteger(process.env.DEV_STACK_QUEUE_HEALTH_INTERVAL_MS, 1000);
+  const startedAt = Date.now();
+  let lastLogged: string | null = null;
+
+  while (!shuttingDown) {
+    const elapsed = Date.now() - startedAt;
+    if (elapsed > timeoutMs) {
+      const message = lastLogged ? ` Last error: ${lastLogged}` : '';
+      throw new QueueReadinessError(
+        [
+          `${logPrefix} Timed out after ${timeoutMs}ms waiting for dev:api to confirm a durable queue via ${url.toString()}.`,
+          `${logPrefix} Expected Redis target: ${getQueueConfiguration().target}.${message}`,
+          `${logPrefix} Inspect API logs for queue health errors and confirm Redis is reachable.`,
+        ].join('\n'),
+      );
+    }
+
+    try {
+      const controller = new AbortController();
+      const abortTimeout = setTimeout(() => controller.abort(), Math.min(intervalMs, 5000));
+      const response = await fetch(url, {
+        headers: {
+          accept: 'application/json',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(abortTimeout);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+
+      const payload: any = await response.json();
+      const durable = payload?.health?.durable === true;
+
+      if (!durable) {
+        const detail = typeof payload?.health?.message === 'string'
+          ? payload.health.message
+          : 'Queue health endpoint reported a non-durable driver.';
+        throw new QueueReadinessError(
+          [
+            `${logPrefix} dev:api reported a non-durable queue driver via ${url.toString()}: ${detail}`,
+            `${logPrefix} Expected Redis target: ${getQueueConfiguration().target}`,
+            `${logPrefix} Remove QUEUE_DRIVER=inmemory and confirm Redis is reachable before rerunning dev:stack.`,
+          ].join('\n'),
+        );
+      }
+
+      ensureQueueTargetConsistency('dev:api queue health probe');
+      log(`dev:api queue health confirmed via ${url.toString()} (target=${getQueueConfiguration().target}).`);
+      return;
+    } catch (error) {
+      if (error instanceof QueueReadinessError) {
+        throw error;
+      }
+
+      const explanation = error instanceof Error ? error.message : String(error);
+      if (lastLogged !== explanation) {
+        log(`${logPrefix} Waiting for dev:api queue health: ${explanation}`);
+        lastLogged = explanation;
+      }
+    }
+
+    await delay(intervalMs);
+  }
+}
+
+async function verifyQueueDriverForChild(script: string): Promise<void> {
+  if (shuttingDown) {
+    return;
+  }
+
+  ensureQueueTargetConsistency(`${script} queue probe`);
+
+  const configuration = getQueueConfiguration();
+  if (configuration.driver !== 'bullmq') {
+    // Preflight would have already failed, but guard to avoid noisy probes during shutdown.
+    return;
+  }
+
+  if (script === 'dev:api') {
+    await probeApiQueueHealth();
+    return;
+  }
+
+  await pingRedisForProbe(`dev:stack ${script}`);
 }
 
 async function ensureDatabaseIsReachable() {
