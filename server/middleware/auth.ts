@@ -53,12 +53,18 @@ const buildDevUser = () => {
   }
 
   const userId = process.env.DEV_AUTO_USER_ID || 'dev-user';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const defaultRole = isProduction ? 'developer' : 'admin';
+  const role = process.env.DEV_AUTO_USER_ROLE || defaultRole;
+  const organizationRole =
+    process.env.DEV_AUTO_ORG_ROLE || (role === 'admin' ? 'owner' : role);
+  const permissions = getPermissionsForRole(organizationRole || role);
 
   return {
     id: userId,
     email: process.env.DEV_AUTO_USER_EMAIL || 'developer@local.test',
     name: process.env.DEV_AUTO_USER_NAME || 'Local Developer',
-    role: process.env.DEV_AUTO_USER_ROLE || 'developer',
+    role,
     planType: process.env.DEV_AUTO_USER_PLAN || 'pro',
     isActive: true,
     emailVerified: true,
@@ -68,7 +74,7 @@ const buildDevUser = () => {
     quotaTokens: 1000000,
     createdAt: new Date(),
     organizationId: 'dev-org',
-    organizationRole: 'owner',
+    organizationRole,
     organizationPlan: 'enterprise',
     organizationStatus: 'active',
     organizationLimits: {
@@ -105,7 +111,7 @@ const buildDevUser = () => {
       },
     },
     organizations: [],
-    permissions: getPermissionsForRole('owner'),
+    permissions,
   };
 };
 
@@ -129,7 +135,8 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     if (!token || token === 'null' || token === 'undefined') {
       if (shouldUseDevFallback() && devUser) {
-        const permissions = getPermissionsForRole(devUser.organizationRole);
+        const permissions = devUser.permissions
+          ?? getPermissionsForRole(devUser.organizationRole || devUser.role);
         req.user = { ...devUser, permissions };
         req.organizationId = devUser.organizationId;
         req.organizationRole = devUser.organizationRole;
@@ -208,7 +215,8 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         setRequestUser(user.id);
       }
     } else if (shouldUseDevFallback() && devUser) {
-      const permissions = getPermissionsForRole(devUser.organizationRole);
+      const permissions = devUser.permissions
+        ?? getPermissionsForRole(devUser.organizationRole || devUser.role);
       req.user = { ...devUser, permissions };
       req.organizationId = devUser.organizationId;
       req.organizationRole = devUser.organizationRole;
@@ -223,7 +231,8 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     next();
   } catch (error) {
     if (shouldUseDevFallback() && devUser) {
-      const permissions = getPermissionsForRole(devUser.organizationRole);
+      const permissions = devUser.permissions
+        ?? getPermissionsForRole(devUser.organizationRole || devUser.role);
       req.user = { ...devUser, permissions };
       req.organizationId = devUser.organizationId;
       req.organizationRole = devUser.organizationRole;
