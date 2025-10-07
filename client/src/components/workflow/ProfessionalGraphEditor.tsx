@@ -108,6 +108,7 @@ import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
+import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { collectNodeConfigurationErrors } from './nodeConfigurationValidation';
 
 // Enhanced Node Template Interface
@@ -1474,7 +1475,27 @@ const GraphEditorContent = () => {
     isLoading: isQueueHealthLoading,
     error: queueHealthError,
   } = useQueueHealth({ intervalMs: 30000 });
+  const {
+    environmentWarnings: workerEnvironmentWarnings,
+    summary: workerSummary,
+    isLoading: isWorkerStatusLoading,
+  } = useWorkerHeartbeat({ intervalMs: 30000 });
   const queueReady = queueStatus === 'pass';
+  const workerFleetReady =
+    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
+  const workerIssues = useMemo(() => {
+    if (workerFleetReady) {
+      return [] as string[];
+    }
+    if (workerEnvironmentWarnings.length > 0) {
+      return workerEnvironmentWarnings.map((warning) => warning.message);
+    }
+    if (isWorkerStatusLoading) {
+      return ['Checking worker and scheduler status…'];
+    }
+    return [WORKER_FLEET_GUIDANCE];
+  }, [workerFleetReady, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -1495,7 +1516,7 @@ const GraphEditorContent = () => {
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
-  const queueGuidance = 'Start worker & scheduler processes to run workflows.';
+  const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
     if (queueReady) {
       return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
@@ -1507,6 +1528,18 @@ const GraphEditorContent = () => {
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
   }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
+  const runHealthTooltip = useMemo(() => {
+    const parts = [] as string[];
+    if (workerStatusMessage) {
+      parts.push(workerStatusMessage);
+    }
+    if (queueStatusMessage) {
+      parts.push(queueStatusMessage);
+    }
+    return parts.join(' ').trim();
+  }, [workerStatusMessage, queueStatusMessage]);
+  const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
+  const runReady = queueReady && workerFleetReady;
   const [catalog, setCatalog] = useState<any | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [refreshConnectorsFlag, setRefreshConnectorsFlag] = useState(false);
@@ -2128,6 +2161,9 @@ const GraphEditorContent = () => {
   }, [nodeBlockingErrors, workflowValidation.blockingErrors]);
 
   const runDisableReason = useMemo(() => {
+    if (!workerFleetReady) {
+      return workerStatusMessage || WORKER_FLEET_GUIDANCE;
+    }
     if (!queueReady) {
       return queueStatusMessage;
     }
@@ -2149,6 +2185,8 @@ const GraphEditorContent = () => {
     }
     return undefined;
   }, [
+    workerFleetReady,
+    workerStatusMessage,
     queueReady,
     queueStatusMessage,
     nodes.length,
@@ -2163,6 +2201,7 @@ const GraphEditorContent = () => {
     isDryRunInProgress ||
     nodes.length === 0 ||
     !queueReady ||
+    !workerFleetReady ||
     combinedBlockingErrors.length > 0 ||
     workflowValidation.status !== 'valid';
 
@@ -2178,18 +2217,20 @@ const GraphEditorContent = () => {
     </>
   );
 
-  const queueBadgeLabel = queueReady
-    ? 'Queue ready'
-    : isQueueHealthLoading
-      ? 'Checking queue…'
-      : 'Queue offline';
-  const queueBadgeTone = queueReady
+  const queueBadgeLabel = runReady
+    ? 'Run ready'
+    : isRunHealthLoading
+      ? 'Checking status…'
+      : !workerFleetReady
+        ? 'Workers offline'
+        : 'Queue offline';
+  const queueBadgeTone = runReady
     ? 'bg-emerald-600 text-white'
-    : isQueueHealthLoading
+    : isRunHealthLoading
       ? 'bg-amber-500 text-white'
       : 'bg-red-600 text-white';
-  const queueBadgePulse = !queueReady && !isQueueHealthLoading;
-  const queueBadgeTooltip = queueStatusMessage;
+  const queueBadgePulse = !runReady && !isRunHealthLoading;
+  const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;

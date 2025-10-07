@@ -55,6 +55,7 @@ import { serializeGraphPayload } from '@/components/workflow/graphPayload';
 import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
 import type { FunctionDefinition } from '@/components/workflow/DynamicParameterForm';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
+import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { collectNodeConfigurationErrors } from '@/components/workflow/nodeConfigurationValidation';
 import type { ValidationError } from '@shared/nodeGraphSchema';
 import clsx from 'clsx';
@@ -213,8 +214,28 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     isLoading: isQueueHealthLoading,
     error: queueHealthError,
   } = useQueueHealth({ intervalMs: 30000 });
+  const {
+    environmentWarnings: workerEnvironmentWarnings,
+    summary: workerSummary,
+    isLoading: isWorkerStatusLoading,
+  } = useWorkerHeartbeat({ intervalMs: 30000 });
   const queueReady = queueStatus === 'pass';
-  const queueGuidance = 'Start worker & scheduler processes to run workflows.';
+  const workerFleetReady =
+    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
+  const workerIssues = useMemo(() => {
+    if (workerFleetReady) {
+      return [] as string[];
+    }
+    if (workerEnvironmentWarnings.length > 0) {
+      return workerEnvironmentWarnings.map((warning) => warning.message);
+    }
+    if (isWorkerStatusLoading) {
+      return ['Checking worker and scheduler status…'];
+    }
+    return [WORKER_FLEET_GUIDANCE];
+  }, [workerFleetReady, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
+  const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
     if (queueReady) {
       return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
@@ -226,6 +247,18 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
   }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
+  const runHealthTooltip = useMemo(() => {
+    const parts = [] as string[];
+    if (workerStatusMessage) {
+      parts.push(workerStatusMessage);
+    }
+    if (queueStatusMessage) {
+      parts.push(queueStatusMessage);
+    }
+    return parts.join(' ').trim();
+  }, [workerStatusMessage, queueStatusMessage]);
+  const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
+  const runReady = queueReady && workerFleetReady;
   const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
     status: 'idle',
     errors: [],
@@ -245,6 +278,9 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     }
     if (nodes.length === 0) {
       return 'Add at least one node before running.';
+    }
+    if (!workerFleetReady) {
+      return workerStatusMessage || WORKER_FLEET_GUIDANCE;
     }
     if (!queueReady) {
       return queueStatusMessage;
@@ -266,6 +302,8 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   }, [
     token,
     nodes.length,
+    workerFleetReady,
+    workerStatusMessage,
     queueReady,
     queueStatusMessage,
     combinedBlockingErrors,
@@ -279,6 +317,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     nodes.length === 0 ||
     !token ||
     !queueReady ||
+    !workerFleetReady ||
     combinedBlockingErrors.length > 0 ||
     workflowValidation.status !== 'valid';
 
@@ -294,18 +333,20 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     </>
   );
 
-  const queueBadgeLabel = queueReady
-    ? 'Queue ready'
-    : isQueueHealthLoading
-      ? 'Checking queue…'
-      : 'Queue offline';
-  const queueBadgeTone = queueReady
+  const queueBadgeLabel = runReady
+    ? 'Run ready'
+    : isRunHealthLoading
+      ? 'Checking status…'
+      : !workerFleetReady
+        ? 'Workers offline'
+        : 'Queue offline';
+  const queueBadgeTone = runReady
     ? 'bg-emerald-600 text-white'
-    : isQueueHealthLoading
+    : isRunHealthLoading
       ? 'bg-amber-500 text-white'
       : 'bg-red-600 text-white';
-  const queueBadgePulse = !queueReady && !isQueueHealthLoading;
-  const queueBadgeTooltip = queueStatusMessage;
+  const queueBadgePulse = !runReady && !isRunHealthLoading;
+  const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
 
   const dryRunNodeSummaries = useMemo(() => {
     if (!dryRunResult?.execution?.nodes) return [] as Array<{ nodeId: string; status: string; label: string; message?: string }>;
