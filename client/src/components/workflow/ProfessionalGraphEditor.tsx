@@ -1570,6 +1570,7 @@ const GraphEditorContent = () => {
     error: undefined,
   });
   const validationSignatureRef = useRef<string>('');
+  const validationAbortRef = useRef<AbortController | null>(null);
   const createValidationSignature = useCallback((errors: ValidationError[]): string => {
     return errors
       .map((error) => `${error.nodeId ?? 'global'}|${error.path}|${error.message}|${error.severity}`)
@@ -2086,8 +2087,12 @@ const GraphEditorContent = () => {
     return combined;
   }, [nodeConfigurationErrors, workflowValidation.errors]);
 
+  const WORKFLOW_VALIDATION_DEBOUNCE_MS = 600;
+
   useEffect(() => {
     if (nodes.length === 0) {
+      validationAbortRef.current?.abort();
+      validationAbortRef.current = null;
       setWorkflowValidation({
         status: 'valid',
         errors: [],
@@ -2113,6 +2118,9 @@ const GraphEditorContent = () => {
     const payload = createGraphPayload(workflowIdentifier);
 
     const abortController = new AbortController();
+    validationAbortRef.current?.abort();
+    validationAbortRef.current = abortController;
+
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
@@ -2146,10 +2154,13 @@ const GraphEditorContent = () => {
           });
         }
       })();
-    }, 300);
+    }, WORKFLOW_VALIDATION_DEBOUNCE_MS);
 
     return () => {
       cancelled = true;
+      if (validationAbortRef.current === abortController) {
+        validationAbortRef.current = null;
+      }
       abortController.abort();
       window.clearTimeout(timer);
     };
@@ -2490,7 +2501,11 @@ const GraphEditorContent = () => {
 
     setRunBanner(null);
 
-    const validationResult = await validateWorkflowGraph(payload);
+    const validationAbortController = new AbortController();
+    const validationResult = await validateWorkflowGraph(
+      payload,
+      validationAbortController.signal
+    );
     const blockingErrors = validationResult.errors.filter((error) => isErrorSeverity((error as any)?.severity));
 
     if (!validationResult.valid || blockingErrors.length > 0) {
