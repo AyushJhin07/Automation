@@ -1,7 +1,7 @@
 // NODE CONFIGURATION MODAL - ENHANCED WITH DYNAMIC FORMS AND OAUTH
 // Provides comprehensive node configuration with OAuth integration and real-time validation
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -81,6 +81,7 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   const [activeTab, setActiveTab] = useState<'function' | 'connection' | 'parameters'>('function');
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
   const authFetch = useAuthStore((state) => state.authFetch);
+  const handledConnectionRef = useRef<string | null>(null);
 
   // Initialize state when modal opens
   useEffect(() => {
@@ -183,7 +184,9 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
   }, [connections, selectedConnectionId]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
 
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
@@ -191,44 +194,59 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
         return;
       }
 
+      const targetProvider = nodeData.appName.toLowerCase();
       if (data.provider && typeof data.provider === 'string') {
         const normalizedProvider = String(data.provider).toLowerCase();
-        if (normalizedProvider !== nodeData.appName.toLowerCase()) {
+        if (normalizedProvider !== targetProvider) {
           return;
         }
       }
 
-      if (data.success && data.connectionId) {
-        const connectionId: string = data.connectionId;
-        const connectionLabel: string | undefined = data.label;
-        const existing = connections.find((c) => c.id === connectionId);
-        const fallbackConnection: Connection = {
-          id: connectionId,
-          name: connectionLabel || 'New connection',
-          provider: nodeData.appName,
-          status: 'connected',
-        };
-
-        setSelectedConnectionId(connectionId);
-        setSelectedConnection(existing || fallbackConnection);
-        setActiveTab('parameters');
-        setIsLoading(false);
-        toast.success(connectionLabel ? `Connected ${connectionLabel}` : 'Connection created successfully');
-
-        try {
-          const result = onConnectionCreated(connectionId);
-          if (result && typeof (result as Promise<void>).then === 'function') {
-            (result as Promise<void>).catch(() => {
-              toast.error('Failed to refresh connections after creation');
-            });
-          }
-        } catch (err) {
-          toast.error('Failed to refresh connections after creation');
-        }
-      } else {
+      if (!data.success) {
         setIsLoading(false);
         const errorMessage = data?.error || data?.userInfoError || 'OAuth connection failed';
         toast.error(errorMessage);
+        return;
+      }
+
+      if (!data.connectionId || typeof data.connectionId !== 'string') {
+        setIsLoading(false);
+        toast.error('OAuth connection completed, but no connection ID was returned.');
+        return;
+      }
+
+      if (handledConnectionRef.current === data.connectionId) {
+        setIsLoading(false);
+        return;
+      }
+
+      handledConnectionRef.current = data.connectionId;
+
+      const connectionId: string = data.connectionId;
+      const connectionLabel: string | undefined = data.label;
+      const existing = connections.find((c) => c.id === connectionId);
+      const fallbackConnection: Connection = {
+        id: connectionId,
+        name: connectionLabel || 'New connection',
+        provider: nodeData.appName,
+        status: 'connected',
+      };
+
+      setSelectedConnectionId(connectionId);
+      setSelectedConnection(existing || fallbackConnection);
+      setActiveTab('parameters');
+      setIsLoading(false);
+      toast.success(connectionLabel ? `Connected ${connectionLabel}` : 'Connection created successfully');
+
+      try {
+        const result = onConnectionCreated(connectionId);
+        if (result && typeof (result as Promise<void>).then === 'function') {
+          (result as Promise<void>).catch(() => {
+            toast.error('Connection created, but failed to refresh the connection list.');
+          });
+        }
+      } catch (err) {
+        toast.error('Connection created, but failed to refresh the connection list.');
       }
     };
 
@@ -238,11 +256,19 @@ export const NodeConfigurationModal: React.FC<NodeConfigurationModalProps> = ({
     };
   }, [connections, isOpen, nodeData.appName, onConnectionCreated]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setIsLoading(false);
+      handledConnectionRef.current = null;
+    }
+  }, [isOpen]);
+
   // Initiate OAuth flow
   const handleOAuthConnect = async () => {
     if (!oauthProvider) return;
 
     setIsLoading(true);
+    handledConnectionRef.current = null;
     let shouldResetLoading = true;
     try {
       const response = await authFetch('/api/oauth/authorize', {
