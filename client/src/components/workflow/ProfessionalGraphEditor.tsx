@@ -2097,6 +2097,103 @@ const GraphEditorContent = () => {
     });
   }, [nodes, edges, spec]);
 
+  const ensureWorkflowId = useCallback(
+    async (
+      payload?: NodeGraph,
+    ): Promise<{ workflowId: string; payload?: NodeGraph } | null> => {
+      const updateResolvedId = (resolvedId: string) => {
+        fallbackWorkflowIdRef.current = resolvedId;
+        setActiveWorkflowId((prev) => (prev === resolvedId ? prev : resolvedId));
+        try {
+          localStorage.setItem('lastWorkflowId', resolvedId);
+        } catch (error) {
+          console.warn('Unable to persist workflow id:', error);
+        }
+      };
+
+      const getStoredIdentifier = (): string | undefined => {
+        let stored: string | undefined;
+        try {
+          stored = localStorage.getItem('lastWorkflowId') ?? undefined;
+        } catch (error) {
+          console.warn('Unable to read workflow id from storage:', error);
+        }
+        return stored;
+      };
+
+      const payloadIdentifier = typeof payload?.id === 'string' ? payload.id : undefined;
+
+      let workflowIdentifier =
+        (isUuid(payloadIdentifier) ? payloadIdentifier : undefined) ??
+        activeWorkflowId ??
+        fallbackWorkflowIdRef.current ??
+        getStoredIdentifier() ??
+        `local-${Date.now()}`;
+
+      if (isUuid(workflowIdentifier)) {
+        updateResolvedId(workflowIdentifier);
+        const ensuredPayload = payload
+          ? { ...payload, id: workflowIdentifier }
+          : undefined;
+        return { workflowId: workflowIdentifier, payload: ensuredPayload };
+      }
+
+      const requestedIdentifier = workflowIdentifier;
+
+      const body: Record<string, any> = {
+        name: payload?.name ?? 'Untitled Workflow',
+        requestedId: requestedIdentifier,
+      };
+
+      if (payload) {
+        const graphForCreation: any = { ...payload };
+        delete graphForCreation.id;
+        body.graph = graphForCreation;
+        if (payload.metadata !== undefined) {
+          body.metadata = payload.metadata;
+        }
+      }
+
+      let response: Response | null = null;
+      try {
+        response = await authFetch('/api/flows/save', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      } catch (error: any) {
+        throw new Error(error?.message || 'Failed to initialize workflow identifier');
+      }
+
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as Record<string, any>;
+
+      if (!response.ok || !result?.success || typeof result.workflowId !== 'string') {
+        const message =
+          result?.error ||
+          (response.status === 401
+            ? 'Sign in to manage workflows before continuing.'
+            : 'Failed to initialize workflow identifier');
+
+        if (response.status === 401) {
+          await logout(true);
+        }
+
+        throw new Error(message);
+      }
+
+      const resolvedId = result.workflowId;
+      updateResolvedId(resolvedId);
+
+      const ensuredPayload = payload
+        ? { ...payload, id: resolvedId }
+        : undefined;
+
+      return { workflowId: resolvedId, payload: ensuredPayload };
+    },
+    [activeWorkflowId, authFetch, logout, setActiveWorkflowId],
+  );
+
   const combinedValidationErrors = useMemo(() => {
     const seen = new Set<string>();
     const combined: ValidationError[] = [];
@@ -2337,103 +2434,6 @@ const GraphEditorContent = () => {
 
     return {};
   }, [spec]);
-
-  const ensureWorkflowId = useCallback(
-    async (
-      payload?: NodeGraph,
-    ): Promise<{ workflowId: string; payload?: NodeGraph } | null> => {
-      const updateResolvedId = (resolvedId: string) => {
-        fallbackWorkflowIdRef.current = resolvedId;
-        setActiveWorkflowId((prev) => (prev === resolvedId ? prev : resolvedId));
-        try {
-          localStorage.setItem('lastWorkflowId', resolvedId);
-        } catch (error) {
-          console.warn('Unable to persist workflow id:', error);
-        }
-      };
-
-      const getStoredIdentifier = (): string | undefined => {
-        let stored: string | undefined;
-        try {
-          stored = localStorage.getItem('lastWorkflowId') ?? undefined;
-        } catch (error) {
-          console.warn('Unable to read workflow id from storage:', error);
-        }
-        return stored;
-      };
-
-      const payloadIdentifier = typeof payload?.id === 'string' ? payload.id : undefined;
-
-      let workflowIdentifier =
-        (isUuid(payloadIdentifier) ? payloadIdentifier : undefined) ??
-        activeWorkflowId ??
-        fallbackWorkflowIdRef.current ??
-        getStoredIdentifier() ??
-        `local-${Date.now()}`;
-
-      if (isUuid(workflowIdentifier)) {
-        updateResolvedId(workflowIdentifier);
-        const ensuredPayload = payload
-          ? { ...payload, id: workflowIdentifier }
-          : undefined;
-        return { workflowId: workflowIdentifier, payload: ensuredPayload };
-      }
-
-      const requestedIdentifier = workflowIdentifier;
-
-      const body: Record<string, any> = {
-        name: payload?.name ?? 'Untitled Workflow',
-        requestedId: requestedIdentifier,
-      };
-
-      if (payload) {
-        const graphForCreation: any = { ...payload };
-        delete graphForCreation.id;
-        body.graph = graphForCreation;
-        if (payload.metadata !== undefined) {
-          body.metadata = payload.metadata;
-        }
-      }
-
-      let response: Response | null = null;
-      try {
-        response = await authFetch('/api/flows/save', {
-          method: 'POST',
-          body: JSON.stringify(body),
-        });
-      } catch (error: any) {
-        throw new Error(error?.message || 'Failed to initialize workflow identifier');
-      }
-
-      const result = (await response
-        .json()
-        .catch(() => ({}))) as Record<string, any>;
-
-      if (!response.ok || !result?.success || typeof result.workflowId !== 'string') {
-        const message =
-          result?.error ||
-          (response.status === 401
-            ? 'Sign in to manage workflows before continuing.'
-            : 'Failed to initialize workflow identifier');
-
-        if (response.status === 401) {
-          await logout(true);
-        }
-
-        throw new Error(message);
-      }
-
-      const resolvedId = result.workflowId;
-      updateResolvedId(resolvedId);
-
-      const ensuredPayload = payload
-        ? { ...payload, id: resolvedId }
-        : undefined;
-
-      return { workflowId: resolvedId, payload: ensuredPayload };
-    },
-    [activeWorkflowId, authFetch, logout, setActiveWorkflowId],
-  );
 
   const onSaveWorkflow = useCallback(async (): Promise<string | null> => {
     if (nodes.length === 0) {
