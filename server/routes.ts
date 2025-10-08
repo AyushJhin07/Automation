@@ -67,6 +67,7 @@ import usageAdminRoutes from "./routes/usage";
 import devToolsRouter from "./routes/dev-tools.js";
 import { getSchedulerLockService } from './services/SchedulerLockService.js';
 import { checkQueueHealth } from './services/QueueHealthService.js';
+import runtimeRegistryRoutes from "./routes/registry.js";
 
 const SUPPORTED_CONNECTION_PROVIDERS = [
   'openai',
@@ -368,6 +369,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Expression evaluation tooling
   app.use('/api/expressions', expressionRoutes);
+  app.use(runtimeRegistryRoutes);
   
   // CRITICAL FIX: Workflow read routes for Graph Editor handoff
   app.use('/api', optionalAuth, workflowReadRoutes);
