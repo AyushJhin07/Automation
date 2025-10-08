@@ -31,6 +31,15 @@ import { BigCommerceAPIClient } from '../../integrations/BigCommerceAPIClient.js
 import { MagentoAPIClient } from '../../integrations/MagentoAPIClient.js';
 import { WooCommerceAPIClient } from '../../integrations/WooCommerceAPIClient.js';
 import { SquareAPIClient } from '../../integrations/SquareAPIClient.js';
+import { GmailAPIClient } from '../../integrations/GmailAPIClient.js';
+import { SlackAPIClient } from '../../integrations/SlackAPIClient.js';
+import { GoogleDocsAPIClient } from '../../integrations/GoogleDocsAPIClient.js';
+import { GoogleDriveAPIClient } from '../../integrations/GoogleDriveAPIClient.js';
+import {
+  replyWithHtml,
+  replyWithJson,
+  replyWithText,
+} from '../../webhooks/replyHelpers.js';
 
 /**
  * Get the compiler operation map
@@ -288,6 +297,39 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
   'action.grafana:get_dashboard': (client, params = {}) =>
     assertClientInstance(client, GrafanaAPIClient).getDashboard(params),
 
+  'action.gmail:test_connection': client =>
+    assertClientInstance(client, GmailAPIClient).testConnection(),
+  'action.gmail:send_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).sendEmail(params),
+  'action.gmail:send_reply': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).replyToEmail(params),
+  'action.gmail:reply_to_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).replyToEmail(params),
+  'action.gmail:forward_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).forwardEmail(params),
+  'action.gmail:search_emails': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).searchEmails(params),
+  'action.gmail:get_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).getEmail(params),
+  'action.gmail:get_emails_by_label': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).getEmailsByLabel(params),
+  'action.gmail:get_unread_emails': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).getUnreadEmails(params),
+  'action.gmail:add_label': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).addLabel(params),
+  'action.gmail:remove_label': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).removeLabel(params),
+  'action.gmail:create_label': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).createLabel(params),
+  'action.gmail:mark_as_read': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).markAsRead(params),
+  'action.gmail:mark_as_unread': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).markAsUnread(params),
+  'action.gmail:archive_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).archiveEmail(params),
+  'action.gmail:delete_email': (client, params = {}) =>
+    assertClientInstance(client, GmailAPIClient).deleteEmail(params),
+
   'action.prometheus:test_connection': client => assertClientInstance(client, PrometheusAPIClient).testConnection(),
   'action.prometheus:query_metrics': (client, params = {}) =>
     assertClientInstance(client, PrometheusAPIClient).queryMetrics(params),
@@ -336,6 +378,32 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, PowerbiAPIClient).addRows(params),
   'trigger.powerbi:dataset_refresh_completed': (client, params = {}) =>
     assertClientInstance(client, PowerbiAPIClient).pollDatasetRefreshCompleted(params),
+
+  'trigger.google-docs:document_created': async (client, params = {}) => {
+    const docsClient = assertClientInstance(client, GoogleDocsAPIClient);
+    const documents = await docsClient.pollDocumentCreated(params);
+    return { success: true, data: documents };
+  },
+  'trigger.google-docs:document_updated': async (client, params = {}) => {
+    const docsClient = assertClientInstance(client, GoogleDocsAPIClient);
+    const documents = await docsClient.pollDocumentUpdated(params);
+    return { success: true, data: documents };
+  },
+  'trigger.google-drive:file_created': async (client, params = {}) => {
+    const driveClient = assertClientInstance(client, GoogleDriveAPIClient);
+    const files = await driveClient.pollFileCreated(params);
+    return { success: true, data: files };
+  },
+  'trigger.google-drive:file_updated': async (client, params = {}) => {
+    const driveClient = assertClientInstance(client, GoogleDriveAPIClient);
+    const files = await driveClient.pollFileUpdated(params);
+    return { success: true, data: files };
+  },
+  'trigger.google-drive:file_shared': async (client, params = {}) => {
+    const driveClient = assertClientInstance(client, GoogleDriveAPIClient);
+    const files = await driveClient.pollFileShared(params);
+    return { success: true, data: files };
+  },
 
   'action.sentry:test_connection': client => assertClientInstance(client, SentryAPIClient).testConnection(),
   'action.sentry:get_organizations': (client, params = {}) =>
@@ -437,6 +505,31 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
   'action.square:create_order': (client, params = {}) =>
     assertClientInstance(client, SquareAPIClient).createOrder(params),
 
+  'action.slack:test_connection': client =>
+    assertClientInstance(client, SlackAPIClient).testConnection(),
+  'action.slack:send_message': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).sendMessage(params),
+  'action.slack:create_channel': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).createChannel(params),
+  'action.slack:invite_to_channel': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).inviteToChannel(params),
+  'action.slack:upload_file': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).uploadFile(params),
+  'action.slack:get_channel_info': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).getChannelInfo(params),
+  'action.slack:list_channels': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).listChannels(params),
+  'action.slack:get_user_info': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).getUserInfo(params),
+  'action.slack:list_users': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).listUsers(params),
+  'action.slack:add_reaction': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).addReaction(params),
+  'action.slack:remove_reaction': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).removeReaction(params),
+  'action.slack:schedule_message': (client, params = {}) =>
+    assertClientInstance(client, SlackAPIClient).scheduleMessage(params),
+
   'action.kubernetes:test_connection': client => assertClientInstance(client, KubernetesAPIClient).testConnection(),
   'action.kubernetes:create_deployment': (client, params = {}) =>
     assertClientInstance(client, KubernetesAPIClient).createDeployment(params),
@@ -502,6 +595,10 @@ const RUNTIME_OPS: Record<string, RuntimeHandler> = {
     assertClientInstance(client, AnsibleAPIClient).listJobTemplates(),
   'action.ansible:delete_job_template': (client, params = {}) =>
     assertClientInstance(client, AnsibleAPIClient).deleteJobTemplate(params),
+
+  'action.webhook:reply_json': (_, params = {}) => replyWithJson(params),
+  'action.webhook:reply_text': (_, params = {}) => replyWithText(params),
+  'action.webhook:reply_html': (_, params = {}) => replyWithHtml(params),
 
   'action.jenkins:test_connection': client => assertClientInstance(client, JenkinsAPIClient).testConnection(),
   'action.jenkins:trigger_build': (client, params = {}) =>
