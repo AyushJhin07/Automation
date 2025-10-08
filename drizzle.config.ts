@@ -5,7 +5,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  out: "./migrations",
+  // Keep SQL migrations alongside the schema under server/database
+  out: "./server/database/migrations",
   schema: "./server/database/schema.ts",
   dialect: "postgresql",
   dbCredentials: {

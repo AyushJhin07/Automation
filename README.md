@@ -39,6 +39,30 @@ If Redis is misconfigured or `QUEUE_DRIVER=inmemory`, `dev:stack` now fails fast
 
 After each child process starts, the supervisor pings `/api/health/queue` (for the API) or Redis directly to make sure every component is pointed at the same durable BullMQ driver before declaring the stack ready.
 
+## No-Redis Local (fast path)
+
+For quick local iteration without Redis, run the API with an inline worker and use the in-memory queue driver. This is not durable and is only recommended for isolated testing.
+
+```bash
+# 1) Create .env.development with these overrides
+ENABLE_INLINE_WORKER=true
+QUEUE_DRIVER=inmemory
+
+# 2) Apply DB migrations to your configured DATABASE_URL
+npx drizzle-kit push
+
+# 3) Bootstrap a dev user/org and seed a workflow
+npm run dev:bootstrap
+
+# 4) Start the API (inline worker runs inside the API)
+npm run dev
+
+# 5) Optional: run a smoke to enqueue an execution
+npm run dev:smoke
+```
+
+To switch to a proper setup later, remove `QUEUE_DRIVER=inmemory`, ensure Redis is running, and either keep the inline worker on or start a dedicated worker in a second terminal with `npm run dev:worker`.
+
 ## Health Checks
 
 - Queue heartbeat: `curl http://localhost:5000/api/production/queue/heartbeat`
