@@ -1390,35 +1390,65 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Unique identifier for the Slack event"
+          },
+          "event_ts": {
+            "type": "string",
+            "description": "Slack-provided timestamp used for deduplication"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Workspace identifier"
+          },
+          "api_app_id": {
+            "type": "string",
+            "description": "Slack application identifier"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event envelope type",
+            "const": "event_callback"
+          },
           "event": {
             "type": "object",
+            "description": "Normalized Slack event payload",
             "properties": {
               "type": {
-                "type": "string"
+                "type": "string",
+                "description": "Event subtype"
               },
               "channel": {
-                "type": "string"
+                "type": "string",
+                "description": "Channel identifier"
               },
               "channel_type": {
-                "type": "string"
+                "type": "string",
+                "description": "Channel classification (channel, group, im, mpim)"
               },
               "user": {
-                "type": "string"
+                "type": "string",
+                "description": "User identifier for the actor"
               },
               "text": {
-                "type": "string"
+                "type": "string",
+                "description": "Message body rendered as plain text"
               },
               "ts": {
-                "type": "string"
-              },
-              "team": {
-                "type": "string"
-              },
-              "event_ts": {
-                "type": "string"
+                "type": "string",
+                "description": "Message timestamp in Slack format"
               },
               "thread_ts": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Parent thread timestamp when applicable"
+              },
+              "team": {
+                "type": "string",
+                "description": "Team identifier associated with the message"
               }
             },
             "required": [
@@ -1429,14 +1459,47 @@
               "ts"
             ],
             "additionalProperties": true
+          },
+          "authorizations": {
+            "type": "array",
+            "description": "Authorized installations for the event",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event timestamp converted to ISO 8601"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Slack payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Original Slack Events API payload",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
+          "event_id",
+          "event_ts",
+          "team_id",
           "event"
         ],
         "additionalProperties": true
       },
       "sample": {
+        "event_id": "Ev04ABCDEF",
+        "event_ts": "1733757001.000400",
+        "team_id": "T12345678",
+        "api_app_id": "A0ABCDE12",
+        "type": "event_callback",
         "event": {
           "type": "message",
           "channel": "C08S3A1Q2",
@@ -1445,10 +1508,42 @@
           "text": "Reminder: customer demo at 2pm",
           "ts": "1733757001.000400",
           "thread_ts": "1733756457.000200",
-          "team": "T12345678",
-          "event_ts": "1733757001.000400"
+          "team": "T12345678"
+        },
+        "authorizations": [
+          {
+            "enterprise_id": null,
+            "team_id": "T12345678",
+            "user_id": "U0DemoBot",
+            "is_bot": true
+          }
+        ],
+        "eventTime": "2024-12-09T18:30:01Z",
+        "_meta": {
+          "raw": {
+            "token": "verification-token",
+            "team_id": "T12345678",
+            "api_app_id": "A0ABCDE12",
+            "event": {
+              "type": "message",
+              "channel": "C08S3A1Q2",
+              "user": "U061F7AUR",
+              "text": "Reminder: customer demo at 2pm",
+              "ts": "1733757001.000400",
+              "channel_type": "channel",
+              "event_ts": "1733757001.000400"
+            },
+            "type": "event_callback",
+            "event_id": "Ev04ABCDEF",
+            "event_time": 1733757001
+          }
         }
-      }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "event_ts"
+      },
+      "dedupeKey": "event_ts"
     },
     {
       "id": "reaction_added",
@@ -1490,29 +1585,58 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Unique identifier for the Slack event"
+          },
+          "event_ts": {
+            "type": "string",
+            "description": "Slack event timestamp used for deduplication"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Workspace identifier"
+          },
+          "api_app_id": {
+            "type": "string",
+            "description": "Slack application identifier"
+          },
+          "type": {
+            "type": "string",
+            "const": "event_callback",
+            "description": "Event envelope type"
+          },
           "event": {
             "type": "object",
+            "description": "Normalized Slack reaction payload",
             "properties": {
               "type": {
-                "type": "string"
+                "type": "string",
+                "description": "Event subtype"
               },
               "user": {
-                "type": "string"
+                "type": "string",
+                "description": "User who added the reaction"
               },
               "reaction": {
-                "type": "string"
+                "type": "string",
+                "description": "Name of the emoji reaction"
               },
               "item": {
                 "type": "object",
+                "description": "Item the reaction was added to",
                 "properties": {
                   "type": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Type of item (e.g., message)"
                   },
                   "channel": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Channel identifier containing the item"
                   },
                   "ts": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Timestamp for the target item"
                   }
                 },
                 "required": [
@@ -1523,10 +1647,8 @@
                 "additionalProperties": true
               },
               "item_user": {
-                "type": "string"
-              },
-              "event_ts": {
-                "type": "string"
+                "type": "string",
+                "description": "Owner of the item that received the reaction"
               }
             },
             "required": [
@@ -1536,14 +1658,39 @@
               "item"
             ],
             "additionalProperties": true
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event timestamp converted to ISO 8601"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Slack payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Original Slack Events API payload",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
+          "event_id",
+          "event_ts",
+          "team_id",
           "event"
         ],
         "additionalProperties": true
       },
       "sample": {
+        "event_id": "Ev04GHJKLM",
+        "event_ts": "1733757040.000500",
+        "team_id": "T12345678",
+        "api_app_id": "A0ABCDE12",
+        "type": "event_callback",
         "event": {
           "type": "reaction_added",
           "user": "U024BE7LH",
@@ -1553,10 +1700,36 @@
             "channel": "C024BE7LT",
             "ts": "1733756030.000200"
           },
-          "item_user": "U061F7AUR",
-          "event_ts": "1733757040.000500"
+          "item_user": "U061F7AUR"
+        },
+        "eventTime": "2024-12-09T18:30:40Z",
+        "_meta": {
+          "raw": {
+            "team_id": "T12345678",
+            "api_app_id": "A0ABCDE12",
+            "event": {
+              "type": "reaction_added",
+              "user": "U024BE7LH",
+              "reaction": "white_check_mark",
+              "item": {
+                "type": "message",
+                "channel": "C024BE7LT",
+                "ts": "1733756030.000200"
+              },
+              "item_user": "U061F7AUR",
+              "event_ts": "1733757040.000500"
+            },
+            "type": "event_callback",
+            "event_id": "Ev04GHJKLM",
+            "event_time": 1733757040
+          }
         }
-      }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "event_ts"
+      },
+      "dedupeKey": "event_ts"
     },
     {
       "id": "user_joined_channel",
@@ -1596,29 +1769,57 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Unique identifier for the Slack event"
+          },
+          "event_ts": {
+            "type": "string",
+            "description": "Slack event timestamp used for deduplication"
+          },
+          "team_id": {
+            "type": "string",
+            "description": "Workspace identifier"
+          },
+          "api_app_id": {
+            "type": "string",
+            "description": "Slack application identifier"
+          },
+          "type": {
+            "type": "string",
+            "const": "event_callback",
+            "description": "Event envelope type"
+          },
           "event": {
             "type": "object",
+            "description": "Normalized channel membership payload",
             "properties": {
               "type": {
-                "type": "string"
+                "type": "string",
+                "description": "Event subtype"
               },
               "user": {
-                "type": "string"
+                "type": "string",
+                "description": "User who joined the channel"
               },
               "channel": {
-                "type": "string"
+                "type": "string",
+                "description": "Channel identifier"
               },
               "channel_type": {
-                "type": "string"
+                "type": "string",
+                "description": "Channel classification"
               },
               "team": {
-                "type": "string"
+                "type": "string",
+                "description": "Workspace identifier"
               },
               "inviter": {
-                "type": "string"
-              },
-              "event_ts": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "User who invited the member"
               }
             },
             "required": [
@@ -1627,24 +1828,72 @@
               "channel"
             ],
             "additionalProperties": true
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event timestamp converted to ISO 8601"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Slack payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Original Slack Events API payload",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
+          "event_id",
+          "event_ts",
+          "team_id",
           "event"
         ],
         "additionalProperties": true
       },
       "sample": {
+        "event_id": "Ev04MEMJOIN",
+        "event_ts": "1733757205.000600",
+        "team_id": "T12345678",
+        "api_app_id": "A0ABCDE12",
+        "type": "event_callback",
         "event": {
           "type": "member_joined_channel",
           "user": "U0G9QF9C6",
           "channel": "C08S3A1Q2",
           "channel_type": "C",
           "team": "T12345678",
-          "inviter": "U024BE7LH",
-          "event_ts": "1733757205.000600"
+          "inviter": "U024BE7LH"
+        },
+        "eventTime": "2024-12-09T18:33:25Z",
+        "_meta": {
+          "raw": {
+            "team_id": "T12345678",
+            "api_app_id": "A0ABCDE12",
+            "event": {
+              "type": "member_joined_channel",
+              "user": "U0G9QF9C6",
+              "channel": "C08S3A1Q2",
+              "channel_type": "C",
+              "team": "T12345678",
+              "inviter": "U024BE7LH",
+              "event_ts": "1733757205.000600"
+            },
+            "type": "event_callback",
+            "event_id": "Ev04MEMJOIN",
+            "event_time": 1733757205
+          }
         }
-      }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "event_ts"
+      },
+      "dedupeKey": "event_ts"
     }
   ],
   "testConnection": {

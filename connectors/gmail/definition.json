@@ -594,85 +594,237 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique Gmail message identifier"
           },
           "threadId": {
-            "type": "string"
+            "type": "string",
+            "description": "Thread identifier for the conversation"
+          },
+          "historyId": {
+            "type": "string",
+            "description": "History record identifier for incremental sync"
           },
           "labelIds": {
             "type": "array",
+            "description": "Labels currently applied to the message",
             "items": {
               "type": "string"
             }
           },
           "subject": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Message subject extracted from headers"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "First 100 characters of the message body"
           },
           "from": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "description": "Sender email address"
+          },
+          "fromName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name parsed from the From header"
           },
           "to": {
             "type": "array",
+            "description": "Primary recipient email addresses",
             "items": {
               "type": "string",
               "format": "email"
             }
           },
-          "snippet": {
-            "type": "string"
+          "cc": {
+            "type": "array",
+            "description": "Carbon-copy recipient email addresses",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
           },
-          "internalDate": {
-            "type": "string"
+          "bcc": {
+            "type": "array",
+            "description": "Blind carbon-copy recipient email addresses",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "replyTo": {
+            "type": "array",
+            "description": "Reply-To email addresses if provided",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "deliveredTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email",
+            "description": "Mailbox that received the message"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp the message was delivered"
+          },
+          "sizeEstimate": {
+            "type": "integer",
+            "description": "Approximate size of the entire message in bytes"
+          },
+          "bodyPlain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Plain-text body content"
+          },
+          "bodyHtml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "HTML body content"
           },
           "attachments": {
             "type": "array",
+            "description": "Attachment metadata included with the message",
             "items": {
               "type": "object",
               "properties": {
+                "attachmentId": {
+                  "type": "string",
+                  "description": "Identifier used to download the attachment"
+                },
                 "filename": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Attachment file name"
                 },
                 "mimeType": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Attachment MIME type"
                 },
                 "size": {
-                  "type": "integer"
+                  "type": "integer",
+                  "description": "Attachment size in bytes"
                 }
               },
               "required": [
+                "attachmentId",
                 "filename",
                 "mimeType"
               ],
-              "additionalProperties": true
+              "additionalProperties": false
             }
+          },
+          "threadSnippet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Snippet from the most recent message in the thread"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Gmail API payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Raw Gmail message resource as returned by the API",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
           "id",
           "threadId",
-          "subject",
-          "from",
-          "to",
-          "snippet"
+          "labelIds",
+          "snippet",
+          "receivedAt"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "sample": {
-        "id": "188c9ab45fbc0d21",
-        "threadId": "188c9ab45fbc0d21",
+        "id": "1890f0ae5e3c1b3d",
+        "threadId": "1890f0ae5e3c1b3d",
+        "historyId": "156789",
         "labelIds": [
           "INBOX",
           "UNREAD"
         ],
-        "subject": "Weekly Metrics",
-        "from": "analytics@example.com",
+        "subject": "Quarterly metrics overview",
+        "snippet": "Hi team, sharing the Q4 KPIs summary for review...",
+        "from": "analytics-bot@example.com",
+        "fromName": "Analytics Bot",
         "to": [
-          "user@example.com"
+          "ops-lead@example.com"
         ],
-        "snippet": "Here are the latest metrics for the product launch...",
-        "internalDate": "1733779200000",
-        "attachments": []
-      }
+        "cc": [
+          "finance@example.com"
+        ],
+        "bcc": [],
+        "replyTo": [
+          "analytics-bot@example.com"
+        ],
+        "deliveredTo": "ops-lead@example.com",
+        "receivedAt": "2024-12-09T17:22:14Z",
+        "sizeEstimate": 25439,
+        "bodyPlain": "Hi team,\nPlease find the attached metrics deck.\nThanks!",
+        "bodyHtml": "<p>Hi team,</p><p>Please find the attached metrics deck.</p>",
+        "attachments": [
+          {
+            "attachmentId": "ANGjdJ8slA1",
+            "filename": "q4-metrics.xlsx",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "size": 18234
+          }
+        ],
+        "threadSnippet": "Latest reply: Looks great—publishing to the board workspace shortly.",
+        "_meta": {
+          "raw": {
+            "id": "1890f0ae5e3c1b3d",
+            "threadId": "1890f0ae5e3c1b3d",
+            "historyId": "156789",
+            "labelIds": [
+              "INBOX",
+              "UNREAD"
+            ],
+            "payload": {
+              "mimeType": "multipart/alternative",
+              "headers": [
+                {
+                  "name": "Date",
+                  "value": "Mon, 9 Dec 2024 09:22:14 -0800"
+                },
+                {
+                  "name": "Message-ID",
+                  "value": "<CAEPk12345@example.com>"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "receivedAt"
+      },
+      "dedupeKey": "id"
     },
     {
       "id": "email_received_from",
@@ -700,53 +852,229 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique Gmail message identifier"
           },
           "threadId": {
-            "type": "string"
+            "type": "string",
+            "description": "Conversation thread identifier"
+          },
+          "historyId": {
+            "type": "string",
+            "description": "History record identifier"
+          },
+          "labelIds": {
+            "type": "array",
+            "description": "Labels applied to the message",
+            "items": {
+              "type": "string"
+            }
           },
           "subject": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Message subject"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "First 100 characters of the body"
           },
           "from": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "description": "Sender email address"
+          },
+          "fromName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name parsed from the From header"
           },
           "to": {
             "type": "array",
+            "description": "Primary recipient addresses",
             "items": {
               "type": "string",
               "format": "email"
             }
           },
-          "snippet": {
-            "type": "string"
+          "cc": {
+            "type": "array",
+            "description": "Carbon-copy recipients",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "bcc": {
+            "type": "array",
+            "description": "Blind carbon-copy recipients",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "replyTo": {
+            "type": "array",
+            "description": "Reply-To addresses",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "deliveredTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email",
+            "description": "Inbox that received the message"
           },
           "receivedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Delivery timestamp"
+          },
+          "sizeEstimate": {
+            "type": "integer",
+            "description": "Approximate message size in bytes"
+          },
+          "bodyPlain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Plain text message body"
+          },
+          "bodyHtml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "HTML message body"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Attachments included in the message",
+            "items": {
+              "type": "object",
+              "properties": {
+                "attachmentId": {
+                  "type": "string",
+                  "description": "Identifier to download the attachment"
+                },
+                "filename": {
+                  "type": "string",
+                  "description": "Attachment file name"
+                },
+                "mimeType": {
+                  "type": "string",
+                  "description": "Attachment MIME type"
+                },
+                "size": {
+                  "type": "integer",
+                  "description": "Attachment size in bytes"
+                }
+              },
+              "required": [
+                "attachmentId",
+                "filename",
+                "mimeType"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Gmail API payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Raw Gmail message resource",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
           "id",
           "threadId",
-          "subject",
-          "from",
-          "to",
-          "snippet"
+          "labelIds",
+          "snippet",
+          "receivedAt"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "sample": {
-        "id": "188c9acb5a6e23f4",
-        "threadId": "188c9acb5a6e23f4",
-        "subject": "Contract Signed",
-        "from": "ceo@example.com",
-        "to": [
-          "user@example.com"
+        "id": "1890f1c52d0ab8f2",
+        "threadId": "1890f1c52d0ab8f2",
+        "historyId": "156793",
+        "labelIds": [
+          "INBOX",
+          "IMPORTANT"
         ],
-        "snippet": "We received the countersigned contract this morning.",
-        "receivedAt": "2024-12-09T15:24:05Z"
-      }
+        "subject": "Signed agreement received",
+        "snippet": "Great news—we have the countersigned agreement attached.",
+        "from": "chief.partnerships@example.com",
+        "fromName": "Chief Partnerships",
+        "to": [
+          "legal-ops@example.com"
+        ],
+        "cc": [
+          "sales-lead@example.com"
+        ],
+        "bcc": [],
+        "replyTo": [
+          "chief.partnerships@example.com"
+        ],
+        "deliveredTo": "legal-ops@example.com",
+        "receivedAt": "2024-12-09T15:24:05Z",
+        "sizeEstimate": 19872,
+        "bodyPlain": "Hi team,\nAttached is the executed agreement.\nRegards",
+        "bodyHtml": "<p>Hi team,</p><p>Attached is the executed agreement.</p>",
+        "attachments": [
+          {
+            "attachmentId": "ANGjdJ8uBy0",
+            "filename": "agreement.pdf",
+            "mimeType": "application/pdf",
+            "size": 14532
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "id": "1890f1c52d0ab8f2",
+            "threadId": "1890f1c52d0ab8f2",
+            "historyId": "156793",
+            "labelIds": [
+              "INBOX",
+              "IMPORTANT"
+            ],
+            "payload": {
+              "mimeType": "multipart/mixed",
+              "headers": [
+                {
+                  "name": "Date",
+                  "value": "Mon, 9 Dec 2024 07:24:05 -0800"
+                },
+                {
+                  "name": "Message-ID",
+                  "value": "<CAD+ReceivedFrom@example.com>"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "receivedAt"
+      },
+      "dedupeKey": "id"
     },
     {
       "id": "email_with_attachment",
@@ -775,77 +1103,227 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique Gmail message identifier"
           },
           "threadId": {
-            "type": "string"
+            "type": "string",
+            "description": "Conversation thread identifier"
+          },
+          "historyId": {
+            "type": "string",
+            "description": "History record identifier"
+          },
+          "labelIds": {
+            "type": "array",
+            "description": "Labels applied to the message",
+            "items": {
+              "type": "string"
+            }
           },
           "subject": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Message subject"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "First 100 characters of the body"
           },
           "from": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "description": "Sender email address"
+          },
+          "fromName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name parsed from the From header"
           },
           "to": {
             "type": "array",
+            "description": "Primary recipient addresses",
             "items": {
               "type": "string",
               "format": "email"
             }
           },
-          "snippet": {
-            "type": "string"
+          "cc": {
+            "type": "array",
+            "description": "Carbon-copy recipients",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "bcc": {
+            "type": "array",
+            "description": "Blind carbon-copy recipients",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "replyTo": {
+            "type": "array",
+            "description": "Reply-To addresses",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "deliveredTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email",
+            "description": "Inbox that received the message"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Delivery timestamp"
+          },
+          "sizeEstimate": {
+            "type": "integer",
+            "description": "Approximate message size in bytes"
+          },
+          "bodyPlain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Plain text message body"
+          },
+          "bodyHtml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "HTML message body"
           },
           "attachments": {
             "type": "array",
+            "description": "Attachments included in the message",
             "items": {
               "type": "object",
               "properties": {
+                "attachmentId": {
+                  "type": "string",
+                  "description": "Identifier to download the attachment"
+                },
                 "filename": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Attachment file name"
                 },
                 "mimeType": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Attachment MIME type"
                 },
                 "size": {
-                  "type": "integer"
+                  "type": "integer",
+                  "description": "Attachment size in bytes"
                 }
               },
               "required": [
+                "attachmentId",
                 "filename",
                 "mimeType"
               ],
-              "additionalProperties": true
+              "additionalProperties": false
             }
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Gmail API payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Raw Gmail message resource",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
           "id",
           "threadId",
-          "subject",
-          "from",
-          "to",
+          "labelIds",
+          "receivedAt",
           "attachments"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "sample": {
-        "id": "188c9ae1bf2a6810",
-        "threadId": "188c9ae1bf2a6810",
-        "subject": "Signed Agreement",
-        "from": "legal@example.com",
-        "to": [
-          "user@example.com"
+        "id": "1890f230fa8de4c1",
+        "threadId": "1890f230fa8de4c1",
+        "historyId": "156812",
+        "labelIds": [
+          "INBOX"
         ],
-        "snippet": "Please find the signed agreement attached.",
+        "subject": "Project kickoff brief",
+        "snippet": "Attached is the design brief for the upcoming sprint.",
+        "from": "design-team@example.com",
+        "fromName": "Design Team",
+        "to": [
+          "product@example.com"
+        ],
+        "cc": [
+          "engineering@example.com"
+        ],
+        "bcc": [],
+        "replyTo": [
+          "design-team@example.com"
+        ],
+        "deliveredTo": "product@example.com",
+        "receivedAt": "2024-12-09T13:02:48Z",
+        "sizeEstimate": 31240,
+        "bodyPlain": "Team,\nSharing the kickoff brief for review.\n",
+        "bodyHtml": "<p>Team,</p><p>Sharing the kickoff brief for review.</p>",
         "attachments": [
           {
-            "filename": "agreement.pdf",
+            "attachmentId": "ANGjdJ8yBrief",
+            "filename": "design-brief.pdf",
             "mimeType": "application/pdf",
-            "size": 582341
+            "size": 24567
           }
-        ]
-      }
+        ],
+        "_meta": {
+          "raw": {
+            "id": "1890f230fa8de4c1",
+            "threadId": "1890f230fa8de4c1",
+            "historyId": "156812",
+            "labelIds": [
+              "INBOX"
+            ],
+            "payload": {
+              "mimeType": "multipart/mixed",
+              "headers": [
+                {
+                  "name": "Date",
+                  "value": "Mon, 9 Dec 2024 05:02:48 -0800"
+                },
+                {
+                  "name": "Message-ID",
+                  "value": "<CAD+Attachment@example.com>"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "receivedAt"
+      },
+      "dedupeKey": "id"
     }
   ],
   "release": {
