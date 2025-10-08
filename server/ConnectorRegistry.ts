@@ -5,6 +5,8 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { BaseAPIClient } from './integrations/BaseAPIClient';
+import { attachConnectorMetadata } from './registry/metadataAdapter';
+import type { NodeIOMetadata } from '../shared/metadata';
 import { getCompilerOpMap } from './workflow/compiler/op-map.js';
 import {
   computeConnectorOperationCoverage,
@@ -69,6 +71,7 @@ interface ConnectorFunction {
     requestsPerMinute?: number;
     dailyLimit?: number;
   };
+  io?: NodeIOMetadata;
 }
 
 type ConnectorAvailability = 'stable' | 'experimental' | 'disabled';
@@ -566,7 +569,7 @@ export class ConnectorRegistry {
     }
 
     parsed.id = entry.normalizedId;
-    return parsed;
+    return attachConnectorMetadata(parsed);
   }
 
   private normalizeReleaseMetadata(def: ConnectorDefinition): ConnectorReleaseMetadata {
@@ -1125,7 +1128,8 @@ export class ConnectorRegistry {
           appName: def.name,
           hasImplementation: entry.hasImplementation === true,
           nodeType: `${type}.${appId}.${fn.id}`,
-          parameters: (fn as any).parameters || {}
+          parameters: fn.params ?? fn.parameters ?? (fn as any).parameters ?? {},
+          io: fn.io,
         });
       };
 
