@@ -4,13 +4,6 @@ import type { LucideIcon } from "lucide-react";
 import { Activity, Loader2, MoreHorizontal, Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface EditorTopBarAction {
   id: string;
@@ -22,219 +15,172 @@ export interface EditorTopBarAction {
 }
 
 export interface EditorTopBarProps {
-  statusLabel: string;
-  statusTone?: "ready" | "warning" | "error";
-  statusTooltip?: string;
-  statusHelperText?: string | null;
-  statusPulse?: boolean;
   onRun: () => void;
-  canRun?: boolean;
-  runDisabled?: boolean;
-  runTooltip?: string;
-  isRunLoading?: boolean;
-  runIdleText?: string;
-  runLoadingText?: string;
   onValidate: () => void;
+  canRun?: boolean;
   canValidate?: boolean;
-  validateDisabled?: boolean;
-  validateTooltip?: string;
-  isValidateLoading?: boolean;
-  validateIdleText?: string;
-  validateLoadingText?: string;
-  banner?: React.ReactNode;
-  onSave?: EditorTopBarAction;
-  onPromote?: EditorTopBarAction;
-  onExport?: EditorTopBarAction;
+  isRunning?: boolean;
+  isValidating?: boolean;
+  workersOnline?: number | boolean;
   overflowActions?: EditorTopBarAction[];
+  banner?: React.ReactNode;
 }
 
-const STATUS_TONE_CLASS: Record<NonNullable<EditorTopBarProps["statusTone"]>, string> = {
-  ready: "editor-topbar__status-dot--ready",
-  warning: "editor-topbar__status-dot--warning",
-  error: "editor-topbar__status-dot--error",
-};
-
 const EditorTopBar: React.FC<EditorTopBarProps> = ({
-  statusLabel,
-  statusTone = "ready",
-  statusTooltip,
-  statusHelperText,
-  statusPulse,
   onRun,
-  canRun,
-  runDisabled,
-  runTooltip,
-  isRunLoading,
-  runIdleText = "Run workflow",
-  runLoadingText = "Enqueuing…",
   onValidate,
-  canValidate,
-  validateDisabled,
-  validateTooltip,
-  isValidateLoading,
-  validateIdleText = "Validate / Dry run",
-  validateLoadingText = "Validating…",
-  banner,
-  onSave,
-  onPromote,
-  onExport,
+  canRun = true,
+  canValidate = true,
+  isRunning = false,
+  isValidating = false,
+  workersOnline = 0,
   overflowActions,
+  banner,
 }) => {
-  const showRunTooltip = Boolean(runTooltip);
-  const showValidateTooltip = Boolean(validateTooltip);
-  const derivedOverflowActions = React.useMemo(() => {
-    const actions: EditorTopBarAction[] = [];
+  const workerCount = typeof workersOnline === "number" ? workersOnline : workersOnline ? 1 : 0;
+  const workersAvailable = workerCount > 0;
 
-    if (onSave) {
-      actions.push(onSave);
+  const primaryAction = React.useMemo(() => {
+    if (canRun) {
+      return "run" as const;
     }
-
-    if (onPromote) {
-      actions.push(onPromote);
+    if (canValidate) {
+      return "validate" as const;
     }
+    return "run" as const;
+  }, [canRun, canValidate]);
 
-    if (onExport) {
-      actions.push(onExport);
+  const isPrimaryLoading = primaryAction === "run" ? isRunning : isValidating;
+  const handlePrimaryClick = primaryAction === "run" ? onRun : onValidate;
+  const primaryDisabled =
+    primaryAction === "run"
+      ? !canRun || isRunning
+      : !canValidate || isValidating;
+
+  const primaryLabel = React.useMemo(() => {
+    if (primaryAction === "run") {
+      return isPrimaryLoading ? "Running…" : "Run workflow";
     }
+    return isPrimaryLoading ? "Validating…" : "Validate";
+  }, [isPrimaryLoading, primaryAction]);
 
-    if (overflowActions && overflowActions.length > 0) {
-      actions.push(...overflowActions);
-    }
-
-    return actions;
-  }, [onSave, onPromote, onExport, overflowActions]);
-
-  const hasOverflow = derivedOverflowActions.length > 0;
-
-  const runButtonDisabled = Boolean(runDisabled ?? false) || (typeof canRun === "boolean" ? !canRun : false);
-  const validateButtonDisabled =
-    Boolean(validateDisabled ?? false) || (typeof canValidate === "boolean" ? !canValidate : false);
-
-  const runButton = (
-    <Button
-      type="button"
-      onClick={onRun}
-      disabled={runButtonDisabled}
-      className="editor-topbar__action editor-topbar__action--primary"
-    >
-      {isRunLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Play className="h-4 w-4" />
-      )}
-      <span>{isRunLoading ? runLoadingText : runIdleText}</span>
-    </Button>
+  const primaryIcon = isPrimaryLoading ? (
+    <Loader2 className="h-4 w-4 animate-spin" />
+  ) : primaryAction === "run" ? (
+    <Play className="h-4 w-4" />
+  ) : (
+    <Activity className="h-4 w-4" />
   );
 
-  const validateButton = (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={onValidate}
-      disabled={validateButtonDisabled}
-      className="editor-topbar__action editor-topbar__action--secondary"
-    >
-      {isValidateLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Activity className="h-4 w-4" />
-      )}
-      <span>{isValidateLoading ? validateLoadingText : validateIdleText}</span>
-    </Button>
+  const overflowList = React.useMemo(
+    () =>
+      (overflowActions ?? []).filter(
+        (action): action is EditorTopBarAction => Boolean(action),
+      ),
+    [overflowActions],
   );
 
-  const statusContent = (
-    <div className="editor-topbar__status">
-      <span
-        className={clsx(
-          "editor-topbar__status-dot",
-          STATUS_TONE_CLASS[statusTone],
-          statusPulse && "editor-topbar__status-dot--pulse"
-        )}
-      />
-      <div className="editor-topbar__status-text">
-        <span className="editor-topbar__status-label">{statusLabel}</span>
-        {statusHelperText ? (
-          <span className="editor-topbar__status-helper">{statusHelperText}</span>
-        ) : null}
-      </div>
-    </div>
-  );
+  const hasOverflow = overflowList.length > 0;
+  const [isOverflowOpen, setIsOverflowOpen] = React.useState(false);
+
+  const closeOverflow = React.useCallback(() => {
+    setIsOverflowOpen(false);
+  }, []);
 
   return (
     <div className="editor-topbar">
       <div className="editor-topbar__inner">
-        {statusTooltip ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{statusContent}</TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-center">
-              <p>{statusTooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          statusContent
-        )}
+        <div className="editor-topbar__status-pill">
+          <span
+            className={clsx(
+              "editor-topbar__worker-dot",
+              workersAvailable
+                ? "editor-topbar__worker-dot--online"
+                : "editor-topbar__worker-dot--offline",
+            )}
+          />
+          <span className="editor-topbar__worker-label">
+            {workersAvailable
+              ? `${workerCount} worker${workerCount === 1 ? "" : "s"} ready`
+              : "Workers offline"}
+          </span>
+        </div>
 
         <div className="editor-topbar__controls">
-          {showRunTooltip ? (
-            <Tooltip>
-              <TooltipTrigger asChild>{runButton}</TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs text-center">
-                <p>{runTooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            runButton
-          )}
-
-          {showValidateTooltip ? (
-            <Tooltip>
-              <TooltipTrigger asChild>{validateButton}</TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs text-center">
-                <p>{validateTooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            validateButton
-          )}
+          <Button
+            type="button"
+            onClick={handlePrimaryClick}
+            disabled={primaryDisabled}
+            className="editor-topbar__primary-action"
+          >
+            {primaryIcon}
+            <span>{primaryLabel}</span>
+          </Button>
 
           {hasOverflow ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="editor-topbar__overflow-trigger"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">More actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="editor-topbar__overflow-menu">
-                {derivedOverflowActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <DropdownMenuItem
-                      key={action.id}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        if (!action.disabled) {
-                          action.onSelect();
-                        }
-                      }}
-                      disabled={action.disabled}
-                      className="editor-topbar__overflow-item"
-                    >
-                      {Icon ? <Icon className="h-4 w-4" /> : null}
-                      <span>{action.label}</span>
-                      {action.description ? (
-                        <span className="editor-topbar__overflow-description">{action.description}</span>
-                      ) : null}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div
+              className={clsx(
+                "editor-topbar__overflow",
+                isOverflowOpen && "editor-topbar__overflow--open",
+              )}
+              onMouseEnter={() => setIsOverflowOpen(true)}
+              onMouseLeave={() => setIsOverflowOpen(false)}
+              onFocusCapture={() => setIsOverflowOpen(true)}
+              onBlurCapture={(event) => {
+                const nextFocus = event.relatedTarget as Node | null;
+                if (!nextFocus || !event.currentTarget.contains(nextFocus)) {
+                  setIsOverflowOpen(false);
+                }
+              }}
+            >
+              <button
+                type="button"
+                className="editor-topbar__overflow-trigger"
+                aria-haspopup="true"
+                aria-expanded={isOverflowOpen}
+                onClick={() => setIsOverflowOpen((prev) => !prev)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Workflow actions</span>
+              </button>
+
+              <div className="editor-topbar__overflow-sheet" aria-hidden={!isOverflowOpen}>
+                <span className="editor-topbar__overflow-title">Workflow actions</span>
+                <div className="editor-topbar__overflow-items">
+                  {overflowList.map((action) => {
+                    const Icon = action.icon;
+                    const handleSelect = () => {
+                      if (action.disabled) {
+                        return;
+                      }
+                      action.onSelect();
+                      closeOverflow();
+                    };
+
+                    return (
+                      <button
+                        key={action.id}
+                        type="button"
+                        role="menuitem"
+                        onClick={handleSelect}
+                        disabled={action.disabled}
+                        className="editor-topbar__overflow-item"
+                      >
+                        {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
+                        <span className="editor-topbar__overflow-text">
+                          <span className="editor-topbar__overflow-label">{action.label}</span>
+                          {action.description ? (
+                            <span className="editor-topbar__overflow-description">
+                              {action.description}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           ) : null}
         </div>
       </div>

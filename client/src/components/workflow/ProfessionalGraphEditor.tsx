@@ -1616,18 +1616,6 @@ const GraphEditorContent = () => {
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
   }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
-  const runHealthTooltip = useMemo(() => {
-    const parts = [] as string[];
-    if (workerStatusMessage) {
-      parts.push(workerStatusMessage);
-    }
-    if (queueStatusMessage) {
-      parts.push(queueStatusMessage);
-    }
-    return parts.join(' ').trim();
-  }, [workerStatusMessage, queueStatusMessage]);
-  const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
-  const runReady = queueReady && workersOnline;
   const ensureWorkflowId = useCallback(
     async (
       payload?: NodeGraph,
@@ -2466,67 +2454,8 @@ const GraphEditorContent = () => {
     return true;
   }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors]);
 
-  const runDisableReason = useMemo(() => {
-    if (!workersOnline) {
-      return workerStatusMessage || WORKER_FLEET_GUIDANCE;
-    }
-    if (!queueReady) {
-      return queueStatusMessage;
-    }
-    if (!graphHasNodes) {
-      return 'Add at least one node before running.';
-    }
-    if (hasBlockingErrors) {
-      return combinedBlockingErrors[0]?.message;
-    }
-    if (workflowValidation.status === 'validating' || workflowValidation.status === 'idle') {
-      return 'Validating workflow…';
-    }
-    if (workflowValidation.status === 'invalid') {
-      return (
-        workflowValidation.message ||
-        workflowValidation.error ||
-        'Resolve validation issues before running.'
-      );
-    }
-    return undefined;
-  }, [
-    workersOnline,
-    workerStatusMessage,
-    queueReady,
-    queueStatusMessage,
-    graphHasNodes,
-    hasBlockingErrors,
-    combinedBlockingErrors,
-    workflowValidation.status,
-    workflowValidation.message,
-    workflowValidation.error,
-  ]);
-
   const runDisabled = !canRun || isRunning || isValidating;
   const validateDisabled = !canValidate || isValidating || isRunning;
-
-  const queueBadgeLabel = runReady
-    ? 'Run ready'
-    : isRunHealthLoading
-      ? 'Checking status…'
-      : !workersOnline
-        ? 'Workers offline'
-        : 'Queue offline';
-  const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
-  const nodeCountLabel =
-    nodes.length === 0 ? '' : nodes.length === 1 ? '1 node' : `${nodes.length} nodes`;
-  const statusLabel = nodeCountLabel ? `${queueBadgeLabel} • ${nodeCountLabel}` : queueBadgeLabel;
-  const statusHelperText =
-    workerStatusMessage || (workersOnline ? 'Worker fleet ready' : 'Investigate worker health');
-  const queueStatusTone: 'ready' | 'warning' | 'error' = runReady
-    ? 'ready'
-    : isRunHealthLoading
-      ? 'warning'
-      : 'error';
-  const queueStatusPulse = !runReady && !isRunHealthLoading;
-  const dryRunTooltip =
-    'Dry runs can validate action-only drafts, but promoting to production still requires at least one trigger node.';
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
@@ -3566,6 +3495,20 @@ const GraphEditorContent = () => {
     };
   }, [graphHasNodes, handleExportWorkflow]);
 
+  const editorOverflowActions = useMemo<EditorTopBarAction[]>(() => {
+    const actions: EditorTopBarAction[] = [];
+    if (saveAction) {
+      actions.push(saveAction);
+    }
+    if (promoteAction) {
+      actions.push(promoteAction);
+    }
+    if (exportAction) {
+      actions.push(exportAction);
+    }
+    return actions;
+  }, [saveAction, promoteAction, exportAction]);
+
   useEditorKeyboardShortcuts({
     onRun: onRunWorkflow,
     canRun,
@@ -3590,25 +3533,14 @@ const GraphEditorContent = () => {
       {/* Main Graph Area */}
       <div className="center-pane">
         <EditorTopBar
-          statusLabel={statusLabel}
-          statusTone={queueStatusTone}
-          statusTooltip={queueBadgeTooltip}
-          statusHelperText={statusHelperText}
-          statusPulse={queueStatusPulse}
           onRun={onRunWorkflow}
-          canRun={canRun}
-          runDisabled={runDisabled}
-          runTooltip={runDisableReason}
-          isRunLoading={isRunning}
-          runIdleText="Run workflow"
-          runLoadingText="Enqueuing…"
           onValidate={onDryRunWorkflow}
+          canRun={canRun}
           canValidate={canValidate}
-          validateDisabled={validateDisabled}
-          validateTooltip={dryRunTooltip}
-          isValidateLoading={isValidating}
-          validateIdleText="Validate / Dry run"
-          validateLoadingText="Validating…"
+          isRunning={isRunning}
+          isValidating={isValidating}
+          workersOnline={workersOnline}
+          overflowActions={editorOverflowActions}
           banner={
             runBanner ? (
               <Alert
@@ -3629,9 +3561,6 @@ const GraphEditorContent = () => {
               </Alert>
             ) : null
           }
-          onSave={saveAction}
-          onPromote={promoteAction}
-          onExport={exportAction}
         />
 
         <div className="center-pane__canvas">
