@@ -43,9 +43,11 @@ export class GmailAPIClient extends BaseAPIClient {
     this.registerHandlers({
       'test_connection': this.testConnection.bind(this) as any,
       'send_email': this.sendEmail.bind(this) as any,
+      'send_reply': this.replyToEmail.bind(this) as any,
       'reply_to_email': this.replyToEmail.bind(this) as any,
       'forward_email': this.forwardEmail.bind(this) as any,
       'search_emails': this.searchEmails.bind(this) as any,
+      'get_email': this.getEmail.bind(this) as any,
       'get_emails_by_label': this.getEmailsByLabel.bind(this) as any,
       'get_unread_emails': this.getUnreadEmails.bind(this) as any,
       'add_label': this.addLabel.bind(this) as any,
@@ -212,6 +214,21 @@ export class GmailAPIClient extends BaseAPIClient {
     return this.get(`/users/me/messages${this.buildQueryString(queryParams)}`);
   }
 
+  public async getEmail(params: {
+    messageId: string;
+    format?: 'minimal' | 'full' | 'raw' | 'metadata';
+  }): Promise<APIResponse<GmailMessage>> {
+    this.validateRequiredParams(params, ['messageId']);
+
+    const query: Record<string, string> = {};
+    if (params.format) {
+      query.format = params.format;
+    }
+
+    const queryString = Object.keys(query).length > 0 ? this.buildQueryString(query) : '';
+    return this.get(`/users/me/messages/${params.messageId}${queryString}`, this.getAuthHeaders());
+  }
+
   /**
    * Get emails by label
    */
@@ -258,40 +275,88 @@ export class GmailAPIClient extends BaseAPIClient {
    * Add label to email
    */
   public async addLabel(params: {
-    messageId: string;
-    labelNames: string[];
-  }): Promise<APIResponse<GmailMessage>> {
-    this.validateRequiredParams(params, ['messageId', 'labelNames']);
-
-    // Get label IDs from names
-    const labelIds = await this.getLabelIdsByNames(params.labelNames);
-    if (!labelIds.success) {
-      return labelIds;
+    messageId?: string;
+    messageIds?: string[];
+    labelIds?: string[];
+    labelNames?: string[];
+  }): Promise<APIResponse<GmailMessage[]>> {
+    const messageIds = this.normalizeMessageIds(params);
+    if (messageIds.length === 0) {
+      throw new Error('addLabel requires at least one messageId');
     }
 
-    return this.post(`/users/me/messages/${params.messageId}/modify`, {
-      addLabelIds: labelIds.data
-    });
+    const labelIds = await this.resolveLabelIdentifiers(params);
+    if (!labelIds.success || !labelIds.data) {
+      return {
+        success: false,
+        error: labelIds.error ?? 'Unable to resolve label identifiers',
+      };
+    }
+
+    const responses = await Promise.all(
+      messageIds.map(messageId =>
+        this.post(`/users/me/messages/${messageId}/modify`, {
+          addLabelIds: labelIds.data,
+        })
+      )
+    );
+
+    const failures = responses.filter(response => !response.success);
+    if (failures.length > 0) {
+      return {
+        success: false,
+        error: failures[0]?.error ?? 'Failed to add labels to one or more messages',
+      };
+    }
+
+    return {
+      success: true,
+      data: responses.map(response => response.data!).filter(Boolean),
+    };
   }
 
   /**
    * Remove label from email
    */
   public async removeLabel(params: {
-    messageId: string;
-    labelNames: string[];
-  }): Promise<APIResponse<GmailMessage>> {
-    this.validateRequiredParams(params, ['messageId', 'labelNames']);
-
-    // Get label IDs from names
-    const labelIds = await this.getLabelIdsByNames(params.labelNames);
-    if (!labelIds.success) {
-      return labelIds;
+    messageId?: string;
+    messageIds?: string[];
+    labelIds?: string[];
+    labelNames?: string[];
+  }): Promise<APIResponse<GmailMessage[]>> {
+    const messageIds = this.normalizeMessageIds(params);
+    if (messageIds.length === 0) {
+      throw new Error('removeLabel requires at least one messageId');
     }
 
-    return this.post(`/users/me/messages/${params.messageId}/modify`, {
-      removeLabelIds: labelIds.data
-    });
+    const labelIds = await this.resolveLabelIdentifiers(params);
+    if (!labelIds.success || !labelIds.data) {
+      return {
+        success: false,
+        error: labelIds.error ?? 'Unable to resolve label identifiers',
+      };
+    }
+
+    const responses = await Promise.all(
+      messageIds.map(messageId =>
+        this.post(`/users/me/messages/${messageId}/modify`, {
+          removeLabelIds: labelIds.data,
+        })
+      )
+    );
+
+    const failures = responses.filter(response => !response.success);
+    if (failures.length > 0) {
+      return {
+        success: false,
+        error: failures[0]?.error ?? 'Failed to remove labels from one or more messages',
+      };
+    }
+
+    return {
+      success: true,
+      data: responses.map(response => response.data!).filter(Boolean),
+    };
   }
 
   /**
@@ -424,6 +489,50 @@ export class GmailAPIClient extends BaseAPIClient {
     }
 
     return { success: true, data: results };
+  }
+
+  private normalizeMessageIds(params: { messageId?: string; messageIds?: string[] }): string[] {
+    const ids: string[] = [];
+    if (Array.isArray(params.messageIds)) {
+      for (const value of params.messageIds) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          ids.push(value.trim());
+        }
+      }
+    }
+
+    if (typeof params.messageId === 'string' && params.messageId.trim().length > 0) {
+      ids.push(params.messageId.trim());
+    }
+
+    return Array.from(new Set(ids));
+  }
+
+  private async resolveLabelIdentifiers(params: {
+    labelIds?: string[];
+    labelNames?: string[];
+  }): Promise<APIResponse<string[]>> {
+    const explicitIds: string[] = [];
+    if (Array.isArray(params.labelIds)) {
+      for (const value of params.labelIds) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          explicitIds.push(value.trim());
+        }
+      }
+    }
+
+    if (explicitIds.length > 0) {
+      return { success: true, data: explicitIds };
+    }
+
+    if (Array.isArray(params.labelNames) && params.labelNames.length > 0) {
+      return this.getLabelIdsByNames(params.labelNames);
+    }
+
+    return {
+      success: false,
+      error: 'At least one labelId or labelName must be provided',
+    };
   }
 
   // ===== HELPER METHODS =====

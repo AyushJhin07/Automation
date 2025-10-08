@@ -1667,3 +1667,71 @@ export class WebhookManager {
 
 // Export singleton instance
 export const webhookManager = WebhookManager.getInstance();
+
+function nowPlusSeconds(seconds: number): Date {
+  return new Date(Date.now() + Math.max(0, seconds) * 1000);
+}
+
+function sanitizeIntervalSeconds(intervalSeconds?: number): number {
+  const numeric = Number(intervalSeconds);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 300;
+  }
+  return Math.max(60, Math.floor(numeric));
+}
+
+export function buildGoogleDocsPollingTrigger(options: {
+  workflowId: string;
+  triggerId: 'document_created' | 'document_updated';
+  organizationId?: string;
+  userId?: string;
+  region?: OrganizationRegion;
+  intervalSeconds?: number;
+  metadata?: Record<string, any>;
+}): PollingTrigger {
+  const interval = sanitizeIntervalSeconds(options.intervalSeconds);
+  const next = nowPlusSeconds(interval);
+
+  return {
+    id: `${options.workflowId}:google-docs:${options.triggerId}`,
+    appId: 'google-docs',
+    triggerId: options.triggerId,
+    workflowId: options.workflowId,
+    interval,
+    nextPoll: next,
+    nextPollAt: next,
+    isActive: true,
+    metadata: options.metadata ?? {},
+    organizationId: options.organizationId,
+    userId: options.userId,
+    region: options.region,
+  };
+}
+
+export function buildGoogleDrivePollingTrigger(options: {
+  workflowId: string;
+  triggerId: 'file_created' | 'file_updated' | 'file_shared';
+  organizationId?: string;
+  userId?: string;
+  region?: OrganizationRegion;
+  intervalSeconds?: number;
+  metadata?: Record<string, any>;
+}): PollingTrigger {
+  const interval = sanitizeIntervalSeconds(options.intervalSeconds);
+  const next = nowPlusSeconds(interval);
+
+  return {
+    id: `${options.workflowId}:google-drive:${options.triggerId}`,
+    appId: 'google-drive',
+    triggerId: options.triggerId,
+    workflowId: options.workflowId,
+    interval,
+    nextPoll: next,
+    nextPollAt: next,
+    isActive: true,
+    metadata: options.metadata ?? {},
+    organizationId: options.organizationId,
+    userId: options.userId,
+    region: options.region,
+  };
+}
