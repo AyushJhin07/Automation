@@ -1091,40 +1091,87 @@
         "type": "object",
         "properties": {
           "spreadsheetId": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique identifier for the spreadsheet"
+          },
+          "spreadsheetUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to open the spreadsheet in Google Sheets"
           },
           "sheetId": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Numeric sheet identifier"
+          },
+          "sheetTitle": {
+            "type": "string",
+            "description": "Visible name of the sheet"
+          },
+          "rowId": {
+            "type": "string",
+            "description": "Stable identifier for the inserted row"
           },
           "rowIndex": {
-            "type": "integer"
+            "type": "integer",
+            "description": "1-based row index"
           },
           "values": {
             "type": "array",
+            "description": "Row values in column order",
             "items": {
               "type": [
                 "string",
                 "number",
-                "boolean"
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "valuesByColumn": {
+            "type": "object",
+            "description": "Row values keyed by column letter",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
               ]
             }
           },
           "addedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the row was added"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Google Sheets change payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Raw Sheets API response",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
           "spreadsheetId",
           "sheetId",
+          "rowId",
           "rowIndex",
           "values"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "sample": {
         "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1vD2xQ9pUoJlMnOpQrStUvWxYz/edit",
         "sheetId": 123456789,
+        "sheetTitle": "Pipeline",
+        "rowId": "123456789!257",
         "rowIndex": 257,
         "values": [
           "2024-12-09",
@@ -1132,8 +1179,37 @@
           125000,
           "Closed Won"
         ],
-        "addedAt": "2024-12-09T16:05:12Z"
-      }
+        "valuesByColumn": {
+          "A": "2024-12-09",
+          "B": "Enterprise",
+          "C": 125000,
+          "D": "Closed Won"
+        ],
+        "addedAt": "2024-12-09T16:05:12Z",
+        "_meta": {
+          "raw": {
+            "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+            "sheetId": 123456789,
+            "row": {
+              "range": "Pipeline!A257:D257",
+              "values": [
+                [
+                  "2024-12-09",
+                  "Enterprise",
+                  "125000",
+                  "Closed Won"
+                ]
+              ]
+            }
+          }
+        }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "rowId",
+        "cursor": "addedAt"
+      },
+      "dedupeKey": "rowId"
     },
     {
       "id": "cell_updated",
@@ -1162,13 +1238,24 @@
         "type": "object",
         "properties": {
           "spreadsheetId": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique identifier for the spreadsheet"
           },
           "sheetId": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Numeric sheet identifier"
+          },
+          "sheetTitle": {
+            "type": "string",
+            "description": "Visible name of the sheet"
           },
           "range": {
-            "type": "string"
+            "type": "string",
+            "description": "A1 notation for the updated cell"
+          },
+          "changeId": {
+            "type": "string",
+            "description": "Stable identifier for the cell update event"
           },
           "oldValue": {
             "type": [
@@ -1176,7 +1263,8 @@
               "number",
               "boolean",
               "null"
-            ]
+            ],
+            "description": "Value before the update"
           },
           "newValue": {
             "type": [
@@ -1184,33 +1272,69 @@
               "number",
               "boolean",
               "null"
-            ]
+            ],
+            "description": "Value after the update"
+          },
+          "updatedBy": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the editor"
           },
           "updatedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Timestamp when the cell was updated"
           },
-          "updatedBy": {
-            "type": "string"
+          "_meta": {
+            "type": "object",
+            "description": "Connector metadata including the raw Google Sheets change payload",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "description": "Raw Sheets API response",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
           "spreadsheetId",
           "sheetId",
           "range",
+          "changeId",
           "newValue"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "sample": {
         "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
-        "sheetId": 0,
+        "sheetId": 123456789,
+        "sheetTitle": "Summary",
         "range": "Summary!D3",
+        "changeId": "123456789!D3@2024-12-09T15:42:30Z",
         "oldValue": "Negotiation",
         "newValue": "Closed Won",
+        "updatedBy": "owner@example.com",
         "updatedAt": "2024-12-09T15:42:30Z",
-        "updatedBy": "alex.rivera@example.com"
-      }
+        "_meta": {
+          "raw": {
+            "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+            "sheetId": 123456789,
+            "range": "Summary!D3",
+            "user": "owner@example.com",
+            "timestamp": "2024-12-09T15:42:30Z",
+            "oldValue": "Negotiation",
+            "newValue": "Closed Won"
+          }
+        }
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "changeId",
+        "cursor": "updatedAt"
+      },
+      "dedupeKey": "changeId"
     }
   ],
   "testConnection": {
