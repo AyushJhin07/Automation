@@ -1615,6 +1615,10 @@
             }
           }
         }
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -1754,6 +1758,10 @@
             }
           }
         }
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -1946,6 +1954,10 @@
             "collection_method": "charge_automatically"
           }
         }
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -2081,6 +2093,10 @@
             }
           }
         }
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     }
   ],

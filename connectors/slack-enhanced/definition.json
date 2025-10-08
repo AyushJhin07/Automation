@@ -992,6 +992,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "ts"
       }
     },
     {
@@ -1114,6 +1118,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "channel.id"
       }
     },
     {
@@ -1263,6 +1271,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "file_id"
       }
     },
     {
@@ -1331,6 +1343,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "event_ts"
       }
     }
   ],

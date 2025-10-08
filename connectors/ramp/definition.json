@@ -276,6 +276,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     }
   ],
