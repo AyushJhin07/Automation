@@ -4269,6 +4269,7 @@ const GraphEditorContent = () => {
               </div>
             </div>
           </div>
+        </div>
         )}
       </aside>
       <Dialog open={promotionDialogOpen} onOpenChange={handlePromotionDialogOpenChange}>
