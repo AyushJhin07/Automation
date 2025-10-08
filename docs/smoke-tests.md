@@ -36,3 +36,21 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
 - CI runs `npm run ci:smoke`, which exercises the suite against the connector
   simulator fixtures in `server/testing/fixtures` so that smoke coverage is
   available without live credentials.
+
+## Runtime-supported connector smoke
+
+- Ensure `GENERIC_EXECUTOR_ENABLED=true` is set for the API process so the
+  generic executor will accept JSON connector payloads.
+- Export an API token and organization id for the account you want to target:
+
+  ```bash
+  export SMOKE_AUTH_TOKEN="<jwt>"
+  export SMOKE_ORGANIZATION_ID="<org-id>"
+  export SMOKE_BASE_URL="http://127.0.0.1:3000" # override if the API is hosted elsewhere
+  ```
+
+- Run `npm run smoke:supported` to fetch `/api/registry/capabilities`, build
+  synthetic request bodies from the connector definitions, and POST them through
+  `/api/integrations/execute`. The script prints an OK/SKIP/FAIL table for every
+  `app.function` and exits with a non-zero status when any executions fail so it
+  can gate CI.

@@ -51,6 +51,7 @@
     "audit:secrets": "tsx scripts/audit-secrets.ts",
     "smoke:e2e": "node scripts/e2e-smoke.js",
     "smoke:connectors": "tsx scripts/connector-smoke.ts",
+    "smoke:supported": "tsx scripts/smoke-supported.ts",
     "ci:smoke": "tsx scripts/connector-smoke.ts --use-simulator",
     "seed:encryption-key": "tsx scripts/seed-encryption-key.ts",
     "observability:check": "tsx scripts/observability-check.ts"
