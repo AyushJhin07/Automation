@@ -1712,6 +1712,7 @@ const GraphEditorContent = () => {
   const selectedNode = useMemo(() => {
     return nodes.find((n: any) => String(n.id) === String(selectedNodeId)) as any;
   }, [nodes, selectedNodeId]);
+  const showInspector = Boolean(selectedNode);
   const lastExecution = selectedNode?.data?.lastExecution;
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
@@ -3751,7 +3752,7 @@ const GraphEditorContent = () => {
   });
 
   return (
-    <div className="editor-shell">
+    <div className={clsx("editor-shell", showInspector && "editor-shell--with-inspector")}>
       {/* Sidebar */}
       <aside className="editor-shell__left">
         <NodeSidebar
@@ -3773,6 +3774,7 @@ const GraphEditorContent = () => {
           isValidating={isValidating}
           primaryDisabledReasons={primaryDisableReasons}
           workersOnline={workersOnline}
+          workerStatusMessage={workerStatusMessage}
           overflowActions={editorOverflowActions}
           banner={
             runBanner ? (
@@ -3910,26 +3912,28 @@ const GraphEditorContent = () => {
       </div>
 
       {/* Node Properties Panel - Enterprise Design */}
-      <aside className="right-pane">
-        <RightInspectorPanel
-          selectedNode={selectedNode}
-          setSelectedNodeId={setSelectedNodeId}
-          setNodes={setNodes}
-          lastExecution={lastExecution}
-          labelValue={labelValue}
-          setLabelValue={setLabelValue}
-          descValue={descValue}
-          setDescValue={setDescValue}
-          credentialsDraft={credentialsDraft}
-          setCredentialsDraft={setCredentialsDraft}
-          nodeRequiresConnection={nodeRequiresConnection}
-          openNodeConfigModal={openNodeConfigModal}
-          connectorDefinitions={connectorDefinitions}
-          onRefreshConnectors={handleRefreshConnectorMetadata}
-          isRefreshingConnectors={connectorDefinitionsLoading}
-          metadataError={connectorDefinitionsError}
-        />
-      </aside>
+      {showInspector ? (
+        <aside className="right-pane">
+          <RightInspectorPanel
+            selectedNode={selectedNode}
+            setSelectedNodeId={setSelectedNodeId}
+            setNodes={setNodes}
+            lastExecution={lastExecution}
+            labelValue={labelValue}
+            setLabelValue={setLabelValue}
+            descValue={descValue}
+            setDescValue={setDescValue}
+            credentialsDraft={credentialsDraft}
+            setCredentialsDraft={setCredentialsDraft}
+            nodeRequiresConnection={nodeRequiresConnection}
+            openNodeConfigModal={openNodeConfigModal}
+            connectorDefinitions={connectorDefinitions}
+            onRefreshConnectors={handleRefreshConnectorMetadata}
+            isRefreshingConnectors={connectorDefinitionsLoading}
+            metadataError={connectorDefinitionsError}
+          />
+        </aside>
+      ) : null}
       <Dialog open={promotionDialogOpen} onOpenChange={handlePromotionDialogOpenChange}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
