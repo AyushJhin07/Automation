@@ -7,15 +7,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import EditorTopBar from "../EditorTopBar";
 
 const baseProps = {
-  statusLabel: "Ready",
-  statusTone: "ready" as const,
-  statusHelperText: "All systems go",
   onRun: vi.fn(),
-  canRun: true,
-  runDisabled: false,
   onValidate: vi.fn(),
+  canRun: true,
   canValidate: true,
-  validateDisabled: false,
+  isRunning: false,
+  isValidating: false,
+  workersOnline: 1,
 };
 
 describe("EditorTopBar overflow actions", () => {
@@ -25,7 +23,7 @@ describe("EditorTopBar overflow actions", () => {
 
   it("hides the overflow trigger when no actions are provided", () => {
     render(<EditorTopBar {...baseProps} />);
-    expect(screen.queryByRole("button", { name: /more actions/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /workflow actions/i })).toBeNull();
   });
 
   it("invokes provided overflow handlers", async () => {
@@ -37,13 +35,15 @@ describe("EditorTopBar overflow actions", () => {
     render(
       <EditorTopBar
         {...baseProps}
-        onSave={{ id: "save", label: "Save draft", onSelect: onSave }}
-        onPromote={{ id: "promote", label: "Promote", onSelect: onPromote }}
-        onExport={{ id: "export", label: "Export workflow JSON", onSelect: onExport }}
+        overflowActions={[
+          { id: "save", label: "Save draft", onSelect: onSave },
+          { id: "promote", label: "Promote", onSelect: onPromote },
+          { id: "export", label: "Export workflow JSON", onSelect: onExport },
+        ]}
       />,
     );
 
-    const trigger = screen.getByRole("button", { name: /more actions/i });
+    const trigger = screen.getByRole("button", { name: /workflow actions/i });
 
     await user.click(trigger);
     const saveItem = await screen.findByRole("menuitem", { name: /save draft/i });
