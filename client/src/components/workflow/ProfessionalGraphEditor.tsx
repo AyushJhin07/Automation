@@ -45,6 +45,7 @@ import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel
 import { buildMetadataFromNode } from './metadata';
 import { normalizeWorkflowNode } from './graphSync';
 import { applyExecutionStateDefaults, sanitizeExecutionState, serializeGraphPayload } from './graphPayload';
+import EditorTopBar from './EditorTopBar';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion';
 import { AIParameterEditor } from './AIParameterEditor';
 import { useSpecStore } from '../../state/specStore';
@@ -53,9 +54,6 @@ import type { WorkflowDiffSummary } from '../../../../common/workflow-types';
 import {
   Plus,
   Play,
-  Save,
-  Download,
-  Upload,
   Settings,
   Trash2,
   Copy,
@@ -71,7 +69,6 @@ import {
   Filter,
   Code,
   MessageSquare,
-  Brain,
   Sparkles,
   ChevronDown,
   Search,
@@ -182,6 +179,61 @@ Object.entries(appIconsMap).forEach(([key, Icon]) => {
 });
 
 const lucideIconCache: Record<string, LucideIcon | null> = {};
+
+export interface EditorKeyboardShortcutsOptions {
+  runDisabled: boolean;
+  onRun: () => void;
+  validateDisabled: boolean;
+  onValidate: () => void;
+}
+
+export const useEditorKeyboardShortcuts = ({
+  runDisabled,
+  onRun,
+  validateDisabled,
+  onValidate,
+}: EditorKeyboardShortcutsOptions) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Enter') {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isEditableElement =
+        target?.isContentEditable ||
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        (target?.getAttribute('role') === 'textbox' && target?.getAttribute('contenteditable') === 'true');
+
+      const hasMetaModifier = event.metaKey || event.ctrlKey;
+
+      if (hasMetaModifier) {
+        if (!runDisabled) {
+          event.preventDefault();
+          onRun();
+        }
+        return;
+      }
+
+      if (event.shiftKey && !event.altKey) {
+        if (isEditableElement) {
+          return;
+        }
+        if (!validateDisabled) {
+          event.preventDefault();
+          onValidate();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [runDisabled, onRun, validateDisabled, onValidate]);
+};
 
 const buildIconNameCandidates = (value: string): string[] => {
   const trimmed = value.trim();
@@ -2394,6 +2446,19 @@ const GraphEditorContent = () => {
     </>
   );
 
+  const validateDisabled = isDryRunInProgress || isRunning || nodes.length === 0;
+  const validateButtonInner = isDryRunInProgress ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+      Validating…
+    </>
+  ) : (
+    <>
+      <Activity className="w-4 h-4 mr-2" />
+      Validate / Dry Run
+    </>
+  );
+
   const queueBadgeLabel = runReady
     ? 'Run ready'
     : isRunHealthLoading
@@ -2408,6 +2473,24 @@ const GraphEditorContent = () => {
       : 'bg-red-600 text-white';
   const queueBadgePulse = !runReady && !isRunHealthLoading;
   const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
+
+  const saveMenuLabel = saveState === 'saving' ? 'Saving…' : 'Save';
+  const saveActionDisabled = saveState === 'saving';
+  const promoteMenuLabel =
+    promotionState === 'publishing'
+      ? 'Promoting…'
+      : promotionState === 'checking'
+        ? 'Preparing…'
+        : 'Promote to production';
+  const promoteActionDisabled = promotionState !== 'idle' || nodes.length === 0;
+  const exportMenuLabel = 'Export JSON';
+
+  useEditorKeyboardShortcuts({
+    runDisabled,
+    onRun: onRunWorkflow,
+    validateDisabled,
+    onValidate: onDryRunWorkflow,
+  });
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
@@ -2505,6 +2588,31 @@ const GraphEditorContent = () => {
     logout,
     setActiveWorkflowId,
   ]);
+
+  const handleExportWorkflow = useCallback(() => {
+    try {
+      const workflowIdentifier =
+        activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+      const payload = createGraphPayload(workflowIdentifier);
+      const serialized = JSON.stringify(payload, null, 2);
+      const blob = new Blob([serialized], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const safeIdentifier = workflowIdentifier
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, '-');
+      anchor.href = url;
+      anchor.download = `${safeIdentifier || 'workflow'}-export.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      toast.success('Workflow exported');
+    } catch (error) {
+      console.error('Failed to export workflow', error);
+      toast.error('Failed to export workflow');
+    }
+  }, [activeWorkflowId, fallbackWorkflowIdRef, createGraphPayload]);
 
   const prepareWorkflowForExecution = useCallback(async (): Promise<{ workflowId: string; payload: NodeGraph } | null> => {
     if (nodes.length === 0) {
@@ -3350,165 +3458,42 @@ const GraphEditorContent = () => {
       {/* Main Graph Area */}
       <div className="flex-1 relative">
         {/* Top Toolbar */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="bg-slate-800/90 backdrop-blur-sm border-slate-700">
-            <CardContent className="p-3">
-              {runBanner && (
-                <Alert
-                  variant={runBanner.type === 'error' ? 'destructive' : 'default'}
-                  className={clsx(
-                    'mb-3',
-                    runBanner.type === 'error'
-                      ? 'bg-red-500/10 border-red-500/40 text-red-50'
-                      : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50'
-                  )}
-                >
-                  {runBanner.type === 'error' ? (
-                    <AlertTriangle className="h-4 w-4" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
-                  <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
-                  <AlertDescription>{runBanner.message}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-white font-bold text-lg flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-blue-400" />
-                    Workflow Designer
-                  </h1>
-                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                    {nodes.length} nodes
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <Badge
-                          className={clsx(
-                            'px-2 py-1 text-xs uppercase tracking-wide border',
-                            queueBadgeTone,
-                            queueBadgePulse && 'animate-pulse'
-                          )}
-                        >
-                          {queueBadgeLabel}
-                        </Badge>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>{queueBadgeTooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {runDisableReason ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex">
-                          <Button
-                            onClick={onRunWorkflow}
-                            disabled={runDisabled}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            {runButtonInner}
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>{runDisableReason}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      onClick={onRunWorkflow}
-                      disabled={runDisabled}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {runButtonInner}
-                    </Button>
-                  )}
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <Button
-                          variant="outline"
-                          onClick={onDryRunWorkflow}
-                          disabled={isDryRunInProgress || isRunning || nodes.length === 0}
-                          className="bg-amber-500/10 text-amber-200 border-amber-400 hover:bg-amber-500/20 hover:text-white"
-                        >
-                          {isDryRunInProgress ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                              Validating…
-                            </>
-                          ) : (
-                            <>
-                              <Activity className="w-4 h-4 mr-2" />
-                              Validate / Dry Run
-                            </>
-                          )}
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>
-                        Dry runs can validate action-only drafts, but promoting to production still
-                        requires at least one trigger node.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      void onSaveWorkflow();
-                    }}
-                    disabled={saveState === 'saving'}
-                    className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
-                  >
-                    {saveState === 'saving' ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Saving…
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    onClick={handleOpenPromotionDialog}
-                    disabled={promotionState !== 'idle' || nodes.length === 0}
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    {promotionState === 'idle' ? (
-                      <>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Promote
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        {promotionState === 'checking' ? 'Preparing…' : 'Promoting…'}
-                      </>
-                    )}
-                  </Button>
-
-                  <Button variant="outline" className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <EditorTopBar
+          nodesCount={nodes.length}
+          runBanner={runBanner}
+          queueBadgeLabel={queueBadgeLabel}
+          queueBadgeTone={queueBadgeTone}
+          queueBadgePulse={queueBadgePulse}
+          queueBadgeTooltip={queueBadgeTooltip}
+          runDisabled={runDisabled}
+          runDisableReason={runDisableReason}
+          onRun={onRunWorkflow}
+          runLabel={runButtonInner}
+          validateDisabled={validateDisabled}
+          onValidate={onDryRunWorkflow}
+          validateLabel={validateButtonInner}
+          onSave={
+            saveActionDisabled
+              ? undefined
+              : () => {
+                  void onSaveWorkflow();
+                }
+          }
+          saveDisabled={saveActionDisabled}
+          saveLabel={saveMenuLabel}
+          onPromote={
+            promoteActionDisabled
+              ? undefined
+              : () => {
+                  void handleOpenPromotionDialog();
+                }
+          }
+          promoteDisabled={promoteActionDisabled}
+          promoteLabel={promoteMenuLabel}
+          onExport={nodes.length === 0 ? undefined : handleExportWorkflow}
+          exportDisabled={nodes.length === 0}
+          exportLabel={exportMenuLabel}
+        />
         
         {/* ReactFlow */}
         <ValidationFixContext.Provider value={handleFixValidationError}>
