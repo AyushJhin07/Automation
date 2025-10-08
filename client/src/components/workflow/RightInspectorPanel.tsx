@@ -1,4 +1,4 @@
-import React, { type Dispatch, type SetStateAction } from "react";
+import React, { type Dispatch, type SetStateAction, useMemo } from "react";
 import type { Node } from "reactflow";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -7,15 +7,27 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { Alert, AlertDescription } from "../ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import SmartParametersPanel from "./SmartParametersPanel";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
+import type { RuntimeCapabilityIssue } from "@/services/runtimeCapabilitiesService";
+
+export interface SelectedNodeRuntimeSupport {
+  supported: boolean;
+  reason?: RuntimeCapabilityIssue;
+  appId?: string;
+  appLabel?: string;
+  operationId?: string;
+  operationLabel?: string;
+  kind?: 'action' | 'trigger';
+}
 
 export interface RightInspectorPanelProps {
   selectedNode: Node<any> | null;
   setSelectedNodeId: (id: string | null) => void;
   setNodes: Dispatch<SetStateAction<Node<any>[]>>;
   lastExecution: any;
+  runtimeSupportStatus?: SelectedNodeRuntimeSupport | null;
   labelValue: string;
   setLabelValue: Dispatch<SetStateAction<string>>;
   descValue: string;
@@ -35,6 +47,7 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   setSelectedNodeId,
   setNodes,
   lastExecution,
+  runtimeSupportStatus,
   labelValue,
   setLabelValue,
   descValue,
@@ -51,6 +64,25 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   if (!selectedNode) {
     return null;
   }
+
+  const runtimeSupportMessage = useMemo(() => {
+    if (!runtimeSupportStatus || runtimeSupportStatus.supported) {
+      return null;
+    }
+
+    const connector = runtimeSupportStatus.appLabel ?? 'This connector';
+    const operationLabel =
+      runtimeSupportStatus.operationLabel ??
+      runtimeSupportStatus.operationId ??
+      (runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action');
+
+    if (runtimeSupportStatus.reason === 'missing-operation') {
+      const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
+      return `${connector} ${noun} "${operationLabel}" isn't enabled in this runtime environment. Remove or replace the node before running.`;
+    }
+
+    return `${connector} isn't enabled in this runtime environment. Remove or replace the node before running.`;
+  }, [runtimeSupportStatus]);
 
   return (
     <div
@@ -133,6 +165,12 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
 
       {/* Content */}
       <div className="p-6 space-y-6">
+        {runtimeSupportMessage && (
+          <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+            <AlertTitle>Runtime limitation</AlertTitle>
+            <AlertDescription>{runtimeSupportMessage}</AlertDescription>
+          </Alert>
+        )}
         {lastExecution && (
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import { NodeSidebar } from "../ProfessionalGraphEditor";
+import { mergeWithFallbackCapabilities } from "@/services/runtimeCapabilitiesService";
 
 describe("NodeSidebar lifecycle badges", () => {
   const baseCatalog = {
@@ -51,16 +52,31 @@ describe("NodeSidebar lifecycle badges", () => {
     },
   };
 
-  const renderSidebar = () =>
-    render(
+  const renderSidebar = () => {
+    const runtimeCapabilities = mergeWithFallbackCapabilities({
+      betaapp: {
+        appId: "betaapp",
+        actions: new Set(["send"]),
+        triggers: new Set<string>(),
+      },
+      stableapp: {
+        appId: "stableapp",
+        actions: new Set(["do"]),
+        triggers: new Set<string>(),
+      },
+    } as any);
+
+    return render(
       <NodeSidebar
         onAddNode={vi.fn()}
         catalog={baseCatalog}
         loading={false}
         connectorDefinitions={null}
-        metadataError={null}
+        runtimeCapabilities={runtimeCapabilities}
+        runtimeCapabilitiesLoading={false}
       />,
     );
+  };
 
   it("shows a beta badge for connectors in beta", () => {
     renderSidebar();
