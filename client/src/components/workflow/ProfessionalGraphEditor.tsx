@@ -108,6 +108,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
+import { enqueueExecution, ExecutionEnqueueError } from '@/services/executions';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { collectNodeConfigurationErrors } from './nodeConfigurationValidation';
@@ -3065,63 +3066,59 @@ const GraphEditorContent = () => {
       }
 
       const initialData = computeInitialRunData();
-      const response = await authFetch('/api/executions', {
-        method: 'POST',
-        body: JSON.stringify({
-          workflowId: workflowIdentifier,
-          triggerType: 'manual',
-          initialData,
-        }),
+      const { executionId } = await enqueueExecution({
+        workflowId: workflowIdentifier,
+        triggerType: 'manual',
+        initialData,
       });
-
-      const result = (await response.json().catch(() => ({}))) as Record<string, any>;
-
-      if (!response.ok || !result?.success || !result?.executionId) {
-        let message: string;
-
-        if (response.status === 401) {
-          await logout(true);
-          message = 'Sign in to run workflows.';
-        } else if (response.status === 404) {
-          message = 'Workflow not found. Save the workflow before running.';
-        } else if (response.status === 503 || result?.error === 'QUEUE_UNAVAILABLE') {
-          const queueTarget = result?.details?.target ? ` (${result.details.target})` : '';
-          message =
-            result?.message ||
-            `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
-        } else if (result?.error === 'EXECUTION_QUOTA_EXCEEDED') {
-          message =
-            result?.message ||
-            'Execution quota exceeded. Wait for the current window to reset before trying again.';
-        } else if (result?.error === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
-          message =
-            result?.message ||
-            'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
-        } else if (result?.error === 'USAGE_QUOTA_EXCEEDED') {
-          const quotaType = result?.details?.quotaType
-            ? String(result.details.quotaType).replace(/_/g, ' ').toLowerCase()
-            : 'usage';
-          message =
-            result?.message ||
-            `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
-        } else {
-          message =
-            result?.message ||
-            result?.error ||
-            `Failed to enqueue workflow execution (status ${response.status}).`;
-        }
-
-        setRunBanner({ type: 'error', message });
-        toast.error(message);
-        return;
-      }
 
       const successMessage = 'Workflow execution enqueued. Redirecting to run viewer…';
       setRunBanner({ type: 'success', message: successMessage });
       toast.success(successMessage);
-      navigate(`/runs/${result.executionId}`);
+      navigate(`/runs/${executionId}`);
     } catch (error: any) {
-      const message = error?.message || 'Failed to enqueue workflow execution';
+      let message = error?.message || 'Failed to enqueue workflow execution';
+
+      if (error instanceof ExecutionEnqueueError) {
+        const isDefaultMessage =
+          error.message === `Failed to enqueue workflow execution (status ${error.status}).`;
+
+        if (error.status === 401) {
+          await logout(true);
+          message = 'Sign in to run workflows.';
+        } else if (error.status === 404) {
+          message = 'Workflow not found. Save the workflow before running.';
+        } else if (error.status === 503 || error.code === 'QUEUE_UNAVAILABLE') {
+          const details = (error.details ?? {}) as Record<string, any>;
+          const queueTarget = details?.target ? ` (${details.target})` : '';
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
+        } else if (error.code === 'EXECUTION_QUOTA_EXCEEDED') {
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : 'Execution quota exceeded. Wait for the current window to reset before trying again.';
+        } else if (error.code === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : 'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
+        } else if (error.code === 'USAGE_QUOTA_EXCEEDED') {
+          const details = (error.details ?? {}) as Record<string, any>;
+          const quotaType = details?.quotaType
+            ? String(details.quotaType).replace(/_/g, ' ').toLowerCase()
+            : 'usage';
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
+        } else {
+          message = error.message || message;
+        }
+      }
+
       setRunBanner({ type: 'error', message });
       toast.error(message);
     } finally {
@@ -3137,7 +3134,6 @@ const GraphEditorContent = () => {
     onSaveWorkflow,
     setRunBanner,
     computeInitialRunData,
-    authFetch,
     logout,
     navigate,
     resetExecutionHighlights,

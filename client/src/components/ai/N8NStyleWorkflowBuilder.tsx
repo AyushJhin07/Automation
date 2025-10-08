@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { NodeConfigurationModal } from '@/components/workflow/NodeConfigurationModal';
 import { useAuthStore } from '@/store/authStore';
+import { enqueueExecution, ExecutionEnqueueError } from '@/services/executions';
 import { toast } from 'sonner';
 import { serializeGraphPayload } from '@/components/workflow/graphPayload';
 import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
@@ -207,6 +208,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const authFetch = useAuthStore((state) => state.authFetch);
   const token = useAuthStore((state) => state.token);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const {
     health: queueHealth,
@@ -968,35 +970,11 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
         }
       }
 
-      const executionResponse = await authFetch('/api/executions', {
-        method: 'POST',
-        body: JSON.stringify({
-          workflowId: savedWorkflowId,
-          triggerType: 'manual',
-          initialData: null,
-        }),
+      const { executionId } = await enqueueExecution({
+        workflowId: savedWorkflowId,
+        triggerType: 'manual',
+        initialData: null,
       });
-      const executionPayload = await executionResponse.json().catch(() => ({}));
-
-      if (executionResponse.status === 503) {
-        const message =
-          executionPayload?.message ||
-          'The execution queue is unavailable. Please try again later.';
-        toast.error(message);
-        return;
-      }
-
-      if (!executionResponse.ok || executionPayload?.success === false) {
-        const message =
-          executionPayload?.message ||
-          executionPayload?.error ||
-          'Failed to run workflow';
-        toast.error(message);
-        return;
-      }
-
-      const executionId: string | undefined =
-        executionPayload?.executionId || executionPayload?.data?.executionId;
 
       toast.success('Workflow execution started');
 
@@ -1005,7 +983,50 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to run workflow', error);
-      toast.error(error?.message || 'Unable to run workflow');
+
+      let message = error?.message || 'Unable to run workflow';
+
+      if (error instanceof ExecutionEnqueueError) {
+        const isDefaultMessage =
+          error.message === `Failed to enqueue workflow execution (status ${error.status}).`;
+
+        if (error.status === 401) {
+          await logout(true);
+          message = 'Sign in to run workflows.';
+        } else if (error.status === 404) {
+          message = 'Workflow not found. Save the workflow before running.';
+        } else if (error.status === 503 || error.code === 'QUEUE_UNAVAILABLE') {
+          const details = (error.details ?? {}) as Record<string, any>;
+          const queueTarget = details?.target ? ` (${details.target})` : '';
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
+        } else if (error.code === 'EXECUTION_QUOTA_EXCEEDED') {
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : 'Execution quota exceeded. Wait for the current window to reset before trying again.';
+        } else if (error.code === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : 'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
+        } else if (error.code === 'USAGE_QUOTA_EXCEEDED') {
+          const details = (error.details ?? {}) as Record<string, any>;
+          const quotaType = details?.quotaType
+            ? String(details.quotaType).replace(/_/g, ' ').toLowerCase()
+            : 'usage';
+          message =
+            !isDefaultMessage && error.message
+              ? error.message
+              : `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
+        } else {
+          message = error.message || message;
+        }
+      }
+
+      toast.error(message);
     } finally {
       setIsRunningWorkflow(false);
     }
@@ -1023,6 +1044,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     workflowValidation.status,
     workflowValidation.message,
     workflowValidation.error,
+    logout,
   ]);
 
   const saveWorkflow = useCallback(async () => {
