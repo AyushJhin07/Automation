@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { Activity, Loader2, MoreHorizontal, Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface EditorTopBarAction {
   id: string;
@@ -15,24 +16,26 @@ export interface EditorTopBarAction {
 }
 
 export interface EditorTopBarProps {
-  onRun: () => void;
-  onValidate: () => void;
+  onPrimary?: () => void;
+  showRun: boolean;
   canRun?: boolean;
   canValidate?: boolean;
   isRunning?: boolean;
   isValidating?: boolean;
+  primaryDisabledReasons?: string[];
   workersOnline?: number | boolean;
   overflowActions?: EditorTopBarAction[];
   banner?: React.ReactNode;
 }
 
 const EditorTopBar: React.FC<EditorTopBarProps> = ({
-  onRun,
-  onValidate,
+  onPrimary,
+  showRun,
   canRun = true,
   canValidate = true,
   isRunning = false,
   isValidating = false,
+  primaryDisabledReasons = [],
   workersOnline = 0,
   overflowActions,
   banner,
@@ -41,21 +44,29 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const workersAvailable = workerCount > 0;
 
   const primaryAction = React.useMemo(() => {
-    if (canRun) {
-      return "run" as const;
-    }
-    if (canValidate) {
-      return "validate" as const;
-    }
-    return "run" as const;
-  }, [canRun, canValidate]);
+    return showRun ? "run" : "validate";
+  }, [showRun]);
 
   const isPrimaryLoading = primaryAction === "run" ? isRunning : isValidating;
-  const handlePrimaryClick = primaryAction === "run" ? onRun : onValidate;
-  const primaryDisabled =
-    primaryAction === "run"
-      ? !canRun || isRunning
-      : !canValidate || isValidating;
+  const canPrimary = primaryAction === "run" ? canRun : canValidate;
+  const handlePrimaryClick = onPrimary;
+  const primaryDisabled = !canPrimary || isPrimaryLoading || !onPrimary;
+
+  const tooltipText = React.useMemo(() => {
+    if (!primaryDisabled) {
+      return null;
+    }
+
+    const reasons = (primaryDisabledReasons ?? []).filter(
+      (reason) => typeof reason === "string" && reason.trim().length > 0,
+    );
+
+    if (reasons.length === 0) {
+      return null;
+    }
+
+    return reasons.join("\n");
+  }, [primaryDisabled, primaryDisabledReasons]);
 
   const primaryLabel = React.useMemo(() => {
     if (primaryAction === "run") {
@@ -107,15 +118,36 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
         </div>
 
         <div className="editor-topbar__controls">
-          <Button
-            type="button"
-            onClick={handlePrimaryClick}
-            disabled={primaryDisabled}
-            className="editor-topbar__primary-action"
-          >
-            {primaryIcon}
-            <span>{primaryLabel}</span>
-          </Button>
+          {tooltipText ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    onClick={handlePrimaryClick}
+                    disabled={primaryDisabled}
+                    className="editor-topbar__primary-action"
+                  >
+                    {primaryIcon}
+                    <span>{primaryLabel}</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs whitespace-pre-wrap">
+                <p>{tooltipText}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              type="button"
+              onClick={handlePrimaryClick}
+              disabled={primaryDisabled}
+              className="editor-topbar__primary-action"
+            >
+              {primaryIcon}
+              <span>{primaryLabel}</span>
+            </Button>
+          )}
 
           {hasOverflow ? (
             <div

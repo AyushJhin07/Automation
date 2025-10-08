@@ -18,71 +18,41 @@ describe("useEditorKeyboardShortcuts", () => {
     cleanup();
   });
 
-  it("invokes run handlers for meta+enter and ctrl+enter when enabled", () => {
-    const onRun = vi.fn();
-    const onValidate = vi.fn();
+  it("invokes the primary handler for run shortcuts when enabled", () => {
+    const onPrimary = vi.fn();
 
     render(
-      <ShortcutHarness
-        onRun={onRun}
-        canRun
-        runDisabled={false}
-        onValidate={onValidate}
-        canValidate
-        validateDisabled={false}
-      />,
+      <ShortcutHarness onPrimary={onPrimary} showRun primaryDisabled={false} />,
     );
 
     fireEvent.keyDown(document.body, { key: "Enter", metaKey: true });
     fireEvent.keyDown(document.body, { key: "Enter", ctrlKey: true });
 
-    expect(onRun).toHaveBeenCalledTimes(2);
-    expect(onValidate).not.toHaveBeenCalled();
+    expect(onPrimary).toHaveBeenCalledTimes(2);
   });
 
-  it("invokes validate handler for shift+enter and ignores disallowed contexts", () => {
-    const onRun = vi.fn();
-    const onValidate = vi.fn();
+  it("invokes the primary handler for validation shortcuts and respects disabled contexts", () => {
+    const onPrimary = vi.fn();
 
     const { rerender } = render(
-      <ShortcutHarness
-        onRun={onRun}
-        canRun
-        runDisabled={false}
-        onValidate={onValidate}
-        canValidate
-        validateDisabled={false}
-      />,
+      <ShortcutHarness onPrimary={onPrimary} showRun={false} primaryDisabled={false} />,
     );
 
     fireEvent.keyDown(document.body, { key: "Enter", shiftKey: true });
-    expect(onValidate).toHaveBeenCalledTimes(1);
+    expect(onPrimary).toHaveBeenCalledTimes(1);
 
     const input = document.createElement("input");
     document.body.appendChild(input);
     input.focus();
     fireEvent.keyDown(input, { key: "Enter", metaKey: true });
-    expect(onRun).not.toHaveBeenCalled();
+    expect(onPrimary).toHaveBeenCalledTimes(1);
     input.remove();
 
-    onRun.mockClear();
-    onValidate.mockClear();
+    onPrimary.mockClear();
 
-    rerender(
-      <ShortcutHarness
-        onRun={onRun}
-        canRun={false}
-        runDisabled
-        onValidate={onValidate}
-        canValidate={false}
-        validateDisabled
-      />,
-    );
+    rerender(<ShortcutHarness onPrimary={onPrimary} showRun={false} primaryDisabled />);
 
-    fireEvent.keyDown(document.body, { key: "Enter", metaKey: true });
     fireEvent.keyDown(document.body, { key: "Enter", shiftKey: true });
-
-    expect(onRun).not.toHaveBeenCalled();
-    expect(onValidate).not.toHaveBeenCalled();
+    expect(onPrimary).not.toHaveBeenCalled();
   });
 });
