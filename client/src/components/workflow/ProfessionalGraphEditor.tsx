@@ -112,6 +112,7 @@ import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { collectNodeConfigurationErrors } from './nodeConfigurationValidation';
 import './editor-topbar.css';
+import './professional-graph-editor.css';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -3579,17 +3580,19 @@ const GraphEditorContent = () => {
   });
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="editor-shell">
       {/* Sidebar */}
-      <NodeSidebar
-        onAddNode={onAddNode}
-        catalog={catalog}
-        loading={catalogLoading || connectorDefinitionsLoading}
-        connectorDefinitions={connectorDefinitions}
-      />
-      
+      <aside className="editor-shell__left">
+        <NodeSidebar
+          onAddNode={onAddNode}
+          catalog={catalog}
+          loading={catalogLoading || connectorDefinitionsLoading}
+          connectorDefinitions={connectorDefinitions}
+        />
+      </aside>
+
       {/* Main Graph Area */}
-      <div className="flex-1 flex flex-col relative min-w-0">
+      <div className="center-pane">
         <EditorTopBar
           statusLabel={statusLabel}
           statusTone={queueStatusTone}
@@ -3635,7 +3638,7 @@ const GraphEditorContent = () => {
           onExport={exportAction}
         />
 
-        <div className="flex-1 min-h-0">
+        <div className="center-pane__canvas">
           <ValidationFixContext.Provider value={handleFixValidationError}>
             <ReactFlow
               nodes={nodes}
@@ -3669,7 +3672,7 @@ const GraphEditorContent = () => {
             }}
             fitView
             attributionPosition="bottom-left"
-            className="bg-gray-100"
+            className="center-pane__flow bg-gray-100"
           >
             <Background
               color="#e2e8f0"
@@ -3747,37 +3750,50 @@ const GraphEditorContent = () => {
           </ValidationFixContext.Provider>
         </div>
       </div>
-      
+
       {/* Node Properties Panel - Enterprise Design */}
-      {selectedNode && (
-        <div
-          data-inspector
-          className="workflow-inspector-panel w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
-          onPointerDown={(e) => { e.stopPropagation(); }}
-          onPointerUp={(e) => { e.stopPropagation(); }}
-          onMouseDown={(e) => { e.stopPropagation(); }}
-          onMouseUp={(e) => { e.stopPropagation(); }}
-          onClick={(e) => { e.stopPropagation(); }}
-          onDoubleClick={(e) => { e.stopPropagation(); }}
-          onPointerDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onMouseDownCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onClickCapture={(e) => { e.stopPropagation(); const ne: any = (e as any).nativeEvent; if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation(); }}
-          onKeyDownCapture={(event) => {
-            if (event.ctrlKey || event.metaKey) {
-              event.stopPropagation();
-              const nativeEvent: any = event.nativeEvent;
-              if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
-            }
-          }}
-          onKeyUpCapture={(event) => {
-            if (event.ctrlKey || event.metaKey) {
-              event.stopPropagation();
-              const nativeEvent: any = event.nativeEvent;
-              if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
-            }
-          }}
-          style={{ pointerEvents: 'auto' }}
-        >
+      <aside className="right-pane">
+        {selectedNode && (
+          <div
+            data-inspector
+            className="workflow-inspector-panel w-full bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
+            onPointerDown={(e) => { e.stopPropagation(); }}
+            onPointerUp={(e) => { e.stopPropagation(); }}
+            onMouseDown={(e) => { e.stopPropagation(); }}
+            onMouseUp={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); }}
+            onPointerDownCapture={(e) => {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }}
+            onMouseDownCapture={(e) => {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }}
+            onClickCapture={(e) => {
+              e.stopPropagation();
+              const ne: any = (e as any).nativeEvent;
+              if (ne?.stopImmediatePropagation) ne.stopImmediatePropagation();
+            }}
+            onKeyDownCapture={(event) => {
+              if (event.ctrlKey || event.metaKey) {
+                event.stopPropagation();
+                const nativeEvent: any = event.nativeEvent;
+                if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
+              }
+            }}
+            onKeyUpCapture={(event) => {
+              if (event.ctrlKey || event.metaKey) {
+                event.stopPropagation();
+                const nativeEvent: any = event.nativeEvent;
+                if (nativeEvent?.stopImmediatePropagation) nativeEvent.stopImmediatePropagation();
+              }
+            }}
+            style={{ pointerEvents: 'auto' }}
+          >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 border-b">
             <div className="flex items-center justify-between">
@@ -4084,8 +4100,8 @@ const GraphEditorContent = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </aside>
       <Dialog open={promotionDialogOpen} onOpenChange={handlePromotionDialogOpenChange}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
