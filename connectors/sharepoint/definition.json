@@ -28,6 +28,23 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -74,6 +91,23 @@
           "content"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -109,6 +143,23 @@
           "siteId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -141,6 +192,23 @@
           "content"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -168,6 +236,23 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -212,6 +297,23 @@
           "siteId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -253,6 +355,23 @@
           "folderName"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -281,6 +400,23 @@
           "fields"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -314,6 +450,23 @@
           "fields"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -359,6 +512,23 @@
           "listId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -415,6 +585,23 @@
           "itemId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -441,6 +628,23 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -467,6 +671,23 @@
           "siteId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -508,6 +729,23 @@
           "query"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -564,6 +802,9 @@
             "type": "object"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -612,6 +853,9 @@
             "type": "object"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -659,6 +903,9 @@
             "type": "object"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -700,6 +947,9 @@
             "type": "object"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -716,5 +966,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

@@ -34,6 +34,23 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -128,6 +145,23 @@
           "title"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -170,6 +204,23 @@
           "product_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -192,6 +243,23 @@
           "product_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -242,6 +310,23 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -321,6 +406,23 @@
           "email"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -364,6 +466,23 @@
           "customer_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -386,6 +505,23 @@
           "order_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -451,6 +587,23 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -588,6 +741,23 @@
           "line_items"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -619,6 +789,23 @@
           "order_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -673,6 +860,23 @@
           "order_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -701,6 +905,23 @@
           "available_adjustment"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -778,6 +999,9 @@
             "type": "array"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -825,6 +1049,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -864,6 +1091,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -915,6 +1145,9 @@
             "type": "array"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -957,6 +1190,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -973,5 +1209,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

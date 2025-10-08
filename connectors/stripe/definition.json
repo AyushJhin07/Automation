@@ -29,6 +29,42 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "defaultCurrency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "accountId",
+          "livemode"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "accountId": "acct_1ABCDEF1234567",
+        "livemode": false,
+        "email": "finance@example.com",
+        "defaultCurrency": "usd"
       }
     },
     {
@@ -117,6 +153,102 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "created": {
+                "type": "integer"
+              },
+              "balance": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "invoice_settings": {
+                "type": "object",
+                "properties": {
+                  "default_payment_method": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "address": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "object"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "customer"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "customer": {
+          "id": "cus_P9t2Y1k6xH8L0d",
+          "object": "customer",
+          "email": "sarah.nguyen@example.com",
+          "name": "Sarah Nguyen",
+          "phone": "+1 650-555-4421",
+          "description": "Enterprise success manager",
+          "created": 1733745600,
+          "balance": 0,
+          "currency": "usd",
+          "invoice_settings": {
+            "default_payment_method": "pm_1Q2w3E4r5T6y"
+          },
+          "metadata": {
+            "account_tier": "enterprise"
+          },
+          "address": {
+            "line1": "500 Market Street",
+            "city": "San Francisco",
+            "state": "CA",
+            "postal_code": "94105",
+            "country": "US"
+          }
+        }
       }
     },
     {
@@ -195,6 +327,89 @@
           "currency"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "paymentIntent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "client_secret": {
+                "type": "string"
+              },
+              "confirmation_method": {
+                "type": "string"
+              },
+              "capture_method": {
+                "type": "string"
+              },
+              "payment_method": {
+                "type": "string"
+              },
+              "latest_charge": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "amount",
+              "currency",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "paymentIntent"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "paymentIntent": {
+          "id": "pi_3PX8nYJd6m2sdfjK1",
+          "object": "payment_intent",
+          "amount": 125000,
+          "currency": "usd",
+          "status": "requires_confirmation",
+          "customer": "cus_P9t2Y1k6xH8L0d",
+          "client_secret": "pi_3PX8nYJd6m2sdfjK1_secret_DrX2F7abCd",
+          "confirmation_method": "automatic",
+          "capture_method": "automatic",
+          "payment_method": "pm_1Q2w3E4r5T6y",
+          "latest_charge": null,
+          "metadata": {
+            "invoice": "INV-2024-1209"
+          }
+        }
       }
     },
     {
@@ -226,6 +441,147 @@
           "subscription"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "subscription": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "current_period_start": {
+                "type": "integer"
+              },
+              "current_period_end": {
+                "type": "integer"
+              },
+              "cancel_at_period_end": {
+                "type": "boolean"
+              },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "type": "integer"
+                        },
+                        "price": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "product": {
+                              "type": "string"
+                            },
+                            "unit_amount": {
+                              "type": "integer"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "recurring": {
+                              "type": "object",
+                              "properties": {
+                                "interval": {
+                                  "type": "string"
+                                },
+                                "interval_count": {
+                                  "type": "integer"
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "price"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "latest_invoice": {
+                "type": "string"
+              },
+              "collection_method": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "customer",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "subscription"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "subscription": {
+          "id": "sub_1Q5sYZJd6m2sdfjK",
+          "object": "subscription",
+          "customer": "cus_P9t2Y1k6xH8L0d",
+          "status": "trialing",
+          "current_period_start": 1735689600,
+          "current_period_end": 1738281600,
+          "cancel_at_period_end": true,
+          "items": {
+            "data": [
+              {
+                "id": "si_1Q5sYZJd6m2sdfjK",
+                "quantity": 10,
+                "price": {
+                  "id": "price_1PZQd7Jd6m2sdfjK",
+                  "product": "prod_Q2W3E4R5",
+                  "unit_amount": 1299,
+                  "currency": "usd",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1
+                  }
+                }
+              }
+            ]
+          },
+          "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
+          "collection_method": "charge_automatically"
+        }
       }
     },
     {
@@ -249,6 +605,88 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "refund": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "charge": {
+                "type": "string"
+              },
+              "payment_intent": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "receipt_number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "created": {
+                "type": "integer"
+              },
+              "metadata": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "amount",
+              "currency",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "refund"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "refund": {
+          "id": "re_1Q5t3aJd6m2sdfjK",
+          "object": "refund",
+          "amount": 4500,
+          "currency": "usd",
+          "status": "succeeded",
+          "charge": "ch_3PX8nYJd6m2sdfjK1",
+          "payment_intent": "pi_3PX8nYJd6m2sdfjK1",
+          "reason": "requested_by_customer",
+          "receipt_number": "1234-5678",
+          "created": 1733751000,
+          "metadata": {
+            "order": "SO-9182"
+          }
+        }
       }
     },
     {
@@ -321,6 +759,147 @@
           "items"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "subscription": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "current_period_start": {
+                "type": "integer"
+              },
+              "current_period_end": {
+                "type": "integer"
+              },
+              "cancel_at_period_end": {
+                "type": "boolean"
+              },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "type": "integer"
+                        },
+                        "price": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "product": {
+                              "type": "string"
+                            },
+                            "unit_amount": {
+                              "type": "integer"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "recurring": {
+                              "type": "object",
+                              "properties": {
+                                "interval": {
+                                  "type": "string"
+                                },
+                                "interval_count": {
+                                  "type": "integer"
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "price"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "latest_invoice": {
+                "type": "string"
+              },
+              "collection_method": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "customer",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "subscription"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "subscription": {
+          "id": "sub_1Q5sYZJd6m2sdfjK",
+          "object": "subscription",
+          "customer": "cus_P9t2Y1k6xH8L0d",
+          "status": "active",
+          "current_period_start": 1735689600,
+          "current_period_end": 1738281600,
+          "cancel_at_period_end": false,
+          "items": {
+            "data": [
+              {
+                "id": "si_1Q5sYZJd6m2sdfjK",
+                "quantity": 10,
+                "price": {
+                  "id": "price_1PZQd7Jd6m2sdfjK",
+                  "product": "prod_Q2W3E4R5",
+                  "unit_amount": 1299,
+                  "currency": "usd",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1
+                  }
+                }
+              }
+            ]
+          },
+          "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
+          "collection_method": "charge_automatically"
+        }
       }
     },
     {
@@ -366,6 +945,88 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "refund": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "charge": {
+                "type": "string"
+              },
+              "payment_intent": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "receipt_number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "created": {
+                "type": "integer"
+              },
+              "metadata": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "amount",
+              "currency",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "refund"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "refund": {
+          "id": "re_1Q5t3aJd6m2sdfjK",
+          "object": "refund",
+          "amount": 4500,
+          "currency": "usd",
+          "status": "succeeded",
+          "charge": "ch_3PX8nYJd6m2sdfjK1",
+          "payment_intent": "pi_3PX8nYJd6m2sdfjK1",
+          "reason": "requested_by_customer",
+          "receipt_number": "1234-5678",
+          "created": 1733751000,
+          "metadata": {
+            "order": "SO-9182"
+          }
+        }
       }
     },
     {
@@ -384,6 +1045,102 @@
           "customer_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "created": {
+                "type": "integer"
+              },
+              "balance": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "invoice_settings": {
+                "type": "object",
+                "properties": {
+                  "default_payment_method": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "metadata": {
+                "type": "object"
+              },
+              "address": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "object"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "customer"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "customer": {
+          "id": "cus_P9t2Y1k6xH8L0d",
+          "object": "customer",
+          "email": "sarah.nguyen@example.com",
+          "name": "Sarah Nguyen",
+          "phone": "+1 650-555-4421",
+          "description": "Enterprise success manager",
+          "created": 1733745600,
+          "balance": 0,
+          "currency": "usd",
+          "invoice_settings": {
+            "default_payment_method": "pm_1Q2w3E4r5T6y"
+          },
+          "metadata": {
+            "account_tier": "enterprise"
+          },
+          "address": {
+            "line1": "500 Market Street",
+            "city": "San Francisco",
+            "state": "CA",
+            "postal_code": "94105",
+            "country": "US"
+          }
+        }
       }
     },
     {
@@ -419,6 +1176,122 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "object": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "string"
+                },
+                "client_secret": {
+                  "type": "string"
+                },
+                "confirmation_method": {
+                  "type": "string"
+                },
+                "capture_method": {
+                  "type": "string"
+                },
+                "payment_method": {
+                  "type": "string"
+                },
+                "latest_charge": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "object",
+                "amount",
+                "currency",
+                "status"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "nextPage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "has_more"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "data": [
+          {
+            "id": "pi_3PX8nYJd6m2sdfjK1",
+            "object": "payment_intent",
+            "amount": 125000,
+            "currency": "usd",
+            "status": "succeeded",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "client_secret": "pi_3PX8nYJd6m2sdfjK1_secret_DrX2F7abCd",
+            "confirmation_method": "automatic",
+            "capture_method": "automatic",
+            "payment_method": "pm_1Q2w3E4r5T6y",
+            "latest_charge": "ch_3PX8nYJd6m2sdfjK1",
+            "metadata": {
+              "invoice": "INV-2024-1209"
+            }
+          },
+          {
+            "id": "pi_3PX8nYJd6m2sdfjK2",
+            "object": "payment_intent",
+            "amount": 8900,
+            "currency": "usd",
+            "status": "requires_payment_method",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "client_secret": "pi_3PX8nYJd6m2sdfjK1_secret_DrX2F7abCd",
+            "confirmation_method": "automatic",
+            "capture_method": "automatic",
+            "payment_method": "pm_1Q2w3E4r5T6y",
+            "latest_charge": null,
+            "metadata": {
+              "invoice": "INV-2024-1209"
+            }
+          }
+        ],
+        "has_more": false,
+        "nextPage": null
       }
     },
     {
@@ -461,6 +1334,147 @@
           "subscription_id"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "subscription": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "object": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "current_period_start": {
+                "type": "integer"
+              },
+              "current_period_end": {
+                "type": "integer"
+              },
+              "cancel_at_period_end": {
+                "type": "boolean"
+              },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "type": "integer"
+                        },
+                        "price": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "product": {
+                              "type": "string"
+                            },
+                            "unit_amount": {
+                              "type": "integer"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "recurring": {
+                              "type": "object",
+                              "properties": {
+                                "interval": {
+                                  "type": "string"
+                                },
+                                "interval_count": {
+                                  "type": "integer"
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "price"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "latest_invoice": {
+                "type": "string"
+              },
+              "collection_method": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "customer",
+              "status"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "subscription"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "subscription": {
+          "id": "sub_1Q5sYZJd6m2sdfjK",
+          "object": "subscription",
+          "customer": "cus_P9t2Y1k6xH8L0d",
+          "status": "trialing",
+          "current_period_start": 1735689600,
+          "current_period_end": 1738281600,
+          "cancel_at_period_end": true,
+          "items": {
+            "data": [
+              {
+                "id": "si_1Q5sYZJd6m2sdfjK",
+                "quantity": 10,
+                "price": {
+                  "id": "price_1PZQd7Jd6m2sdfjK",
+                  "product": "prod_Q2W3E4R5",
+                  "unit_amount": 1299,
+                  "currency": "usd",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1
+                  }
+                }
+              }
+            ]
+          },
+          "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
+          "collection_method": "charge_automatically"
+        }
       }
     }
   ],
@@ -493,6 +1507,7 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
@@ -501,20 +1516,103 @@
           "object": {
             "type": "string"
           },
-          "amount": {
-            "type": "number"
-          },
-          "currency": {
+          "type": {
             "type": "string"
           },
-          "customer": {
-            "type": "string"
+          "created": {
+            "type": "integer"
           },
-          "description": {
-            "type": "string"
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "customer": {
+                    "type": "string"
+                  },
+                  "client_secret": {
+                    "type": "string"
+                  },
+                  "confirmation_method": {
+                    "type": "string"
+                  },
+                  "capture_method": {
+                    "type": "string"
+                  },
+                  "payment_method": {
+                    "type": "string"
+                  },
+                  "latest_charge": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "amount",
+                  "currency",
+                  "status"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "additionalProperties": true
           },
-          "status": {
-            "type": "string"
+          "livemode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "evt_1Q5t5bJd6m2sdfjK",
+        "object": "event",
+        "type": "payment_intent.succeeded",
+        "created": 1733751400,
+        "livemode": false,
+        "data": {
+          "object": {
+            "id": "pi_3PX8nYJd6m2sdfjK1",
+            "object": "payment_intent",
+            "amount": 125000,
+            "currency": "usd",
+            "status": "succeeded",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "client_secret": "pi_3PX8nYJd6m2sdfjK1_secret_DrX2F7abCd",
+            "confirmation_method": "automatic",
+            "capture_method": "automatic",
+            "payment_method": "pm_1Q2w3E4r5T6y",
+            "latest_charge": "ch_3PX8nYJd6m2sdfjK1",
+            "metadata": {
+              "invoice": "INV-2024-1209"
+            }
           }
         }
       }
@@ -543,6 +1641,7 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
@@ -551,17 +1650,108 @@
           "object": {
             "type": "string"
           },
-          "amount": {
-            "type": "number"
-          },
-          "currency": {
+          "type": {
             "type": "string"
           },
-          "customer": {
-            "type": "string"
+          "created": {
+            "type": "integer"
           },
-          "last_payment_error": {
-            "type": "object"
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "customer": {
+                    "type": "string"
+                  },
+                  "client_secret": {
+                    "type": "string"
+                  },
+                  "confirmation_method": {
+                    "type": "string"
+                  },
+                  "capture_method": {
+                    "type": "string"
+                  },
+                  "payment_method": {
+                    "type": "string"
+                  },
+                  "latest_charge": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "amount",
+                  "currency",
+                  "status"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "additionalProperties": true
+          },
+          "livemode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "evt_1Q5t6pJd6m2sdfjK",
+        "object": "event",
+        "type": "payment_intent.payment_failed",
+        "created": 1733751500,
+        "livemode": false,
+        "data": {
+          "object": {
+            "id": "pi_3PX8nYJd6m2sdfjK1",
+            "object": "payment_intent",
+            "amount": 125000,
+            "currency": "usd",
+            "status": "requires_payment_method",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "client_secret": "pi_3PX8nYJd6m2sdfjK1_secret_DrX2F7abCd",
+            "confirmation_method": "automatic",
+            "capture_method": "automatic",
+            "payment_method": "pm_1Q2w3E4r5T6y",
+            "latest_charge": null,
+            "metadata": {
+              "invoice": "INV-2024-1209"
+            },
+            "last_payment_error": {
+              "code": "card_declined",
+              "message": "Your card was declined.",
+              "decline_code": "generic_decline"
+            }
           }
         }
       }
@@ -590,6 +1780,7 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
@@ -598,20 +1789,161 @@
           "object": {
             "type": "string"
           },
-          "customer": {
+          "type": {
             "type": "string"
           },
-          "status": {
-            "type": "string"
+          "created": {
+            "type": "integer"
           },
-          "items": {
-            "type": "object"
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string"
+                  },
+                  "customer": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "current_period_start": {
+                    "type": "integer"
+                  },
+                  "current_period_end": {
+                    "type": "integer"
+                  },
+                  "cancel_at_period_end": {
+                    "type": "boolean"
+                  },
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "quantity": {
+                              "type": "integer"
+                            },
+                            "price": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "product": {
+                                  "type": "string"
+                                },
+                                "unit_amount": {
+                                  "type": "integer"
+                                },
+                                "currency": {
+                                  "type": "string"
+                                },
+                                "recurring": {
+                                  "type": "object",
+                                  "properties": {
+                                    "interval": {
+                                      "type": "string"
+                                    },
+                                    "interval_count": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "additionalProperties": true
+                                }
+                              },
+                              "additionalProperties": true
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "price"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "latest_invoice": {
+                    "type": "string"
+                  },
+                  "collection_method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "customer",
+                  "status"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "additionalProperties": true
           },
-          "current_period_start": {
-            "type": "number"
-          },
-          "current_period_end": {
-            "type": "number"
+          "livemode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "evt_1Q5t7fJd6m2sdfjK",
+        "object": "event",
+        "type": "customer.subscription.created",
+        "created": 1733751600,
+        "livemode": false,
+        "data": {
+          "object": {
+            "id": "sub_1Q5sYZJd6m2sdfjK",
+            "object": "subscription",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "status": "active",
+            "current_period_start": 1735689600,
+            "current_period_end": 1738281600,
+            "cancel_at_period_end": false,
+            "items": {
+              "data": [
+                {
+                  "id": "si_1Q5sYZJd6m2sdfjK",
+                  "quantity": 10,
+                  "price": {
+                    "id": "price_1PZQd7Jd6m2sdfjK",
+                    "product": "prod_Q2W3E4R5",
+                    "unit_amount": 1299,
+                    "currency": "usd",
+                    "recurring": {
+                      "interval": "month",
+                      "interval_count": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
+            "collection_method": "charge_automatically"
           }
         }
       }
@@ -644,6 +1976,7 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
@@ -652,17 +1985,100 @@
           "object": {
             "type": "string"
           },
-          "customer": {
+          "type": {
             "type": "string"
           },
-          "subscription": {
-            "type": "string"
+          "created": {
+            "type": "integer"
           },
-          "amount_paid": {
-            "type": "number"
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "object": {
+                    "type": "string"
+                  },
+                  "customer": {
+                    "type": "string"
+                  },
+                  "total": {
+                    "type": "integer"
+                  },
+                  "amount_paid": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "string"
+                  },
+                  "hosted_invoice_url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "payment_intent": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "object",
+                  "customer",
+                  "total"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "additionalProperties": true
           },
-          "currency": {
-            "type": "string"
+          "livemode": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "evt_1Q5t9hJd6m2sdfjK",
+        "object": "event",
+        "type": "invoice.payment_succeeded",
+        "created": 1733751700,
+        "livemode": false,
+        "data": {
+          "object": {
+            "id": "in_1Q5t8gJd6m2sdfjK",
+            "object": "invoice",
+            "customer": "cus_P9t2Y1k6xH8L0d",
+            "total": 125000,
+            "amount_paid": 125000,
+            "currency": "usd",
+            "status": "paid",
+            "number": "F1A2B3C4",
+            "hosted_invoice_url": "https://pay.stripe.com/invoice/acct_1ABCDEF1234567/invst_123456789",
+            "payment_intent": "pi_3PX8nYJd6m2sdfjK1",
+            "lines": {
+              "data": []
+            }
           }
         }
       }
@@ -681,5 +2097,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

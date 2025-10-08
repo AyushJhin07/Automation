@@ -24,6 +24,23 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -93,6 +110,23 @@
           "created"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -143,6 +177,23 @@
           "partnerUserSecret"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -171,6 +222,23 @@
           "reportID"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -215,6 +283,23 @@
           "reportIDList"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -233,6 +318,23 @@
           "partnerUserSecret"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -261,6 +363,23 @@
           "tags"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -293,6 +412,23 @@
           "receiptData"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -329,6 +465,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -355,6 +494,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -384,6 +526,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -400,5 +545,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

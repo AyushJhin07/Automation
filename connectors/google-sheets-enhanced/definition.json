@@ -33,6 +33,101 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": true
+          },
+          "sheets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sheetId": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "gridProperties": {
+                  "type": "object",
+                  "properties": {
+                    "rowCount": {
+                      "type": "integer"
+                    },
+                    "columnCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "sheetId",
+                "title"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "properties": {
+          "title": "Revenue Dashboard",
+          "timeZone": "America/Los_Angeles"
+        },
+        "sheets": [
+          {
+            "sheetId": 0,
+            "title": "Summary",
+            "index": 0,
+            "gridProperties": {
+              "rowCount": 200,
+              "columnCount": 12
+            }
+          },
+          {
+            "sheetId": 123456789,
+            "title": "Raw Data",
+            "index": 1,
+            "gridProperties": {
+              "rowCount": 1000,
+              "columnCount": 20
+            }
+          }
+        ]
       }
     },
     {
@@ -73,6 +168,58 @@
           "values"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "updatedRange": {
+            "type": "string"
+          },
+          "updatedRows": {
+            "type": "integer"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "updatedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "updatedRange": "Summary!A10:D10",
+        "updatedRows": 1,
+        "values": [
+          [
+            "2024-12-09",
+            "Enterprise",
+            125000,
+            "Closed Won"
+          ]
+        ]
       }
     },
     {
@@ -110,6 +257,55 @@
           "value"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "updatedRange": {
+            "type": "string"
+          },
+          "updatedCells": {
+            "type": "integer"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "updatedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "updatedRange": "Summary!B2",
+        "updatedCells": 1,
+        "values": [
+          [
+            "December"
+          ]
+        ]
       }
     },
     {
@@ -153,6 +349,76 @@
           "values"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "updatedRange": {
+            "type": "string"
+          },
+          "updatedRows": {
+            "type": "integer"
+          },
+          "updatedColumns": {
+            "type": "integer"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "updatedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "updatedRange": "Raw Data!A2:C5",
+        "updatedRows": 4,
+        "updatedColumns": 3,
+        "values": [
+          [
+            "Acme Corp",
+            "Outbound",
+            48000
+          ],
+          [
+            "Globex",
+            "Partner",
+            32000
+          ],
+          [
+            "Soylent",
+            "Outbound",
+            27000
+          ],
+          [
+            "Initech",
+            "Inbound",
+            54000
+          ]
+        ]
       }
     },
     {
@@ -195,6 +461,71 @@
           "range"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "range": {
+            "type": "string"
+          },
+          "majorDimension": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "spreadsheetId",
+          "range",
+          "values"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "range": "Summary!A1:D5",
+        "majorDimension": "ROWS",
+        "values": [
+          [
+            "Date",
+            "Segment",
+            "Amount",
+            "Status"
+          ],
+          [
+            "2024-12-02",
+            "SMB",
+            42000,
+            "Prospecting"
+          ],
+          [
+            "2024-12-04",
+            "Enterprise",
+            98000,
+            "Negotiation"
+          ],
+          [
+            "2024-12-05",
+            "Mid-Market",
+            36000,
+            "Closed Won"
+          ]
+        ]
       }
     },
     {
@@ -218,6 +549,33 @@
           "range"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "clearedRange": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "clearedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "clearedRange": "Raw Data!E2:E100"
       }
     },
     {
@@ -257,6 +615,42 @@
           "title"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetId": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "sheetId",
+          "title"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sheetId": 987654321,
+        "title": "Q1 Forecast",
+        "index": 2
       }
     },
     {
@@ -280,6 +674,33 @@
           "sheetId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetId": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "sheetId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sheetId": 654321987
       }
     },
     {
@@ -307,6 +728,38 @@
           "sourceSheetId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetId": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "sheetId",
+          "title"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sheetId": 222333444,
+        "title": "Summary (Copy)"
       }
     },
     {
@@ -349,6 +802,64 @@
           "format"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "updatedRange": {
+            "type": "string"
+          },
+          "format": {
+            "type": "object",
+            "properties": {
+              "backgroundColor": {
+                "type": "object"
+              },
+              "textFormat": {
+                "type": "object"
+              },
+              "horizontalAlignment": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "updatedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "updatedRange": "Summary!A1:D1",
+        "format": {
+          "backgroundColor": {
+            "red": 0.078,
+            "green": 0.392,
+            "blue": 0.784
+          },
+          "textFormat": {
+            "bold": true,
+            "foregroundColor": {
+              "red": 1,
+              "green": 1,
+              "blue": 1
+            }
+          },
+          "horizontalAlignment": "CENTER"
+        }
       }
     },
     {
@@ -396,6 +907,60 @@
           "replacement"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "occurrencesChanged": {
+            "type": "integer"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "occurrencesChanged"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "occurrencesChanged": 3,
+        "values": [
+          [
+            "Status",
+            "Stage"
+          ],
+          [
+            "Closed Won",
+            "Won"
+          ],
+          [
+            "Negotiation",
+            "In Progress"
+          ]
+        ]
       }
     },
     {
@@ -439,6 +1004,62 @@
           "sortSpecs"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sortedRange": {
+            "type": "string"
+          },
+          "sortSpecs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimensionIndex": {
+                  "type": "integer"
+                },
+                "sortOrder": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "dimensionIndex",
+                "sortOrder"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "success",
+          "spreadsheetId",
+          "sortedRange"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sortedRange": "Raw Data!A2:D200",
+        "sortSpecs": [
+          {
+            "dimensionIndex": 0,
+            "sortOrder": "DESCENDING"
+          },
+          {
+            "dimensionIndex": 2,
+            "sortOrder": "DESCENDING"
+          }
+        ]
       }
     }
   ],
@@ -466,24 +1087,52 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetId": {
+            "type": "integer"
+          },
           "rowIndex": {
-            "type": "number"
+            "type": "integer"
           },
           "values": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
             }
           },
-          "sheetName": {
-            "type": "string"
-          },
-          "spreadsheetId": {
-            "type": "string"
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
           }
-        }
+        },
+        "required": [
+          "spreadsheetId",
+          "sheetId",
+          "rowIndex",
+          "values"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sheetId": 123456789,
+        "rowIndex": 257,
+        "values": [
+          "2024-12-09",
+          "Enterprise",
+          125000,
+          "Closed Won"
+        ],
+        "addedAt": "2024-12-09T16:05:12Z"
       }
     },
     {
@@ -509,24 +1158,58 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetId": {
+            "type": "integer"
+          },
           "range": {
             "type": "string"
           },
           "oldValue": {
-            "type": "string"
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
           },
           "newValue": {
-            "type": "string"
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
           },
-          "sheetName": {
-            "type": "string"
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "spreadsheetId": {
+          "updatedBy": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "spreadsheetId",
+          "sheetId",
+          "range",
+          "newValue"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
+        "sheetId": 0,
+        "range": "Summary!D3",
+        "oldValue": "Negotiation",
+        "newValue": "Closed Won",
+        "updatedAt": "2024-12-09T15:42:30Z",
+        "updatedBy": "alex.rivera@example.com"
       }
     }
   ],
@@ -543,5 +1226,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

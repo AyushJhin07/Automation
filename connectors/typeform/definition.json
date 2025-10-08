@@ -50,6 +50,9 @@
             "type": "object"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     },
     {
@@ -76,6 +79,9 @@
             "type": "string"
           }
         }
+      },
+      "sample": {
+        "success": true
       }
     }
   ],
@@ -117,5 +123,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }
