@@ -93,6 +93,7 @@ const serializeConnector = (entry: any, options: SerializeConnectorOptions = {})
           name: action.name,
           description: action.description,
           params: action.params ?? action.parameters ?? {},
+          io: action.io ?? action.ioMetadata ?? action.metadata ?? undefined,
         }))
       : [],
     triggers: Array.isArray(entry.triggers)
@@ -101,6 +102,7 @@ const serializeConnector = (entry: any, options: SerializeConnectorOptions = {})
           name: trigger.name,
           description: trigger.description,
           params: trigger.params ?? trigger.parameters ?? {},
+          io: trigger.io ?? trigger.ioMetadata ?? trigger.metadata ?? undefined,
         }))
       : [],
     authentication,
