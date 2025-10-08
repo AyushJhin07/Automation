@@ -92,7 +92,8 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
-  Link
+  Link,
+  Download
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -267,6 +268,86 @@ const isErrorSeverity = (severity?: string): boolean => {
 };
 
 const ValidationFixContext = createContext<((nodeId: string) => void) | null>(null);
+
+const shouldIgnoreShortcutTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable || target.closest('[contenteditable="true"]')) {
+    return true;
+  }
+
+  const tagName = target.tagName?.toLowerCase();
+  if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+    return true;
+  }
+
+  const role = target.getAttribute('role');
+  if (role === 'textbox' || role === 'combobox') {
+    return true;
+  }
+
+  if (target.closest('input, textarea, select, [role="textbox"], [role="combobox"]')) {
+    return true;
+  }
+
+  return false;
+};
+
+export interface EditorKeyboardShortcutOptions {
+  onRun?: () => void;
+  canRun?: boolean;
+  runDisabled?: boolean;
+  onValidate?: () => void;
+  canValidate?: boolean;
+  validateDisabled?: boolean;
+}
+
+export const useEditorKeyboardShortcuts = ({
+  onRun,
+  canRun,
+  runDisabled,
+  onValidate,
+  canValidate,
+  validateDisabled,
+}: EditorKeyboardShortcutOptions) => {
+  const runEnabled = Boolean(onRun) && !(runDisabled ?? false) && (typeof canRun === 'boolean' ? canRun : true);
+  const validateEnabled =
+    Boolean(onValidate) && !(validateDisabled ?? false) && (typeof canValidate === 'boolean' ? canValidate : true);
+
+  useEffect(() => {
+    if (!runEnabled && !validateEnabled) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Enter' || event.repeat) {
+        return;
+      }
+
+      if (shouldIgnoreShortcutTarget(event.target)) {
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && runEnabled) {
+        event.preventDefault();
+        onRun?.();
+        return;
+      }
+
+      if (event.shiftKey && !event.metaKey && !event.ctrlKey && validateEnabled) {
+        event.preventDefault();
+        onValidate?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [runEnabled, validateEnabled, onRun, onValidate]);
+};
 
 interface NodeValidationBannerProps {
   errors?: ValidationError[];
@@ -2445,49 +2526,6 @@ const GraphEditorContent = () => {
   const dryRunTooltip =
     'Dry runs can validate action-only drafts, but promoting to production still requires at least one trigger node.';
 
-  const editorOverflowActions = useMemo<EditorTopBarAction[]>(() => {
-    const actions: EditorTopBarAction[] = [];
-
-    actions.push({
-      id: 'save',
-      label: saveState === 'saving' ? 'Saving…' : 'Save draft',
-      onSelect: () => {
-        void onSaveWorkflow();
-      },
-      icon: Save,
-      disabled: saveState === 'saving',
-    });
-
-    const promotionDescription =
-      promotionState !== 'idle'
-        ? 'Please wait'
-        : nodes.length === 0
-          ? 'Add nodes to enable'
-          : undefined;
-
-    actions.push({
-      id: 'promote',
-      label:
-        promotionState === 'idle'
-          ? 'Promote to production'
-          : promotionState === 'checking'
-            ? 'Preparing…'
-            : 'Promoting…',
-      onSelect: handleOpenPromotionDialog,
-      icon: Upload,
-      disabled: promotionState !== 'idle' || nodes.length === 0,
-      description: promotionDescription,
-    });
-
-    return actions;
-  }, [
-    saveState,
-    onSaveWorkflow,
-    promotionState,
-    handleOpenPromotionDialog,
-    nodes.length,
-  ]);
-
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
     const candidates: Array<any> = [];
@@ -3285,6 +3323,53 @@ const GraphEditorContent = () => {
     resetExecutionHighlights,
   ]);
 
+  const handleExportWorkflow = useCallback(() => {
+    if (!graphHasNodes) {
+      toast.error('Add at least one node before exporting');
+      return;
+    }
+
+    const workflowIdentifier = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const payload = createGraphPayload(workflowIdentifier);
+
+    try {
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const baseName = typeof payload.name === 'string' && payload.name.trim().length > 0
+        ? payload.name.trim()
+        : 'workflow';
+      const sanitizedBase = baseName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '') || 'workflow';
+      const filename = `${sanitizedBase}-${workflowIdentifier}.json`;
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 0);
+
+      toast.success('Workflow exported');
+    } catch (error: any) {
+      console.error('Failed to export workflow', error);
+      const message = typeof error?.message === 'string' && error.message.trim().length > 0
+        ? `Failed to export workflow: ${error.message}`
+        : 'Failed to export workflow';
+      toast.error(message);
+    }
+  }, [
+    graphHasNodes,
+    activeWorkflowId,
+    fallbackWorkflowIdRef,
+    createGraphPayload,
+  ]);
+
   const handlePromotionDialogOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
@@ -3419,7 +3504,80 @@ const GraphEditorContent = () => {
       setPromotionState('idle');
     }
   }, [promotionWorkflowId, promotionDiff, migrationPlan, authFetch, logout]);
-  
+
+  const promotionDescription = useMemo(() => {
+    if (promotionState !== 'idle') {
+      return 'Please wait';
+    }
+    if (!graphHasNodes) {
+      return 'Add nodes to enable';
+    }
+    return undefined;
+  }, [promotionState, graphHasNodes]);
+
+  const saveAction = useMemo<EditorTopBarAction | undefined>(() => {
+    if (!graphHasNodes) {
+      return undefined;
+    }
+
+    return {
+      id: 'save',
+      label: saveState === 'saving' ? 'Saving…' : 'Save draft',
+      onSelect: () => {
+        void onSaveWorkflow();
+      },
+      icon: Save,
+      disabled: saveState === 'saving',
+    };
+  }, [graphHasNodes, saveState, onSaveWorkflow]);
+
+  const promoteAction = useMemo<EditorTopBarAction | undefined>(() => {
+    if (!graphHasNodes) {
+      return undefined;
+    }
+
+    return {
+      id: 'promote',
+      label:
+        promotionState === 'idle'
+          ? 'Promote to production'
+          : promotionState === 'checking'
+            ? 'Preparing…'
+            : 'Promoting…',
+      onSelect: handleOpenPromotionDialog,
+      icon: Upload,
+      disabled: promotionState !== 'idle' || !graphHasNodes,
+      description: promotionDescription,
+    };
+  }, [
+    graphHasNodes,
+    promotionState,
+    handleOpenPromotionDialog,
+    promotionDescription,
+  ]);
+
+  const exportAction = useMemo<EditorTopBarAction | undefined>(() => {
+    if (!graphHasNodes) {
+      return undefined;
+    }
+
+    return {
+      id: 'export',
+      label: 'Export workflow JSON',
+      onSelect: handleExportWorkflow,
+      icon: Download,
+    };
+  }, [graphHasNodes, handleExportWorkflow]);
+
+  useEditorKeyboardShortcuts({
+    onRun: onRunWorkflow,
+    canRun,
+    runDisabled,
+    onValidate: onDryRunWorkflow,
+    canValidate,
+    validateDisabled,
+  });
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -3472,7 +3630,9 @@ const GraphEditorContent = () => {
               </Alert>
             ) : null
           }
-          overflowActions={editorOverflowActions}
+          onSave={saveAction}
+          onPromote={promoteAction}
+          onExport={exportAction}
         />
 
         <div className="flex-1 min-h-0">
