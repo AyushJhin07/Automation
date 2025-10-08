@@ -709,4 +709,115 @@ describe("ProfessionalGraphEditor validation gating", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it('disables Run while an execution request is pending', async () => {
+    let resolveExecution: ((value: Response) => void) | undefined;
+    const executionResponse = new Promise<Response>((resolve) => {
+      resolveExecution = resolve;
+    });
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = extractUrl(input);
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/flows/save')) {
+        return Promise.resolve(jsonResponse({ success: true, workflowId: 'wf-123' }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({ success: true, validation: { valid: true, errors: [], warnings: [] } })
+        );
+      }
+      if (url.includes('/api/executions')) {
+        return executionResponse;
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+
+    await waitFor(() => {
+      expect(runButton).toBeEnabled();
+    });
+
+    fireEvent.click(runButton);
+
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+
+    resolveExecution?.(jsonResponse({ success: true, executionId: 'exec-1' }));
+
+    await waitFor(() => {
+      expect(runButton).toBeEnabled();
+    });
+  });
+
+  it('keeps run and validate disabled when infrastructure is offline', async () => {
+    queueHealthReturn = {
+      ...queueHealthReturn,
+      status: 'fail',
+      health: {
+        ...(queueHealthReturn.health ?? {}),
+        status: 'fail',
+        message: 'Queue unavailable',
+      },
+    };
+    useQueueHealthMock.mockReturnValue(queueHealthReturn);
+
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 0,
+        healthyWorkers: 0,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: false,
+        schedulerHealthy: false,
+        timerHealthy: false,
+      },
+      scheduler: null,
+      queue: null,
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = extractUrl(input);
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/flows/save')) {
+        return Promise.resolve(jsonResponse({ success: true, workflowId: 'wf-offline' }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({ success: true, validation: { valid: true, errors: [], warnings: [] } })
+        );
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const validateButton = await screen.findByRole('button', { name: /validate \/ dry run/i });
+
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+      expect(validateButton).toBeDisabled();
+    });
+
+    expect(runButton).toHaveAttribute('data-can-run', 'false');
+    expect(validateButton).toHaveAttribute('data-can-validate', 'false');
+  });
 });
