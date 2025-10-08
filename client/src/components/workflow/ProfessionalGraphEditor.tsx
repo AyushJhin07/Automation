@@ -42,6 +42,7 @@ import {
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import SmartParametersPanel, { syncNodeParameters } from './SmartParametersPanel';
+import EditorTopBar, { type EditorTopBarAction } from './EditorTopBar';
 import { buildMetadataFromNode } from './metadata';
 import { normalizeWorkflowNode } from './graphSync';
 import { applyExecutionStateDefaults, sanitizeExecutionState, serializeGraphPayload } from './graphPayload';
@@ -52,9 +53,7 @@ import { specToReactFlow } from '../../graph/transform';
 import type { WorkflowDiffSummary } from '../../../../common/workflow-types';
 import {
   Plus,
-  Play,
   Save,
-  Download,
   Upload,
   Settings,
   Trash2,
@@ -71,7 +70,6 @@ import {
   Filter,
   Code,
   MessageSquare,
-  Brain,
   Sparkles,
   ChevronDown,
   Search,
@@ -110,6 +108,7 @@ import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { collectNodeConfigurationErrors } from './nodeConfigurationValidation';
+import './editor-topbar.css';
 
 // Enhanced Node Template Interface
 interface NodeTemplate {
@@ -2382,18 +2381,6 @@ const GraphEditorContent = () => {
     combinedBlockingErrors.length > 0 ||
     workflowValidation.status !== 'valid';
 
-  const runButtonInner = isRunning ? (
-    <>
-      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-      Enqueuing…
-    </>
-  ) : (
-    <>
-      <Play className="w-4 h-4 mr-2" />
-      Run Workflow
-    </>
-  );
-
   const queueBadgeLabel = runReady
     ? 'Run ready'
     : isRunHealthLoading
@@ -2401,13 +2388,63 @@ const GraphEditorContent = () => {
       : !workerFleetReady
         ? 'Workers offline'
         : 'Queue offline';
-  const queueBadgeTone = runReady
-    ? 'bg-emerald-600 text-white'
-    : isRunHealthLoading
-      ? 'bg-amber-500 text-white'
-      : 'bg-red-600 text-white';
-  const queueBadgePulse = !runReady && !isRunHealthLoading;
   const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
+  const nodeCountLabel =
+    nodes.length === 0 ? '' : nodes.length === 1 ? '1 node' : `${nodes.length} nodes`;
+  const statusLabel = nodeCountLabel ? `${queueBadgeLabel} • ${nodeCountLabel}` : queueBadgeLabel;
+  const statusHelperText =
+    workerStatusMessage || (workerFleetReady ? 'Worker fleet ready' : 'Investigate worker health');
+  const queueStatusTone: 'ready' | 'warning' | 'error' = runReady
+    ? 'ready'
+    : isRunHealthLoading
+      ? 'warning'
+      : 'error';
+  const queueStatusPulse = !runReady && !isRunHealthLoading;
+  const dryRunTooltip =
+    'Dry runs can validate action-only drafts, but promoting to production still requires at least one trigger node.';
+
+  const editorOverflowActions = useMemo<EditorTopBarAction[]>(() => {
+    const actions: EditorTopBarAction[] = [];
+
+    actions.push({
+      id: 'save',
+      label: saveState === 'saving' ? 'Saving…' : 'Save draft',
+      onSelect: () => {
+        void onSaveWorkflow();
+      },
+      icon: Save,
+      disabled: saveState === 'saving',
+    });
+
+    const promotionDescription =
+      promotionState !== 'idle'
+        ? 'Please wait'
+        : nodes.length === 0
+          ? 'Add nodes to enable'
+          : undefined;
+
+    actions.push({
+      id: 'promote',
+      label:
+        promotionState === 'idle'
+          ? 'Promote to production'
+          : promotionState === 'checking'
+            ? 'Preparing…'
+            : 'Promoting…',
+      onSelect: handleOpenPromotionDialog,
+      icon: Upload,
+      disabled: promotionState !== 'idle' || nodes.length === 0,
+      description: promotionDescription,
+    });
+
+    return actions;
+  }, [
+    saveState,
+    onSaveWorkflow,
+    promotionState,
+    handleOpenPromotionDialog,
+    nodes.length,
+  ]);
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
@@ -3348,176 +3385,56 @@ const GraphEditorContent = () => {
       />
       
       {/* Main Graph Area */}
-      <div className="flex-1 relative">
-        {/* Top Toolbar */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="bg-slate-800/90 backdrop-blur-sm border-slate-700">
-            <CardContent className="p-3">
-              {runBanner && (
-                <Alert
-                  variant={runBanner.type === 'error' ? 'destructive' : 'default'}
-                  className={clsx(
-                    'mb-3',
-                    runBanner.type === 'error'
-                      ? 'bg-red-500/10 border-red-500/40 text-red-50'
-                      : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50'
-                  )}
-                >
-                  {runBanner.type === 'error' ? (
-                    <AlertTriangle className="h-4 w-4" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
-                  <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
-                  <AlertDescription>{runBanner.message}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-white font-bold text-lg flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-blue-400" />
-                    Workflow Designer
-                  </h1>
-                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                    {nodes.length} nodes
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <Badge
-                          className={clsx(
-                            'px-2 py-1 text-xs uppercase tracking-wide border',
-                            queueBadgeTone,
-                            queueBadgePulse && 'animate-pulse'
-                          )}
-                        >
-                          {queueBadgeLabel}
-                        </Badge>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>{queueBadgeTooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
+      <div className="flex-1 flex flex-col relative min-w-0">
+        <EditorTopBar
+          statusLabel={statusLabel}
+          statusTone={queueStatusTone}
+          statusTooltip={queueBadgeTooltip}
+          statusHelperText={statusHelperText}
+          statusPulse={queueStatusPulse}
+          onRun={onRunWorkflow}
+          runDisabled={runDisabled}
+          runTooltip={runDisableReason}
+          isRunLoading={isRunning}
+          runIdleText="Run workflow"
+          runLoadingText="Enqueuing…"
+          onValidate={onDryRunWorkflow}
+          validateDisabled={isDryRunInProgress || isRunning || nodes.length === 0}
+          validateTooltip={dryRunTooltip}
+          isValidateLoading={isDryRunInProgress}
+          validateIdleText="Validate / Dry run"
+          validateLoadingText="Validating…"
+          banner={
+            runBanner ? (
+              <Alert
+                variant={runBanner.type === 'error' ? 'destructive' : 'default'}
+                className={clsx(
+                  runBanner.type === 'error'
+                    ? 'bg-red-500/10 border-red-500/40 text-red-50'
+                    : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50'
+                )}
+              >
+                {runBanner.type === 'error' ? (
+                  <AlertTriangle className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
+                <AlertDescription>{runBanner.message}</AlertDescription>
+              </Alert>
+            ) : null
+          }
+          overflowActions={editorOverflowActions}
+        />
 
-                  {runDisableReason ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex">
-                          <Button
-                            onClick={onRunWorkflow}
-                            disabled={runDisabled}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            {runButtonInner}
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>{runDisableReason}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      onClick={onRunWorkflow}
-                      disabled={runDisabled}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {runButtonInner}
-                    </Button>
-                  )}
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex">
-                        <Button
-                          variant="outline"
-                          onClick={onDryRunWorkflow}
-                          disabled={isDryRunInProgress || isRunning || nodes.length === 0}
-                          className="bg-amber-500/10 text-amber-200 border-amber-400 hover:bg-amber-500/20 hover:text-white"
-                        >
-                          {isDryRunInProgress ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                              Validating…
-                            </>
-                          ) : (
-                            <>
-                              <Activity className="w-4 h-4 mr-2" />
-                              Validate / Dry Run
-                            </>
-                          )}
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>
-                        Dry runs can validate action-only drafts, but promoting to production still
-                        requires at least one trigger node.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      void onSaveWorkflow();
-                    }}
-                    disabled={saveState === 'saving'}
-                    className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
-                  >
-                    {saveState === 'saving' ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Saving…
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    onClick={handleOpenPromotionDialog}
-                    disabled={promotionState !== 'idle' || nodes.length === 0}
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
-                  >
-                    {promotionState === 'idle' ? (
-                      <>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Promote
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        {promotionState === 'checking' ? 'Preparing…' : 'Promoting…'}
-                      </>
-                    )}
-                  </Button>
-
-                  <Button variant="outline" className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* ReactFlow */}
-        <ValidationFixContext.Provider value={handleFixValidationError}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
+        <div className="flex-1 min-h-0">
+          <ValidationFixContext.Provider value={handleFixValidationError}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
@@ -3618,15 +3535,16 @@ const GraphEditorContent = () => {
               </div>
             </div>
           )}
-          </ReactFlow>
-        </ValidationFixContext.Provider>
+            </ReactFlow>
+          </ValidationFixContext.Provider>
+        </div>
       </div>
       
       {/* Node Properties Panel - Enterprise Design */}
       {selectedNode && (
         <div
           data-inspector
-          className="w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
+          className="workflow-inspector-panel w-96 bg-gradient-to-br from-slate-50 to-white border-l-2 border-slate-200 shadow-xl overflow-y-auto nopan"
           onPointerDown={(e) => { e.stopPropagation(); }}
           onPointerUp={(e) => { e.stopPropagation(); }}
           onMouseDown={(e) => { e.stopPropagation(); }}
