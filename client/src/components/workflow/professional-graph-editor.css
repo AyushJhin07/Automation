@@ -1,0 +1,56 @@
+.editor-shell {
+  display: grid;
+  grid-template-columns: 310px 1fr 380px;
+  height: 100vh;
+  background-color: #f3f4f6;
+  overflow: hidden;
+}
+
+.editor-shell__left {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid rgba(148, 163, 184, 0.35);
+  background-color: #ffffff;
+}
+
+.editor-shell__left > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.center-pane {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.center-pane__canvas {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.center-pane__flow {
+  width: 100%;
+  height: 100%;
+}
+
+.right-pane {
+  position: relative;
+  z-index: 20;
+  min-height: 0;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.85));
+  border-left: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.right-pane > * {
+  min-height: 100%;
+}
