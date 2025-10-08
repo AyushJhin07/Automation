@@ -41,7 +41,8 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
 
 - Ensure `GENERIC_EXECUTOR_ENABLED=true` is set for the API process so the
   generic executor will accept JSON connector payloads.
-- Export an API token and organization id for the account you want to target:
+- Export an API token and organization id for the account you want to target
+  (the token needs `execution:read` to hit the dry-run endpoint):
 
   ```bash
   export SMOKE_AUTH_TOKEN="<jwt>"
@@ -49,8 +50,8 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
   export SMOKE_BASE_URL="http://127.0.0.1:3000" # override if the API is hosted elsewhere
   ```
 
-- Run `npm run smoke:supported` to fetch `/api/registry/capabilities`, build
-  synthetic request bodies from the connector definitions, and POST them through
-  `/api/integrations/execute`. The script prints an OK/SKIP/FAIL table for every
-  `app.function` and exits with a non-zero status when any executions fail so it
-  can gate CI.
+- Run `npm run smoke:supported` to fetch `/api/registry/capabilities`, generate
+  a minimal workflow for each supported action, and execute it through
+  `/api/executions/dry-run`. The summary table flags fallback runs, prints
+  OK/SKIP/FAIL totals, and exits non-zero when any action fails so CI pipelines
+  can block regressions.
