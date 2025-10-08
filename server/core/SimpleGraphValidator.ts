@@ -2,6 +2,7 @@ import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import graphSchema from '../../schemas/graph.schema.json';
 import { NodeGraph, ValidationError, ValidationResult } from '../../shared/nodeGraphSchema';
+import { hasRuntimeImplementation } from '../runtime/registry.js';
 
 export interface ValidatorOptions {
   allowActionOnly?: boolean;
@@ -63,7 +64,10 @@ export class SimpleGraphValidator {
       // 6. Google Apps Script specific validation
       errors.push(...this.validateGoogleAppsScriptCompatibility(graph));
 
-      // 7. Security and PII validation
+      // 7. Runtime capability validation
+      errors.push(...this.validateRuntimeImplementations(graph));
+
+      // 8. Security and PII validation
       errors.push(...this.validateSecurityAndPII(graph));
 
       return {
@@ -398,6 +402,53 @@ export class SimpleGraphValidator {
         message: 'Large workflows may exceed Google Apps Script execution time limits (6 minutes)',
         severity: 'warning'
       });
+    }
+
+    return errors;
+  }
+
+  private validateRuntimeImplementations(graph: NodeGraph): ValidationError[] {
+    const errors: ValidationError[] = [];
+    const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+
+    for (const node of nodes) {
+      const nodeType = typeof node?.type === 'string' ? node.type : '';
+      if (!nodeType) {
+        continue;
+      }
+
+      const match = nodeType.match(/^(action|trigger)\.([^.]+)\.(.+)$/);
+      if (!match) {
+        continue;
+      }
+
+      const [, categoryRaw, appFromType, operationFromType] = match;
+      if (categoryRaw !== 'action' && categoryRaw !== 'trigger') {
+        continue;
+      }
+
+      const operationCandidate =
+        (typeof node?.op === 'string' && node.op.trim()) ||
+        operationFromType;
+
+      const normalizedOperation = operationCandidate ? operationCandidate.replace(/\./g, '_') : '';
+      const normalizedApp = appFromType;
+
+      if (!normalizedOperation) {
+        continue;
+      }
+
+      const category = categoryRaw as 'action' | 'trigger';
+
+      if (!hasRuntimeImplementation(category, normalizedApp, normalizedOperation)) {
+        errors.push({
+          nodeId: node.id,
+          path: `/nodes/${node.id}/type`,
+          message: `Execution for ${normalizedApp}.${normalizedOperation} is not implemented in this environment`,
+          severity: 'error',
+          code: 'UNSUPPORTED_OPERATION'
+        });
+      }
     }
 
     return errors;
