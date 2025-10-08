@@ -1831,13 +1831,6 @@ const GraphEditorContent = () => {
   }, [nodes, selectedNodeId]);
   const showInspector = Boolean(selectedNode);
   const lastExecution = selectedNode?.data?.lastExecution;
-  const selectedNodeRuntimeStatus = useMemo<SelectedNodeRuntimeSupport | null>(() => {
-    if (!selectedNode || runtimeCapabilitiesLoading) {
-      return null;
-    }
-    const status = getNodeRuntimeSupport(selectedNode);
-    return status.supported ? null : status;
-  }, [getNodeRuntimeSupport, runtimeCapabilitiesLoading, selectedNode]);
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
   const [credentialsDraft, setCredentialsDraft] = useState<string>('');
@@ -2324,6 +2317,14 @@ const GraphEditorContent = () => {
     },
     [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading],
   );
+
+  const selectedNodeRuntimeStatus = useMemo<SelectedNodeRuntimeSupport | null>(() => {
+    if (!selectedNode || runtimeCapabilitiesLoading) {
+      return null;
+    }
+    const status = getNodeRuntimeSupport(selectedNode);
+    return status.supported ? null : status;
+  }, [getNodeRuntimeSupport, runtimeCapabilitiesLoading, selectedNode]);
 
   const findUnsupportedNode = useCallback(() => {
     if (runtimeCapabilitiesLoading) {
