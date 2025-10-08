@@ -297,29 +297,165 @@ const shouldIgnoreShortcutTarget = (target: EventTarget | null): boolean => {
   return false;
 };
 
+type NodeKind = 'trigger' | 'action' | 'transform';
+
+const inferNodeKind = (node: any): NodeKind => {
+  if (!node) {
+    return 'action';
+  }
+
+  const data = (node.data && typeof node.data === 'object') ? node.data : {};
+  const candidates: string[] = [];
+
+  const addCandidate = (value: unknown) => {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      candidates.push(value.trim().toLowerCase());
+    }
+  };
+
+  addCandidate(data.kind);
+  addCandidate(data.role);
+  addCandidate(data.type);
+  addCandidate(data.nodeType);
+  addCandidate(data.triggerType);
+  addCandidate(node.nodeType);
+  addCandidate(node.type);
+
+  if (candidates.some((value) => value.includes('trigger'))) {
+    return 'trigger';
+  }
+
+  if (candidates.some((value) => value.includes('transform') || value.includes('condition'))) {
+    return 'transform';
+  }
+
+  return 'action';
+};
+
+interface RunReadinessInput {
+  queueReady: boolean;
+  workersOnline: boolean;
+  queueStatusMessage: string;
+  workerStatusMessage: string;
+  graphHasNodes: boolean;
+  hasTriggerNode: boolean;
+  hasActionNode: boolean;
+  hasBlockingErrors: boolean;
+  validationComplete: boolean;
+  isAuthenticated: boolean;
+  hasWorkflowUuid: boolean;
+}
+
+interface RunReadiness {
+  ok: boolean;
+  reasons: string[];
+}
+
+const computeRunReadiness = ({
+  queueReady,
+  workersOnline,
+  queueStatusMessage,
+  workerStatusMessage,
+  graphHasNodes,
+  hasTriggerNode,
+  hasActionNode,
+  hasBlockingErrors,
+  validationComplete,
+  isAuthenticated,
+  hasWorkflowUuid,
+}: RunReadinessInput): RunReadiness => {
+  const reasons: string[] = [];
+
+  if (!queueReady) {
+    reasons.push(queueStatusMessage);
+  }
+
+  if (!workersOnline) {
+    reasons.push(workerStatusMessage);
+  }
+
+  if (!graphHasNodes) {
+    reasons.push('Add at least one node to the workflow.');
+  } else {
+    if (!hasTriggerNode) {
+      reasons.push('Add a trigger to start the workflow.');
+    }
+
+    if (!hasActionNode) {
+      reasons.push('Add an action node to perform work.');
+    }
+  }
+
+  if (hasBlockingErrors) {
+    reasons.push('Resolve configuration issues before running.');
+  }
+
+  if (!validationComplete) {
+    reasons.push('Validation must succeed before running.');
+  }
+
+  if (!isAuthenticated) {
+    reasons.push('Workflow ID unavailable. Sign in to save and run workflows.');
+  }
+
+  return { ok: reasons.length === 0, reasons };
+};
+
+interface ValidateReadinessInput {
+  graphHasNodes: boolean;
+  hasTriggerNode: boolean;
+  hasActionNode: boolean;
+  hasBlockingErrors: boolean;
+  isAuthenticated: boolean;
+}
+
+const computeValidateReadiness = ({
+  graphHasNodes,
+  hasTriggerNode,
+  hasActionNode,
+  hasBlockingErrors,
+  isAuthenticated,
+}: ValidateReadinessInput): RunReadiness => {
+  const reasons: string[] = [];
+
+  if (!graphHasNodes) {
+    reasons.push('Add at least one node to the workflow.');
+  } else {
+    if (!hasTriggerNode) {
+      reasons.push('Add a trigger to start the workflow.');
+    }
+
+    if (!hasActionNode) {
+      reasons.push('Add an action node to perform work.');
+    }
+  }
+
+  if (hasBlockingErrors) {
+    reasons.push('Resolve configuration issues before validating.');
+  }
+
+  if (!isAuthenticated) {
+    reasons.push('Sign in to validate workflows.');
+  }
+
+  return { ok: reasons.length === 0, reasons };
+};
+
 export interface EditorKeyboardShortcutOptions {
-  onRun?: () => void;
-  canRun?: boolean;
-  runDisabled?: boolean;
-  onValidate?: () => void;
-  canValidate?: boolean;
-  validateDisabled?: boolean;
+  onPrimary?: () => void;
+  showRun?: boolean;
+  primaryDisabled?: boolean;
 }
 
 export const useEditorKeyboardShortcuts = ({
-  onRun,
-  canRun,
-  runDisabled,
-  onValidate,
-  canValidate,
-  validateDisabled,
+  onPrimary,
+  showRun = true,
+  primaryDisabled,
 }: EditorKeyboardShortcutOptions) => {
-  const runEnabled = Boolean(onRun) && !(runDisabled ?? false) && (typeof canRun === 'boolean' ? canRun : true);
-  const validateEnabled =
-    Boolean(onValidate) && !(validateDisabled ?? false) && (typeof canValidate === 'boolean' ? canValidate : true);
+  const primaryEnabled = Boolean(onPrimary) && !(primaryDisabled ?? false);
 
   useEffect(() => {
-    if (!runEnabled && !validateEnabled) {
+    if (!primaryEnabled) {
       return;
     }
 
@@ -332,15 +468,12 @@ export const useEditorKeyboardShortcuts = ({
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && runEnabled) {
-        event.preventDefault();
-        onRun?.();
-        return;
-      }
+      const runCombo = event.metaKey || event.ctrlKey;
+      const validateCombo = event.shiftKey && !event.metaKey && !event.ctrlKey;
 
-      if (event.shiftKey && !event.metaKey && !event.ctrlKey && validateEnabled) {
+      if ((showRun && runCombo) || (!showRun && validateCombo)) {
         event.preventDefault();
-        onValidate?.();
+        onPrimary?.();
       }
     };
 
@@ -348,7 +481,7 @@ export const useEditorKeyboardShortcuts = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [runEnabled, validateEnabled, onRun, onValidate]);
+  }, [primaryEnabled, onPrimary, showRun]);
 };
 
 interface NodeValidationBannerProps {
@@ -2434,28 +2567,88 @@ const GraphEditorContent = () => {
   const hasBlockingErrors = combinedBlockingErrors.length > 0;
   const validationComplete = workflowValidation.status === 'valid';
 
-  const canRun = useMemo(() => {
-    if (!queueReady || !workersOnline) {
-      return false;
-    }
-    if (!graphHasNodes || hasBlockingErrors) {
-      return false;
-    }
-    return validationComplete;
-  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors, validationComplete]);
+  const nodeKindCounts = useMemo(() => {
+    let triggerCount = 0;
+    let actionCount = 0;
 
-  const canValidate = useMemo(() => {
-    if (!queueReady || !workersOnline) {
-      return false;
-    }
-    if (!graphHasNodes || hasBlockingErrors) {
-      return false;
-    }
-    return true;
-  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors]);
+    nodes.forEach((node) => {
+      const kind = inferNodeKind(node);
+      if (kind === 'trigger') {
+        triggerCount += 1;
+      } else if (kind === 'action') {
+        actionCount += 1;
+      }
+    });
 
-  const runDisabled = !canRun || isRunning || isValidating;
-  const validateDisabled = !canValidate || isValidating || isRunning;
+    return { triggerCount, actionCount };
+  }, [nodes]);
+
+  const hasTriggerNode = nodeKindCounts.triggerCount > 0;
+  const hasActionNode = nodeKindCounts.actionCount > 0;
+  const knownWorkflowId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? null;
+  const hasWorkflowUuid = typeof knownWorkflowId === 'string' && isUuid(knownWorkflowId);
+  const isAuthenticated = Boolean(token);
+
+  const runReadiness = useMemo(
+    () =>
+      computeRunReadiness({
+        queueReady,
+        workersOnline,
+        queueStatusMessage,
+        workerStatusMessage,
+        graphHasNodes,
+        hasTriggerNode,
+        hasActionNode,
+        hasBlockingErrors,
+        validationComplete,
+        isAuthenticated,
+        hasWorkflowUuid,
+      }),
+    [
+      queueReady,
+      workersOnline,
+      queueStatusMessage,
+      workerStatusMessage,
+      graphHasNodes,
+      hasTriggerNode,
+      hasActionNode,
+      hasBlockingErrors,
+      validationComplete,
+      isAuthenticated,
+      hasWorkflowUuid,
+    ],
+  );
+
+  const validateReadiness = useMemo(
+    () =>
+      computeValidateReadiness({
+        graphHasNodes,
+        hasTriggerNode,
+        hasActionNode,
+        hasBlockingErrors,
+        isAuthenticated,
+      }),
+    [graphHasNodes, hasTriggerNode, hasActionNode, hasBlockingErrors, isAuthenticated],
+  );
+
+  const runDisabled = !runReadiness.ok || isRunning || isValidating;
+  const validateDisabled = !validateReadiness.ok || isRunning || isValidating;
+  const showRun = queueReady && workersOnline;
+  const primaryDisabled = showRun ? runDisabled : validateDisabled;
+  const primaryDisableReasons = useMemo(() => {
+    const reasons = showRun ? runReadiness.reasons : validateReadiness.reasons;
+    const activityReasons: string[] = [];
+
+    if (isRunning) {
+      activityReasons.push('A workflow run is already in progress.');
+    }
+
+    if (isValidating) {
+      activityReasons.push('Workflow validation is currently running.');
+    }
+
+    return [...reasons, ...activityReasons];
+  }, [showRun, runReadiness.reasons, validateReadiness.reasons, isRunning, isValidating]);
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
@@ -2554,7 +2747,10 @@ const GraphEditorContent = () => {
     setActiveWorkflowId,
   ]);
 
-  const prepareWorkflowForExecution = useCallback(async (): Promise<{ workflowId: string; payload: NodeGraph } | null> => {
+  const prepareWorkflowForExecution = useCallback(
+    async (
+      preEnsured?: { workflowId: string; payload?: NodeGraph },
+    ): Promise<{ workflowId: string; payload: NodeGraph } | null> => {
     if (nodes.length === 0) {
       return null;
     }
@@ -2588,7 +2784,7 @@ const GraphEditorContent = () => {
     const provisionalId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
     const draftPayload = createGraphPayload(provisionalId);
 
-    const ensured = await ensureWorkflowId(draftPayload);
+    const ensured = preEnsured ?? (await ensureWorkflowId(draftPayload));
     if (!ensured) {
       return null;
     }
@@ -2969,283 +3165,333 @@ const GraphEditorContent = () => {
     setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
   }, [setNodes]);
 
-  const onRunWorkflow = useCallback(async () => {
-    if (!queueReady) {
-      const message = queueStatusMessage;
-      setRunBanner({ type: 'error', message });
-      toast.error(message);
-      return;
-    }
-
-    setIsRunning(true);
-
-    try {
-      const prepared = await prepareWorkflowForExecution();
-      if (!prepared) {
-        return;
-      }
-
-      const savedWorkflowId = await onSaveWorkflow();
-      const workflowIdentifier = savedWorkflowId ?? prepared.workflowId;
-
-      if (!workflowIdentifier) {
-        const message = 'Save the workflow before running.';
+  const runPreparedWorkflow = useCallback(
+    async (workflowIdentifier: string) => {
+      if (!queueReady) {
+        const message = queueStatusMessage;
         setRunBanner({ type: 'error', message });
         toast.error(message);
         return;
       }
 
-      const initialData = computeInitialRunData();
-      const { executionId } = await enqueueExecution({
-        workflowId: workflowIdentifier,
-        triggerType: 'manual',
-        initialData,
-      });
+      try {
+        const initialData = computeInitialRunData();
+        const { executionId } = await enqueueExecution({
+          workflowId: workflowIdentifier,
+          triggerType: 'manual',
+          initialData,
+        });
 
-      const successMessage = 'Workflow execution enqueued. Redirecting to run viewer…';
-      setRunBanner({ type: 'success', message: successMessage });
-      toast.success(successMessage);
-      navigate(`/runs/${executionId}`);
-    } catch (error: any) {
-      let message = error?.message || 'Failed to enqueue workflow execution';
+        const successMessage = 'Workflow execution enqueued. Redirecting to run viewer…';
+        setRunBanner({ type: 'success', message: successMessage });
+        toast.success(successMessage);
+        navigate(`/runs/${executionId}`);
+      } catch (error: any) {
+        let message = error?.message || 'Failed to enqueue workflow execution';
 
-      if (error instanceof ExecutionEnqueueError) {
-        const isDefaultMessage =
-          error.message === `Failed to enqueue workflow execution (status ${error.status}).`;
+        if (error instanceof ExecutionEnqueueError) {
+          const isDefaultMessage =
+            error.message === `Failed to enqueue workflow execution (status ${error.status}).`;
 
-        if (error.status === 401) {
-          await logout(true);
-          message = 'Sign in to run workflows.';
-        } else if (error.status === 404) {
-          message = 'Workflow not found. Save the workflow before running.';
-        } else if (error.status === 503 || error.code === 'QUEUE_UNAVAILABLE') {
-          const details = (error.details ?? {}) as Record<string, any>;
-          const queueTarget = details?.target ? ` (${details.target})` : '';
-          message =
-            !isDefaultMessage && error.message
-              ? error.message
-              : `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
-        } else if (error.code === 'EXECUTION_QUOTA_EXCEEDED') {
-          message =
-            !isDefaultMessage && error.message
-              ? error.message
-              : 'Execution quota exceeded. Wait for the current window to reset before trying again.';
-        } else if (error.code === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
-          message =
-            !isDefaultMessage && error.message
-              ? error.message
-              : 'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
-        } else if (error.code === 'USAGE_QUOTA_EXCEEDED') {
-          const details = (error.details ?? {}) as Record<string, any>;
-          const quotaType = details?.quotaType
-            ? String(details.quotaType).replace(/_/g, ' ').toLowerCase()
-            : 'usage';
-          message =
-            !isDefaultMessage && error.message
-              ? error.message
-              : `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
-        } else {
-          message = error.message || message;
+          if (error.status === 401) {
+            await logout(true);
+            message = 'Sign in to run workflows.';
+          } else if (error.status === 404) {
+            message = 'Workflow not found. Save the workflow before running.';
+          } else if (error.status === 503 || error.code === 'QUEUE_UNAVAILABLE') {
+            const details = (error.details ?? {}) as Record<string, any>;
+            const queueTarget = details?.target ? ` (${details.target})` : '';
+            message =
+              !isDefaultMessage && error.message
+                ? error.message
+                : `Execution queue is unavailable${queueTarget}. Verify worker and Redis health before retrying.`;
+          } else if (error.code === 'EXECUTION_QUOTA_EXCEEDED') {
+            message =
+              !isDefaultMessage && error.message
+                ? error.message
+                : 'Execution quota exceeded. Wait for the current window to reset before trying again.';
+          } else if (error.code === 'CONNECTOR_CONCURRENCY_EXCEEDED') {
+            message =
+              !isDefaultMessage && error.message
+                ? error.message
+                : 'Connector concurrency limits were reached. Wait for in-flight runs to finish.';
+          } else if (error.code === 'USAGE_QUOTA_EXCEEDED') {
+            const details = (error.details ?? {}) as Record<string, any>;
+            const quotaType = details?.quotaType
+              ? String(details.quotaType).replace(/_/g, ' ').toLowerCase()
+              : 'usage';
+            message =
+              !isDefaultMessage && error.message
+                ? error.message
+                : `Your ${quotaType} quota has been reached. Adjust limits or try again later.`;
+          } else {
+            message = error.message || message;
+          }
         }
+
+        setRunBanner({ type: 'error', message });
+        toast.error(message);
       }
+    },
+    [
+      queueReady,
+      queueStatusMessage,
+      computeInitialRunData,
+      enqueueExecution,
+      setRunBanner,
+      toast,
+      navigate,
+      logout,
+    ],
+  );
 
-      setRunBanner({ type: 'error', message });
-      toast.error(message);
-    } finally {
-      setIsRunning(false);
-      setTimeout(() => {
-        resetExecutionHighlights();
-      }, 1200);
-    }
-  }, [
-    queueReady,
-    queueStatusMessage,
-    prepareWorkflowForExecution,
-    onSaveWorkflow,
-    setRunBanner,
-    computeInitialRunData,
-    logout,
-    navigate,
-    resetExecutionHighlights,
-  ]);
-
-  const onDryRunWorkflow = useCallback(async () => {
-    if (validationDebounceRef.current) {
-      await validationDebounceRef.current.flush();
-    }
-
-    setIsValidating(true);
-
-    try {
-      const prepared = await prepareWorkflowForExecution();
-      if (!prepared) {
-        return;
-      }
-
-      const { workflowId: workflowIdentifier, payload } = prepared;
-
+  const performDryRun = useCallback(
+    async ({ workflowId: workflowIdentifier, payload }: { workflowId: string; payload: NodeGraph }) => {
       setNodes((nds) =>
-      nds.map((node) => {
-        const baseData = applyExecutionStateDefaults(node.data);
-        return {
-          ...node,
-          data: {
-            ...baseData,
-            executionStatus: 'idle',
-            isRunning: false,
-            isCompleted: false,
-            executionError: null,
-          },
-        };
-      })
-    );
+        nds.map((node) => {
+          const baseData = applyExecutionStateDefaults(node.data);
+          return {
+            ...node,
+            data: {
+              ...baseData,
+              executionStatus: 'idle',
+              isRunning: false,
+              isCompleted: false,
+              executionError: null,
+            },
+          };
+        }),
+      );
 
       let summaryEvent: any = null;
       let encounteredError = false;
 
-      const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
-        method: 'POST',
-        body: JSON.stringify({ graph: payload }),
-      });
+      try {
+        const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
+          method: 'POST',
+          body: JSON.stringify({ graph: payload }),
+        });
 
-      if (!response.ok) {
-        let message = 'Failed to execute workflow';
-        try {
-          const text = await response.text();
-          if (text) {
-            message = `Execute failed: ${response.status} ${text}`;
-          } else {
-            const errorJson = await response.json();
-            message = errorJson?.error || message;
+        if (!response.ok) {
+          let message = 'Failed to execute workflow';
+          try {
+            const text = await response.text();
+            if (text) {
+              message = `Execute failed: ${response.status} ${text}`;
+            } else {
+              const errorJson = await response.json();
+              message = errorJson?.error || message;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+
+        if (!response.body) {
+          throw new Error('Execution stream unavailable');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const processEvent = (line: string) => {
+          if (!line) return;
+          let event: any;
+          try {
+            event = JSON.parse(line);
+          } catch (error) {
+            console.warn('Failed to parse execution event', error, line);
+            return;
           }
-        } catch {}
-        throw new Error(message);
+
+          switch (event.type) {
+            case 'node-start':
+              updateNodeExecution(event.nodeId, () => ({
+                executionStatus: 'running',
+                executionError: null,
+                isRunning: true,
+                isCompleted: false,
+              }));
+              break;
+            case 'node-complete':
+              updateNodeExecution(event.nodeId, () => ({
+                executionStatus: 'success',
+                executionError: null,
+                isRunning: false,
+                isCompleted: true,
+                lastExecution: {
+                  status: 'success',
+                  summary: event.result?.summary || `Completed ${event.label || event.nodeId}`,
+                  result: event.result,
+                  logs: event.result?.logs || [],
+                  preview: event.result?.preview,
+                  finishedAt: event.result?.finishedAt || event.timestamp,
+                },
+              }));
+              break;
+            case 'node-error':
+              encounteredError = true;
+              updateNodeExecution(event.nodeId, () => ({
+                executionStatus: 'error',
+                isRunning: false,
+                isCompleted: false,
+                executionError: event.error,
+                lastExecution: {
+                  status: 'error',
+                  error: event.error,
+                  finishedAt: event.timestamp,
+                },
+              }));
+              break;
+            case 'deployment':
+              if (event.success === false) {
+                encounteredError = true;
+              }
+              break;
+            case 'summary':
+              summaryEvent = event;
+              encounteredError = !event.success;
+              break;
+            default:
+              break;
+          }
+        };
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIndex = buffer.indexOf('\n');
+          while (newlineIndex !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            if (line) processEvent(line);
+            newlineIndex = buffer.indexOf('\n');
+          }
+        }
+
+        const remaining = buffer.trim();
+        if (remaining) {
+          processEvent(remaining);
+        }
+
+        const finalSummary = summaryEvent ?? {
+          success: !encounteredError,
+          message: encounteredError
+            ? 'Workflow run completed with errors'
+            : 'Workflow run completed successfully',
+        };
+
+        const bannerType = finalSummary.success ? 'success' : 'error';
+        const bannerMessage =
+          finalSummary.message ||
+          (finalSummary.success ? 'Workflow executed successfully' : 'Workflow execution failed');
+
+        setRunBanner({ type: bannerType, message: bannerMessage });
+        if (bannerType === 'success') {
+          toast.success(bannerMessage);
+        } else {
+          toast.error(bannerMessage);
+        }
+      } catch (error: any) {
+        const message = error?.message || 'Failed to execute workflow';
+        setRunBanner({ type: 'error', message });
+        toast.error(message);
+      }
+    },
+    [authFetch, updateNodeExecution, setNodes, setRunBanner, toast],
+  );
+
+  const handlePrimaryClick = useCallback(async () => {
+    if (primaryDisabled) {
+      return;
+    }
+
+    try {
+      if (validationDebounceRef.current) {
+        await validationDebounceRef.current.flush();
+      }
+    } catch (error) {
+      console.warn('Failed to flush validation debounce before execution', error);
+    }
+
+    const provisionalId = activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
+    const draftPayload = createGraphPayload(provisionalId);
+
+    let ensured: { workflowId: string; payload?: NodeGraph } | null = null;
+    try {
+      ensured = await ensureWorkflowId(draftPayload);
+    } catch (error: any) {
+      const message = error?.message || 'Unable to resolve workflow identifier';
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      return;
+    }
+
+    if (!ensured) {
+      const message = 'Unable to resolve workflow identifier';
+      setRunBanner({ type: 'error', message });
+      toast.error(message);
+      return;
+    }
+
+    const { workflowId: resolvedWorkflowId } = ensured;
+    fallbackWorkflowIdRef.current = resolvedWorkflowId;
+    setActiveWorkflowId((prev) => (prev === resolvedWorkflowId ? prev : resolvedWorkflowId));
+
+    const markBusy = showRun ? setIsRunning : setIsValidating;
+    markBusy(true);
+
+    try {
+      const prepared = await prepareWorkflowForExecution(ensured);
+      if (!prepared) {
+        return;
       }
 
-      if (!response.body) {
-        throw new Error('Execution stream unavailable');
-      }
+      if (showRun) {
+        const savedWorkflowId = await onSaveWorkflow();
+        const workflowIdentifier = savedWorkflowId ?? prepared.workflowId;
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      const processEvent = (line: string) => {
-        if (!line) return;
-        let event: any;
-        try {
-          event = JSON.parse(line);
-        } catch (error) {
-          console.warn('Failed to parse execution event', error, line);
+        if (!workflowIdentifier) {
+          const message = 'Save the workflow before running.';
+          setRunBanner({ type: 'error', message });
+          toast.error(message);
           return;
         }
 
-        switch (event.type) {
-          case 'node-start':
-            updateNodeExecution(event.nodeId, () => ({
-              executionStatus: 'running',
-              executionError: null,
-              isRunning: true,
-              isCompleted: false,
-            }));
-            break;
-          case 'node-complete':
-            updateNodeExecution(event.nodeId, () => ({
-              executionStatus: 'success',
-              executionError: null,
-              isRunning: false,
-              isCompleted: true,
-              lastExecution: {
-                status: 'success',
-                summary: event.result?.summary || `Completed ${event.label || event.nodeId}`,
-                result: event.result,
-                logs: event.result?.logs || [],
-                preview: event.result?.preview,
-                finishedAt: event.result?.finishedAt || event.timestamp,
-              },
-            }));
-            break;
-          case 'node-error':
-            encounteredError = true;
-            updateNodeExecution(event.nodeId, () => ({
-              executionStatus: 'error',
-              isRunning: false,
-              isCompleted: false,
-              executionError: event.error,
-              lastExecution: {
-                status: 'error',
-                error: event.error,
-                finishedAt: event.timestamp,
-              },
-            }));
-            break;
-          case 'deployment':
-            if (event.success === false) {
-              encounteredError = true;
-            }
-            break;
-          case 'summary':
-            summaryEvent = event;
-            encounteredError = !event.success;
-            break;
-          default:
-            break;
-        }
-      };
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex = buffer.indexOf('\n');
-        while (newlineIndex !== -1) {
-          const line = buffer.slice(0, newlineIndex).trim();
-          buffer = buffer.slice(newlineIndex + 1);
-          if (line) processEvent(line);
-          newlineIndex = buffer.indexOf('\n');
-        }
-      }
-
-      const remaining = buffer.trim();
-      if (remaining) {
-        processEvent(remaining);
-      }
-
-      const finalSummary = summaryEvent ?? {
-        success: !encounteredError,
-        message: encounteredError
-          ? 'Workflow run completed with errors'
-          : 'Workflow run completed successfully',
-      };
-
-      const bannerType = finalSummary.success ? 'success' : 'error';
-      const bannerMessage =
-        finalSummary.message ||
-        (finalSummary.success ? 'Workflow executed successfully' : 'Workflow execution failed');
-
-      setRunBanner({ type: bannerType, message: bannerMessage });
-      if (bannerType === 'success') {
-        toast.success(bannerMessage);
+        await runPreparedWorkflow(workflowIdentifier);
       } else {
-        toast.error(bannerMessage);
+        await performDryRun(prepared);
       }
     } catch (error: any) {
-      const message = error?.message || 'Failed to execute workflow';
+      const message =
+        error?.message || (showRun ? 'Failed to run workflow' : 'Failed to validate workflow');
       setRunBanner({ type: 'error', message });
       toast.error(message);
     } finally {
-      setIsValidating(false);
+      markBusy(false);
       setTimeout(() => {
         resetExecutionHighlights();
       }, 1200);
     }
   }, [
-    prepareWorkflowForExecution,
-    authFetch,
-    updateNodeExecution,
-    setNodes,
+    primaryDisabled,
+    validationDebounceRef,
+    activeWorkflowId,
+    fallbackWorkflowIdRef,
+    createGraphPayload,
+    ensureWorkflowId,
     setRunBanner,
+    toast,
+    showRun,
+    prepareWorkflowForExecution,
+    onSaveWorkflow,
+    runPreparedWorkflow,
+    performDryRun,
+    setActiveWorkflowId,
+    setIsRunning,
+    setIsValidating,
     resetExecutionHighlights,
   ]);
 
@@ -3510,12 +3756,9 @@ const GraphEditorContent = () => {
   }, [saveAction, promoteAction, exportAction]);
 
   useEditorKeyboardShortcuts({
-    onRun: onRunWorkflow,
-    canRun,
-    runDisabled,
-    onValidate: onDryRunWorkflow,
-    canValidate,
-    validateDisabled,
+    onPrimary: handlePrimaryClick,
+    showRun,
+    primaryDisabled,
   });
 
   return (
@@ -3533,12 +3776,13 @@ const GraphEditorContent = () => {
       {/* Main Graph Area */}
       <div className="center-pane">
         <EditorTopBar
-          onRun={onRunWorkflow}
-          onValidate={onDryRunWorkflow}
-          canRun={canRun}
-          canValidate={canValidate}
+          onPrimary={handlePrimaryClick}
+          showRun={showRun}
+          canRun={runReadiness.ok}
+          canValidate={validateReadiness.ok}
           isRunning={isRunning}
           isValidating={isValidating}
+          primaryDisabledReasons={primaryDisableReasons}
           workersOnline={workersOnline}
           overflowActions={editorOverflowActions}
           banner={

@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import EditorTopBar from "../EditorTopBar";
 
 const baseProps = {
-  onRun: vi.fn(),
-  onValidate: vi.fn(),
+  onPrimary: vi.fn(),
+  showRun: true,
   canRun: true,
   canValidate: true,
   isRunning: false,
