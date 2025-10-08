@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import EditorTopBar from "../EditorTopBar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const baseProps = {
   onPrimary: vi.fn(),
@@ -59,5 +60,43 @@ describe("EditorTopBar overflow actions", () => {
     const exportItem = await screen.findByRole("menuitem", { name: /export workflow json/i });
     await user.click(exportItem);
     expect(onExport).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("EditorTopBar worker status", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const renderWithTooltip = (ui: React.ReactElement) => {
+    return render(<TooltipProvider>{ui}</TooltipProvider>);
+  };
+
+  it("shows the worker pill when workers are available", () => {
+    renderWithTooltip(<EditorTopBar {...baseProps} workersOnline={2} />);
+
+    expect(screen.getByText(/2 workers ready/i)).toBeInTheDocument();
+  });
+
+  it("renders a compact status indicator with tooltip when workers are offline", async () => {
+    const user = userEvent.setup();
+    renderWithTooltip(
+      <EditorTopBar
+        {...baseProps}
+        workersOnline={0}
+        workerStatusMessage="Start the worker fleet to enable executions."
+      />,
+    );
+
+    expect(screen.queryByText(/workers offline/i)).toBeNull();
+    const indicator = screen.getByRole("status", {
+      name: /start the worker fleet/i,
+    });
+
+    await user.hover(indicator);
+
+    expect(
+      await screen.findByText(/start the worker fleet to enable executions./i),
+    ).toBeInTheDocument();
   });
 });

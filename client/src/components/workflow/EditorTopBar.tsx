@@ -24,6 +24,7 @@ export interface EditorTopBarProps {
   isValidating?: boolean;
   primaryDisabledReasons?: string[];
   workersOnline?: number | boolean;
+  workerStatusMessage?: string;
   overflowActions?: EditorTopBarAction[];
   banner?: React.ReactNode;
 }
@@ -37,11 +38,16 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   isValidating = false,
   primaryDisabledReasons = [],
   workersOnline = 0,
+  workerStatusMessage,
   overflowActions,
   banner,
 }) => {
   const workerCount = typeof workersOnline === "number" ? workersOnline : workersOnline ? 1 : 0;
   const workersAvailable = workerCount > 0;
+  const workerStatusLabel = workersAvailable
+    ? `${workerCount} worker${workerCount === 1 ? "" : "s"} ready`
+    : "Workers offline";
+  const statusTooltip = (workerStatusMessage ?? "").trim() || workerStatusLabel;
 
   const primaryAction = React.useMemo(() => {
     return showRun ? "run" : "validate";
@@ -101,20 +107,39 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   return (
     <div className="editor-topbar">
       <div className="editor-topbar__inner">
-        <div className="editor-topbar__status-pill">
-          <span
-            className={clsx(
-              "editor-topbar__worker-dot",
-              workersAvailable
-                ? "editor-topbar__worker-dot--online"
-                : "editor-topbar__worker-dot--offline",
-            )}
-          />
-          <span className="editor-topbar__worker-label">
-            {workersAvailable
-              ? `${workerCount} worker${workerCount === 1 ? "" : "s"} ready`
-              : "Workers offline"}
-          </span>
+        <div className="editor-topbar__status">
+          {workersAvailable ? (
+            <div className="editor-topbar__status-pill">
+              <span
+                className={clsx(
+                  "editor-topbar__worker-dot",
+                  "editor-topbar__worker-dot--online",
+                )}
+              />
+              <span className="editor-topbar__worker-label">{workerStatusLabel}</span>
+            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  tabIndex={0}
+                  role="status"
+                  aria-label={statusTooltip}
+                  className="editor-topbar__status-indicator"
+                >
+                  <span
+                    className={clsx(
+                      "editor-topbar__worker-dot",
+                      "editor-topbar__worker-dot--offline",
+                    )}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs whitespace-pre-wrap">
+                <p>{statusTooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         <div className="editor-topbar__controls">

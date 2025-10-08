@@ -20,6 +20,11 @@
   min-height: 2.75rem;
 }
 
+.editor-topbar__status {
+  display: inline-flex;
+  align-items: center;
+}
+
 .editor-topbar__status-pill {
   display: inline-flex;
   align-items: center;
@@ -54,6 +59,26 @@
 
 .editor-topbar__worker-label {
   line-height: 1;
+}
+
+.editor-topbar__status-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 12px 28px -18px rgba(15, 23, 42, 0.6);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: default;
+  outline: none;
+}
+
+.editor-topbar__status-indicator:focus-visible {
+  border-color: rgba(148, 163, 184, 0.45);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
 }
 
 .editor-topbar__controls {

@@ -1,9 +1,13 @@
 .editor-shell {
   display: grid;
-  grid-template-columns: 310px 1fr 380px;
+  grid-template-columns: 310px 1fr;
   height: 100vh;
   background-color: #f3f4f6;
   overflow: hidden;
+}
+
+.editor-shell--with-inspector {
+  grid-template-columns: 310px 1fr 380px;
 }
 
 .editor-shell__left {
