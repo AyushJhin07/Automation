@@ -23,6 +23,12 @@
   - POST /api/integrations/execute-batch
 - Architecture
   - docs/architecture/connector-modules.md
+- Runtime
+  - docs/runtimes-and-fallbacks.md
+- Connectors
+  - docs/connectors/authoring.md
+  - docs/connectors/output-schemas.md
+  - docs/connectors/parity.md
 - Telemetry
   - GET /api/roadmap
   - GET /api/roadmap/summary

@@ -128,4 +128,10 @@ When running real OAuth flows:
 
 ---
 
-For deeper docs, see `docs/local-development.md`, `docs/deployment-guide.md`, and `docs/operations`.
+For deeper docs, see:
+
+- `docs/local-development.md`
+- `docs/runtimes-and-fallbacks.md`
+- `docs/connectors/authoring.md`
+- `docs/deployment-guide.md`
+- `docs/operations`
