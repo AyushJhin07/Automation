@@ -1,0 +1,167 @@
+.editor-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.45);
+}
+
+.editor-topbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.editor-topbar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.editor-topbar__status-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.editor-topbar__status-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.editor-topbar__status-helper {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.editor-topbar__status-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.55);
+}
+
+.editor-topbar__status-dot--ready {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(22, 101, 52, 0.45);
+}
+
+.editor-topbar__status-dot--warning {
+  background: #f97316;
+  box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.45);
+}
+
+.editor-topbar__status-dot--error {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.45);
+}
+
+@keyframes editor-topbar-status-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
+
+.editor-topbar__status-dot--pulse {
+  animation: editor-topbar-status-pulse 1.4s ease-in-out infinite;
+}
+
+.editor-topbar__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-topbar__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding-inline: 1rem;
+}
+
+.editor-topbar__action--primary {
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+  color: white;
+  border: none;
+}
+
+.editor-topbar__action--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+}
+
+.editor-topbar__action--secondary {
+  background: rgba(250, 204, 21, 0.12);
+  color: #fbbf24;
+  border-color: rgba(234, 179, 8, 0.35);
+}
+
+.editor-topbar__action--secondary:hover:not(:disabled) {
+  background: rgba(250, 204, 21, 0.2);
+  color: #facc15;
+}
+
+.editor-topbar__overflow-trigger {
+  color: #cbd5f5;
+  border-radius: 9999px;
+}
+
+.editor-topbar__overflow-trigger:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.editor-topbar__overflow-menu {
+  min-width: 14rem;
+}
+
+.editor-topbar__overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.editor-topbar__overflow-item svg {
+  color: #6366f1;
+}
+
+.editor-topbar__overflow-description {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: auto;
+}
+
+.editor-topbar__banner {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.workflow-inspector-panel {
+  position: relative;
+  z-index: 40;
+}
