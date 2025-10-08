@@ -42,6 +42,9 @@ export interface EditorTopBarProps {
   validateIdleText?: string;
   validateLoadingText?: string;
   banner?: React.ReactNode;
+  onSave?: EditorTopBarAction;
+  onPromote?: EditorTopBarAction;
+  onExport?: EditorTopBarAction;
   overflowActions?: EditorTopBarAction[];
 }
 
@@ -58,6 +61,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   statusHelperText,
   statusPulse,
   onRun,
+  canRun,
   runDisabled,
   runTooltip,
   isRunLoading,
@@ -71,11 +75,36 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   validateIdleText = "Validate / Dry run",
   validateLoadingText = "Validating…",
   banner,
+  onSave,
+  onPromote,
+  onExport,
   overflowActions,
 }) => {
   const showRunTooltip = Boolean(runTooltip);
   const showValidateTooltip = Boolean(validateTooltip);
-  const hasOverflow = Boolean(overflowActions && overflowActions.length > 0);
+  const derivedOverflowActions = React.useMemo(() => {
+    const actions: EditorTopBarAction[] = [];
+
+    if (onSave) {
+      actions.push(onSave);
+    }
+
+    if (onPromote) {
+      actions.push(onPromote);
+    }
+
+    if (onExport) {
+      actions.push(onExport);
+    }
+
+    if (overflowActions && overflowActions.length > 0) {
+      actions.push(...overflowActions);
+    }
+
+    return actions;
+  }, [onSave, onPromote, onExport, overflowActions]);
+
+  const hasOverflow = derivedOverflowActions.length > 0;
 
   const runButtonDisabled = Boolean(runDisabled ?? false) || (typeof canRun === "boolean" ? !canRun : false);
   const validateButtonDisabled =
@@ -182,7 +211,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="editor-topbar__overflow-menu">
-                {overflowActions!.map((action) => {
+                {derivedOverflowActions.map((action) => {
                   const Icon = action.icon;
                   return (
                     <DropdownMenuItem
