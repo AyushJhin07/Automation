@@ -87,7 +87,9 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
-  Download
+  Download,
+  Clock,
+  Link
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
