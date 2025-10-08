@@ -64,6 +64,7 @@ type SmokeResult = {
   type: 'action' | 'trigger';
   status: SmokeStatus;
   message?: string;
+  fallback?: boolean;
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -374,26 +375,132 @@ function buildParameters(action: ConnectorAction | ConnectorTrigger | null | und
   return {};
 }
 
-async function executeAction(appId: string, functionId: string, definition: ConnectorDefinition | null, action: ConnectorAction | null): Promise<SmokeResult> {
+type WorkflowNode = {
+  id: string;
+  type: string;
+  label?: string;
+  data: Record<string, any>;
+  params?: Record<string, any>;
+};
+
+type WorkflowGraph = {
+  id: string;
+  name: string;
+  description?: string;
+  nodes: WorkflowNode[];
+  edges: Array<{ id: string; from: string; to: string }>;
+  metadata?: Record<string, any>;
+};
+
+function sanitizeId(value: string): string {
+  return value.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase();
+}
+
+function buildWorkflowGraph(
+  appId: string,
+  functionId: string,
+  parameters: Record<string, any>,
+  credentials: Record<string, any>,
+  action: ConnectorAction | null,
+): { workflowId: string; graph: WorkflowGraph; nodeId: string } {
+  const workflowId = `smoke_${sanitizeId(appId)}_${sanitizeId(functionId)}`;
+  const nodeId = `action_${sanitizeId(functionId) || 'primary'}`;
+  const node: WorkflowNode = {
+    id: nodeId,
+    type: `action.${appId}.${functionId}`,
+    label: action?.name || `${appId}.${functionId}`,
+    data: {
+      app: appId,
+      function: functionId,
+      label: action?.name || `${appId}.${functionId}`,
+      description: action?.description ?? undefined,
+      parameters,
+      credentials,
+      metadata: { preview: true, source: 'smoke-supported' },
+    },
+    params: {
+      ...parameters,
+      credentials,
+    },
+  };
+
+  const graph: WorkflowGraph = {
+    id: workflowId,
+    name: `Smoke ${appId}.${functionId}`,
+    description: action?.description ?? `Smoke execution for ${appId}.${functionId}`,
+    nodes: [node],
+    edges: [],
+    metadata: { preview: true, mode: 'preview', runMode: 'preview', executionMode: 'preview' },
+  };
+
+  return { workflowId, graph, nodeId };
+}
+
+function detectFallback(nodeResult: any): { fallback: boolean; reason?: string } {
+  if (!nodeResult || typeof nodeResult !== 'object') {
+    return { fallback: false };
+  }
+
+  const diagnostics = nodeResult.result?.diagnostics;
+  if (diagnostics && typeof diagnostics.executor === 'string' && diagnostics.executor !== 'integration') {
+    return {
+      fallback: true,
+      reason: `Executor=${diagnostics.executor}`,
+    };
+  }
+
+  const logs: string[] = [];
+  const candidateLogs = nodeResult.result?.logs;
+  if (Array.isArray(candidateLogs)) {
+    for (const entry of candidateLogs) {
+      if (typeof entry === 'string') {
+        logs.push(entry);
+      }
+    }
+  }
+  if (typeof nodeResult.result?.summary === 'string') {
+    logs.push(nodeResult.result.summary);
+  }
+
+  const match = logs.find(log => /fallback|generic executor/i.test(log));
+  if (match) {
+    return { fallback: true, reason: match };
+  }
+
+  return { fallback: false };
+}
+
+async function executeAction(
+  appId: string,
+  functionId: string,
+  definition: ConnectorDefinition | null,
+  action: ConnectorAction | null,
+): Promise<SmokeResult> {
   const parameters = buildParameters(action);
-  const credentials = buildCredentials(definition);
+  const baseCredentials = buildCredentials(definition);
+  const credentials = {
+    ...baseCredentials,
+    __organizationId: ORGANIZATION_ID,
+    __userId: USER_ID ?? 'smoke-runner',
+  };
+  const { workflowId, graph, nodeId } = buildWorkflowGraph(appId, functionId, parameters, credentials, action);
 
   try {
-    const response = await fetch(`${BASE_URL}/api/integrations/execute`, {
+    const response = await fetch(`${BASE_URL}/api/executions/dry-run`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
         'x-organization-id': String(ORGANIZATION_ID),
+        'x-execution-mode': 'preview',
       },
       body: JSON.stringify({
-        appName: appId,
-        functionId,
-        parameters,
-        credentials: {
-          ...credentials,
-          __organizationId: ORGANIZATION_ID,
-          __userId: USER_ID,
+        workflowId,
+        graph,
+        options: {
+          stopOnError: true,
+          preview: true,
+          executionMode: 'preview',
         },
       }),
     });
@@ -416,8 +523,8 @@ async function executeAction(appId: string, functionId: string, definition: Conn
       };
     }
 
-    if (!payload?.success) {
-      const message = typeof payload?.error === 'string' ? payload.error : 'Execution reported failure';
+    if (!payload?.success || !payload.execution?.nodes) {
+      const message = typeof payload?.error === 'string' ? payload.error : 'Dry run response missing node results';
       return {
         app: appId,
         functionId,
@@ -427,12 +534,43 @@ async function executeAction(appId: string, functionId: string, definition: Conn
       };
     }
 
+    const nodeResult = payload.execution.nodes[nodeId];
+    if (!nodeResult) {
+      return {
+        app: appId,
+        functionId,
+        type: 'action',
+        status: 'FAIL',
+        message: 'Node result missing from dry run payload',
+      };
+    }
+
+    if (nodeResult.status !== 'success') {
+      const message =
+        typeof nodeResult.error?.message === 'string'
+          ? nodeResult.error.message
+          : typeof nodeResult.error === 'string'
+          ? nodeResult.error
+          : 'Dry run execution failed';
+      return {
+        app: appId,
+        functionId,
+        type: 'action',
+        status: 'FAIL',
+        message,
+      };
+    }
+
+    const fallback = detectFallback(nodeResult);
+    const summary = typeof nodeResult.result?.summary === 'string' ? nodeResult.result.summary : 'Success';
+
     return {
       app: appId,
       functionId,
       type: 'action',
       status: 'OK',
-      message: payload?.data ? 'Executed' : 'Success',
+      message: fallback.fallback && fallback.reason ? `Fallback: ${fallback.reason}` : summary,
+      fallback: fallback.fallback,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -467,7 +605,7 @@ function formatRow(columns: string[], widths: number[]): string {
 }
 
 function printSummary(results: SmokeResult[]): void {
-  const headers = ['App', 'Function', 'Type', 'Status', 'Message'];
+  const headers = ['App', 'Function', 'Type', 'Status', 'Fallback', 'Message'];
   const widths = headers.map((header, index) =>
     Math.max(
       header.length,
@@ -481,6 +619,8 @@ function printSummary(results: SmokeResult[]): void {
             ? result.type
             : index === 3
             ? result.status
+            : index === 4
+            ? (result.fallback ? 'yes' : '')
             : result.message ?? '';
         return value?.length ?? 0;
       }),
@@ -495,7 +635,17 @@ function printSummary(results: SmokeResult[]): void {
   for (const result of results) {
     const message = result.message ?? '';
     console.log(
-      formatRow([result.app, result.functionId, result.type, result.status, message], widths),
+      formatRow(
+        [
+          result.app,
+          result.functionId,
+          result.type,
+          result.status,
+          result.fallback ? 'yes' : '',
+          message,
+        ],
+        widths,
+      ),
     );
   }
 
@@ -507,10 +657,13 @@ function printSummary(results: SmokeResult[]): void {
     { OK: 0, SKIP: 0, FAIL: 0 } as Record<SmokeStatus, number>,
   );
 
+  const fallbackCount = results.filter(result => result.fallback).length;
+
   console.log('\nTotals:');
   console.log(`  OK:   ${stats.OK}`);
   console.log(`  SKIP: ${stats.SKIP}`);
   console.log(`  FAIL: ${stats.FAIL}`);
+  console.log(`  Fallback: ${fallbackCount}`);
 }
 
 async function run(): Promise<void> {
