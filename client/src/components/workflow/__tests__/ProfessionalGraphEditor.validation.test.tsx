@@ -673,6 +673,85 @@ describe("ProfessionalGraphEditor validation gating", () => {
     }
   });
 
+  it('sends a single validation request after rapid inline edits pause', async () => {
+    const DEBOUNCE_MS = VALIDATION_DEBOUNCE_MS;
+    vi.useFakeTimers();
+
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/flows/save')) {
+        return Promise.resolve(jsonResponse({ success: true, workflowId: 'wf-123' }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+      }
+      if (url.includes('/api/workflows/')) {
+        return Promise.resolve(jsonResponse({ success: false }, 404));
+      }
+      if (url.includes('/api/oauth/providers')) {
+        return Promise.resolve(jsonResponse({ data: { providers: [] } }));
+      }
+      if (url.includes('/api/connections')) {
+        return Promise.resolve(jsonResponse({ connections: [] }));
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    try {
+      const { default: ProfessionalGraphEditor } = await loadEditor();
+      render(<ProfessionalGraphEditor />);
+
+      const connectionInput = await screen.findByPlaceholderText(
+        'e.g. conn_abc123 (if using saved connection)'
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(authCallsForPath('/api/workflows/validate').length).toBeGreaterThan(0);
+      });
+
+      authFetchMock.mockClear();
+
+      await act(() => {
+        fireEvent.change(connectionInput, { target: { value: 'conn-1' } });
+        fireEvent.change(connectionInput, { target: { value: 'conn-12' } });
+        fireEvent.change(connectionInput, { target: { value: 'conn-123' } });
+      });
+
+      expect(authCallsForPath('/api/workflows/validate').length).toBe(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(DEBOUNCE_MS - 50);
+        await Promise.resolve();
+      });
+
+      expect(authCallsForPath('/api/workflows/validate').length).toBe(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(50);
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(authCallsForPath('/api/workflows/validate').length).toBe(1);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('disables the run button when worker telemetry reports no active workers', async () => {
     workerHeartbeatMock.mockReturnValue({
       workers: [],

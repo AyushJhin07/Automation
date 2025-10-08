@@ -99,6 +99,8 @@ import type { LucideIcon } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import type { ValidationError } from '../../../shared/nodeGraphSchema';
 import clsx from 'clsx';
+import debounce from 'lodash/debounce';
+import type { DebouncedFunc } from 'lodash';
 import { toast } from 'sonner';
 import { NodeConfigurationModal } from './NodeConfigurationModal';
 import { useAuthStore } from '@/store/authStore';
@@ -1670,6 +1672,8 @@ const GraphEditorContent = () => {
   });
   const validationSignatureRef = useRef<string>('');
   const validationAbortRef = useRef<AbortController | null>(null);
+  type ValidationJob = (context: { activeWorkflowId: string | null; fallbackWorkflowId: string | null }) => Promise<void>;
+  const validationDebounceRef = useRef<DebouncedFunc<ValidationJob> | null>(null);
   const createValidationSignature = useCallback((errors: ValidationError[]): string => {
     return errors
       .map((error) => `${error.nodeId ?? 'global'}|${error.path}|${error.message}|${error.severity}`)
@@ -2211,7 +2215,88 @@ const GraphEditorContent = () => {
   const WORKFLOW_VALIDATION_DEBOUNCE_MS = 600;
 
   useEffect(() => {
+    const debounced = debounce<ValidationJob>(async ({ activeWorkflowId: contextActiveWorkflowId, fallbackWorkflowId }) => {
+      const abortController = new AbortController();
+      validationAbortRef.current?.abort();
+      validationAbortRef.current = abortController;
+
+      try {
+        const provisionalId =
+          contextActiveWorkflowId ?? fallbackWorkflowId ?? `local-${Date.now()}`;
+        const draftPayload = createGraphPayload(provisionalId);
+
+        const ensured = await ensureWorkflowId(draftPayload);
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (!ensured) {
+          setWorkflowValidation({
+            status: 'invalid',
+            errors: [],
+            blockingErrors: [],
+            message: undefined,
+            error: 'Unable to resolve workflow identifier for validation',
+          });
+          return;
+        }
+
+        const { workflowId: resolvedWorkflowId, payload: ensuredPayload } = ensured;
+        const validationPayload = ensuredPayload ?? { ...draftPayload, id: resolvedWorkflowId };
+
+        const result = await validateWorkflowGraph(validationPayload, abortController.signal);
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const errors = Array.isArray(result.errors)
+          ? (result.errors as ValidationError[])
+          : [];
+        const blockingErrors = errors.filter((error) =>
+          isErrorSeverity((error as any)?.severity)
+        );
+        setWorkflowValidation({
+          status: blockingErrors.length === 0 && result.valid ? 'valid' : 'invalid',
+          errors,
+          blockingErrors,
+          message: result.message,
+          error: undefined,
+        });
+      } catch (error: any) {
+        if (abortController.signal.aborted || error?.name === 'AbortError') {
+          return;
+        }
+        setWorkflowValidation({
+          status: 'invalid',
+          errors: [],
+          blockingErrors: [],
+          message: undefined,
+          error: error?.message ?? 'Unable to validate workflow',
+        });
+      } finally {
+        if (validationAbortRef.current === abortController) {
+          validationAbortRef.current = null;
+        }
+      }
+    }, WORKFLOW_VALIDATION_DEBOUNCE_MS);
+
+    validationDebounceRef.current = debounced;
+
+    return () => {
+      debounced.cancel();
+      validationDebounceRef.current = null;
+    };
+  }, [createGraphPayload, ensureWorkflowId, validateWorkflowGraph]);
+
+  useEffect(() => {
+    const debounced = validationDebounceRef.current;
+
+    if (!debounced) {
+      return;
+    }
+
     if (nodes.length === 0) {
+      debounced.cancel();
       validationAbortRef.current?.abort();
       validationAbortRef.current = null;
       setWorkflowValidation({
@@ -2227,92 +2312,30 @@ const GraphEditorContent = () => {
       return;
     }
 
-    let cancelled = false;
     setWorkflowValidation((previous) => ({
       ...previous,
       status: 'validating',
       error: undefined,
     }));
 
-    const abortController = new AbortController();
-    validationAbortRef.current?.abort();
-    validationAbortRef.current = abortController;
-
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const provisionalId =
-            activeWorkflowId ?? fallbackWorkflowIdRef.current ?? `local-${Date.now()}`;
-          const draftPayload = createGraphPayload(provisionalId);
-
-          const ensured = await ensureWorkflowId(draftPayload);
-          if (cancelled) {
-            return;
-          }
-
-          if (!ensured) {
-            setWorkflowValidation({
-              status: 'invalid',
-              errors: [],
-              blockingErrors: [],
-              message: undefined,
-              error: 'Unable to resolve workflow identifier for validation',
-            });
-            return;
-          }
-
-          const { workflowId: resolvedWorkflowId, payload: ensuredPayload } = ensured;
-          const validationPayload = ensuredPayload ?? { ...draftPayload, id: resolvedWorkflowId };
-
-          const result = await validateWorkflowGraph(validationPayload, abortController.signal);
-          if (cancelled) {
-            return;
-          }
-          const errors = Array.isArray(result.errors)
-            ? (result.errors as ValidationError[])
-            : [];
-          const blockingErrors = errors.filter((error) =>
-            isErrorSeverity((error as any)?.severity)
-          );
-          setWorkflowValidation({
-            status: blockingErrors.length === 0 && result.valid ? 'valid' : 'invalid',
-            errors,
-            blockingErrors,
-            message: result.message,
-            error: undefined,
-          });
-        } catch (error: any) {
-          if (cancelled || error?.name === 'AbortError') {
-            return;
-          }
-          setWorkflowValidation({
-            status: 'invalid',
-            errors: [],
-            blockingErrors: [],
-            message: undefined,
-            error: error?.message ?? 'Unable to validate workflow',
-          });
-        }
-      })();
-    }, WORKFLOW_VALIDATION_DEBOUNCE_MS);
+    debounced({
+      activeWorkflowId: activeWorkflowId ?? null,
+      fallbackWorkflowId: fallbackWorkflowIdRef.current ?? null,
+    });
 
     return () => {
-      cancelled = true;
-      if (validationAbortRef.current === abortController) {
+      debounced.cancel();
+      if (validationAbortRef.current) {
+        validationAbortRef.current.abort();
         validationAbortRef.current = null;
       }
-      abortController.abort();
-      window.clearTimeout(timer);
     };
   }, [
     nodes,
     edges,
     activeWorkflowId,
-    createGraphPayload,
-    validateWorkflowGraph,
-    updateNodeValidation,
     createValidationSignature,
-    ensureWorkflowId,
+    updateNodeValidation,
   ]);
 
   useEffect(() => {
@@ -3063,6 +3086,10 @@ const GraphEditorContent = () => {
   ]);
 
   const onDryRunWorkflow = useCallback(async () => {
+    if (validationDebounceRef.current) {
+      await validationDebounceRef.current.flush();
+    }
+
     const prepared = await prepareWorkflowForExecution();
     if (!prepared) {
       return;
