@@ -100,9 +100,12 @@ import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 import {
   checkRuntimeCapability,
   createFallbackRuntimeCapabilities,
+  buildRuntimeCapabilityIndex,
+  getRuntimeCapabilityStatus,
   getRuntimeCapabilities,
   mergeWithFallbackCapabilities,
   type RuntimeCapabilityMap,
+  type RuntimeCapabilityIndex,
 } from '@/services/runtimeCapabilitiesService';
 import { enqueueExecution, ExecutionEnqueueError } from '@/services/executions';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
@@ -1135,6 +1138,7 @@ interface NodeSidebarProps {
   connectorDefinitions?: ConnectorDefinitionMap | null;
   runtimeCapabilities: RuntimeCapabilityMap;
   runtimeCapabilitiesLoading?: boolean;
+  runtimeCapabilityIndex?: RuntimeCapabilityIndex;
 }
 
 export const NodeSidebar: React.FC<NodeSidebarProps> = ({
@@ -1144,6 +1148,7 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
   connectorDefinitions,
   runtimeCapabilities,
   runtimeCapabilitiesLoading,
+  runtimeCapabilityIndex,
 }) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
@@ -1623,7 +1628,13 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                       const runtimeId = t.runtimeId ?? t.id;
                       const capability = runtimeCapabilitiesLoading
                         ? { supported: true }
-                        : checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
+                        : getRuntimeCapabilityStatus(
+                            runtimeCapabilityIndex,
+                            capabilityAppId,
+                            'trigger',
+                            runtimeId,
+                          ) ??
+                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
                       const previewOnly = !capability.supported;
                       const tooltipText = capability.issue === 'missing-app'
                         ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
@@ -1649,8 +1660,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300',
                             previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-emerald-200',
                           )}
+                          draggable={!previewOnly}
+                          onDragStart={(event) => {
+                            if (previewOnly) {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }
+                          }}
                           disabled={previewOnly}
+                          data-runtime-supported={previewOnly ? 'false' : 'true'}
                           data-runtime-preview={previewOnly ? 'true' : undefined}
+                          data-testid={`sidebar-trigger-${app.appId}-${t.id}`}
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
@@ -1661,9 +1681,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                               )}
                             </div>
                             <div className="ml-auto flex items-center gap-2">
-                              {previewOnly && (
-                                <Badge className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 border-amber-200">
-                                  Preview only
+                              {!runtimeCapabilitiesLoading && (
+                                <Badge
+                                  className={clsx(
+                                    'text-[10px] uppercase tracking-wide',
+                                    previewOnly
+                                      ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                      : 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                  )}
+                                  data-testid={`runtime-badge-${app.appId}-${t.id}`}
+                                >
+                                  {previewOnly ? 'Runtime unavailable' : 'Runtime ready'}
                                 </Badge>
                               )}
                               <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
@@ -1696,7 +1724,13 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                       const capabilityKind = a.kind === 'trigger' ? 'trigger' : 'action';
                       const capability = runtimeCapabilitiesLoading
                         ? { supported: true }
-                        : checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
+                        : getRuntimeCapabilityStatus(
+                            runtimeCapabilityIndex,
+                            capabilityAppId,
+                            capabilityKind,
+                            runtimeId,
+                          ) ??
+                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
                       const previewOnly = !capability.supported;
                       const tooltipText = capability.issue === 'missing-app'
                         ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
@@ -1722,8 +1756,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300',
                             previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-blue-200',
                           )}
+                          draggable={!previewOnly}
+                          onDragStart={(event) => {
+                            if (previewOnly) {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }
+                          }}
                           disabled={previewOnly}
+                          data-runtime-supported={previewOnly ? 'false' : 'true'}
                           data-runtime-preview={previewOnly ? 'true' : undefined}
+                          data-testid={`sidebar-node-${app.appId}-${a.id}`}
                         >
                           <div className="flex items-center gap-3">
                             <div
@@ -1741,9 +1784,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                               )}
                             </div>
                             <div className="ml-auto flex items-center gap-2">
-                              {previewOnly && (
-                                <Badge className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 border-amber-200">
-                                  Preview only
+                              {!runtimeCapabilitiesLoading && (
+                                <Badge
+                                  className={clsx(
+                                    'text-[10px] uppercase tracking-wide',
+                                    previewOnly
+                                      ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                      : 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                  )}
+                                  data-testid={`runtime-badge-${app.appId}-${a.id}`}
+                                >
+                                  {previewOnly ? 'Runtime unavailable' : 'Runtime ready'}
                                 </Badge>
                               )}
                               <span
@@ -1965,6 +2016,10 @@ const GraphEditorContent = () => {
   );
   const [runtimeCapabilitiesLoading, setRuntimeCapabilitiesLoading] = useState(true);
   const [, setRuntimeCapabilitiesError] = useState<string | null>(null);
+  const runtimeCapabilityIndex = useMemo(
+    () => buildRuntimeCapabilityIndex(runtimeCapabilities, connectorDefinitions ?? null),
+    [runtimeCapabilities, connectorDefinitions],
+  );
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
   const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
@@ -2275,7 +2330,9 @@ const GraphEditorContent = () => {
         (value) => typeof value === 'string' && value.trim().length > 0,
       );
 
-      const support = checkRuntimeCapability(runtimeCapabilities, normalized, kind, operationId);
+      const support =
+        getRuntimeCapabilityStatus(runtimeCapabilityIndex, normalized, kind, operationId) ??
+        checkRuntimeCapability(runtimeCapabilities, normalized, kind, operationId);
       const appLabel =
         typeof data.appName === 'string' && data.appName.trim().length > 0
           ? data.appName
@@ -2315,7 +2372,7 @@ const GraphEditorContent = () => {
         kind,
       };
     },
-    [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading],
+    [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading, runtimeCapabilityIndex],
   );
 
   const selectedNodeRuntimeStatus = useMemo<SelectedNodeRuntimeSupport | null>(() => {
@@ -4010,6 +4067,7 @@ const GraphEditorContent = () => {
           connectorDefinitions={connectorDefinitions}
           runtimeCapabilities={runtimeCapabilities}
           runtimeCapabilitiesLoading={runtimeCapabilitiesLoading}
+          runtimeCapabilityIndex={runtimeCapabilityIndex}
         />
       </aside>
 
