@@ -11,6 +11,21 @@ export interface RuntimeCapabilitySummary {
   triggers: string[];
 }
 
+const BUILTIN_RUNTIME_OPERATIONS: Array<{
+  type: 'action' | 'trigger';
+  app: string;
+  operation: string;
+}> = [
+  { type: 'action', app: 'http', operation: 'request' },
+  { type: 'action', app: 'llm', operation: 'generate' },
+  { type: 'action', app: 'llm', operation: 'extract' },
+  { type: 'action', app: 'llm', operation: 'classify' },
+  { type: 'action', app: 'llm', operation: 'tool_call' },
+  { type: 'trigger', app: 'webhook', operation: 'inbound' },
+  { type: 'trigger', app: 'time', operation: 'cron' },
+  { type: 'trigger', app: 'time', operation: 'manual' },
+];
+
 function buildRegistry(): Record<string, RuntimeAppOperations> {
   const handlers = getRuntimeOpHandlers();
   const registry: Record<string, RuntimeAppOperations> = {};
@@ -37,7 +52,29 @@ function buildRegistry(): Record<string, RuntimeAppOperations> {
 const RUNTIME_HANDLERS = getRuntimeOpHandlers();
 const RUNTIME_HANDLER_KEYS = new Set(Object.keys(RUNTIME_HANDLERS));
 
-export const RUNTIME_REGISTRY: Record<string, RuntimeAppOperations> = buildRegistry();
+function injectBuiltinRuntimeEntries(
+  registry: Record<string, RuntimeAppOperations>,
+  handlerKeySet: Set<string>,
+): void {
+  for (const builtin of BUILTIN_RUNTIME_OPERATIONS) {
+    const bucket = (registry[builtin.app] ||= { actions: {}, triggers: {} });
+    if (builtin.type === 'action') {
+      bucket.actions[builtin.operation] = true;
+    } else {
+      bucket.triggers[builtin.operation] = true;
+    }
+
+    const candidates = buildOperationKeyCandidates(builtin.app, builtin.operation, builtin.type);
+    for (const candidate of candidates) {
+      handlerKeySet.add(candidate);
+    }
+  }
+}
+
+const runtimeRegistry = buildRegistry();
+injectBuiltinRuntimeEntries(runtimeRegistry, RUNTIME_HANDLER_KEYS);
+
+export const RUNTIME_REGISTRY: Record<string, RuntimeAppOperations> = runtimeRegistry;
 
 export function getRuntimeCapabilities(): RuntimeCapabilitySummary[] {
   return Object.entries(RUNTIME_REGISTRY)
