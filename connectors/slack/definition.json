@@ -46,6 +46,48 @@
         "requests": 10,
         "period": "1m",
         "scope": "user"
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "team": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "success",
+          "team",
+          "team_id",
+          "user",
+          "user_id"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "team": "Acme Workspace",
+        "team_id": "T12345678",
+        "user": "automation.bot",
+        "user_id": "U23456789",
+        "url": "https://acme.slack.com/"
       }
     },
     {
@@ -109,6 +151,70 @@
         "channel_not_found": "The specified channel does not exist",
         "not_in_channel": "Bot is not a member of the channel",
         "msg_too_long": "Message text is too long"
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "string"
+          },
+          "ts": {
+            "type": "string"
+          },
+          "message": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              },
+              "bot_id": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "ts": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "text",
+              "ts"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channel",
+          "ts"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": "C024BE7LT",
+        "ts": "1733756457.000200",
+        "message": {
+          "type": "message",
+          "text": "Deployment complete :rocket:",
+          "user": "U23456789",
+          "bot_id": "B98XYZ12",
+          "username": "automation-bot",
+          "ts": "1733756457.000200"
+        }
       }
     },
     {
@@ -134,6 +240,64 @@
           "name"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "is_channel": {
+                "type": "boolean"
+              },
+              "is_private": {
+                "type": "boolean"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "created": {
+                "type": "integer"
+              },
+              "num_members": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channel"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": {
+          "id": "C08S3A1Q2",
+          "name": "product-launch",
+          "is_channel": true,
+          "is_private": false,
+          "creator": "U024BE7LH",
+          "created": 1733756000,
+          "num_members": 1
+        }
       }
     },
     {
@@ -177,6 +341,67 @@
           "users"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "is_channel": {
+                "type": "boolean"
+              },
+              "is_private": {
+                "type": "boolean"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "num_members": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channel"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": {
+          "id": "C08S3A1Q2",
+          "name": "product-launch",
+          "is_channel": true,
+          "is_private": false,
+          "members": [
+            "U024BE7LH",
+            "U061F1EUR",
+            "U0G9QF9C6"
+          ],
+          "num_members": 3
+        }
       }
     },
     {
@@ -218,6 +443,80 @@
           "filename"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "mimetype": {
+                "type": "string"
+              },
+              "filetype": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "url_private": {
+                "type": "string",
+                "format": "uri"
+              },
+              "permalink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "created": {
+                "type": "integer"
+              },
+              "user": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimetype",
+              "size"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "F04567ABCD",
+          "name": "launch-checklist.xlsx",
+          "title": "Launch Checklist",
+          "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "filetype": "spreadsheet",
+          "size": 284512,
+          "url_private": "https://files.slack.com/files-pri/T12345-F04567ABCD/launch-checklist.xlsx",
+          "permalink": "https://acme.slack.com/files/U024BE7LH/F04567ABCD",
+          "created": 1733756123,
+          "user": "U024BE7LH"
+        }
       }
     },
     {
@@ -247,6 +546,102 @@
           "channel"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "topic": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "creator": {
+                    "type": "string"
+                  },
+                  "last_set": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": true
+              },
+              "purpose": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "creator": {
+                    "type": "string"
+                  },
+                  "last_set": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": true
+              },
+              "is_channel": {
+                "type": "boolean"
+              },
+              "is_private": {
+                "type": "boolean"
+              },
+              "num_members": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channel"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": {
+          "id": "C08S3A1Q2",
+          "name": "product-launch",
+          "topic": {
+            "value": "Coordinate the winter launch rollout",
+            "creator": "U024BE7LH",
+            "last_set": 1733756150
+          },
+          "purpose": {
+            "value": "Central hub for launch team",
+            "creator": "U024BE7LH",
+            "last_set": 1733756100
+          },
+          "is_channel": true,
+          "is_private": false,
+          "num_members": 42
+        }
       }
     },
     {
@@ -271,6 +666,80 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "is_channel": {
+                  "type": "boolean"
+                },
+                "is_private": {
+                  "type": "boolean"
+                },
+                "num_members": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "response_metadata": {
+            "type": "object",
+            "properties": {
+              "next_cursor": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channels"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channels": [
+          {
+            "id": "C024BE7LT",
+            "name": "general",
+            "is_channel": true,
+            "is_private": false,
+            "num_members": 128
+          },
+          {
+            "id": "C08S3A1Q2",
+            "name": "product-launch",
+            "is_channel": true,
+            "is_private": false,
+            "num_members": 42
+          }
+        ],
+        "response_metadata": {
+          "next_cursor": "dXNlcjpVMDI0QkU3TEg="
+        }
       }
     },
     {
@@ -291,6 +760,77 @@
           "user"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "team_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "real_name": {
+                "type": "string"
+              },
+              "profile": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "image_72": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "user"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "user": {
+          "id": "U024BE7LH",
+          "team_id": "T12345678",
+          "name": "olivia",
+          "real_name": "Olivia Chen",
+          "profile": {
+            "email": "olivia@example.com",
+            "display_name": "Olivia",
+            "image_72": "https://secure.gravatar.com/avatar/abc123?s=72"
+          }
+        }
       }
     },
     {
@@ -310,6 +850,94 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "real_name": {
+                  "type": "string"
+                },
+                "profile": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "display_name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "email"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "response_metadata": {
+            "type": "object",
+            "properties": {
+              "next_cursor": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "members"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "members": [
+          {
+            "id": "U024BE7LH",
+            "name": "olivia",
+            "real_name": "Olivia Chen",
+            "profile": {
+              "email": "olivia@example.com",
+              "display_name": "Olivia"
+            }
+          },
+          {
+            "id": "U061F7AUR",
+            "name": "liam",
+            "real_name": "Liam Patel",
+            "profile": {
+              "email": "liam@example.com",
+              "display_name": "Liam"
+            }
+          }
+        ],
+        "response_metadata": {
+          "next_cursor": ""
+        }
       }
     },
     {
@@ -349,6 +977,35 @@
           "name"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "reaction": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": "C024BE7LT",
+        "timestamp": "1733756457.000200",
+        "reaction": "thumbsup"
       }
     },
     {
@@ -388,6 +1045,61 @@
           "post_at"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "string"
+          },
+          "scheduled_message_id": {
+            "type": "string"
+          },
+          "post_at": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "channel",
+          "scheduled_message_id",
+          "post_at"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": "C08S3A1Q2",
+        "scheduled_message_id": "Q1298394025",
+        "post_at": 1733790000,
+        "message": {
+          "text": "Daily standup starts in 10 minutes",
+          "type": "message",
+          "user": "U024BE7LH"
+        }
       }
     },
     {
@@ -418,6 +1130,99 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mimetype": {
+                  "type": "string"
+                },
+                "filetype": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "created": {
+                  "type": "integer"
+                },
+                "url_private": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "permalink": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "paging": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "pages": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "files"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "files": [
+          {
+            "id": "F04567ABCD",
+            "name": "launch-checklist.xlsx",
+            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "filetype": "spreadsheet",
+            "size": 284512,
+            "created": 1733756123,
+            "url_private": "https://files.slack.com/files-pri/T12345-F04567ABCD/launch-checklist.xlsx",
+            "permalink": "https://acme.slack.com/files/U024BE7LH/F04567ABCD"
+          }
+        ],
+        "paging": {
+          "count": 20,
+          "total": 57,
+          "page": 1,
+          "pages": 3
+        }
       }
     },
     {
@@ -450,6 +1255,93 @@
           "channel"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "channel": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "user": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "ts": {
+                  "type": "string"
+                },
+                "thread_ts": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "text",
+                "ts"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "pin_count": {
+            "type": "integer"
+          },
+          "response_metadata": {
+            "type": "object",
+            "properties": {
+              "next_cursor": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "messages",
+          "has_more"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "channel": "C024BE7LT",
+        "messages": [
+          {
+            "type": "message",
+            "user": "U024BE7LH",
+            "text": "Morning team!",
+            "ts": "1733756000.000100"
+          },
+          {
+            "type": "message",
+            "user": "U061F7AUR",
+            "text": "Standup notes posted",
+            "ts": "1733756030.000200",
+            "thread_ts": "1733756000.000100"
+          }
+        ],
+        "has_more": false,
+        "pin_count": 1,
+        "response_metadata": {
+          "next_cursor": ""
+        }
       }
     }
   ],
@@ -495,23 +1387,66 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "channel": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          },
-          "text": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "string"
-          },
-          "thread_ts": {
-            "type": "string"
+          "event": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string"
+              },
+              "channel_type": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "ts": {
+                "type": "string"
+              },
+              "team": {
+                "type": "string"
+              },
+              "event_ts": {
+                "type": "string"
+              },
+              "thread_ts": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "channel",
+              "user",
+              "text",
+              "ts"
+            ],
+            "additionalProperties": true
           }
+        },
+        "required": [
+          "event"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "event": {
+          "type": "message",
+          "channel": "C08S3A1Q2",
+          "channel_type": "channel",
+          "user": "U061F7AUR",
+          "text": "Reminder: customer demo at 2pm",
+          "ts": "1733757001.000400",
+          "thread_ts": "1733756457.000200",
+          "team": "T12345678",
+          "event_ts": "1733757001.000400"
         }
       }
     },
@@ -552,20 +1487,74 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "channel": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          },
-          "reaction": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "string"
+          "event": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              },
+              "reaction": {
+                "type": "string"
+              },
+              "item": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "channel": {
+                    "type": "string"
+                  },
+                  "ts": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "channel",
+                  "ts"
+                ],
+                "additionalProperties": true
+              },
+              "item_user": {
+                "type": "string"
+              },
+              "event_ts": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "user",
+              "reaction",
+              "item"
+            ],
+            "additionalProperties": true
           }
+        },
+        "required": [
+          "event"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "event": {
+          "type": "reaction_added",
+          "user": "U024BE7LH",
+          "reaction": "white_check_mark",
+          "item": {
+            "type": "message",
+            "channel": "C024BE7LT",
+            "ts": "1733756030.000200"
+          },
+          "item_user": "U061F7AUR",
+          "event_ts": "1733757040.000500"
         }
       }
     },
@@ -604,17 +1593,56 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "channel": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "string"
+          "event": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "user": {
+                "type": "string"
+              },
+              "channel": {
+                "type": "string"
+              },
+              "channel_type": {
+                "type": "string"
+              },
+              "team": {
+                "type": "string"
+              },
+              "inviter": {
+                "type": "string"
+              },
+              "event_ts": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "user",
+              "channel"
+            ],
+            "additionalProperties": true
           }
+        },
+        "required": [
+          "event"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "event": {
+          "type": "member_joined_channel",
+          "user": "U0G9QF9C6",
+          "channel": "C08S3A1Q2",
+          "channel_type": "C",
+          "team": "T12345678",
+          "inviter": "U024BE7LH",
+          "event_ts": "1733757205.000600"
         }
       }
     }
@@ -638,5 +1666,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

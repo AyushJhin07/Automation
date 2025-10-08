@@ -39,6 +39,41 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "emailAddress": {
+            "type": "string",
+            "format": "email"
+          },
+          "messagesTotal": {
+            "type": "integer"
+          },
+          "threadsTotal": {
+            "type": "integer"
+          },
+          "historyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "emailAddress"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "emailAddress": "user@example.com",
+        "messagesTotal": 2531,
+        "threadsTotal": 842,
+        "historyId": "9876543210"
       }
     },
     {
@@ -90,6 +125,41 @@
           "body"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "id",
+          "threadId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "id": "188c9a8c5f7f1a2b",
+        "threadId": "188c9a8c5f7f1a2b",
+        "labelIds": [
+          "SENT"
+        ]
       }
     },
     {
@@ -120,6 +190,61 @@
           "query"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "threadId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "threadId"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "nextPageToken": {
+            "type": "string"
+          },
+          "resultSizeEstimate": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "success",
+          "messages",
+          "resultSizeEstimate"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "messages": [
+          {
+            "id": "188c9a8c5f7f1a2b",
+            "threadId": "188c9a8c5f7f1a2b"
+          },
+          {
+            "id": "188c9a92df5361e7",
+            "threadId": "188c9a92df5361e7"
+          }
+        ],
+        "nextPageToken": "054321abc",
+        "resultSizeEstimate": 25
       }
     },
     {
@@ -149,6 +274,105 @@
           "messageId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "internalDate": {
+            "type": "string",
+            "description": "Epoch milliseconds as a string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "mimeType": {
+                "type": "string"
+              },
+              "sizeEstimate": {
+                "type": "integer"
+              },
+              "headers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "value"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "mimeType",
+              "headers"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "id",
+          "threadId",
+          "snippet"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "id": "188c9a8c5f7f1a2b",
+        "threadId": "188c9a8c5f7f1a2b",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ],
+        "snippet": "Hi there, just checking in about the proposal...",
+        "internalDate": "1733696400000",
+        "payload": {
+          "mimeType": "multipart/alternative",
+          "sizeEstimate": 12456,
+          "headers": [
+            {
+              "name": "Subject",
+              "value": "Project Proposal"
+            },
+            {
+              "name": "From",
+              "value": "alex@example.com"
+            },
+            {
+              "name": "To",
+              "value": "user@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -177,6 +401,42 @@
           "body"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "id",
+          "threadId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "id": "188c9aa3450a91df",
+        "threadId": "188c9a8c5f7f1a2b",
+        "labelIds": [
+          "SENT",
+          "INBOX"
+        ]
       }
     },
     {
@@ -198,6 +458,43 @@
           "messageIds"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "id",
+          "threadId",
+          "labelIds"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "id": "188c9a8c5f7f1a2b",
+        "threadId": "188c9a8c5f7f1a2b",
+        "labelIds": [
+          "INBOX",
+          "STARRED"
+        ]
       }
     },
     {
@@ -227,6 +524,44 @@
           "labelIds"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "id",
+          "threadId",
+          "labelIds"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "id": "188c9a8c5f7f1a2b",
+        "threadId": "188c9a8c5f7f1a2b",
+        "labelIds": [
+          "INBOX",
+          "IMPORTANT",
+          "Label_123"
+        ]
       }
     }
   ],
@@ -253,6 +588,90 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "labelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "internalDate": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "filename",
+                "mimeType"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "id",
+          "threadId",
+          "subject",
+          "from",
+          "to",
+          "snippet"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "188c9ab45fbc0d21",
+        "threadId": "188c9ab45fbc0d21",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ],
+        "subject": "Weekly Metrics",
+        "from": "analytics@example.com",
+        "to": [
+          "user@example.com"
+        ],
+        "snippet": "Here are the latest metrics for the product launch...",
+        "internalDate": "1733779200000",
+        "attachments": []
       }
     },
     {
@@ -275,6 +694,58 @@
           "fromEmail"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "threadId",
+          "subject",
+          "from",
+          "to",
+          "snippet"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "188c9acb5a6e23f4",
+        "threadId": "188c9acb5a6e23f4",
+        "subject": "Contract Signed",
+        "from": "ceo@example.com",
+        "to": [
+          "user@example.com"
+        ],
+        "snippet": "We received the countersigned contract this morning.",
+        "receivedAt": "2024-12-09T15:24:05Z"
       }
     },
     {
@@ -298,6 +769,82 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "filename",
+                "mimeType"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "id",
+          "threadId",
+          "subject",
+          "from",
+          "to",
+          "attachments"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "188c9ae1bf2a6810",
+        "threadId": "188c9ae1bf2a6810",
+        "subject": "Signed Agreement",
+        "from": "legal@example.com",
+        "to": [
+          "user@example.com"
+        ],
+        "snippet": "Please find the signed agreement attached.",
+        "attachments": [
+          {
+            "filename": "agreement.pdf",
+            "mimeType": "application/pdf",
+            "size": 582341
+          }
+        ]
       }
     }
   ],
@@ -310,5 +857,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }

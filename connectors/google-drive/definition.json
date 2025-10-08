@@ -34,6 +34,70 @@
         "properties": {},
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": "string"
+              },
+              "emailAddress": {
+                "type": "string",
+                "format": "email"
+              },
+              "photoLink": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "displayName",
+              "emailAddress"
+            ],
+            "additionalProperties": true
+          },
+          "storageQuota": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "string"
+              },
+              "usage": {
+                "type": "string"
+              },
+              "usageInDrive": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "user"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "user": {
+          "displayName": "Alex Rivera",
+          "emailAddress": "alex.rivera@example.com",
+          "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gh7_photo"
+        },
+        "storageQuota": {
+          "limit": "16106127360",
+          "usage": "4294967296",
+          "usageInDrive": "2147483648"
+        }
       }
     },
     {
@@ -75,6 +139,109 @@
           "mimeType"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1ZdR3m6X1kL9Pq7z8",
+          "name": "Product Roadmap.docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view",
+          "webContentLink": "https://drive.google.com/uc?id=1ZdR3m6X1kL9Pq7z8&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -106,6 +273,109 @@
           "content"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1ZdR3m6X1kL9Pq7z8",
+          "name": "launch-assets.zip",
+          "mimeType": "application/zip",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1AbC3dEfGhIJklMN/view",
+          "webContentLink": "https://drive.google.com/uc?id=1AbC3dEfGhIJklMN&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -130,6 +400,117 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "size": {
+                "type": "string"
+              },
+              "md5Checksum": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1ZdR3m6X1kL9Pq7z8",
+          "name": "Product Roadmap.docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view",
+          "webContentLink": "https://drive.google.com/uc?id=1ZdR3m6X1kL9Pq7z8&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ],
+          "size": "256000",
+          "md5Checksum": "d41d8cd98f00b204e9800998ecf8427e"
+        }
       }
     },
     {
@@ -163,6 +544,47 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string",
+            "description": "Base64-encoded file contents"
+          }
+        },
+        "required": [
+          "success",
+          "fileId",
+          "name",
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8",
+        "name": "Product Roadmap.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "size": 256000,
+        "content": "UEsDBBQABgAIAAAAIQD..."
       }
     },
     {
@@ -211,6 +633,101 @@
         },
         "required": [],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "modifiedTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "owners": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "emailAddress": {
+                        "type": "string",
+                        "format": "email"
+                      }
+                    },
+                    "required": [
+                      "displayName",
+                      "emailAddress"
+                    ],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "mimeType"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "nextPageToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "files"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "files": [
+          {
+            "id": "1ZdR3m6X1kL9Pq7z8",
+            "name": "Product Roadmap.docx",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "modifiedTime": "2024-12-08T13:40:51Z",
+            "owners": [
+              {
+                "displayName": "Alex Rivera",
+                "emailAddress": "alex.rivera@example.com"
+              }
+            ]
+          },
+          {
+            "id": "1AbC3dEfGhIJklMN",
+            "name": "launch-assets.zip",
+            "mimeType": "application/zip",
+            "modifiedTime": "2024-12-07T22:15:04Z",
+            "owners": [
+              {
+                "displayName": "Alex Rivera",
+                "emailAddress": "alex.rivera@example.com"
+              }
+            ]
+          }
+        ],
+        "nextPageToken": "next-page-token"
       }
     },
     {
@@ -235,6 +752,109 @@
           "name"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "0BwwA4oUTeiV1ZHVnZ0lNR2ZtV1E",
+          "name": "Campaign Assets",
+          "mimeType": "application/vnd.google-apps.folder",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/drive/folders/0BwwA4oUTeiV1ZHVnZ0lNR2ZtV1E",
+          "webContentLink": null,
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.folder",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -262,6 +882,109 @@
           "newParentId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1ZdR3m6X1kL9Pq7z8",
+          "name": "Product Roadmap.docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "parents": [
+            "0BwwA4oUTeiV1ZHVnZ0lNR2ZtV1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view",
+          "webContentLink": "https://drive.google.com/uc?id=1ZdR3m6X1kL9Pq7z8&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -288,6 +1011,109 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1CopyFileId234567",
+          "name": "Product Roadmap (Copy).docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view",
+          "webContentLink": "https://drive.google.com/uc?id=1ZdR3m6X1kL9Pq7z8&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ]
+        }
       }
     },
     {
@@ -308,6 +1134,28 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "fileId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8"
       }
     },
     {
@@ -360,6 +1208,64 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "emailAddress": {
+                "type": "string",
+                "format": "email"
+              },
+              "link": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "fileId",
+          "permission"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8",
+        "permission": {
+          "id": "123456789",
+          "type": "user",
+          "role": "writer",
+          "emailAddress": "teammate@example.com",
+          "link": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view"
+        }
       }
     },
     {
@@ -378,6 +1284,78 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "emailAddress": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "domain": {
+                  "type": "string"
+                },
+                "allowFileDiscovery": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "role"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "success",
+          "fileId",
+          "permissions"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8",
+        "permissions": [
+          {
+            "id": "123456789",
+            "type": "user",
+            "role": "owner",
+            "emailAddress": "alex.rivera@example.com",
+            "allowFileDiscovery": false
+          },
+          {
+            "id": "987654321",
+            "type": "user",
+            "role": "writer",
+            "emailAddress": "teammate@example.com",
+            "allowFileDiscovery": false
+          }
+        ]
       }
     },
     {
@@ -406,6 +1384,113 @@
           "fileId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "webViewLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "webContentLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "iconLink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "modifiedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owners": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "emailAddress": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mimeType"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "file"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "file": {
+          "id": "1ZdR3m6X1kL9Pq7z8",
+          "name": "Product Roadmap.docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "parents": [
+            "0BwwA4oUTeiV1TGRPeTVjaWRDY1E"
+          ],
+          "webViewLink": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view",
+          "webContentLink": "https://drive.google.com/uc?id=1ZdR3m6X1kL9Pq7z8&export=download",
+          "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "createdTime": "2024-09-18T17:20:13Z",
+          "modifiedTime": "2024-12-08T13:40:51Z",
+          "owners": [
+            {
+              "displayName": "Alex Rivera",
+              "emailAddress": "alex.rivera@example.com"
+            }
+          ],
+          "description": "Updated launch plan"
+        }
       }
     },
     {
@@ -431,6 +1516,33 @@
           "permissionId"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "permissionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "fileId",
+          "permissionId"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8",
+        "permissionId": "987654321"
       }
     },
     {
@@ -467,6 +1579,63 @@
           "role"
         ],
         "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether the operation succeeded."
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "emailAddress": {
+                "type": "string",
+                "format": "email"
+              },
+              "allowFileDiscovery": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "success",
+          "fileId",
+          "permission"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "success": true,
+        "fileId": "1ZdR3m6X1kL9Pq7z8",
+        "permission": {
+          "id": "987654321",
+          "type": "user",
+          "role": "commenter",
+          "emailAddress": "reviewer@example.com",
+          "allowFileDiscovery": false
+        }
       }
     }
   ],
@@ -492,9 +1661,10 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "fileId": {
+          "id": {
             "type": "string"
           },
           "name": {
@@ -503,19 +1673,59 @@
           "mimeType": {
             "type": "string"
           },
-          "size": {
-            "type": "number"
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "createdTime": {
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           },
-          "modifiedTime": {
-            "type": "string"
-          },
-          "webViewLink": {
-            "type": "string"
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "displayName": {
+                  "type": "string"
+                },
+                "emailAddress": {
+                  "type": "string",
+                  "format": "email"
+                }
+              },
+              "required": [
+                "displayName",
+                "emailAddress"
+              ],
+              "additionalProperties": true
+            }
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "mimeType",
+          "createdTime"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "1NewFileId456789",
+        "name": "Campaign Brief.pdf",
+        "mimeType": "application/pdf",
+        "parents": [
+          "0BwwA4oUTeiV1ZHVnZ0lNR2ZtV1E"
+        ],
+        "createdTime": "2024-12-09T09:05:10Z",
+        "owners": [
+          {
+            "displayName": "Alex Rivera",
+            "emailAddress": "alex.rivera@example.com"
+          }
+        ]
       }
     },
     {
@@ -539,20 +1749,56 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "fileId": {
+          "id": {
             "type": "string"
           },
           "name": {
             "type": "string"
           },
-          "modifiedTime": {
+          "mimeType": {
             "type": "string"
           },
+          "modifiedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
           "lastModifyingUser": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": "string"
+              },
+              "emailAddress": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "required": [
+              "displayName",
+              "emailAddress"
+            ],
+            "additionalProperties": true
           }
+        },
+        "required": [
+          "id",
+          "name",
+          "mimeType",
+          "modifiedTime"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "1ZdR3m6X1kL9Pq7z8",
+        "name": "Product Roadmap.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "modifiedTime": "2024-12-09T11:12:44Z",
+        "lastModifyingUser": {
+          "displayName": "Taylor Morgan",
+          "emailAddress": "taylor.morgan@example.com"
         }
       }
     },
@@ -573,21 +1819,66 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "fileId": {
+          "id": {
             "type": "string"
           },
           "name": {
             "type": "string"
           },
-          "sharedWithUser": {
+          "mimeType": {
             "type": "string"
           },
-          "permissionId": {
-            "type": "string"
+          "sharedWith": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emailAddress": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "emailAddress",
+                "role"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "sharedTime": {
+            "type": "string",
+            "format": "date-time"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "mimeType",
+          "sharedWith"
+        ],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "1ZdR3m6X1kL9Pq7z8",
+        "name": "Product Roadmap.docx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "sharedWith": [
+          {
+            "emailAddress": "teammate@example.com",
+            "role": "writer"
+          },
+          {
+            "emailAddress": "executive@example.com",
+            "role": "commenter"
+          }
+        ],
+        "sharedTime": "2024-12-09T12:30:00Z"
       }
     }
   ],
@@ -604,5 +1895,6 @@
       "startDate": null,
       "sunsetDate": null
     }
-  }
+  },
+  "schemaVersion": "1.0"
 }
