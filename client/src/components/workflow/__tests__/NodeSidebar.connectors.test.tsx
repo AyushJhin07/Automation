@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import React from "react";
 import { NodeSidebar } from "../ProfessionalGraphEditor";
-import { mergeWithFallbackCapabilities } from "@/services/runtimeCapabilitiesService";
+import { buildRuntimeCapabilityIndex, mergeWithFallbackCapabilities } from "@/services/runtimeCapabilitiesService";
 
 describe("NodeSidebar connector metadata integration", () => {
   it("surfaces new connectors discovered via metadata definitions", () => {
@@ -56,6 +56,11 @@ describe("NodeSidebar connector metadata integration", () => {
       },
     } as any);
 
+    const runtimeCapabilityIndex = buildRuntimeCapabilityIndex(
+      runtimeCapabilities,
+      connectorDefinitions as any,
+    );
+
     render(
       <NodeSidebar
         onAddNode={vi.fn()}
@@ -64,6 +69,7 @@ describe("NodeSidebar connector metadata integration", () => {
         connectorDefinitions={connectorDefinitions as any}
         runtimeCapabilities={runtimeCapabilities}
         runtimeCapabilitiesLoading={false}
+        runtimeCapabilityIndex={runtimeCapabilityIndex}
       />,
     );
 
@@ -79,6 +85,12 @@ describe("NodeSidebar connector metadata integration", () => {
     expect(
       iconWrapper.querySelector('svg[data-lucide="brain"]'),
     ).not.toBeNull();
+
+    const runtimeBadge = within(appCard).getByTestId("runtime-badge-novel-ai-analyze");
+    expect(runtimeBadge).toHaveTextContent(/runtime ready/i);
+    const actionButton = within(appCard).getByTestId("sidebar-node-novel-ai-analyze");
+    expect(actionButton).toHaveAttribute("data-runtime-supported", "true");
+    expect(actionButton).toHaveAttribute("draggable", "true");
   });
 
   it("disables actions when runtime capabilities are missing", () => {
@@ -104,6 +116,8 @@ describe("NodeSidebar connector metadata integration", () => {
 
     const runtimeCapabilities = mergeWithFallbackCapabilities({} as any);
 
+    const runtimeCapabilityIndex = buildRuntimeCapabilityIndex(runtimeCapabilities, {} as any);
+
     render(
       <NodeSidebar
         onAddNode={vi.fn()}
@@ -112,13 +126,16 @@ describe("NodeSidebar connector metadata integration", () => {
         connectorDefinitions={{} as any}
         runtimeCapabilities={runtimeCapabilities}
         runtimeCapabilitiesLoading={false}
+        runtimeCapabilityIndex={runtimeCapabilityIndex}
       />,
     );
 
     const appCard = screen.getByTestId("app-card-alpha-app");
-    const actionButton = within(appCard).getByRole("button", { name: /sync/i });
+    const actionButton = within(appCard).getByTestId("sidebar-node-alpha-app-sync");
 
     expect(actionButton).toBeDisabled();
-    expect(within(appCard).getByText(/preview only/i)).toBeInTheDocument();
+    expect(actionButton).toHaveAttribute("data-runtime-supported", "false");
+    expect(actionButton).toHaveAttribute("draggable", "false");
+    expect(within(appCard).getByTestId("runtime-badge-alpha-app-sync")).toHaveTextContent(/runtime unavailable/i);
   });
 });

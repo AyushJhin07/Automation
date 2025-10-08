@@ -1,4 +1,5 @@
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
+import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 
 export const RUNTIME_WILDCARD = '*';
 
@@ -12,6 +13,20 @@ export interface RuntimeCapabilityEntry {
 }
 
 export type RuntimeCapabilityMap = Record<string, RuntimeCapabilityEntry>;
+
+export interface RuntimeCapabilityOperationStatus extends RuntimeCapabilityCheckResult {
+  appId: string;
+  kind: RuntimeOperationKind;
+  operationId: string;
+}
+
+export interface RuntimeCapabilityIndexEntry {
+  appId: string;
+  actions: Record<string, RuntimeCapabilityOperationStatus>;
+  triggers: Record<string, RuntimeCapabilityOperationStatus>;
+}
+
+export type RuntimeCapabilityIndex = Record<string, RuntimeCapabilityIndexEntry>;
 
 export interface RuntimeCapabilityCheckResult {
   supported: boolean;
@@ -289,4 +304,146 @@ export const resetRuntimeCapabilitiesCache = () => {
   cachedCapabilities = null;
   cacheExpiresAt = 0;
   inFlightRequest = null;
+};
+
+const ensureIndexEntry = (
+  index: RuntimeCapabilityIndex,
+  appId: string,
+): RuntimeCapabilityIndexEntry => {
+  if (!index[appId]) {
+    index[appId] = {
+      appId,
+      actions: {},
+      triggers: {},
+    };
+  }
+  return index[appId];
+};
+
+const assignOperationStatus = (
+  index: RuntimeCapabilityIndex,
+  capabilities: RuntimeCapabilityMap | null | undefined,
+  appId: string,
+  kind: RuntimeOperationKind,
+  operationId?: string | null,
+) => {
+  const normalizedAppId = normalizeRuntimeAppId(appId);
+  if (!normalizedAppId) {
+    return;
+  }
+
+  const entry = ensureIndexEntry(index, normalizedAppId);
+  const bucket = kind === 'trigger' ? entry.triggers : entry.actions;
+
+  const capability = checkRuntimeCapability(capabilities ?? {}, normalizedAppId, kind, operationId);
+  const normalizedOperationId =
+    capability.normalizedOperationId ?? normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
+
+  bucket[normalizedOperationId] = {
+    appId: normalizedAppId,
+    kind,
+    operationId: normalizedOperationId,
+    supported: capability.supported,
+    issue: capability.issue,
+    normalizedAppId: capability.normalizedAppId ?? normalizedAppId,
+    normalizedOperationId,
+  };
+};
+
+const addConnectorDefinitionOperations = (
+  index: RuntimeCapabilityIndex,
+  capabilities: RuntimeCapabilityMap | null | undefined,
+  definitions: ConnectorDefinitionMap | null | undefined,
+) => {
+  if (!definitions) {
+    return;
+  }
+
+  Object.entries(definitions).forEach(([appId, definition]) => {
+    if (!appId || !definition) {
+      return;
+    }
+
+    const normalizedAppId = normalizeRuntimeAppId(appId);
+    if (!normalizedAppId) {
+      return;
+    }
+
+    ensureIndexEntry(index, normalizedAppId);
+
+    const visit = (kind: RuntimeOperationKind, list: Array<{ id?: string | null }> | undefined) => {
+      if (!Array.isArray(list)) {
+        return;
+      }
+
+      list.forEach((entry) => {
+        if (!entry) {
+          return;
+        }
+        assignOperationStatus(index, capabilities, normalizedAppId, kind, entry.id ?? undefined);
+      });
+    };
+
+    visit('action', definition.actions);
+    visit('trigger', definition.triggers);
+  });
+};
+
+export const buildRuntimeCapabilityIndex = (
+  capabilities: RuntimeCapabilityMap | null | undefined,
+  connectorDefinitions?: ConnectorDefinitionMap | null,
+): RuntimeCapabilityIndex => {
+  const index: RuntimeCapabilityIndex = {};
+
+  if (capabilities) {
+    Object.entries(capabilities).forEach(([appId, entry]) => {
+      if (!appId || !entry) {
+        return;
+      }
+
+      const normalizedAppId = normalizeRuntimeAppId(appId);
+      if (!normalizedAppId) {
+        return;
+      }
+
+      ensureIndexEntry(index, normalizedAppId);
+
+      entry.actions.forEach((operationId) => {
+        assignOperationStatus(index, capabilities, normalizedAppId, 'action', operationId);
+      });
+      entry.triggers.forEach((operationId) => {
+        assignOperationStatus(index, capabilities, normalizedAppId, 'trigger', operationId);
+      });
+    });
+  }
+
+  addConnectorDefinitionOperations(index, capabilities, connectorDefinitions ?? null);
+
+  return index;
+};
+
+export const getRuntimeCapabilityStatus = (
+  index: RuntimeCapabilityIndex | null | undefined,
+  appId: string,
+  kind: RuntimeOperationKind,
+  operationId?: string | null,
+): RuntimeCapabilityOperationStatus | undefined => {
+  if (!index) {
+    return undefined;
+  }
+
+  const normalizedAppId = normalizeRuntimeAppId(appId);
+  if (!normalizedAppId) {
+    return undefined;
+  }
+
+  const entry = index[normalizedAppId];
+  if (!entry) {
+    return undefined;
+  }
+
+  const bucket = kind === 'trigger' ? entry.triggers : entry.actions;
+  const normalizedOperationId = normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
+
+  return bucket[normalizedOperationId] ?? bucket[RUNTIME_WILDCARD];
 };

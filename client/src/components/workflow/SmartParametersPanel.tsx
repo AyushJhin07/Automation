@@ -105,6 +105,113 @@ const uniqueStrings = (values: Array<string | undefined>): string[] => {
   return Array.from(set);
 };
 
+const DEFAULT_OUTPUT_CHANNEL_KEYS = ["$", "default", "main", "data", "output", "result"];
+
+const isPlainObject = (value: unknown): value is Record<string, any> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+const toPreviewableValue = (value: unknown): any => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (isPlainObject(value)) {
+    return value;
+  }
+  return undefined;
+};
+
+const cloneMetadataSummary = (value: unknown): NodeMetadataSummary | undefined => {
+  if (!isPlainObject(value)) {
+    return undefined;
+  }
+
+  const source = value as Record<string, any>;
+  const cloned: NodeMetadataSummary = { ...(source as NodeMetadataSummary) };
+
+  if (Array.isArray(cloned.columns)) {
+    cloned.columns = Array.from(
+      new Set(
+        cloned.columns
+          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+          .filter((entry): entry is string => Boolean(entry)),
+      ),
+    );
+  }
+
+  if (Array.isArray(cloned.headers)) {
+    cloned.headers = Array.from(
+      new Set(
+        cloned.headers
+          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+          .filter((entry): entry is string => Boolean(entry)),
+      ),
+    );
+  }
+
+  if (Array.isArray((source as any).fields)) {
+    const fields = (source as any).fields
+      .map((entry: unknown) => (typeof entry === "string" ? entry.trim() : ""))
+      .filter((entry: string) => entry.length > 0);
+    cloned.columns = Array.from(new Set([...(cloned.columns ?? []), ...fields]));
+  }
+
+  delete (cloned as any).outputs;
+  delete (cloned as any).inputs;
+  delete (cloned as any).connector;
+
+  return cloned;
+};
+
+const extractOutputMetadataSummary = (value: unknown): NodeMetadataSummary | undefined => {
+  if (!isPlainObject(value)) {
+    return undefined;
+  }
+
+  const searchTargets: Record<string, any>[] = [];
+  const candidate = value as Record<string, any>;
+
+  if (isPlainObject(candidate.outputs)) {
+    searchTargets.push(candidate.outputs as Record<string, any>);
+  }
+
+  if (isPlainObject(candidate.connector?.outputs)) {
+    searchTargets.push(candidate.connector.outputs as Record<string, any>);
+  }
+
+  if (isPlainObject(candidate.metadata?.outputs)) {
+    searchTargets.push(candidate.metadata.outputs as Record<string, any>);
+  }
+
+  if (isPlainObject(candidate.data?.outputs)) {
+    searchTargets.push(candidate.data.outputs as Record<string, any>);
+  }
+
+  if (searchTargets.length === 0) {
+    const values = Object.values(candidate);
+    const looksLikeOutputs = values.some((entry) => isPlainObject(entry) && cloneMetadataSummary(entry));
+    if (looksLikeOutputs) {
+      searchTargets.push(candidate);
+    }
+  }
+
+  for (const target of searchTargets) {
+    for (const key of DEFAULT_OUTPUT_CHANNEL_KEYS) {
+      const summary = cloneMetadataSummary(target[key]);
+      if (summary) {
+        return summary;
+      }
+    }
+    for (const entry of Object.values(target)) {
+      const summary = cloneMetadataSummary(entry);
+      if (summary) {
+        return summary;
+      }
+    }
+  }
+
+  return undefined;
+};
+
 type LLMEvaluatedValue = Extract<EvaluatedValue, { mode: "llm" }>;
 
 const describeUpstreamForPrompt = (
@@ -224,9 +331,20 @@ export const mergeLLMValueWithDefaults = (
 };
 
 const gatherMetadata = (node: UpstreamNodeSummary): NodeMetadataSummary => {
-  const dataMeta = node.data?.metadata || {};
-  const outputMeta = node.data?.outputMetadata || {};
-  return { ...outputMeta, ...dataMeta };
+  const data = node.data ?? {};
+  const ioMetadata =
+    extractOutputMetadataSummary(data.connectorMetadata) ??
+    extractOutputMetadataSummary(data.metadata) ??
+    extractOutputMetadataSummary(data.outputMetadata) ??
+    extractOutputMetadataSummary((data as any).ioMetadata);
+  const directMeta = cloneMetadataSummary(data.metadata);
+  const outputMeta = cloneMetadataSummary(data.outputMetadata);
+
+  return {
+    ...(ioMetadata ?? {}),
+    ...(outputMeta ?? {}),
+    ...(directMeta ?? {}),
+  };
 };
 
 export const computeMetadataSuggestions = (
@@ -655,14 +773,22 @@ export function SmartParametersPanel({
       return JSON.stringify(
         (upstreamNodes as UpstreamNodeSummary[]).map((upNode) => ({
           id: upNode?.id,
-          metadata: upNode?.data?.metadata ?? null,
-          outputMetadata: upNode?.data?.outputMetadata ?? null,
+          metadata: gatherMetadata(upNode),
         })),
       );
     } catch {
       return "";
     }
   }, [upstreamNodes]);
+
+  const upstreamMetadataMap = useMemo(() => {
+    const map = new Map<string, NodeMetadataSummary>();
+    (upstreamNodes as UpstreamNodeSummary[]).forEach((upNode) => {
+      if (!upNode?.id) return;
+      map.set(upNode.id, gatherMetadata(upNode));
+    });
+    return map;
+  }, [upstreamMetadataFingerprint, upstreamNodes]);
 
   const metadataSuggestions = useMemo(
     () => computeMetadataSuggestions(upstreamNodes as UpstreamNodeSummary[]),
@@ -1714,6 +1840,16 @@ export function SmartParametersPanel({
       refNodeId || (upstreamNodes[0]?.id ?? ""),
     );
     const [localRefPath, setLocalRefPath] = useState<string>(refPath || "");
+    const [showMetadataPreview, setShowMetadataPreview] = useState(false);
+
+    const metadataForSelected = useMemo(
+      () => upstreamMetadataMap.get(localRefNode),
+      [localRefNode, upstreamMetadataMap],
+    );
+
+    useEffect(() => {
+      setShowMetadataPreview(false);
+    }, [localRefNode, upstreamMetadataFingerprint]);
 
     useEffect(() => {
       if (mode === "llm") {
@@ -1793,6 +1929,38 @@ export function SmartParametersPanel({
       };
 
       const suggestions = metadataSuggestions;
+      const selectedMetadataNode = upstreamNodes.find((n) => n.id === localRefNode);
+      const selectedSourceLabel = selectedMetadataNode?.data?.label || selectedMetadataNode?.id || localRefNode;
+
+      const metadataSample = (() => {
+        if (!metadataForSelected) return undefined;
+        const { sample, sampleRow, outputSample } = metadataForSelected;
+        return (
+          toPreviewableValue(sample) ??
+          toPreviewableValue(sampleRow) ??
+          toPreviewableValue(outputSample)
+        );
+      })();
+
+      const metadataSchema = metadataForSelected?.schema ?? metadataForSelected?.outputSchema;
+      const schemaPreview = metadataSchema && Object.keys(metadataSchema).length > 0
+        ? Object.fromEntries(
+            Object.entries(metadataSchema).map(([key, schema]) => [
+              key,
+              (schema as any)?.example ?? (schema as any)?.type ?? null,
+            ]),
+          )
+        : undefined;
+      const columnPreview = Array.isArray(metadataForSelected?.columns) && metadataForSelected.columns.length > 0
+        ? Object.fromEntries(metadataForSelected.columns.map((column) => [column, null]))
+        : undefined;
+
+      const previewPayload = metadataSample ?? schemaPreview ?? columnPreview;
+      const hasPreviewData = Boolean(previewPayload);
+      const hasMetadataSignals =
+        hasPreviewData ||
+        (Array.isArray(metadataForSelected?.columns) && metadataForSelected.columns.length > 0) ||
+        (metadataSchema && Object.keys(metadataSchema).length > 0);
 
       const expressionPreview = `{{${localRefNode}${localRefPath ? `.${localRefPath}` : ""}}}`;
 
@@ -1854,6 +2022,32 @@ export function SmartParametersPanel({
                   )}
                 </button>
               ))}
+            </div>
+          )}
+
+          {!hasMetadataSignals && (
+            <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+              Runtime metadata for {selectedSourceLabel} is unavailable. Field suggestions may be limited.
+            </div>
+          )}
+
+          {hasPreviewData && (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={() => setShowMetadataPreview((prev) => !prev)}
+                data-testid="metadata-preview-toggle"
+              >
+                {showMetadataPreview ? "Hide preview" : "Preview payload"}
+              </Button>
+              {showMetadataPreview && (
+                <pre className="bg-slate-900 text-slate-100 text-xs rounded p-3 overflow-x-auto max-h-48">
+                  {JSON.stringify(previewPayload, null, 2)}
+                </pre>
+              )}
             </div>
           )}
 
