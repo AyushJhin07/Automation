@@ -28,12 +28,14 @@ export interface EditorTopBarProps {
   statusHelperText?: string | null;
   statusPulse?: boolean;
   onRun: () => void;
+  canRun?: boolean;
   runDisabled?: boolean;
   runTooltip?: string;
   isRunLoading?: boolean;
   runIdleText?: string;
   runLoadingText?: string;
   onValidate: () => void;
+  canValidate?: boolean;
   validateDisabled?: boolean;
   validateTooltip?: string;
   isValidateLoading?: boolean;
@@ -62,6 +64,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   runIdleText = "Run workflow",
   runLoadingText = "Enqueuing…",
   onValidate,
+  canValidate,
   validateDisabled,
   validateTooltip,
   isValidateLoading,
@@ -74,11 +77,15 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   const showValidateTooltip = Boolean(validateTooltip);
   const hasOverflow = Boolean(overflowActions && overflowActions.length > 0);
 
+  const runButtonDisabled = Boolean(runDisabled ?? false) || (typeof canRun === "boolean" ? !canRun : false);
+  const validateButtonDisabled =
+    Boolean(validateDisabled ?? false) || (typeof canValidate === "boolean" ? !canValidate : false);
+
   const runButton = (
     <Button
       type="button"
       onClick={onRun}
-      disabled={runDisabled}
+      disabled={runButtonDisabled}
       className="editor-topbar__action editor-topbar__action--primary"
     >
       {isRunLoading ? (
@@ -95,7 +102,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
       type="button"
       variant="outline"
       onClick={onValidate}
-      disabled={validateDisabled}
+      disabled={validateButtonDisabled}
       className="editor-topbar__action editor-topbar__action--secondary"
     >
       {isValidateLoading ? (

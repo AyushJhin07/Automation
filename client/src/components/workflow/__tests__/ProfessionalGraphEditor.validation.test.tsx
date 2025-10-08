@@ -58,6 +58,14 @@ vi.mock('@/hooks/useWorkerHeartbeat', () => ({
   WORKER_FLEET_GUIDANCE: 'Start the execution worker and scheduler processes to run workflows.',
 }));
 
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
+
 const loadEditor = () => import("../ProfessionalGraphEditor");
 const VALIDATION_DEBOUNCE_MS = 600;
 
@@ -132,6 +140,10 @@ const clickRunWorkflow = async () => {
   fireEvent.click(runButton);
   return runButton;
 };
+
+const findRunButton = async () => (await screen.findAllByRole("button", { name: /run workflow/i }))[0];
+const findValidateButton = async () =>
+  (await screen.findAllByRole("button", { name: /validate \/ dry run/i }))[0];
 
 beforeEach(() => {
   fetchMock = vi.fn();
@@ -471,9 +483,65 @@ describe("ProfessionalGraphEditor validation gating", () => {
       expect(authCallsForPath('/api/workflows/validate').length).toBeGreaterThan(0);
     });
 
-    const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
+    const runButton = await findRunButton();
+    const validateButton = await findValidateButton();
     await waitFor(() => {
       expect(runButton).toBeDisabled();
+      expect(validateButton).toBeDisabled();
+    });
+  });
+
+  it('disables the run button while enqueuing and re-enables when the request finishes', async () => {
+    let resolveExecution: ((value: Response) => void) | undefined;
+    const executionResponse = new Promise<Response>((resolve) => {
+      resolveExecution = resolve;
+    });
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      if (url.includes('/api/workflows/validate')) {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            validation: { valid: true, errors: [], warnings: [] },
+          })
+        );
+      }
+      if (url.includes('/api/flows/save')) {
+        return Promise.resolve(jsonResponse({ success: true, workflowId: 'wf-123' }));
+      }
+      if (url.includes('/api/executions')) {
+        return executionResponse;
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    await waitFor(() => {
+      expect(authCallsForPath('/api/workflows/validate').length).toBeGreaterThan(0);
+    });
+
+    const runButton = await findRunButton();
+
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+
+    fireEvent.click(runButton);
+
+    await waitFor(() => {
+      expect(runButton).toBeDisabled();
+    });
+
+    resolveExecution?.(jsonResponse({ success: true, executionId: 'exec-123' }));
+
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
     });
   });
 
@@ -777,9 +845,11 @@ describe("ProfessionalGraphEditor validation gating", () => {
     const { default: ProfessionalGraphEditor } = await loadEditor();
     render(<ProfessionalGraphEditor />);
 
-    const [runButton] = await screen.findAllByRole('button', { name: /run workflow/i });
+    const runButton = await findRunButton();
+    const validateButton = await findValidateButton();
     await waitFor(() => {
       expect(runButton).toBeDisabled();
+      expect(validateButton).toBeDisabled();
     });
 
     await waitFor(() => {

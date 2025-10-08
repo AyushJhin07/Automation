@@ -1473,7 +1473,7 @@ const GraphEditorContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [isDryRunInProgress, setIsDryRunInProgress] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const {
     health: queueHealth,
     status: queueStatus,
@@ -1486,10 +1486,10 @@ const GraphEditorContent = () => {
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
   const queueReady = queueStatus === 'pass';
-  const workerFleetReady =
+  const workersOnline =
     workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
   const workerIssues = useMemo(() => {
-    if (workerFleetReady) {
+    if (workersOnline) {
       return [] as string[];
     }
     if (workerEnvironmentWarnings.length > 0) {
@@ -1499,7 +1499,7 @@ const GraphEditorContent = () => {
       return ['Checking worker and scheduler status…'];
     }
     return [WORKER_FLEET_GUIDANCE];
-  }, [workerFleetReady, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  }, [workersOnline, workerEnvironmentWarnings, isWorkerStatusLoading]);
   const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1544,7 +1544,7 @@ const GraphEditorContent = () => {
     return parts.join(' ').trim();
   }, [workerStatusMessage, queueStatusMessage]);
   const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
-  const runReady = queueReady && workerFleetReady;
+  const runReady = queueReady && workersOnline;
   const ensureWorkflowId = useCallback(
     async (
       payload?: NodeGraph,
@@ -2359,17 +2359,41 @@ const GraphEditorContent = () => {
     return blocking;
   }, [nodeBlockingErrors, workflowValidation.blockingErrors]);
 
+  const graphHasNodes = nodes.length > 0;
+  const hasBlockingErrors = combinedBlockingErrors.length > 0;
+  const validationComplete = workflowValidation.status === 'valid';
+
+  const canRun = useMemo(() => {
+    if (!queueReady || !workersOnline) {
+      return false;
+    }
+    if (!graphHasNodes || hasBlockingErrors) {
+      return false;
+    }
+    return validationComplete;
+  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors, validationComplete]);
+
+  const canValidate = useMemo(() => {
+    if (!queueReady || !workersOnline) {
+      return false;
+    }
+    if (!graphHasNodes || hasBlockingErrors) {
+      return false;
+    }
+    return true;
+  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors]);
+
   const runDisableReason = useMemo(() => {
-    if (!workerFleetReady) {
+    if (!workersOnline) {
       return workerStatusMessage || WORKER_FLEET_GUIDANCE;
     }
     if (!queueReady) {
       return queueStatusMessage;
     }
-    if (nodes.length === 0) {
+    if (!graphHasNodes) {
       return 'Add at least one node before running.';
     }
-    if (combinedBlockingErrors.length > 0) {
+    if (hasBlockingErrors) {
       return combinedBlockingErrors[0]?.message;
     }
     if (workflowValidation.status === 'validating' || workflowValidation.status === 'idle') {
@@ -2384,31 +2408,26 @@ const GraphEditorContent = () => {
     }
     return undefined;
   }, [
-    workerFleetReady,
+    workersOnline,
     workerStatusMessage,
     queueReady,
     queueStatusMessage,
-    nodes.length,
+    graphHasNodes,
+    hasBlockingErrors,
     combinedBlockingErrors,
     workflowValidation.status,
     workflowValidation.message,
     workflowValidation.error,
   ]);
 
-  const runDisabled =
-    isRunning ||
-    isDryRunInProgress ||
-    nodes.length === 0 ||
-    !queueReady ||
-    !workerFleetReady ||
-    combinedBlockingErrors.length > 0 ||
-    workflowValidation.status !== 'valid';
+  const runDisabled = !canRun || isRunning || isValidating;
+  const validateDisabled = !canValidate || isValidating || isRunning;
 
   const queueBadgeLabel = runReady
     ? 'Run ready'
     : isRunHealthLoading
       ? 'Checking status…'
-      : !workerFleetReady
+      : !workersOnline
         ? 'Workers offline'
         : 'Queue offline';
   const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
@@ -2416,7 +2435,7 @@ const GraphEditorContent = () => {
     nodes.length === 0 ? '' : nodes.length === 1 ? '1 node' : `${nodes.length} nodes`;
   const statusLabel = nodeCountLabel ? `${queueBadgeLabel} • ${nodeCountLabel}` : queueBadgeLabel;
   const statusHelperText =
-    workerStatusMessage || (workerFleetReady ? 'Worker fleet ready' : 'Investigate worker health');
+    workerStatusMessage || (workersOnline ? 'Worker fleet ready' : 'Investigate worker health');
   const queueStatusTone: 'ready' | 'warning' | 'error' = runReady
     ? 'ready'
     : isRunHealthLoading
@@ -2988,24 +3007,25 @@ const GraphEditorContent = () => {
       toast.error(message);
       return;
     }
-    const prepared = await prepareWorkflowForExecution();
-    if (!prepared) {
-      return;
-    }
-
-    const savedWorkflowId = await onSaveWorkflow();
-    const workflowIdentifier = savedWorkflowId ?? prepared.workflowId;
-
-    if (!workflowIdentifier) {
-      const message = 'Save the workflow before running.';
-      setRunBanner({ type: 'error', message });
-      toast.error(message);
-      return;
-    }
 
     setIsRunning(true);
 
     try {
+      const prepared = await prepareWorkflowForExecution();
+      if (!prepared) {
+        return;
+      }
+
+      const savedWorkflowId = await onSaveWorkflow();
+      const workflowIdentifier = savedWorkflowId ?? prepared.workflowId;
+
+      if (!workflowIdentifier) {
+        const message = 'Save the workflow before running.';
+        setRunBanner({ type: 'error', message });
+        toast.error(message);
+        return;
+      }
+
       const initialData = computeInitialRunData();
       const response = await authFetch('/api/executions', {
         method: 'POST',
@@ -3090,16 +3110,17 @@ const GraphEditorContent = () => {
       await validationDebounceRef.current.flush();
     }
 
-    const prepared = await prepareWorkflowForExecution();
-    if (!prepared) {
-      return;
-    }
+    setIsValidating(true);
 
-    const { workflowId: workflowIdentifier, payload } = prepared;
+    try {
+      const prepared = await prepareWorkflowForExecution();
+      if (!prepared) {
+        return;
+      }
 
-    setIsDryRunInProgress(true);
+      const { workflowId: workflowIdentifier, payload } = prepared;
 
-    setNodes((nds) =>
+      setNodes((nds) =>
       nds.map((node) => {
         const baseData = applyExecutionStateDefaults(node.data);
         return {
@@ -3115,10 +3136,9 @@ const GraphEditorContent = () => {
       })
     );
 
-    let summaryEvent: any = null;
-    let encounteredError = false;
+      let summaryEvent: any = null;
+      let encounteredError = false;
 
-    try {
       const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
         method: 'POST',
         body: JSON.stringify({ graph: payload }),
@@ -3250,9 +3270,8 @@ const GraphEditorContent = () => {
       const message = error?.message || 'Failed to execute workflow';
       setRunBanner({ type: 'error', message });
       toast.error(message);
-      encounteredError = true;
     } finally {
-      setIsDryRunInProgress(false);
+      setIsValidating(false);
       setTimeout(() => {
         resetExecutionHighlights();
       }, 1200);
@@ -3420,15 +3439,17 @@ const GraphEditorContent = () => {
           statusHelperText={statusHelperText}
           statusPulse={queueStatusPulse}
           onRun={onRunWorkflow}
+          canRun={canRun}
           runDisabled={runDisabled}
           runTooltip={runDisableReason}
           isRunLoading={isRunning}
           runIdleText="Run workflow"
           runLoadingText="Enqueuing…"
           onValidate={onDryRunWorkflow}
-          validateDisabled={isDryRunInProgress || isRunning || nodes.length === 0}
+          canValidate={canValidate}
+          validateDisabled={validateDisabled}
           validateTooltip={dryRunTooltip}
-          isValidateLoading={isDryRunInProgress}
+          isValidateLoading={isValidating}
           validateIdleText="Validate / Dry run"
           validateLoadingText="Validating…"
           banner={
