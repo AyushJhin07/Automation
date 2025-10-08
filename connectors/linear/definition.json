@@ -680,7 +680,8 @@
           "updatedAt": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -720,7 +721,8 @@
           "changedValues": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -763,7 +765,8 @@
           "team": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

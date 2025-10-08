@@ -766,7 +766,8 @@
           "projectKey": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -813,7 +814,8 @@
           "user": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -864,7 +866,8 @@
           "user": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -911,7 +914,8 @@
           "created": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

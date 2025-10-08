@@ -1131,7 +1131,8 @@
           "SmsSid": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1226,7 +1227,8 @@
           "Confidence": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1326,7 +1328,8 @@
           "SequenceNumber": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1428,7 +1431,8 @@
           "ErrorMessage": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

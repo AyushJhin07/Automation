@@ -757,7 +757,8 @@
           "seriesId": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -800,7 +801,8 @@
           "registeredAt": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -840,7 +842,8 @@
           "cancelledAt": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -877,7 +880,8 @@
           "registrationCount": {
             "type": "number"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

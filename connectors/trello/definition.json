@@ -1608,7 +1608,8 @@
           "cover": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1673,7 +1674,8 @@
           "dateLastActivity": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1718,7 +1720,8 @@
           "board": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1761,7 +1764,8 @@
           "subscribed": {
             "type": "boolean"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

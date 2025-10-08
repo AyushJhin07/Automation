@@ -819,7 +819,8 @@
           "phone_numbers": {
             "type": "array"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -853,7 +854,8 @@
           "current_stage": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -882,7 +884,8 @@
           "job": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

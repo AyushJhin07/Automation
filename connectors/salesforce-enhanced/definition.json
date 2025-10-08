@@ -384,7 +384,8 @@
           "fields": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -418,7 +419,8 @@
           "fields": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

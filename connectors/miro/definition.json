@@ -1112,7 +1112,8 @@
           "createdBy": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1152,7 +1153,8 @@
           "modifiedBy": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1205,7 +1207,8 @@
           "createdBy": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1258,7 +1261,8 @@
           "modifiedBy": {
             "type": "object"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
