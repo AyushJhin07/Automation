@@ -1726,6 +1726,10 @@
             "emailAddress": "alex.rivera@example.com"
           }
         ]
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -1800,6 +1804,10 @@
           "displayName": "Taylor Morgan",
           "emailAddress": "taylor.morgan@example.com"
         }
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -1879,6 +1887,10 @@
           }
         ],
         "sharedTime": "2024-12-09T12:30:00Z"
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     }
   ],

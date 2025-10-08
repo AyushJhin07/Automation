@@ -754,6 +754,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "sg_event_id"
       }
     },
     {
@@ -804,6 +808,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "sg_event_id"
       }
     },
     {
@@ -857,6 +865,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "sg_event_id"
       }
     }
   ],

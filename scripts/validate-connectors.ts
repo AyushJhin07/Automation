@@ -20,6 +20,7 @@ type ConnectorOperation = {
     [key: string]: unknown;
   } | null;
   sample?: unknown;
+  dedupe?: unknown;
   [key: string]: unknown;
 };
 
@@ -70,6 +71,13 @@ function checkOperation(
 
   if (operation.sample === undefined) {
     errors.push(`${identifier} is missing a sample`);
+  }
+
+  if (
+    type === 'trigger' &&
+    (!operation.dedupe || typeof operation.dedupe !== 'object')
+  ) {
+    errors.push(`${identifier} is missing a dedupe configuration`);
   }
 }
 

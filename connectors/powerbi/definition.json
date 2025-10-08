@@ -503,6 +503,11 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "primaryKey",
+        "primaryKey": "refreshId",
+        "cursor": "endTime"
       }
     }
   ],

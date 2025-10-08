@@ -953,6 +953,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -980,6 +984,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     },
     {
@@ -1007,6 +1015,10 @@
       },
       "sample": {
         "success": true
+      },
+      "dedupe": {
+        "strategy": "id",
+        "path": "id"
       }
     }
   ],
