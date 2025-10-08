@@ -820,7 +820,8 @@
           "file_name": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -967,7 +968,8 @@
           "query_acceleration_upper_limit_scale_factor": {
             "type": "number"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

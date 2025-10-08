@@ -942,7 +942,8 @@
           "mp_lib": {
             "type": "string"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -979,7 +980,8 @@
           "time": {
             "type": "number"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1019,7 +1021,8 @@
           "time_to_complete": {
             "type": "number"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true
@@ -1056,7 +1059,8 @@
           "entered_at": {
             "type": "number"
           }
-        }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "sample": {
         "success": true

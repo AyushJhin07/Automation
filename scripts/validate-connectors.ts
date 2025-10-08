@@ -18,10 +18,19 @@ type ConnectorOperation = {
   outputSchema?: {
     $schema?: string;
     [key: string]: unknown;
-  };
+  } | null;
   sample?: unknown;
   [key: string]: unknown;
 };
+
+function hasSchemaField(outputSchema: ConnectorOperation['outputSchema']): boolean {
+  if (!outputSchema || typeof outputSchema !== 'object') {
+    return false;
+  }
+
+  const schema = (outputSchema as { $schema?: unknown }).$schema;
+  return typeof schema === 'string' && schema.trim().length > 0;
+}
 
 async function findDefinitionFiles(dir: string): Promise<string[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -55,7 +64,7 @@ function checkOperation(
 
   if (!operation.outputSchema || typeof operation.outputSchema !== 'object') {
     errors.push(`${identifier} is missing an outputSchema object`);
-  } else if (!operation.outputSchema.$schema || typeof operation.outputSchema.$schema !== 'string' || operation.outputSchema.$schema.trim() === '') {
+  } else if (!hasSchemaField(operation.outputSchema)) {
     errors.push(`${identifier} is missing outputSchema.$schema`);
   }
 
