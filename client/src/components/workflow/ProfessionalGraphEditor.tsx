@@ -3205,6 +3205,8 @@ const GraphEditorContent = () => {
 
   const onDryRunWorkflow = useCallback(async () => {
     setIsValidating(true);
+    let summaryEvent: any = null;
+    let encounteredError = false;
     try {
       if (!queueReady) {
         const message = queueStatusMessage;
@@ -3242,9 +3244,6 @@ const GraphEditorContent = () => {
           };
         })
       );
-
-      let summaryEvent: any = null;
-      let encounteredError = false;
 
       const response = await authFetch(`/api/workflows/${workflowIdentifier}/execute`, {
         method: 'POST',
