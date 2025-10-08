@@ -1,0 +1,37 @@
+name: Connector Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'connectors/**'
+      - 'scripts/validate-connectors.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/connector-validation.yml'
+      - 'docs/connectors/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'connectors/**'
+      - 'scripts/validate-connectors.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/connector-validation.yml'
+      - 'docs/connectors/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm install
+
+      - name: Validate connector schemas
+        run: npm run check:connectors
