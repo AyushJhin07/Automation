@@ -35,7 +35,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { syncNodeParameters } from './SmartParametersPanel';
-import RightInspectorPanel from './RightInspectorPanel';
+import RightInspectorPanel, { type SelectedNodeRuntimeSupport } from './RightInspectorPanel';
 import EditorTopBar, { type EditorTopBarAction } from './EditorTopBar';
 import { buildMetadataFromNode } from './metadata';
 import { normalizeWorkflowNode } from './graphSync';
@@ -97,6 +97,13 @@ import { useAuthStore } from '@/store/authStore';
 import { useConnectorDefinitions } from '@/hooks/useConnectorDefinitions';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
+import {
+  checkRuntimeCapability,
+  createFallbackRuntimeCapabilities,
+  getRuntimeCapabilities,
+  mergeWithFallbackCapabilities,
+  type RuntimeCapabilityMap,
+} from '@/services/runtimeCapabilitiesService';
 import { enqueueExecution, ExecutionEnqueueError } from '@/services/executions';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
@@ -1126,9 +1133,18 @@ interface NodeSidebarProps {
   catalog: any | null;
   loading?: boolean;
   connectorDefinitions?: ConnectorDefinitionMap | null;
+  runtimeCapabilities: RuntimeCapabilityMap;
+  runtimeCapabilitiesLoading?: boolean;
 }
 
-export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, connectorDefinitions }: NodeSidebarProps) => {
+export const NodeSidebar: React.FC<NodeSidebarProps> = ({
+  onAddNode,
+  catalog,
+  loading: catalogLoading,
+  connectorDefinitions,
+  runtimeCapabilities,
+  runtimeCapabilitiesLoading,
+}) => {
   // Search & filters
   const [searchTerm, setSearchTerm] = useState(() => {
     return localStorage.getItem('sidebar_search') || "";
@@ -1143,6 +1159,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
     description?: string;
     nodeType: string;                      // "action.gmail.sendEmail"
     params?: any;
+    runtimeId?: string | null;
   };
 
   type AppGroup = {
@@ -1204,6 +1221,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: 'Call external API',
           nodeType: 'action.http.request',
           params: { method: 'GET', url: '', headers: {} },
+          runtimeId: null,
         },
         {
           id: 'transform-format-text',
@@ -1211,6 +1229,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           name: 'Format Text',
           description: 'Template interpolation',
           nodeType: 'transform.format.text',
+          runtimeId: null,
         },
         {
           id: 'transform-filter-data',
@@ -1218,6 +1237,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           name: 'Filter Data',
           description: 'Filter items by condition',
           nodeType: 'transform.filter.data',
+          runtimeId: null,
         },
       ],
       triggers: [
@@ -1228,6 +1248,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: 'Run every 15 minutes',
           nodeType: 'trigger.time.every15',
           params: { everyMinutes: 15 },
+          runtimeId: null,
         },
         {
           id: 'trigger-every-hour',
@@ -1236,6 +1257,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: 'Run every hour',
           nodeType: 'trigger.time.hourly',
           params: { everyMinutes: 60 },
+          runtimeId: null,
         },
         {
           id: 'trigger-daily-9am',
@@ -1244,6 +1266,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: 'Run daily at 9 AM',
           nodeType: 'trigger.time.daily9',
           params: { atHour: 9 },
+          runtimeId: null,
         },
       ],
     };
@@ -1279,6 +1302,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: a.description || '',
           nodeType: `action.${appId}.${a.id}`,
           params: a.parameters || {},
+          runtimeId: a.id,
         }));
 
         const triggers: NodeTpl[] = (def.triggers || []).map((t: any) => ({
@@ -1288,6 +1312,7 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           description: t.description || '',
           nodeType: `trigger.${appId}.${t.id}`,
           params: t.parameters || {},
+          runtimeId: t.id,
         }));
 
         nextApps[appId] = {
@@ -1426,13 +1451,17 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
           </div>
         ) : (
           <Accordion type="single" collapsible className="space-y-2">
-            {filteredAppList.map((app) => (
-              <AccordionItem
-                key={app.appId}
-                value={app.appId}
-                className="border border-gray-200 rounded-xl bg-white shadow-sm"
-                data-testid={`app-card-${app.appId}`}
-              >
+            {filteredAppList.map((app) => {
+              const capabilityAppId = normalizeConnectorId(app.appId) || app.appId;
+              const appDisplayName = app.appName || app.appId;
+
+              return (
+                <AccordionItem
+                  key={app.appId}
+                  value={app.appId}
+                  className="border border-gray-200 rounded-xl bg-white shadow-sm"
+                  data-testid={`app-card-${app.appId}`}
+                >
                 <AccordionTrigger className="px-3 py-2 hover:no-underline">
                   <div className="flex items-center gap-3">
                     <BrandIcon appId={app.appId} appName={app.appName} iconName={app.iconName} />
@@ -1590,80 +1619,168 @@ export const NodeSidebar = ({ onAddNode, catalog, loading: catalogLoading, conne
                   {/* Nodes grid */}
                   <div className="grid grid-cols-1 gap-2">
                     {/* Triggers */}
-                    {app.triggers.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => {
-                          const initialParams = t.params || {};
-                          onAddNode("trigger", {
-                            label: t.name,
-                            description: t.description,
-                            kind: 'trigger',
-                            app: app.appId,            // use canonical id (e.g., google-drive)
-                            triggerId: t.id,           // expose op id explicitly
-                            nodeType: t.nodeType,
-                            parameters: initialParams,
-                            params: initialParams,
-                          });
-                        }}
-                        className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-gray-900 text-sm font-medium truncate">{t.name}</div>
-                            {t.description && <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{t.description}</div>}
+                    {app.triggers.map((t) => {
+                      const runtimeId = t.runtimeId ?? t.id;
+                      const capability = runtimeCapabilitiesLoading
+                        ? { supported: true }
+                        : checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
+                      const previewOnly = !capability.supported;
+                      const tooltipText = capability.issue === 'missing-app'
+                        ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
+                        : `${appDisplayName} trigger "${t.name}" isn't enabled in the current runtime environment yet.`;
+
+                      const button = (
+                        <button
+                          onClick={() => {
+                            if (previewOnly) return;
+                            const initialParams = t.params || {};
+                            onAddNode('trigger', {
+                              label: t.name,
+                              description: t.description,
+                              kind: 'trigger',
+                              app: app.appId,
+                              triggerId: t.id,
+                              nodeType: t.nodeType,
+                              parameters: initialParams,
+                              params: initialParams,
+                            });
+                          }}
+                          className={clsx(
+                            'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300',
+                            previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-emerald-200',
+                          )}
+                          disabled={previewOnly}
+                          data-runtime-preview={previewOnly ? 'true' : undefined}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-gray-900 text-sm font-medium truncate">{t.name}</div>
+                              {t.description && (
+                                <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{t.description}</div>
+                              )}
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                              {previewOnly && (
+                                <Badge className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 border-amber-200">
+                                  Preview only
+                                </Badge>
+                              )}
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+                                trigger
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">trigger</span>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+
+                      if (!previewOnly) {
+                        return React.cloneElement(button, { key: t.id });
+                      }
+
+                      return (
+                        <Tooltip key={t.id}>
+                          <TooltipTrigger asChild>
+                            <span className="block">{button}</span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[240px] text-xs leading-relaxed">
+                            {tooltipText}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
 
                     {/* Actions / Transforms */}
-                    {app.actions.map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => {
-                          const initialParams = a.params || {};
-                          onAddNode(a.kind === "transform" ? "transform" : "action", {
-                            label: a.name,
-                            description: a.description,
-                            kind: a.kind === 'transform' ? 'transform' : 'action',
-                            app: app.appId,
-                            actionId: a.id,
-                            nodeType: a.nodeType,
-                            parameters: initialParams,
-                            params: initialParams,
-                          });
-                        }}
-                        className="group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={clsx(
-                            "w-2 h-2 rounded-full",
-                            a.kind === "transform" 
-                              ? "bg-violet-400 shadow-[0_0_10px_rgba(139,92,246,0.7)]" 
-                              : "bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.7)]"
-                          )} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-gray-900 text-sm font-medium truncate">{a.name}</div>
-                            {a.description && <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{a.description}</div>}
+                    {app.actions.map((a) => {
+                      const runtimeId = a.runtimeId ?? a.id;
+                      const capabilityKind = a.kind === 'trigger' ? 'trigger' : 'action';
+                      const capability = runtimeCapabilitiesLoading
+                        ? { supported: true }
+                        : checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
+                      const previewOnly = !capability.supported;
+                      const tooltipText = capability.issue === 'missing-app'
+                        ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
+                        : `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" isn't enabled in the current runtime environment yet.`;
+
+                      const button = (
+                        <button
+                          onClick={() => {
+                            if (previewOnly) return;
+                            const initialParams = a.params || {};
+                            onAddNode(a.kind === 'transform' ? 'transform' : 'action', {
+                              label: a.name,
+                              description: a.description,
+                              kind: a.kind === 'transform' ? 'transform' : 'action',
+                              app: app.appId,
+                              actionId: a.id,
+                              nodeType: a.nodeType,
+                              parameters: initialParams,
+                              params: initialParams,
+                            });
+                          }}
+                          className={clsx(
+                            'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300',
+                            previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-blue-200',
+                          )}
+                          disabled={previewOnly}
+                          data-runtime-preview={previewOnly ? 'true' : undefined}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={clsx(
+                                'w-2 h-2 rounded-full',
+                                a.kind === 'transform'
+                                  ? 'bg-violet-400 shadow-[0_0_10px_rgba(139,92,246,0.7)]'
+                                  : 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.7)]',
+                              )}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-gray-900 text-sm font-medium truncate">{a.name}</div>
+                              {a.description && (
+                                <div className="text-xs text-gray-600 mt-0.5 line-clamp-2 overflow-hidden">{a.description}</div>
+                              )}
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                              {previewOnly && (
+                                <Badge className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 border-amber-200">
+                                  Preview only
+                                </Badge>
+                              )}
+                              <span
+                                className={clsx(
+                                  'text-[10px] px-2 py-0.5 rounded border shrink-0',
+                                  a.kind === 'transform'
+                                    ? 'bg-violet-100 text-violet-700 border-violet-200'
+                                    : 'bg-blue-100 text-blue-700 border-blue-200',
+                                )}
+                              >
+                                {a.kind}
+                              </span>
+                            </div>
                           </div>
-                          <span className={clsx(
-                            "text-[10px] px-2 py-0.5 rounded border shrink-0",
-                            a.kind === "transform"
-                              ? "bg-violet-100 text-violet-700 border-violet-200"
-                              : "bg-blue-100 text-blue-700 border-blue-200"
-                          )}>
-                            {a.kind}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+
+                      if (!previewOnly) {
+                        return React.cloneElement(button, { key: a.id });
+                      }
+
+                      return (
+                        <Tooltip key={a.id}>
+                          <TooltipTrigger asChild>
+                            <span className="block">{button}</span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[240px] text-xs leading-relaxed">
+                            {tooltipText}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+              );
+            })}
           </Accordion>
         )}
       </div>
@@ -1714,6 +1831,13 @@ const GraphEditorContent = () => {
   }, [nodes, selectedNodeId]);
   const showInspector = Boolean(selectedNode);
   const lastExecution = selectedNode?.data?.lastExecution;
+  const selectedNodeRuntimeStatus = useMemo<SelectedNodeRuntimeSupport | null>(() => {
+    if (!selectedNode || runtimeCapabilitiesLoading) {
+      return null;
+    }
+    const status = getNodeRuntimeSupport(selectedNode);
+    return status.supported ? null : status;
+  }, [getNodeRuntimeSupport, runtimeCapabilitiesLoading, selectedNode]);
   const [labelValue, setLabelValue] = useState<string>('');
   const [descValue, setDescValue] = useState<string>('');
   const [credentialsDraft, setCredentialsDraft] = useState<string>('');
@@ -1843,7 +1967,11 @@ const GraphEditorContent = () => {
     loading: connectorDefinitionsLoading,
     error: connectorDefinitionsError,
   } = useConnectorDefinitions(refreshConnectorsFlag);
-  const [supportedApps, setSupportedApps] = useState<Set<string>>(new Set(['core', 'built_in', 'time']));
+  const [runtimeCapabilities, setRuntimeCapabilities] = useState<RuntimeCapabilityMap>(() =>
+    createFallbackRuntimeCapabilities(),
+  );
+  const [runtimeCapabilitiesLoading, setRuntimeCapabilitiesLoading] = useState(true);
+  const [, setRuntimeCapabilitiesError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle');
   const [promotionState, setPromotionState] = useState<'idle' | 'checking' | 'publishing'>('idle');
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
@@ -2014,13 +2142,6 @@ const GraphEditorContent = () => {
 
       setCatalog(json.catalog || null);
 
-      const allowed = new Set<string>(['core', 'built_in', 'time']);
-      Object.entries<any>(json.catalog?.connectors || {}).forEach(([appId, def]) => {
-        if (def?.hasImplementation) {
-          allowed.add(appId);
-        }
-      });
-      setSupportedApps(allowed);
     } catch (error) {
       console.error('Failed to load connector catalog:', error);
     } finally {
@@ -2031,6 +2152,37 @@ const GraphEditorContent = () => {
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+
+  const loadRuntimeCapabilities = useCallback(async () => {
+    try {
+      setRuntimeCapabilitiesLoading(true);
+      const capabilities = await getRuntimeCapabilities();
+      setRuntimeCapabilities(mergeWithFallbackCapabilities(capabilities));
+      setRuntimeCapabilitiesError(null);
+    } catch (error: any) {
+      console.error('Failed to load runtime capabilities:', error);
+      setRuntimeCapabilities(createFallbackRuntimeCapabilities());
+      setRuntimeCapabilitiesError(error?.message || 'Failed to load runtime capabilities');
+    } finally {
+      setRuntimeCapabilitiesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRuntimeCapabilities();
+  }, [loadRuntimeCapabilities]);
+
+  const normalizeAppName = useCallback((raw?: string): string => {
+    if (!raw) return '';
+    const value = String(raw).toLowerCase();
+    if (value.includes('gmail')) return 'gmail';
+    if (value.includes('sheet')) return 'google-sheets';
+    if (value.includes('slack')) return 'slack';
+    if (value.includes('notion')) return 'notion';
+    if (value.includes('airtable')) return 'airtable';
+    if (value.includes('shopify')) return 'shopify';
+    return normalizeConnectorId(value);
+  }, []);
 
   const nodeRequiresConnection = useCallback((node: any) => {
     if (!node) return false;
@@ -2055,16 +2207,12 @@ const GraphEditorContent = () => {
     [nodeConfigurationErrors]
   );
 
-  const allowedApps = useMemo(() => {
-    const set = new Set<string>(supportedApps);
-    set.add('core');
-    set.add('built_in');
-    set.add('time');
-    return set;
-  }, [supportedApps]);
+  const getNodeRuntimeSupport = useCallback(
+    (node: any): SelectedNodeRuntimeSupport => {
+      if (!node || runtimeCapabilitiesLoading) {
+        return { supported: true };
+      }
 
-  const findUnsupportedNode = useCallback(() => {
-    return nodes.find((node) => {
       const data: any = node.data || {};
       const candidates = [
         data.app,
@@ -2077,44 +2225,157 @@ const GraphEditorContent = () => {
 
       const candidate = candidates.find((value) => typeof value === 'string' && value.trim().length > 0);
       if (!candidate) {
-        if (typeof node.type === 'string' && node.type.startsWith('transform')) {
-          return false;
-        }
-        return false;
+        return { supported: true };
       }
 
       const normalized = normalizeAppName(candidate);
-      if (!normalized || allowedApps.has(normalized)) {
-        return false;
+      if (!normalized) {
+        return { supported: true };
       }
 
-      if (typeof node.type === 'string' && (node.type.startsWith('transform') || node.type.startsWith('condition'))) {
-        return false;
+      const determineKind = (): 'action' | 'trigger' => {
+        const role = String(data.role ?? data.kind ?? '').toLowerCase();
+        const type = String(node.type ?? '').toLowerCase();
+        if (role.includes('trigger') || type.startsWith('trigger')) {
+          return 'trigger';
+        }
+        if (role.includes('transform') || type.startsWith('transform')) {
+          return 'action';
+        }
+        if (role.includes('action') || type.startsWith('action')) {
+          return 'action';
+        }
+        if (data.triggerId) {
+          return 'trigger';
+        }
+        return 'action';
+      };
+
+      const kind = determineKind();
+
+      const parseNodeType = (value: unknown): string | undefined => {
+        if (typeof value !== 'string') {
+          return undefined;
+        }
+        const parts = value.split('.');
+        if (parts.length >= 3) {
+          return parts[2];
+        }
+        return undefined;
+      };
+
+      const params: any = data.parameters ?? data.params ?? {};
+      const operationCandidates = [
+        kind === 'trigger' ? data.triggerId : undefined,
+        kind === 'action' ? data.actionId : undefined,
+        data.operationId,
+        data.operation,
+        data.operationKey,
+        data.function,
+        params.operationId,
+        params.operation,
+        parseNodeType(data.nodeType),
+        parseNodeType(node.type),
+      ];
+
+      const operationId = operationCandidates.find(
+        (value) => typeof value === 'string' && value.trim().length > 0,
+      );
+
+      const support = checkRuntimeCapability(runtimeCapabilities, normalized, kind, operationId);
+      const appLabel =
+        typeof data.appName === 'string' && data.appName.trim().length > 0
+          ? data.appName
+          : typeof data.application === 'string' && data.application.trim().length > 0
+            ? data.application
+            : typeof data.app === 'string' && data.app.trim().length > 0
+              ? data.app
+              : candidate;
+
+      const operationLabel =
+        typeof data.label === 'string' && data.label.trim().length > 0
+          ? data.label
+          : typeof data.name === 'string' && data.name.trim().length > 0
+            ? data.name
+            : typeof data.displayName === 'string' && data.displayName.trim().length > 0
+              ? data.displayName
+              : undefined;
+
+      if (support.supported) {
+        return {
+          supported: true,
+          appId: normalized,
+          appLabel,
+          operationId: operationId ?? support.normalizedOperationId,
+          operationLabel,
+          kind,
+        };
       }
 
-      return true;
-    });
-  }, [nodes, allowedApps]);
+      return {
+        supported: false,
+        reason: support.issue,
+        appId: normalized,
+        appLabel,
+        operationId: operationId ?? support.normalizedOperationId,
+        operationLabel,
+        kind,
+      };
+    },
+    [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading],
+  );
+
+  const findUnsupportedNode = useCallback(() => {
+    if (runtimeCapabilitiesLoading) {
+      return null;
+    }
+
+    for (const node of nodes) {
+      const support = getNodeRuntimeSupport(node);
+      if (!support.supported) {
+        return { node, support } as const;
+      }
+    }
+
+    return null;
+  }, [getNodeRuntimeSupport, nodes, runtimeCapabilitiesLoading]);
 
   const ensureSupportedNodes = useCallback(() => {
-    const unsupported = findUnsupportedNode();
-    if (unsupported) {
-      const data = unsupported.data || {};
-      const appName = data.app || data.application || unsupported.type || unsupported.id;
-      const message = `${appName} is not yet supported. Remove or replace this node before continuing.`;
+    if (runtimeCapabilitiesLoading) {
+      return true;
+    }
+
+    const detection = findUnsupportedNode();
+    if (detection) {
+      const { node: unsupported, support } = detection;
+      const fallbackName =
+        support.appLabel || unsupported?.data?.app || unsupported?.data?.application || unsupported?.type || unsupported?.id;
+      const appName = typeof fallbackName === 'string' && fallbackName.trim().length > 0 ? fallbackName : 'This connector';
+      const operationName =
+        typeof support.operationLabel === 'string' && support.operationLabel.trim().length > 0
+          ? support.operationLabel
+          : typeof support.operationId === 'string' && support.operationId.trim().length > 0
+            ? support.operationId
+            : undefined;
+
+      const message = support.reason === 'missing-operation' && operationName
+        ? `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" is not available in this runtime yet. Remove or replace this node before continuing.`
+        : `${appName} is not enabled in this runtime. Remove or replace this node before continuing.`;
+
       setRunBanner({ type: 'error', message });
       toast.error(message);
       setSelectedNodeId(String(unsupported.id));
       return false;
     }
+
     return true;
-  }, [findUnsupportedNode, setRunBanner]);
+  }, [findUnsupportedNode, runtimeCapabilitiesLoading, setRunBanner]);
 
   useEffect(() => {
-    if (!catalogLoading) {
+    if (!catalogLoading && !runtimeCapabilitiesLoading) {
       ensureSupportedNodes();
     }
-  }, [catalogLoading, ensureSupportedNodes]);
+  }, [catalogLoading, ensureSupportedNodes, runtimeCapabilitiesLoading]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const { project, getViewport, setViewport } = useReactFlow();
   const spec = useSpecStore((state) => state.spec);
@@ -2138,20 +2399,6 @@ const GraphEditorContent = () => {
       })
     );
   }, [setNodes]);
-
-  // Helper to normalize app name used by APIs
-  const normalizeAppName = (raw?: string): string => {
-    if (!raw) return '';
-    const v = String(raw).toLowerCase();
-    // common aliases
-    if (v.includes('gmail')) return 'gmail';
-    if (v.includes('sheet')) return 'google-sheets';
-    if (v.includes('slack')) return 'slack';
-    if (v.includes('notion')) return 'notion';
-    if (v.includes('airtable')) return 'airtable';
-    if (v.includes('shopify')) return 'shopify';
-    return v;
-  };
 
   const openNodeConfigModal = async (node: any) => {
     // Open immediately for snappy UX; load data in background
@@ -3760,6 +4007,8 @@ const GraphEditorContent = () => {
           catalog={catalog}
           loading={catalogLoading || connectorDefinitionsLoading}
           connectorDefinitions={connectorDefinitions}
+          runtimeCapabilities={runtimeCapabilities}
+          runtimeCapabilitiesLoading={runtimeCapabilitiesLoading}
         />
       </aside>
 
@@ -3919,6 +4168,7 @@ const GraphEditorContent = () => {
             setSelectedNodeId={setSelectedNodeId}
             setNodes={setNodes}
             lastExecution={lastExecution}
+            runtimeSupportStatus={selectedNodeRuntimeStatus}
             labelValue={labelValue}
             setLabelValue={setLabelValue}
             descValue={descValue}

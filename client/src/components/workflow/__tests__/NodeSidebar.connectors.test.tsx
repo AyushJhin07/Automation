@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import React from "react";
 import { NodeSidebar } from "../ProfessionalGraphEditor";
+import { mergeWithFallbackCapabilities } from "@/services/runtimeCapabilitiesService";
 
 describe("NodeSidebar connector metadata integration", () => {
   it("surfaces new connectors discovered via metadata definitions", () => {
@@ -47,13 +48,22 @@ describe("NodeSidebar connector metadata integration", () => {
       },
     };
 
+    const runtimeCapabilities = mergeWithFallbackCapabilities({
+      "novel-ai": {
+        appId: "novel-ai",
+        actions: new Set(["analyze"]),
+        triggers: new Set<string>(),
+      },
+    } as any);
+
     render(
       <NodeSidebar
         onAddNode={vi.fn()}
         catalog={catalog}
         loading={false}
         connectorDefinitions={connectorDefinitions as any}
-        metadataError={null}
+        runtimeCapabilities={runtimeCapabilities}
+        runtimeCapabilitiesLoading={false}
       />,
     );
 
@@ -71,24 +81,44 @@ describe("NodeSidebar connector metadata integration", () => {
     ).not.toBeNull();
   });
 
-  it("invokes metadata refresh handler when clicking refresh button", () => {
-    const onRefresh = vi.fn();
+  it("disables actions when runtime capabilities are missing", () => {
+    const catalog = {
+      connectors: {
+        "alpha-app": {
+          name: "Alpha App",
+          category: "Testing",
+          hasImplementation: true,
+          actions: [
+            {
+              id: "sync",
+              name: "Sync",
+              description: "Sync records",
+              parameters: {},
+              nodeType: "action.alpha-app.sync",
+            },
+          ],
+          triggers: [],
+        },
+      },
+    };
+
+    const runtimeCapabilities = mergeWithFallbackCapabilities({} as any);
 
     render(
       <NodeSidebar
         onAddNode={vi.fn()}
-        catalog={{ connectors: {} }}
+        catalog={catalog}
         loading={false}
         connectorDefinitions={{} as any}
-        onRefreshConnectors={onRefresh}
-        metadataError={null}
+        runtimeCapabilities={runtimeCapabilities}
+        runtimeCapabilitiesLoading={false}
       />,
     );
 
-    const refreshButton = screen.getByRole("button", {
-      name: /refresh connectors/i,
-    });
-    refreshButton.click();
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    const appCard = screen.getByTestId("app-card-alpha-app");
+    const actionButton = within(appCard).getByRole("button", { name: /sync/i });
+
+    expect(actionButton).toBeDisabled();
+    expect(within(appCard).getByText(/preview only/i)).toBeInTheDocument();
   });
 });

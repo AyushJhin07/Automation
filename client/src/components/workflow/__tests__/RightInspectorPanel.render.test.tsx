@@ -24,6 +24,7 @@ describe("RightInspectorPanel", () => {
         setSelectedNodeId={vi.fn()}
         setNodes={vi.fn() as unknown as React.Dispatch<React.SetStateAction<Node<any>[]>>}
         lastExecution={null}
+        runtimeSupportStatus={null}
         labelValue="Sample Node"
         setLabelValue={vi.fn()}
         descValue="Example description"
