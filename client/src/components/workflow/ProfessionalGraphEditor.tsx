@@ -1567,10 +1567,14 @@ const GraphEditorContent = () => {
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
   const queueReady = queueStatus === 'pass';
-  const workersOnline =
-    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
+  const workersOnlineCount = workerSummary.healthyWorkers ?? 0;
+  const workersAvailable =
+    workersOnlineCount > 0 &&
+    workerSummary.hasExecutionWorker &&
+    workerSummary.schedulerHealthy &&
+    workerSummary.timerHealthy;
   const workerIssues = useMemo(() => {
-    if (workersOnline) {
+    if (workersAvailable) {
       return [] as string[];
     }
     if (workerEnvironmentWarnings.length > 0) {
@@ -1580,7 +1584,7 @@ const GraphEditorContent = () => {
       return ['Checking worker and scheduler status…'];
     }
     return [WORKER_FLEET_GUIDANCE];
-  }, [workersOnline, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  }, [workersAvailable, workerEnvironmentWarnings, isWorkerStatusLoading]);
   const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1625,7 +1629,7 @@ const GraphEditorContent = () => {
     return parts.join(' ').trim();
   }, [workerStatusMessage, queueStatusMessage]);
   const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
-  const runReady = queueReady && workersOnline;
+  const runReady = queueReady && workersAvailable;
   const ensureWorkflowId = useCallback(
     async (
       payload?: NodeGraph,
@@ -2445,86 +2449,27 @@ const GraphEditorContent = () => {
   const validationComplete = workflowValidation.status === 'valid';
 
   const canRun = useMemo(() => {
-    if (!queueReady || !workersOnline) {
+    if (!queueReady || !workersAvailable) {
       return false;
     }
     if (!graphHasNodes || hasBlockingErrors) {
       return false;
     }
     return validationComplete;
-  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors, validationComplete]);
+  }, [queueReady, workersAvailable, graphHasNodes, hasBlockingErrors, validationComplete]);
 
   const canValidate = useMemo(() => {
-    if (!queueReady || !workersOnline) {
+    if (!queueReady || !workersAvailable) {
       return false;
     }
     if (!graphHasNodes || hasBlockingErrors) {
       return false;
     }
     return true;
-  }, [queueReady, workersOnline, graphHasNodes, hasBlockingErrors]);
-
-  const runDisableReason = useMemo(() => {
-    if (!workersOnline) {
-      return workerStatusMessage || WORKER_FLEET_GUIDANCE;
-    }
-    if (!queueReady) {
-      return queueStatusMessage;
-    }
-    if (!graphHasNodes) {
-      return 'Add at least one node before running.';
-    }
-    if (hasBlockingErrors) {
-      return combinedBlockingErrors[0]?.message;
-    }
-    if (workflowValidation.status === 'validating' || workflowValidation.status === 'idle') {
-      return 'Validating workflow…';
-    }
-    if (workflowValidation.status === 'invalid') {
-      return (
-        workflowValidation.message ||
-        workflowValidation.error ||
-        'Resolve validation issues before running.'
-      );
-    }
-    return undefined;
-  }, [
-    workersOnline,
-    workerStatusMessage,
-    queueReady,
-    queueStatusMessage,
-    graphHasNodes,
-    hasBlockingErrors,
-    combinedBlockingErrors,
-    workflowValidation.status,
-    workflowValidation.message,
-    workflowValidation.error,
-  ]);
+  }, [queueReady, workersAvailable, graphHasNodes, hasBlockingErrors]);
 
   const runDisabled = !canRun || isRunning || isValidating;
   const validateDisabled = !canValidate || isValidating || isRunning;
-
-  const queueBadgeLabel = runReady
-    ? 'Run ready'
-    : isRunHealthLoading
-      ? 'Checking status…'
-      : !workersOnline
-        ? 'Workers offline'
-        : 'Queue offline';
-  const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
-  const nodeCountLabel =
-    nodes.length === 0 ? '' : nodes.length === 1 ? '1 node' : `${nodes.length} nodes`;
-  const statusLabel = nodeCountLabel ? `${queueBadgeLabel} • ${nodeCountLabel}` : queueBadgeLabel;
-  const statusHelperText =
-    workerStatusMessage || (workersOnline ? 'Worker fleet ready' : 'Investigate worker health');
-  const queueStatusTone: 'ready' | 'warning' | 'error' = runReady
-    ? 'ready'
-    : isRunHealthLoading
-      ? 'warning'
-      : 'error';
-  const queueStatusPulse = !runReady && !isRunHealthLoading;
-  const dryRunTooltip =
-    'Dry runs can validate action-only drafts, but promoting to production still requires at least one trigger node.';
 
   const computeInitialRunData = useCallback(() => {
     const metadata = (spec?.metadata && typeof spec.metadata === 'object') ? (spec.metadata as Record<string, any>) : null;
@@ -3569,6 +3514,12 @@ const GraphEditorContent = () => {
     };
   }, [graphHasNodes, handleExportWorkflow]);
 
+  const overflowActions = useMemo(() => {
+    return [saveAction, promoteAction, exportAction].filter(
+      (action): action is EditorTopBarAction => Boolean(action),
+    );
+  }, [saveAction, promoteAction, exportAction]);
+
   useEditorKeyboardShortcuts({
     onRun: onRunWorkflow,
     canRun,
@@ -3591,49 +3542,36 @@ const GraphEditorContent = () => {
       {/* Main Graph Area */}
       <div className="flex-1 flex flex-col relative min-w-0">
         <EditorTopBar
-          statusLabel={statusLabel}
-          statusTone={queueStatusTone}
-          statusTooltip={queueBadgeTooltip}
-          statusHelperText={statusHelperText}
-          statusPulse={queueStatusPulse}
           onRun={onRunWorkflow}
-          canRun={canRun}
-          runDisabled={runDisabled}
-          runTooltip={runDisableReason}
-          isRunLoading={isRunning}
-          runIdleText="Run workflow"
-          runLoadingText="Enqueuing…"
           onValidate={onDryRunWorkflow}
+          canRun={canRun}
           canValidate={canValidate}
-          validateDisabled={validateDisabled}
-          validateTooltip={dryRunTooltip}
-          isValidateLoading={isValidating}
-          validateIdleText="Validate / Dry run"
-          validateLoadingText="Validating…"
-          banner={
-            runBanner ? (
-              <Alert
-                variant={runBanner.type === 'error' ? 'destructive' : 'default'}
-                className={clsx(
-                  runBanner.type === 'error'
-                    ? 'bg-red-500/10 border-red-500/40 text-red-50'
-                    : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50'
-                )}
-              >
-                {runBanner.type === 'error' ? (
-                  <AlertTriangle className="h-4 w-4" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
-                <AlertDescription>{runBanner.message}</AlertDescription>
-              </Alert>
-            ) : null
-          }
-          onSave={saveAction}
-          onPromote={promoteAction}
-          onExport={exportAction}
+          isRunning={isRunning}
+          isValidating={isValidating}
+          workersOnline={workersOnlineCount}
+          overflowActions={overflowActions}
         />
+
+        {runBanner ? (
+          <div className="px-3 pb-3">
+            <Alert
+              variant={runBanner.type === 'error' ? 'destructive' : 'default'}
+              className={clsx(
+                runBanner.type === 'error'
+                  ? 'bg-red-500/10 border-red-500/40 text-red-50'
+                  : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-50',
+              )}
+            >
+              {runBanner.type === 'error' ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
+              <AlertDescription>{runBanner.message}</AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
 
         <div className="flex-1 min-h-0">
           <ValidationFixContext.Provider value={handleFixValidationError}>

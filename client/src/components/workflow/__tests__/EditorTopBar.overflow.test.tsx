@@ -7,15 +7,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import EditorTopBar from "../EditorTopBar";
 
 const baseProps = {
-  statusLabel: "Ready",
-  statusTone: "ready" as const,
-  statusHelperText: "All systems go",
   onRun: vi.fn(),
-  canRun: true,
-  runDisabled: false,
   onValidate: vi.fn(),
+  canRun: true,
   canValidate: true,
-  validateDisabled: false,
+  isRunning: false,
+  isValidating: false,
+  workersOnline: 3,
 };
 
 describe("EditorTopBar overflow actions", () => {
@@ -37,25 +35,27 @@ describe("EditorTopBar overflow actions", () => {
     render(
       <EditorTopBar
         {...baseProps}
-        onSave={{ id: "save", label: "Save draft", onSelect: onSave }}
-        onPromote={{ id: "promote", label: "Promote", onSelect: onPromote }}
-        onExport={{ id: "export", label: "Export workflow JSON", onSelect: onExport }}
+        overflowActions={[
+          { id: "save", label: "Save draft", onSelect: onSave },
+          { id: "promote", label: "Promote", onSelect: onPromote },
+          { id: "export", label: "Export workflow JSON", onSelect: onExport },
+        ]}
       />,
     );
 
     const trigger = screen.getByRole("button", { name: /more actions/i });
 
-    await user.click(trigger);
+    await user.hover(trigger);
     const saveItem = await screen.findByRole("menuitem", { name: /save draft/i });
     await user.click(saveItem);
     expect(onSave).toHaveBeenCalledTimes(1);
 
-    await user.click(trigger);
+    await user.hover(trigger);
     const promoteItem = await screen.findByRole("menuitem", { name: /promote/i });
     await user.click(promoteItem);
     expect(onPromote).toHaveBeenCalledTimes(1);
 
-    await user.click(trigger);
+    await user.hover(trigger);
     const exportItem = await screen.findByRole("menuitem", { name: /export workflow json/i });
     await user.click(exportItem);
     expect(onExport).toHaveBeenCalledTimes(1);
