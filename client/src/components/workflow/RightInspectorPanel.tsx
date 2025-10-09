@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import SmartParametersPanel from "./SmartParametersPanel";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
 import type { RuntimeCapabilityIssue } from "@/services/runtimeCapabilitiesService";
-import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "../../../shared";
+import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "../../../../shared";
 
 export interface SelectedNodeRuntimeSupport {
   supported: boolean;
