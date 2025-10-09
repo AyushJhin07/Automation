@@ -338,7 +338,7 @@ const inferNodeKind = (node: any): NodeKind => {
 
 interface RunReadinessInput {
   queueReady: boolean;
-  workersOnline: boolean;
+  workerReady: boolean;
   queueStatusMessage: string;
   workerStatusMessage: string;
   graphHasNodes: boolean;
@@ -357,7 +357,7 @@ interface RunReadiness {
 
 const computeRunReadiness = ({
   queueReady,
-  workersOnline,
+  workerReady,
   queueStatusMessage,
   workerStatusMessage,
   graphHasNodes,
@@ -374,7 +374,7 @@ const computeRunReadiness = ({
     reasons.push(queueStatusMessage);
   }
 
-  if (!workersOnline) {
+  if (!workerReady) {
     reasons.push(workerStatusMessage);
   }
 
@@ -1911,21 +1911,81 @@ const GraphEditorContent = () => {
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
   const rawQueueReady = queueStatus === 'pass';
-  const workersOnline =
-    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
+  const workerHeartbeatReady = workerSummary.hasExecutionWorker;
+  const fallbackHeartbeatReady = rawQueueReady && workerSummary.hasRecentPublicHeartbeat;
+  const workerFleetReady = workerHeartbeatReady || fallbackHeartbeatReady;
+  const schedulerNotices = useMemo(() => {
+    const notices: string[] = [];
+    if (!workerSummary.schedulerHealthy) {
+      notices.push(
+        'Scheduler process is offline. Timed workflow steps will not execute until it reconnects.'
+      );
+    }
+    if (!workerSummary.timerHealthy) {
+      notices.push('Timer lock unavailable. Scheduled triggers may be delayed.');
+    }
+    return notices;
+  }, [workerSummary.schedulerHealthy, workerSummary.timerHealthy]);
+  const formatPublicHeartbeatAge = useCallback((seconds: number | null): string => {
+    if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) {
+      return 'recently';
+    }
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m`;
+    }
+    const hours = Math.floor(seconds / 3600);
+    return `${hours}h`;
+  }, []);
   const workerIssues = useMemo(() => {
-    if (workersOnline) {
+    if (workerFleetReady) {
       return [] as string[];
     }
     if (workerEnvironmentWarnings.length > 0) {
       return workerEnvironmentWarnings.map((warning) => warning.message);
     }
+    if (
+      workerSummary.publicHeartbeatStatus &&
+      workerSummary.publicHeartbeatStatus !== 'pass' &&
+      workerSummary.publicHeartbeatMessage
+    ) {
+      return [workerSummary.publicHeartbeatMessage];
+    }
+    if (workerSummary.publicHeartbeatAt && !workerSummary.hasRecentPublicHeartbeat) {
+      const ageLabel = formatPublicHeartbeatAge(workerSummary.publicHeartbeatAgeSeconds);
+      return [
+        `Execution worker heartbeat has not been observed recently (last seen ${ageLabel} ago). Start the worker process.`,
+      ];
+    }
     if (isWorkerStatusLoading) {
       return ['Checking worker and scheduler status…'];
     }
     return [WORKER_FLEET_GUIDANCE];
-  }, [workersOnline, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  }, [
+    workerFleetReady,
+    workerEnvironmentWarnings,
+    workerSummary.publicHeartbeatStatus,
+    workerSummary.publicHeartbeatMessage,
+    workerSummary.publicHeartbeatAt,
+    workerSummary.hasRecentPublicHeartbeat,
+    workerSummary.publicHeartbeatAgeSeconds,
+    formatPublicHeartbeatAge,
+    isWorkerStatusLoading,
+  ]);
   const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
+  const workerNoticeMessage = useMemo(() => schedulerNotices.join(' '), [schedulerNotices]);
+  const workerOnlineCount = useMemo(() => {
+    if (workerSummary.healthyWorkers > 0) {
+      return workerSummary.healthyWorkers;
+    }
+    if (workerSummary.hasRecentPublicHeartbeat) {
+      return 1;
+    }
+    return 0;
+  }, [workerSummary.healthyWorkers, workerSummary.hasRecentPublicHeartbeat]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -2971,7 +3031,7 @@ const GraphEditorContent = () => {
     () =>
       computeRunReadiness({
         queueReady,
-        workersOnline,
+        workerReady: workerFleetReady,
         queueStatusMessage,
         workerStatusMessage,
         graphHasNodes,
@@ -2984,7 +3044,7 @@ const GraphEditorContent = () => {
       }),
     [
       queueReady,
-      workersOnline,
+      workerFleetReady,
       queueStatusMessage,
       workerStatusMessage,
       graphHasNodes,
@@ -3011,7 +3071,7 @@ const GraphEditorContent = () => {
 
   const runDisabled = !runReadiness.ok || isRunning || isValidating;
   const validateDisabled = !validateReadiness.ok || isRunning || isValidating;
-  const showRun = queueReady && workersOnline;
+  const showRun = queueReady && workerFleetReady;
   const primaryDisabled = showRun ? runDisabled : validateDisabled;
   const primaryDisableReasons = useMemo(() => {
     const reasons = showRun ? runReadiness.reasons : validateReadiness.reasons;
@@ -4164,8 +4224,9 @@ const GraphEditorContent = () => {
           isRunning={isRunning}
           isValidating={isValidating}
           primaryDisabledReasons={primaryDisableReasons}
-          workersOnline={workersOnline}
+          workersOnline={workerOnlineCount}
           workerStatusMessage={workerStatusMessage}
+          workerNoticeMessage={workerNoticeMessage}
           overflowActions={editorOverflowActions}
           banner={(() => {
             const queueBanner = queueDurabilityWarningMessage ? (

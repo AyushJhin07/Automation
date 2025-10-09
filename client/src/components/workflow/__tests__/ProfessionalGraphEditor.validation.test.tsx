@@ -139,6 +139,38 @@ const seedDraftWorkflow = () => {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
+const buildWorkerSummary = (overrides: Partial<any> = {}) => {
+  const now = new Date().toISOString();
+  return {
+    totalWorkers: 1,
+    healthyWorkers: 1,
+    staleWorkers: 0,
+    totalQueueDepth: 0,
+    maxQueueDepth: 0,
+    hasExecutionWorker: true,
+    schedulerHealthy: true,
+    timerHealthy: true,
+    publicHeartbeatStatus: 'pass',
+    publicHeartbeatMessage: null,
+    publicHeartbeatAt: now,
+    publicHeartbeatAgeSeconds: 5,
+    hasRecentPublicHeartbeat: true,
+    ...overrides,
+  };
+};
+
+const buildPublicHeartbeat = (overrides: Partial<any> = {}) => {
+  const now = new Date().toISOString();
+  return {
+    status: 'pass',
+    message: 'Execution worker heartbeat is healthy.',
+    latestHeartbeatAt: now,
+    latestHeartbeatAgeMs: 5000,
+    inlineWorker: false,
+    ...overrides,
+  };
+};
+
 const clickRunWorkflow = async () => {
   const buttons = await screen.findAllByRole("button", { name: /run workflow/i });
   const runButton = buttons[0];
@@ -182,18 +214,10 @@ beforeEach(() => {
   workerHeartbeatMock.mockReturnValue({
     workers: [],
     environmentWarnings: [],
-    summary: {
-      totalWorkers: 1,
-      healthyWorkers: 1,
-      staleWorkers: 0,
-      totalQueueDepth: 0,
-      maxQueueDepth: 0,
-      hasExecutionWorker: true,
-      schedulerHealthy: true,
-      timerHealthy: true,
-    },
+    summary: buildWorkerSummary(),
     scheduler: null,
     queue: null,
+    publicHeartbeat: buildPublicHeartbeat(),
     lastUpdated: new Date().toISOString(),
     isLoading: false,
     error: null,
@@ -870,18 +894,26 @@ describe("ProfessionalGraphEditor validation gating", () => {
     workerHeartbeatMock.mockReturnValue({
       workers: [],
       environmentWarnings: [],
-      summary: {
+      summary: buildWorkerSummary({
         totalWorkers: 0,
         healthyWorkers: 0,
-        staleWorkers: 0,
-        totalQueueDepth: 0,
-        maxQueueDepth: 0,
         hasExecutionWorker: false,
         schedulerHealthy: false,
         timerHealthy: false,
-      },
+        hasRecentPublicHeartbeat: false,
+        publicHeartbeatStatus: 'fail',
+        publicHeartbeatMessage: 'Execution worker heartbeat unavailable.',
+        publicHeartbeatAt: null,
+        publicHeartbeatAgeSeconds: null,
+      }),
       scheduler: null,
       queue: null,
+      publicHeartbeat: buildPublicHeartbeat({
+        status: 'fail',
+        message: 'Execution worker heartbeat unavailable.',
+        latestHeartbeatAt: null,
+        latestHeartbeatAgeMs: null,
+      }),
       lastUpdated: new Date().toISOString(),
       isLoading: false,
       error: null,

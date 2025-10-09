@@ -225,8 +225,35 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
   const rawQueueReady = queueStatus === 'pass';
-  const workerFleetReady =
-    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
+  const workerHeartbeatReady = workerSummary.hasExecutionWorker;
+  const fallbackHeartbeatReady = rawQueueReady && workerSummary.hasRecentPublicHeartbeat;
+  const workerFleetReady = workerHeartbeatReady || fallbackHeartbeatReady;
+  const schedulerNotices = useMemo(() => {
+    const notices: string[] = [];
+    if (!workerSummary.schedulerHealthy) {
+      notices.push(
+        'Scheduler process is offline. Timed or delayed workflow steps will not execute until it reconnects.'
+      );
+    }
+    if (!workerSummary.timerHealthy) {
+      notices.push('Timer lock unavailable. Scheduled triggers may be delayed.');
+    }
+    return notices;
+  }, [workerSummary.schedulerHealthy, workerSummary.timerHealthy]);
+  const formatPublicHeartbeatAge = useCallback((seconds: number | null): string => {
+    if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) {
+      return 'recently';
+    }
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m`;
+    }
+    const hours = Math.floor(seconds / 3600);
+    return `${hours}h`;
+  }, []);
   const workerIssues = useMemo(() => {
     if (workerFleetReady) {
       return [] as string[];
@@ -234,11 +261,34 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     if (workerEnvironmentWarnings.length > 0) {
       return workerEnvironmentWarnings.map((warning) => warning.message);
     }
+    if (
+      workerSummary.publicHeartbeatStatus &&
+      workerSummary.publicHeartbeatStatus !== 'pass' &&
+      workerSummary.publicHeartbeatMessage
+    ) {
+      return [workerSummary.publicHeartbeatMessage];
+    }
+    if (workerSummary.publicHeartbeatAt && !workerSummary.hasRecentPublicHeartbeat) {
+      const ageLabel = formatPublicHeartbeatAge(workerSummary.publicHeartbeatAgeSeconds);
+      return [
+        `Execution worker heartbeat has not been observed recently (last seen ${ageLabel} ago). Start the worker process.`,
+      ];
+    }
     if (isWorkerStatusLoading) {
       return ['Checking worker and scheduler status…'];
     }
     return [WORKER_FLEET_GUIDANCE];
-  }, [workerFleetReady, workerEnvironmentWarnings, isWorkerStatusLoading]);
+  }, [
+    workerFleetReady,
+    workerEnvironmentWarnings,
+    workerSummary.publicHeartbeatStatus,
+    workerSummary.publicHeartbeatMessage,
+    workerSummary.publicHeartbeatAt,
+    workerSummary.hasRecentPublicHeartbeat,
+    workerSummary.publicHeartbeatAgeSeconds,
+    formatPublicHeartbeatAge,
+    isWorkerStatusLoading,
+  ]);
   const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
   const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
@@ -280,10 +330,14 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       'Runs may be lost if the process restarts—connect Redis and turn off the flag when validating durability.'
     );
   }, [queueDurabilityBypassed, queueHealth?.message]);
+  const workerNoticeMessage = useMemo(() => schedulerNotices.join(' '), [schedulerNotices]);
   const runHealthTooltip = useMemo(() => {
     const parts = [] as string[];
     if (workerStatusMessage) {
       parts.push(workerStatusMessage);
+    }
+    if (workerNoticeMessage) {
+      parts.push(workerNoticeMessage);
     }
     if (queueDurabilityWarningMessage) {
       parts.push(queueDurabilityWarningMessage);
@@ -291,7 +345,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       parts.push(queueStatusMessage);
     }
     return parts.join(' ').trim();
-  }, [workerStatusMessage, queueDurabilityWarningMessage, queueStatusMessage]);
+  }, [workerStatusMessage, workerNoticeMessage, queueDurabilityWarningMessage, queueStatusMessage]);
   const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
   const runReady = queueReady && workerFleetReady;
   const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
@@ -1584,6 +1638,9 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
                 {runButtonInner}
               </Button>
             )}
+            {workerNoticeMessage ? (
+              <p className="text-xs text-amber-200 max-w-xs leading-snug">{workerNoticeMessage}</p>
+            ) : null}
 
             <Button
               className="bg-green-600 hover:bg-green-700"

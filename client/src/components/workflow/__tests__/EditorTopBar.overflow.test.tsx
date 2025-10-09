@@ -99,4 +99,20 @@ describe("EditorTopBar worker status", () => {
       await screen.findByText(/start the worker fleet to enable executions./i),
     ).toBeInTheDocument();
   });
+
+  it("surfaces worker notices even when workers are available", async () => {
+    const user = userEvent.setup();
+    renderWithTooltip(
+      <EditorTopBar
+        {...baseProps}
+        workersOnline={1}
+        workerNoticeMessage="Scheduler process is offline."
+      />,
+    );
+
+    const pill = screen.getByRole("status", { name: /scheduler process is offline/i });
+    await user.hover(pill);
+
+    expect(await screen.findByText(/scheduler process is offline./i)).toBeInTheDocument();
+  });
 });

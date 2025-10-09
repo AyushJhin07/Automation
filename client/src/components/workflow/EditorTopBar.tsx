@@ -25,6 +25,7 @@ export interface EditorTopBarProps {
   primaryDisabledReasons?: string[];
   workersOnline?: number | boolean;
   workerStatusMessage?: string;
+  workerNoticeMessage?: string;
   overflowActions?: EditorTopBarAction[];
   banner?: React.ReactNode;
 }
@@ -39,6 +40,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
   primaryDisabledReasons = [],
   workersOnline = 0,
   workerStatusMessage,
+  workerNoticeMessage,
   overflowActions,
   banner,
 }) => {
@@ -48,6 +50,7 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
     ? `${workerCount} worker${workerCount === 1 ? "" : "s"} ready`
     : "Workers offline";
   const statusTooltip = (workerStatusMessage ?? "").trim() || workerStatusLabel;
+  const noticeTooltip = (workerNoticeMessage ?? "").trim();
 
   const primaryAction = React.useMemo(() => {
     return showRun ? "run" : "validate";
@@ -109,15 +112,39 @@ const EditorTopBar: React.FC<EditorTopBarProps> = ({
       <div className="editor-topbar__inner">
         <div className="editor-topbar__status">
           {workersAvailable ? (
-            <div className="editor-topbar__status-pill">
-              <span
-                className={clsx(
-                  "editor-topbar__worker-dot",
-                  "editor-topbar__worker-dot--online",
-                )}
-              />
-              <span className="editor-topbar__worker-label">{workerStatusLabel}</span>
-            </div>
+            noticeTooltip ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="editor-topbar__status-pill"
+                    role="status"
+                    tabIndex={0}
+                    aria-label={noticeTooltip}
+                  >
+                    <span
+                      className={clsx(
+                        "editor-topbar__worker-dot",
+                        "editor-topbar__worker-dot--online",
+                      )}
+                    />
+                    <span className="editor-topbar__worker-label">{workerStatusLabel}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs whitespace-pre-wrap">
+                  <p>{noticeTooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="editor-topbar__status-pill">
+                <span
+                  className={clsx(
+                    "editor-topbar__worker-dot",
+                    "editor-topbar__worker-dot--online",
+                  )}
+                />
+                <span className="editor-topbar__worker-label">{workerStatusLabel}</span>
+              </div>
+            )
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>

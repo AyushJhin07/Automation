@@ -80,6 +80,38 @@ const sampleDraft = {
   ],
 };
 
+const buildSummary = (overrides: Partial<any> = {}) => {
+  const now = new Date().toISOString();
+  return {
+    totalWorkers: 1,
+    healthyWorkers: 1,
+    staleWorkers: 0,
+    totalQueueDepth: 0,
+    maxQueueDepth: 0,
+    hasExecutionWorker: true,
+    schedulerHealthy: true,
+    timerHealthy: true,
+    publicHeartbeatStatus: 'pass',
+    publicHeartbeatMessage: null,
+    publicHeartbeatAt: now,
+    publicHeartbeatAgeSeconds: 5,
+    hasRecentPublicHeartbeat: true,
+    ...overrides,
+  };
+};
+
+const buildPublicHeartbeat = (overrides: Partial<any> = {}) => {
+  const now = new Date().toISOString();
+  return {
+    status: 'pass',
+    message: 'Execution worker heartbeat is healthy and queue is drained.',
+    latestHeartbeatAt: now,
+    latestHeartbeatAgeMs: 5000,
+    inlineWorker: false,
+    ...overrides,
+  };
+};
+
 describe('N8NStyleWorkflowBuilder toolbar gating', () => {
   beforeEach(() => {
     queueHealthMock.mockReset();
@@ -110,18 +142,10 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     workerHeartbeatMock.mockReturnValue({
       workers: [],
       environmentWarnings: [],
-      summary: {
-        totalWorkers: 1,
-        healthyWorkers: 1,
-        staleWorkers: 0,
-        totalQueueDepth: 0,
-        maxQueueDepth: 0,
-        hasExecutionWorker: true,
-        schedulerHealthy: true,
-        timerHealthy: true,
-      },
+      summary: buildSummary(),
       scheduler: null,
       queue: null,
+      publicHeartbeat: buildPublicHeartbeat(),
       lastUpdated: new Date().toISOString(),
       isLoading: false,
       error: null,
@@ -208,18 +232,26 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     workerHeartbeatMock.mockReturnValue({
       workers: [],
       environmentWarnings: [],
-      summary: {
+      summary: buildSummary({
         totalWorkers: 0,
         healthyWorkers: 0,
-        staleWorkers: 0,
-        totalQueueDepth: 0,
-        maxQueueDepth: 0,
         hasExecutionWorker: false,
         schedulerHealthy: false,
         timerHealthy: false,
-      },
+        hasRecentPublicHeartbeat: false,
+        publicHeartbeatStatus: 'fail',
+        publicHeartbeatMessage: 'Execution worker heartbeat unavailable.',
+        publicHeartbeatAt: null,
+        publicHeartbeatAgeSeconds: null,
+      }),
       scheduler: null,
       queue: null,
+      publicHeartbeat: buildPublicHeartbeat({
+        status: 'fail',
+        message: 'Execution worker heartbeat unavailable.',
+        latestHeartbeatAt: null,
+        latestHeartbeatAgeMs: null,
+      }),
       lastUpdated: new Date().toISOString(),
       isLoading: false,
       error: null,
@@ -239,6 +271,70 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
         screen.getByText('Start the execution worker and scheduler processes to run workflows.')
       ).toBeInTheDocument();
     });
+  });
+
+  it('enables the run button when only the public heartbeat is healthy', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: buildSummary({
+        totalWorkers: 0,
+        healthyWorkers: 0,
+        hasExecutionWorker: false,
+        hasRecentPublicHeartbeat: true,
+        publicHeartbeatStatus: 'pass',
+        publicHeartbeatMessage: 'Execution worker heartbeat is healthy.',
+      }),
+      scheduler: null,
+      queue: null,
+      publicHeartbeat: buildPublicHeartbeat({
+        status: 'pass',
+        message: 'Execution worker heartbeat is healthy.',
+      }),
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+  });
+
+  it('shows scheduler warnings without blocking workflow runs', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: buildSummary({
+        schedulerHealthy: false,
+        timerHealthy: false,
+      }),
+      scheduler: null,
+      queue: null,
+      publicHeartbeat: buildPublicHeartbeat({
+        status: 'pass',
+      }),
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+    expect(
+      screen.getByText(/Scheduler process is offline. Timed or delayed workflow steps will not execute until it reconnects./i)
+    ).toBeInTheDocument();
   });
   it('keeps the run button disabled when nodes require configuration', async () => {
     const draft = JSON.parse(localStorage.getItem('automation.builder.draft') || 'null');

@@ -17,6 +17,14 @@ export type EnvironmentWarningMessage = {
   queueDepth?: number;
 };
 
+export type PublicQueueHeartbeat = {
+  status: 'pass' | 'warn' | 'fail' | null;
+  message: string | null;
+  latestHeartbeatAt: string | null;
+  latestHeartbeatAgeMs: number | null;
+  inlineWorker: boolean;
+};
+
 export type WorkerHeartbeatSummary = {
   totalWorkers: number;
   healthyWorkers: number;
@@ -26,6 +34,11 @@ export type WorkerHeartbeatSummary = {
   hasExecutionWorker: boolean;
   schedulerHealthy: boolean;
   timerHealthy: boolean;
+  publicHeartbeatStatus: 'pass' | 'warn' | 'fail' | null;
+  publicHeartbeatMessage: string | null;
+  publicHeartbeatAt: string | null;
+  publicHeartbeatAgeSeconds: number | null;
+  hasRecentPublicHeartbeat: boolean;
 };
 
 export type WorkerHeartbeatSnapshot = {
@@ -34,6 +47,7 @@ export type WorkerHeartbeatSnapshot = {
   summary: WorkerHeartbeatSummary;
   scheduler: Record<string, any> | null;
   queue: Record<string, any> | null;
+  publicHeartbeat: PublicQueueHeartbeat | null;
   lastUpdated: string | null;
   isLoading: boolean;
   error: string | null;
@@ -167,6 +181,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
   const [environmentWarnings, setEnvironmentWarnings] = useState<EnvironmentWarningMessage[]>([]);
   const [schedulerTelemetry, setSchedulerTelemetry] = useState<Record<string, any> | null>(null);
   const [queueTelemetry, setQueueTelemetry] = useState<Record<string, any> | null>(null);
+  const [publicHeartbeat, setPublicHeartbeat] = useState<PublicQueueHeartbeat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -183,12 +198,32 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
     setIsLoading((previous) => (workersRef.current.length === 0 ? true : previous));
 
     try {
-      const response = await authFetch('/api/admin/workers/status');
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+      let adminPayload: Record<string, any> | any[] | null = null;
+      let adminForbidden = false;
+      let adminError: string | null = null;
+
+      try {
+        const response = await authFetch('/api/admin/workers/status');
+        const payload = (await response.json().catch(() => ({}))) as Record<string, any> | any[];
+        if (response.ok) {
+          adminPayload = payload;
+        } else if (response.status === 403) {
+          adminForbidden = true;
+        } else {
+          const message =
+            payload &&
+            typeof payload === 'object' &&
+            !Array.isArray(payload) &&
+            typeof (payload as any).error === 'string'
+              ? ((payload as any).error as string)
+              : `Request failed with status ${response.status}`;
+          adminError = message;
+        }
+      } catch (caughtError: any) {
+        adminError = caughtError?.message || 'Unable to load worker status';
       }
 
-      const payload = (await response.json().catch(() => ({}))) as Record<string, any> | any[];
+      const payload = adminPayload ?? {};
       const rootPayload =
         payload &&
         typeof payload === 'object' &&
@@ -213,7 +248,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
           ? ((rootPayload as Record<string, any>).scheduler as Record<string, any> | null)
           : null;
 
-      const queue =
+      let queue =
         rootPayload &&
         typeof rootPayload === 'object' &&
         !Array.isArray(rootPayload) &&
@@ -312,6 +347,83 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
         }
       }
 
+      let publicHeartbeatPayload: PublicQueueHeartbeat | null = null;
+
+      try {
+        const response = await authFetch('/api/production/queue/heartbeat');
+        const payload = (await response.json().catch(() => ({}))) as Record<string, any>;
+
+        if (response.ok) {
+          const statusPayload =
+            payload && typeof payload.status === 'object' && payload.status
+              ? (payload.status as Record<string, any>)
+              : null;
+          const statusValue =
+            statusPayload && typeof statusPayload.status === 'string'
+              ? (statusPayload.status as 'pass' | 'warn' | 'fail')
+              : null;
+          const message =
+            statusPayload && typeof statusPayload.message === 'string'
+              ? (statusPayload.message as string)
+              : null;
+
+          const workerPayload =
+            payload && typeof payload.worker === 'object' && payload.worker
+              ? (payload.worker as Record<string, any>)
+              : null;
+          const latestHeartbeatAt = workerPayload
+            ? extractHeartbeat(workerPayload.latestHeartbeatAt)
+            : null;
+          const latestHeartbeatAgeMs = workerPayload && typeof workerPayload.latestHeartbeatAgeMs === 'number'
+            ? (Number.isFinite(workerPayload.latestHeartbeatAgeMs)
+              ? (workerPayload.latestHeartbeatAgeMs as number)
+              : null)
+            : null;
+
+          publicHeartbeatPayload = {
+            status: statusValue ?? null,
+            message,
+            latestHeartbeatAt: latestHeartbeatAt ?? null,
+            latestHeartbeatAgeMs,
+            inlineWorker: Boolean(payload?.inlineWorker),
+          } satisfies PublicQueueHeartbeat;
+
+          if (!queue && payload && typeof payload.queueHealth === 'object' && payload.queueHealth) {
+            queue = payload.queueHealth as Record<string, any>;
+          }
+        }
+      } catch (caughtError) {
+        // Ignore public heartbeat failures—they may be unavailable in development.
+        console.warn('Unable to load public queue heartbeat', caughtError);
+      }
+
+      if (!list.length && publicHeartbeatPayload?.status === 'pass' && publicHeartbeatPayload.latestHeartbeatAt) {
+        const workerEntry = normalizeWorker(
+          {
+            id: publicHeartbeatPayload.inlineWorker ? 'inline-execution-worker' : 'public-execution-worker',
+            name: publicHeartbeatPayload.inlineWorker
+              ? 'Inline execution worker'
+              : 'Execution worker',
+            queueDepth: 0,
+            heartbeatAt: publicHeartbeatPayload.latestHeartbeatAt,
+          },
+          0,
+        );
+
+        if (
+          typeof publicHeartbeatPayload.latestHeartbeatAgeMs === 'number' &&
+          Number.isFinite(publicHeartbeatPayload.latestHeartbeatAgeMs)
+        ) {
+          workerEntry.secondsSinceHeartbeat = Math.max(
+            0,
+            Math.floor(publicHeartbeatPayload.latestHeartbeatAgeMs / 1000),
+          );
+          workerEntry.isHeartbeatStale = workerEntry.secondsSinceHeartbeat > HEARTBEAT_STALE_SECONDS;
+        }
+
+        list = [workerEntry];
+      }
+
       if (!isMountedRef.current) {
         return;
       }
@@ -321,7 +433,8 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
       setEnvironmentWarnings(normalizedWarnings);
       setSchedulerTelemetry(scheduler ?? null);
       setQueueTelemetry(queue ?? null);
-      setError(null);
+      setPublicHeartbeat(publicHeartbeatPayload);
+      setError(adminForbidden ? null : adminError);
       setLastUpdated(new Date().toISOString());
     } catch (caughtError: any) {
       if (!isMountedRef.current) {
@@ -364,6 +477,23 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
   const summary = useMemo<WorkerHeartbeatSummary>(() => {
     if (!workers.length) {
       const { schedulerHealthy, timerHealthy } = resolveSchedulerHealth(schedulerTelemetry);
+      const publicStatus = publicHeartbeat?.status ?? null;
+      const publicMessage = publicHeartbeat?.message ?? null;
+      const publicHeartbeatAt = publicHeartbeat?.latestHeartbeatAt ?? null;
+      const publicHeartbeatAgeMs =
+        typeof publicHeartbeat?.latestHeartbeatAgeMs === 'number' &&
+        Number.isFinite(publicHeartbeat.latestHeartbeatAgeMs)
+          ? publicHeartbeat.latestHeartbeatAgeMs
+          : publicHeartbeatAt
+            ? Math.max(0, Date.now() - new Date(publicHeartbeatAt).getTime())
+            : null;
+      const publicHeartbeatAgeSeconds =
+        typeof publicHeartbeatAgeMs === 'number' ? Math.floor(publicHeartbeatAgeMs / 1000) : null;
+      const hasRecentPublicHeartbeat =
+        publicStatus === 'pass' &&
+        typeof publicHeartbeatAgeSeconds === 'number' &&
+        publicHeartbeatAgeSeconds <= HEARTBEAT_STALE_SECONDS;
+
       return {
         totalWorkers: 0,
         healthyWorkers: 0,
@@ -373,6 +503,11 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
         hasExecutionWorker: false,
         schedulerHealthy,
         timerHealthy,
+        publicHeartbeatStatus: publicStatus,
+        publicHeartbeatMessage: publicMessage,
+        publicHeartbeatAt,
+        publicHeartbeatAgeSeconds,
+        hasRecentPublicHeartbeat,
       };
     }
 
@@ -381,6 +516,22 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
     const staleWorkers = workers.filter((worker) => worker.isHeartbeatStale).length;
     const healthyWorkers = workers.length - staleWorkers;
     const { schedulerHealthy, timerHealthy } = resolveSchedulerHealth(schedulerTelemetry);
+    const publicStatus = publicHeartbeat?.status ?? null;
+    const publicMessage = publicHeartbeat?.message ?? null;
+    const publicHeartbeatAt = publicHeartbeat?.latestHeartbeatAt ?? null;
+    const publicHeartbeatAgeMs =
+      typeof publicHeartbeat?.latestHeartbeatAgeMs === 'number' &&
+      Number.isFinite(publicHeartbeat.latestHeartbeatAgeMs)
+        ? publicHeartbeat.latestHeartbeatAgeMs
+        : publicHeartbeatAt
+          ? Math.max(0, Date.now() - new Date(publicHeartbeatAt).getTime())
+          : null;
+    const publicHeartbeatAgeSeconds =
+      typeof publicHeartbeatAgeMs === 'number' ? Math.floor(publicHeartbeatAgeMs / 1000) : null;
+    const hasRecentPublicHeartbeat =
+      publicStatus === 'pass' &&
+      typeof publicHeartbeatAgeSeconds === 'number' &&
+      publicHeartbeatAgeSeconds <= HEARTBEAT_STALE_SECONDS;
 
     return {
       totalWorkers: workers.length,
@@ -391,8 +542,13 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
       hasExecutionWorker: healthyWorkers > 0,
       schedulerHealthy,
       timerHealthy,
+      publicHeartbeatStatus: publicStatus,
+      publicHeartbeatMessage: publicMessage,
+      publicHeartbeatAt,
+      publicHeartbeatAgeSeconds,
+      hasRecentPublicHeartbeat,
     };
-  }, [workers, schedulerTelemetry]);
+  }, [workers, schedulerTelemetry, publicHeartbeat]);
 
   return {
     workers,
@@ -400,6 +556,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
     summary,
     scheduler: schedulerTelemetry,
     queue: queueTelemetry,
+    publicHeartbeat,
     lastUpdated,
     isLoading,
     error,
