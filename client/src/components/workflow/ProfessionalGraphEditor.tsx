@@ -1638,15 +1638,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             'trigger',
                             runtimeId,
                           );
-                      const capabilityFallback =
-                        capabilityStatus ??
-                        checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
+                      const capabilityFallback = runtimeCapabilitiesLoading
+                        ? null
+                        : capabilityStatus ??
+                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
 
-                      const mode = capabilityStatus?.mode ?? (capabilityFallback.supported ? 'native' : 'unavailable');
+                      const resolvedMode = capabilityStatus?.mode ?? (capabilityFallback?.supported ? 'native' : 'unavailable');
+                      const mode = runtimeCapabilitiesLoading ? 'native' : resolvedMode;
                       const isUnavailable = mode === 'unavailable';
                       const isFallback = mode === 'fallback';
                       const isSupported = !isUnavailable;
-                      const issue = capabilityStatus?.issue ?? capabilityFallback.issue;
+                      const issue = runtimeCapabilitiesLoading ? null : capabilityStatus?.issue ?? capabilityFallback?.issue;
                       const fallbackRuntimeName = capabilityStatus?.fallbackRuntime
                         ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
                         : RUNTIME_DISPLAY_NAMES.node;
@@ -1757,15 +1759,17 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             capabilityKind,
                             runtimeId,
                           );
-                      const capabilityFallback =
-                        capabilityStatus ??
-                        checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
+                      const capabilityFallback = runtimeCapabilitiesLoading
+                        ? null
+                        : capabilityStatus ??
+                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
 
-                      const mode = capabilityStatus?.mode ?? (capabilityFallback.supported ? 'native' : 'unavailable');
+                      const resolvedMode = capabilityStatus?.mode ?? (capabilityFallback?.supported ? 'native' : 'unavailable');
+                      const mode = runtimeCapabilitiesLoading ? 'native' : resolvedMode;
                       const isUnavailable = mode === 'unavailable';
                       const isFallback = mode === 'fallback';
                       const isSupported = !isUnavailable;
-                      const issue = capabilityStatus?.issue ?? capabilityFallback.issue;
+                      const issue = runtimeCapabilitiesLoading ? null : capabilityStatus?.issue ?? capabilityFallback?.issue;
                       const fallbackRuntimeName = capabilityStatus?.fallbackRuntime
                         ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
                         : RUNTIME_DISPLAY_NAMES.node;
