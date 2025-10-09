@@ -677,10 +677,10 @@ export const buildRuntimeCapabilityIndex = (
 
       ensureIndexEntry(index, normalizedAppId);
 
-      entry.actions.forEach((operationId) => {
+      Object.keys(entry.actions ?? {}).forEach((operationId) => {
         assignOperationStatus(index, capabilities, normalizedAppId, 'action', operationId);
       });
-      entry.triggers.forEach((operationId) => {
+      Object.keys(entry.triggers ?? {}).forEach((operationId) => {
         assignOperationStatus(index, capabilities, normalizedAppId, 'trigger', operationId);
       });
     });
