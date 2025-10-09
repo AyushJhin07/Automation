@@ -267,13 +267,20 @@ app.use((req, res, next) => {
   // Only setup Vite in development, after routes are registered.
   // Allow disabling in constrained environments via DISABLE_VITE=true.
   if (app.get('env') === 'development' && process.env.DISABLE_VITE !== 'true') {
-    const didSetupVite = await setupVite(app, server);
-    if (!didSetupVite) {
+    try {
+      const didSetupVite = await setupVite(app, server);
+      if (!didSetupVite) {
+        console.warn('⚠️ Vite dev server disabled during setup. Falling back to static assets.');
+        setupStaticFallback();
+      }
+    } catch (error) {
+      console.error('❌ Failed to start Vite dev server:', error);
       setupStaticFallback();
     }
   } else {
     // In production or when Vite is disabled, try serving static assets.
     // Fall back gracefully if the client build isn't present.
+    console.warn('⚠️ Vite dev server disabled. Serving static assets instead.');
     setupStaticFallback();
   }
 
