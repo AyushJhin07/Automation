@@ -1330,6 +1330,9 @@ export class WebhookManager {
                 log: (message, details) => {
                   fallbackLogs.push({ message, ...(details ? { details } : {}) });
                 },
+                credentials: context.credentials,
+                parameters: context.parameters,
+                additionalConfig: context.additionalConfig,
               })) as FallbackHandlerResult | void | null) ?? { items: [] };
 
             const items = this.normalizeFallbackItems(result.items);
