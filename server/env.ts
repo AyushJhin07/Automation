@@ -31,6 +31,7 @@ if (!process.env.NODE_ENV) {
 }
 
 const environment = process.env.NODE_ENV;
+const isDevelopmentEnvironment = environment === 'development';
 
 try {
   const managed = await loadManagedSecrets();
@@ -56,6 +57,14 @@ const trackedOptionalSecrets = [
   'GOOGLE_API_KEY',
   'GEMINI_API_KEY',
 ];
+
+const ENABLE_DEV_IGNORE_QUEUE = (() => {
+  if (!isDevelopmentEnvironment) {
+    return false;
+  }
+  const raw = (process.env.ENABLE_DEV_IGNORE_QUEUE ?? '').trim().toLowerCase();
+  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
+})();
 
 function isMissing(value: string | undefined): boolean {
   return !value || value.trim().length === 0;
@@ -190,4 +199,5 @@ export const FLAGS = {
   GENERIC_EXECUTOR_ENABLED: (process.env.GENERIC_EXECUTOR_ENABLED === 'true'),
   CONNECTOR_SIMULATOR_ENABLED: (process.env.CONNECTOR_SIMULATOR_ENABLED === 'true'),
   ALLOW_PLAINTEXT_TOKENS_IN_DEV: (process.env.ALLOW_PLAINTEXT_TOKENS_IN_DEV === 'true'),
+  ENABLE_DEV_IGNORE_QUEUE,
 } as const;

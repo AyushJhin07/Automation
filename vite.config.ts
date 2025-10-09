@@ -4,6 +4,13 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+if (
+  typeof process.env.ENABLE_DEV_IGNORE_QUEUE === "string" &&
+  typeof process.env.VITE_ENABLE_DEV_IGNORE_QUEUE !== "string"
+) {
+  process.env.VITE_ENABLE_DEV_IGNORE_QUEUE = process.env.ENABLE_DEV_IGNORE_QUEUE;
+}
+
 export default defineConfig({
   plugins: [
     react(),

@@ -6,6 +6,7 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 const toastWarning = vi.fn();
+const isDevIgnoreQueueEnabledMock = vi.fn(() => false);
 
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), {
@@ -34,6 +35,10 @@ vi.mock("@/hooks/useConnectorDefinitions", () => ({
 
 vi.mock("@/state/specStore", () => ({
   useSpecStore: (selector: any) => selector({ spec: null }),
+}));
+
+vi.mock("@/config/featureFlags", () => ({
+  isDevIgnoreQueueEnabled: (...args: any[]) => isDevIgnoreQueueEnabledMock(...args),
 }));
 
 vi.mock("reactflow/dist/style.css", () => ({}), { virtual: true });
@@ -158,6 +163,7 @@ beforeEach(() => {
     unobserve() {}
     disconnect() {}
   };
+  isDevIgnoreQueueEnabledMock.mockReturnValue(false);
   queueHealthReturn = {
     health: {
       status: 'pass',
@@ -204,6 +210,7 @@ afterEach(() => {
   toastWarning.mockReset();
   useQueueHealthMock.mockReset();
   refreshQueueHealthMock.mockReset();
+  isDevIgnoreQueueEnabledMock.mockReset();
 });
 
 const extractUrl = (input: any): string => {
@@ -489,6 +496,45 @@ describe("ProfessionalGraphEditor validation gating", () => {
       expect(runButton).toBeDisabled();
       expect(validateButton).toBeDisabled();
     });
+  });
+
+  it('treats in-memory queue as warning when the dev override flag is enabled', async () => {
+    queueHealthReturn = {
+      health: {
+        status: 'fail',
+        durable: false,
+        message: 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.',
+        latencyMs: null,
+        checkedAt: new Date().toISOString(),
+      },
+      status: 'fail',
+      isLoading: false,
+      error: null,
+      refresh: refreshQueueHealthMock,
+    };
+    useQueueHealthMock.mockReturnValue(queueHealthReturn);
+    isDevIgnoreQueueEnabledMock.mockReturnValue(true);
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/registry/catalog')) {
+        return Promise.resolve(jsonResponse({ success: true, catalog: { connectors: {} } }));
+      }
+      return Promise.resolve(jsonResponse({ success: true }));
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const runButton = await findRunButton();
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+
+    expect(
+      screen.getByText(/Queue driver is running in non-durable in-memory mode/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ENABLE_DEV_IGNORE_QUEUE is active/i)).toBeInTheDocument();
   });
 
   it('disables the run button while enqueuing and re-enables when the request finishes', async () => {

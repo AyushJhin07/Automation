@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Brain,
   Sparkles,
@@ -47,6 +48,7 @@ import {
   Trash2,
   MessageCircle,
   Wand2,
+  AlertTriangle,
 } from 'lucide-react';
 import { NodeConfigurationModal } from '@/components/workflow/NodeConfigurationModal';
 import { useAuthStore } from '@/store/authStore';
@@ -60,6 +62,7 @@ import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHear
 import { collectNodeConfigurationErrors } from '@/components/workflow/nodeConfigurationValidation';
 import type { ValidationError } from '@shared/nodeGraphSchema';
 import clsx from 'clsx';
+import { isDevIgnoreQueueEnabled } from '@/config/featureFlags';
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -221,7 +224,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     summary: workerSummary,
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
-  const queueReady = queueStatus === 'pass';
+  const rawQueueReady = queueStatus === 'pass';
   const workerFleetReady =
     workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
   const workerIssues = useMemo(() => {
@@ -239,7 +242,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
   const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
-    if (queueReady) {
+    if (rawQueueReady) {
       return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
     }
     const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
@@ -248,17 +251,47 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return detail;
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
-  }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
+  }, [rawQueueReady, queueHealth, queueHealthError, queueGuidance]);
+
+  const queueDurabilityBypassed = useMemo(() => {
+    if (rawQueueReady) {
+      return false;
+    }
+    if (!queueHealth || queueHealth.durable !== false) {
+      return false;
+    }
+    return isDevIgnoreQueueEnabled();
+  }, [rawQueueReady, queueHealth]);
+
+  const queueReady = rawQueueReady || queueDurabilityBypassed;
+
+  const queueDurabilityWarningMessage = useMemo(() => {
+    if (!queueDurabilityBypassed) {
+      return null;
+    }
+
+    const rawMessage = (queueHealth?.message ?? '').trim();
+    const baseMessage = rawMessage.length > 0
+      ? (rawMessage.endsWith('.') ? rawMessage : `${rawMessage}.`)
+      : 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.';
+
+    return (
+      `${baseMessage} ENABLE_DEV_IGNORE_QUEUE is active for development. ` +
+      'Runs may be lost if the process restarts—connect Redis and turn off the flag when validating durability.'
+    );
+  }, [queueDurabilityBypassed, queueHealth?.message]);
   const runHealthTooltip = useMemo(() => {
     const parts = [] as string[];
     if (workerStatusMessage) {
       parts.push(workerStatusMessage);
     }
-    if (queueStatusMessage) {
+    if (queueDurabilityWarningMessage) {
+      parts.push(queueDurabilityWarningMessage);
+    } else if (queueStatusMessage) {
       parts.push(queueStatusMessage);
     }
     return parts.join(' ').trim();
-  }, [workerStatusMessage, queueStatusMessage]);
+  }, [workerStatusMessage, queueDurabilityWarningMessage, queueStatusMessage]);
   const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
   const runReady = queueReady && workerFleetReady;
   const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
@@ -335,20 +368,24 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     </>
   );
 
-  const queueBadgeLabel = runReady
-    ? 'Run ready'
-    : isRunHealthLoading
-      ? 'Checking status…'
-      : !workerFleetReady
-        ? 'Workers offline'
-        : 'Queue offline';
-  const queueBadgeTone = runReady
-    ? 'bg-emerald-600 text-white'
-    : isRunHealthLoading
-      ? 'bg-amber-500 text-white'
-      : 'bg-red-600 text-white';
-  const queueBadgePulse = !runReady && !isRunHealthLoading;
-  const queueBadgeTooltip = runHealthTooltip || queueStatusMessage;
+  const queueBadgeLabel = queueDurabilityBypassed
+    ? 'In-memory queue (non-durable)'
+    : runReady
+      ? 'Run ready'
+      : isRunHealthLoading
+        ? 'Checking status…'
+        : !workerFleetReady
+          ? 'Workers offline'
+          : 'Queue offline';
+  const queueBadgeTone = queueDurabilityBypassed
+    ? 'bg-amber-500 text-white'
+    : runReady
+      ? 'bg-emerald-600 text-white'
+      : isRunHealthLoading
+        ? 'bg-amber-500 text-white'
+        : 'bg-red-600 text-white';
+  const queueBadgePulse = queueDurabilityBypassed || (!runReady && !isRunHealthLoading);
+  const queueBadgeTooltip = queueDurabilityWarningMessage || runHealthTooltip || queueStatusMessage;
 
   const dryRunNodeSummaries = useMemo(() => {
     if (!dryRunResult?.execution?.nodes) return [] as Array<{ nodeId: string; status: string; label: string; message?: string }>;
@@ -1289,7 +1326,16 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-900 flex">
+    <div className="relative flex h-screen bg-gray-900">
+      {queueDurabilityWarningMessage ? (
+        <div className="pointer-events-none absolute left-1/2 top-4 z-20 w-[min(90vw,640px)] -translate-x-1/2">
+          <Alert className="pointer-events-auto border-amber-200 bg-amber-50 text-amber-900 shadow-lg">
+            <AlertTriangle className="h-4 w-4" aria-hidden />
+            <AlertTitle>In-memory queue mode</AlertTitle>
+            <AlertDescription>{queueDurabilityWarningMessage}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
       {/* Left Sidebar - AI Panel */}
       {showAIPanel && (
         <div className="w-80 bg-gray-800 border-r border-gray-700 p-6 overflow-y-auto">
