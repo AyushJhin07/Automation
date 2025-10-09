@@ -31,4 +31,4 @@ Run the validator whenever you update a connector definition:
 npm run check:connectors
 ```
 
-The script will fail if any action or trigger is missing either `outputSchema.$schema` or a `sample`. Fix the reported items before opening a pull request.
+The script will fail if any action or trigger is missing either `outputSchema.$schema` or a `sample`, and it enforces consistent runtime metadata at the same time.【F:scripts/validate-connectors.ts†L140-L177】 Fix the reported items before opening a pull request.
