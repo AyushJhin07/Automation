@@ -721,30 +721,41 @@ export class WorkflowRuntime {
     }
 
     const forcedFallback = runtimeSelection?.availability === 'fallback';
+    const plannedFallbackRuntime = runtimeSelection?.runtime ?? null;
 
     if (forcedFallback) {
-      if (!env.GENERIC_EXECUTOR_ENABLED) {
-        throw new Error(
-          `Fallback runtime required for ${appId}.${functionId}, but the generic executor is disabled.`
-        );
-      }
+      if (plannedFallbackRuntime && plannedFallbackRuntime !== 'cloudWorker') {
+        const response = await integrationManager.executeFunction(integrationParams);
+        if (!response.success) {
+          throw new Error(response.error || `Failed to execute ${appId}.${functionId}`);
+        }
+        responseData = response.data ?? null;
+        executionTime = response.executionTime;
+      } else {
+        if (!env.GENERIC_EXECUTOR_ENABLED) {
+          throw new Error(
+            `Fallback runtime ${plannedFallbackRuntime ?? 'cloudWorker'} required for ${appId}.${functionId}, but the generic executor is disabled.`
+          );
+        }
 
-      const genericParams = this.prepareGenericParameters(baseParameters, idempotencyKey);
-      const start = Date.now();
-      const genericResult = await genericExecutor.execute({
-        appId,
-        functionId,
-        parameters: genericParams,
-        credentials: credentialResolution.credentials,
-      });
-      executor = 'generic';
-      executionTime = Date.now() - start;
-      if (!genericResult.success) {
-        const message = genericResult.error
-          || `Fallback runtime ${runtimeSelection.runtime ?? 'generic'} failed for ${appId}.${functionId}`;
-        throw new Error(message);
+        const genericParams = this.prepareGenericParameters(baseParameters, idempotencyKey);
+        const start = Date.now();
+        const genericResult = await genericExecutor.execute({
+          appId,
+          functionId,
+          parameters: genericParams,
+          credentials: credentialResolution.credentials,
+        });
+        executor = 'generic';
+        executionTime = Date.now() - start;
+        if (!genericResult.success) {
+          const message =
+            genericResult.error ||
+            `Fallback runtime ${runtimeSelection.runtime ?? 'cloudWorker'} failed for ${appId}.${functionId}`;
+          throw new Error(message);
+        }
+        responseData = genericResult.data ?? null;
       }
-      responseData = genericResult.data ?? null;
     } else if (!env.GENERIC_EXECUTOR_ENABLED) {
       const response = await integrationManager.executeFunction(integrationParams);
       if (!response.success) {
@@ -793,7 +804,7 @@ export class WorkflowRuntime {
       } as Record<string, any>;
     }
 
-    if (!fallbackError && executor === 'generic' && forcedFallback) {
+    if (!fallbackError && forcedFallback) {
       metadata.integrationFallbackReason = 'planned_fallback';
     }
 
