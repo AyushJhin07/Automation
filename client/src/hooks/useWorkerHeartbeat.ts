@@ -64,6 +64,35 @@ const toNumber = (value: unknown): number => {
   return 0;
 };
 
+const sumState = (value: unknown): number => {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+};
+
+const computeTotalQueueDepth = (value: unknown): number => {
+  if (!value || typeof value !== 'object') {
+    return 0;
+  }
+
+  return Object.values(value as Record<string, unknown>).reduce((acc, depth) => {
+    if (!depth || typeof depth !== 'object') {
+      return acc;
+    }
+
+    const record = depth as Record<string, unknown>;
+    if (typeof record.total === 'number' && Number.isFinite(record.total)) {
+      return acc + (record.total as number);
+    }
+
+    return (
+      acc +
+      sumState(record.waiting) +
+      sumState(record.delayed) +
+      sumState(record.active) +
+      sumState(record.paused)
+    );
+  }, 0);
+};
+
 const extractHeartbeat = (value: unknown): string | undefined => {
   if (typeof value === 'string') {
     const date = new Date(value);
@@ -161,6 +190,194 @@ const resolveSchedulerHealth = (telemetry: Record<string, any> | null): {
   return { schedulerHealthy, timerHealthy };
 };
 
+type NormalizedSnapshot = {
+  workers: WorkerStatus[];
+  environmentWarnings: EnvironmentWarningMessage[];
+  scheduler: Record<string, any> | null;
+  queue: Record<string, any> | null;
+};
+
+const normalizeEnvironmentWarnings = (rawWarnings: any[]): EnvironmentWarningMessage[] => {
+  return rawWarnings
+    .map((warning, index) => {
+      const id = typeof warning?.id === 'string' ? warning.id : `warning-${index}`;
+      const message = typeof warning?.message === 'string' ? warning.message : '';
+      const since = typeof warning?.since === 'string' ? warning.since : null;
+      const queueDepth =
+        typeof warning?.queueDepth === 'number' && Number.isFinite(warning.queueDepth)
+          ? warning.queueDepth
+          : undefined;
+
+      return { id, message, since, queueDepth } satisfies EnvironmentWarningMessage;
+    })
+    .filter((warning) => warning.message.length > 0);
+};
+
+const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): NormalizedSnapshot => {
+  const rootPayload =
+    payload &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload) &&
+    'data' in (payload as Record<string, unknown>)
+      ? ((payload as Record<string, any>).data ?? {})
+      : payload;
+
+  const executionTelemetry =
+    rootPayload &&
+    typeof rootPayload === 'object' &&
+    !Array.isArray(rootPayload) &&
+    'executionWorker' in (rootPayload as Record<string, unknown>)
+      ? (rootPayload as any).executionWorker
+      : rootPayload;
+
+  const scheduler =
+    rootPayload &&
+    typeof rootPayload === 'object' &&
+    !Array.isArray(rootPayload) &&
+    'scheduler' in (rootPayload as Record<string, unknown>)
+      ? ((rootPayload as Record<string, any>).scheduler as Record<string, any> | null)
+      : null;
+
+  const queue =
+    rootPayload &&
+    typeof rootPayload === 'object' &&
+    !Array.isArray(rootPayload) &&
+    'queue' in (rootPayload as Record<string, unknown>)
+      ? ((rootPayload as Record<string, any>).queue as Record<string, any> | null)
+      : null;
+
+  const rawWarnings = Array.isArray(executionTelemetry?.environmentWarnings)
+    ? executionTelemetry.environmentWarnings
+    : Array.isArray((rootPayload as any)?.environmentWarnings)
+      ? (rootPayload as any).environmentWarnings
+      : [];
+
+  const normalizedWarnings = normalizeEnvironmentWarnings(rawWarnings as any[]);
+
+  let list: WorkerStatus[] = [];
+
+  if (executionTelemetry && typeof executionTelemetry === 'object') {
+    const queueDepths = (executionTelemetry as any)?.metrics?.queueDepths ?? {};
+    const totalQueueDepth = computeTotalQueueDepth(queueDepths);
+
+    const heartbeat = (executionTelemetry as any)?.lastObservedHeartbeat;
+    if (heartbeat && typeof heartbeat.heartbeatAt === 'string') {
+      const workerEntry = normalizeWorker(
+        {
+          id: heartbeat.workerId ?? 'execution-worker',
+          name: heartbeat.inline ? 'Inline execution worker' : 'Execution worker',
+          queueDepth: totalQueueDepth,
+          heartbeatAt: heartbeat.heartbeatAt,
+        },
+        0,
+      );
+      workerEntry.queueDepth = totalQueueDepth;
+      list = [workerEntry];
+    } else if (totalQueueDepth > 0) {
+      const queueEntry = normalizeWorker(
+        {
+          id: 'execution-queue',
+          name: 'Execution queue (no consumers)',
+          queueDepth: totalQueueDepth,
+        },
+        0,
+      );
+      queueEntry.isHeartbeatStale = true;
+      list = [queueEntry];
+    }
+  }
+
+  if (!list.length) {
+    const fallbackPayload = rootPayload ?? payload;
+    list = toWorkerList(fallbackPayload).map(normalizeWorker);
+
+    if (
+      !list.length &&
+      fallbackPayload &&
+      !Array.isArray(fallbackPayload) &&
+      typeof fallbackPayload === 'object'
+    ) {
+      const fallback = normalizeWorker(fallbackPayload as Record<string, unknown>, 0);
+      if (fallback.queueDepth !== 0 || fallback.heartbeatAt) {
+        list = [fallback];
+      }
+    }
+  }
+
+  return {
+    workers: list,
+    environmentWarnings: normalizedWarnings,
+    scheduler,
+    queue,
+  };
+};
+
+const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): NormalizedSnapshot => {
+  if (!payload || typeof payload !== 'object') {
+    return { workers: [], environmentWarnings: [], scheduler: null, queue: null };
+  }
+
+  const queueDepths = (payload as any).queueDepths ?? {};
+  const totalQueueDepth = computeTotalQueueDepth(queueDepths);
+  const workerPayload = (payload as any).worker ?? {};
+  const worker = normalizeWorker(
+    {
+      id: workerPayload?.id ?? 'execution-worker',
+      name: workerPayload?.inline ? 'Inline execution worker' : 'Execution worker',
+      queueDepth: totalQueueDepth,
+      heartbeatAt:
+        workerPayload?.latestHeartbeatAt ??
+        workerPayload?.heartbeatAt ??
+        workerPayload?.lastHeartbeatAt ??
+        workerPayload?.lastHeartbeat ??
+        null,
+    },
+    0,
+  );
+  worker.queueDepth = totalQueueDepth;
+
+  const status = (payload as any).status ?? null;
+  const statusValue = typeof status?.status === 'string' ? status.status : null;
+  const statusMessage = typeof status?.message === 'string' ? status.message : '';
+
+  const warnings: EnvironmentWarningMessage[] = [];
+
+  if (statusValue === 'warn' || statusValue === 'fail') {
+    warnings.push({
+      id: `queue-heartbeat-${statusValue}`,
+      message:
+        statusMessage ||
+        (statusValue === 'fail'
+          ? 'Execution worker heartbeat unavailable.'
+          : 'Execution worker heartbeat degraded.'),
+      since: worker.heartbeatAt ?? null,
+      queueDepth: totalQueueDepth || undefined,
+    });
+  }
+
+  if (worker.isHeartbeatStale && !warnings.length) {
+    warnings.push({
+      id: 'queue-heartbeat-stale',
+      message: 'Execution worker heartbeat is stale; check that the worker process is running.',
+      since: worker.heartbeatAt ?? null,
+      queueDepth: totalQueueDepth || undefined,
+    });
+  }
+
+  const queueTelemetry = {
+    queueDepths,
+    queueHealth: (payload as any).queueHealth ?? null,
+    leases: Array.isArray((payload as any).leases) ? (payload as any).leases : [],
+  };
+
+  return {
+    workers: [worker],
+    environmentWarnings: warnings,
+    scheduler: null,
+    queue: queueTelemetry,
+  };
+};
+
 export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): WorkerHeartbeatSnapshot {
   const authFetch = useAuthStore((state) => state.authFetch);
   const [workers, setWorkers] = useState<WorkerStatus[]>([]);
@@ -184,143 +401,36 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
 
     try {
       const response = await authFetch('/api/admin/workers/status');
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
 
-      const payload = (await response.json().catch(() => ({}))) as Record<string, any> | any[];
-      const rootPayload =
-        payload &&
-        typeof payload === 'object' &&
-        !Array.isArray(payload) &&
-        'data' in (payload as Record<string, unknown>)
-          ? ((payload as Record<string, any>).data ?? {})
-          : payload;
+      let snapshot: NormalizedSnapshot;
 
-      const executionTelemetry =
-        rootPayload &&
-        typeof rootPayload === 'object' &&
-        !Array.isArray(rootPayload) &&
-        'executionWorker' in (rootPayload as Record<string, unknown>)
-          ? (rootPayload as any).executionWorker
-          : rootPayload;
-
-      const scheduler =
-        rootPayload &&
-        typeof rootPayload === 'object' &&
-        !Array.isArray(rootPayload) &&
-        'scheduler' in (rootPayload as Record<string, unknown>)
-          ? ((rootPayload as Record<string, any>).scheduler as Record<string, any> | null)
-          : null;
-
-      const queue =
-        rootPayload &&
-        typeof rootPayload === 'object' &&
-        !Array.isArray(rootPayload) &&
-        'queue' in (rootPayload as Record<string, unknown>)
-          ? ((rootPayload as Record<string, any>).queue as Record<string, any> | null)
-          : null;
-
-      const rawWarnings = Array.isArray(executionTelemetry?.environmentWarnings)
-        ? executionTelemetry.environmentWarnings
-        : Array.isArray((rootPayload as any)?.environmentWarnings)
-          ? (rootPayload as any).environmentWarnings
-          : [];
-
-      const normalizedWarnings = (rawWarnings as any[])
-        .map((warning, index) => {
-          const id = typeof warning?.id === 'string' ? warning.id : `warning-${index}`;
-          const message = typeof warning?.message === 'string' ? warning.message : '';
-          const since = typeof warning?.since === 'string' ? warning.since : null;
-          const queueDepth =
-            typeof warning?.queueDepth === 'number' && Number.isFinite(warning.queueDepth)
-              ? warning.queueDepth
-              : undefined;
-
-          return { id, message, since, queueDepth } satisfies EnvironmentWarningMessage;
-        })
-        .filter((warning) => warning.message.length > 0);
-
-      const sumState = (value: unknown): number => {
-        return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-      };
-
-      let list: WorkerStatus[] = [];
-
-      if (executionTelemetry && typeof executionTelemetry === 'object') {
-        const queueDepths = (executionTelemetry as any)?.metrics?.queueDepths ?? {};
-        const totalQueueDepth = Object.values(queueDepths).reduce((acc, depth) => {
-          if (!depth || typeof depth !== 'object') {
-            return acc;
-          }
-
-          const record = depth as Record<string, unknown>;
-          if (typeof record.total === 'number' && Number.isFinite(record.total)) {
-            return acc + (record.total as number);
-          }
-
-          return (
-            acc +
-            sumState(record.waiting) +
-            sumState(record.delayed) +
-            sumState(record.active) +
-            sumState(record.paused)
-          );
-        }, 0);
-
-        const heartbeat = (executionTelemetry as any)?.lastObservedHeartbeat;
-        if (heartbeat && typeof heartbeat.heartbeatAt === 'string') {
-          const workerEntry = normalizeWorker(
-            {
-              id: heartbeat.workerId ?? 'execution-worker',
-              name: heartbeat.inline ? 'Inline execution worker' : 'Execution worker',
-              queueDepth: totalQueueDepth,
-              heartbeatAt: heartbeat.heartbeatAt,
-            },
-            0,
-          );
-          workerEntry.queueDepth = totalQueueDepth;
-          list = [workerEntry];
-        } else if (totalQueueDepth > 0) {
-          const queueEntry = normalizeWorker(
-            {
-              id: 'execution-queue',
-              name: 'Execution queue (no consumers)',
-              queueDepth: totalQueueDepth,
-            },
-            0,
-          );
-          queueEntry.isHeartbeatStale = true;
-          list = [queueEntry];
+      if (response.status === 403 || response.status === 404) {
+        const fallbackResponse = await authFetch('/api/production/queue/heartbeat');
+        if (!fallbackResponse.ok) {
+          throw new Error(`Request failed with status ${fallbackResponse.status}`);
         }
-      }
-
-      if (!list.length) {
-        const fallbackPayload = rootPayload ?? payload;
-        list = toWorkerList(fallbackPayload).map(normalizeWorker);
-
-        if (
-          !list.length &&
-          fallbackPayload &&
-          !Array.isArray(fallbackPayload) &&
-          typeof fallbackPayload === 'object'
-        ) {
-          const fallback = normalizeWorker(fallbackPayload as Record<string, unknown>, 0);
-          if (fallback.queueDepth !== 0 || fallback.heartbeatAt) {
-            list = [fallback];
-          }
+        const fallbackPayload = (await fallbackResponse.json().catch(() => ({}))) as
+          | Record<string, any>
+          | null;
+        snapshot = normalizeQueueHeartbeatPayload(fallbackPayload);
+      } else {
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
         }
+
+        const payload = (await response.json().catch(() => ({}))) as Record<string, any> | any[];
+        snapshot = normalizeAdminWorkerStatus(payload);
       }
 
       if (!isMountedRef.current) {
         return;
       }
 
-      workersRef.current = list;
-      setWorkers(list);
-      setEnvironmentWarnings(normalizedWarnings);
-      setSchedulerTelemetry(scheduler ?? null);
-      setQueueTelemetry(queue ?? null);
+      workersRef.current = snapshot.workers;
+      setWorkers(snapshot.workers);
+      setEnvironmentWarnings(snapshot.environmentWarnings);
+      setSchedulerTelemetry(snapshot.scheduler);
+      setQueueTelemetry(snapshot.queue);
       setError(null);
       setLastUpdated(new Date().toISOString());
     } catch (caughtError: any) {
