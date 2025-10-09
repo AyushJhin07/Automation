@@ -1,11 +1,8 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
-
-const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -19,6 +16,27 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  let viteModule: typeof import("vite") | undefined;
+  try {
+    viteModule = await import("vite");
+  } catch (error) {
+    const message =
+      "⚠️  Vite is not available. Install dev dependencies with `npm install` to enable the dev server, or set DISABLE_VITE=true.";
+
+    console.warn(message);
+    if (error) {
+      console.warn("👉 Original error:", error);
+    }
+
+    return;
+  }
+
+  if (!viteModule) {
+    return;
+  }
+
+  const { createServer: createViteServer, createLogger } = viteModule;
+  const viteLogger = createLogger();
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -27,23 +45,25 @@ export async function setupVite(app: Express, server: Server) {
 
   let viteConfig;
   try {
-    ({ default: viteConfig } = await import("../vite.config"));
+    ({ default: viteConfig } = await import("../vite.config.ts"));
   } catch (error) {
-    if (
+    const missingPlugin =
       (error as NodeJS.ErrnoException)?.code === "ERR_MODULE_NOT_FOUND" &&
       error instanceof Error &&
-      error.message.includes("vite-tsconfig-paths")
-    ) {
-      const message =
-        "Failed to load Vite config because 'vite-tsconfig-paths' is missing. " +
-        "Install it with 'npm install -D vite-tsconfig-paths' or ensure dev dependencies are available.";
-      console.error(message);
-      const enhancedError = new Error(message);
-      (enhancedError as Error & { cause?: unknown }).cause = error;
-      throw enhancedError;
+      error.message.includes("vite-tsconfig-paths");
+
+    if (missingPlugin) {
+      console.warn(
+        "⚠️  Failed to load Vite config because 'vite-tsconfig-paths' is missing. Install dev dependencies (npm install) or add 'npm install -D vite-tsconfig-paths'.",
+      );
+    } else {
+      console.warn(
+        "⚠️  Failed to load Vite config. Skipping Vite dev server setup.",
+        error,
+      );
     }
 
-    throw error;
+    return;
   }
 
   const vite = await createViteServer({
