@@ -35,17 +35,62 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "user": {
+            "type": "object",
+            "description": "Information about the authenticated user.",
+            "properties": {
+              "displayName": {
+                "type": "string"
+              },
+              "emailAddress": {
+                "type": "string",
+                "format": "email"
+              },
+              "permissionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "displayName",
+              "emailAddress"
+            ],
+            "additionalProperties": true
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "user"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "user": {
+          "displayName": "Avery Chen",
+          "emailAddress": "avery.chen@example.com",
+          "permissionId": "01234567890123456789"
+        },
+        "_meta": {
+          "raw": {
+            "kind": "docs#user",
+            "displayName": "Avery Chen",
+            "emailAddress": "avery.chen@example.com",
+            "permissionId": "01234567890123456789"
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -72,17 +117,75 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by Google Docs."
+          },
+          "title": {
+            "type": "string",
+            "description": "Document title."
+          },
+          "createdTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp."
+          },
+          "lastModifiedTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last modification timestamp."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Initial revision identifier."
+          },
+          "documentUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to the document."
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "title",
+          "createdTime",
+          "lastModifiedTime",
+          "revisionId",
+          "documentUrl"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "title": "Q4 Launch Brief",
+        "createdTime": "2024-12-09T17:12:03.921Z",
+        "lastModifiedTime": "2024-12-09T17:12:03.921Z",
+        "revisionId": "1",
+        "documentUrl": "https://docs.google.com/document/d/1A2B3C4D5E6F7G8H9/edit",
+        "_meta": {
+          "raw": {
+            "documentId": "1A2B3C4D5E6F7G8H9",
+            "title": "Q4 Launch Brief",
+            "createdTime": "2024-12-09T17:12:03.921Z",
+            "lastModifiedTime": "2024-12-09T17:12:03.921Z",
+            "revisionId": "1"
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -116,17 +219,111 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "createdTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastModifiedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content": {
+            "type": "array",
+            "description": "Simplified document content outline.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "style": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "text"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "title",
+          "revisionId",
+          "createdTime",
+          "lastModifiedTime"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "title": "Q4 Launch Brief",
+        "revisionId": "8",
+        "createdTime": "2024-11-01T15:04:12.000Z",
+        "lastModifiedTime": "2024-12-09T17:22:45.135Z",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Launch objectives overview",
+            "style": "HEADING_1"
+          },
+          {
+            "type": "paragraph",
+            "text": "Finalize rollout schedule and align enablement assets.",
+            "style": "NORMAL_TEXT"
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "body": {
+              "content": [
+                {
+                  "paragraph": {
+                    "elements": [
+                      {
+                        "textRun": {
+                          "content": "Launch objectives overview\n",
+                          "textStyle": {
+                            "bold": true
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -175,17 +372,60 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "9",
+        "writeControl": {
+          "requiredRevisionId": "8"
+        },
+        "replies": [
+          {
+            "updateParagraphStyle": {
+              "paragraphStyle": {
+                "namedStyleType": "HEADING_2"
+              }
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -228,17 +468,61 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "10",
+        "writeControl": {
+          "requiredRevisionId": "9"
+        },
+        "replies": [
+          {
+            "insertText": {
+              "location": {
+                "index": 56
+              },
+              "text": "Add regional timelines."
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -290,17 +574,58 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "11",
+        "writeControl": {
+          "requiredRevisionId": "10"
+        },
+        "replies": [
+          {
+            "replaceAllText": {
+              "occurrencesChanged": 3
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -345,17 +670,61 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "12",
+        "writeControl": {
+          "requiredRevisionId": "11"
+        },
+        "replies": [
+          {
+            "deleteContentRange": {
+              "range": {
+                "startIndex": 120,
+                "endIndex": 145
+              }
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -405,17 +774,62 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "13",
+        "writeControl": {
+          "requiredRevisionId": "12"
+        },
+        "replies": [
+          {
+            "insertTable": {
+              "rows": 3,
+              "columns": 4,
+              "location": {
+                "index": 210
+              }
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -463,17 +877,59 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "14",
+        "writeControl": {
+          "requiredRevisionId": "13"
+        },
+        "replies": [
+          {
+            "insertInlineImage": {
+              "objectId": "kix.image123",
+              "uri": "https://storage.googleapis.com/docs-image.png"
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -550,17 +1006,69 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "documentId": {
+            "type": "string",
+            "description": "Document identifier returned by the Google Docs API."
+          },
+          "revisionId": {
+            "type": "string",
+            "description": "Revision identifier generated for the mutation."
+          },
+          "writeControl": {
+            "type": "object",
+            "description": "Write control object from the Docs API.",
+            "additionalProperties": true
+          },
+          "replies": {
+            "type": "array",
+            "description": "Docs API replies for each request in the batch.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "documentId",
+          "revisionId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "success": true,
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "revisionId": "15",
+        "writeControl": {
+          "requiredRevisionId": "14"
+        },
+        "replies": [
+          {
+            "updateTextStyle": {
+              "textStyle": {
+                "bold": true,
+                "foregroundColor": {
+                  "color": {
+                    "rgbColor": {
+                      "red": 0.2,
+                      "green": 0.4,
+                      "blue": 0.8
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "_meta": {
+          "raw": {
+            "status": 200
+          }
+        }
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -579,31 +1087,82 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "eventType": {
+            "type": "string",
+            "description": "Type of change reported by the Drive activity feed."
+          },
           "documentId": {
             "type": "string"
           },
           "title": {
             "type": "string"
           },
-          "body": {
-            "type": "object"
+          "createdTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastModifiedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner": {
+            "type": "string",
+            "description": "Primary owner of the document."
+          },
+          "documentUrl": {
+            "type": "string",
+            "format": "uri"
           },
           "revisionId": {
             "type": "string"
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "eventType",
+          "documentId",
+          "title",
+          "createdTime",
+          "documentUrl"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "eventType": "documentCreated",
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "title": "Q4 Launch Brief",
+        "createdTime": "2024-12-09T17:12:03.921Z",
+        "lastModifiedTime": "2024-12-09T17:12:03.921Z",
+        "owner": "avery.chen@example.com",
+        "documentUrl": "https://docs.google.com/document/d/1A2B3C4D5E6F7G8H9/edit",
+        "revisionId": "1",
+        "_meta": {
+          "raw": {
+            "driveFile": {
+              "id": "1A2B3C4D5E6F7G8H9",
+              "name": "Q4 Launch Brief"
+            }
+          }
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
+        "strategy": "primaryKey",
+        "primaryKey": "documentId",
+        "cursor": "createdTime"
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null
@@ -625,31 +1184,84 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "eventType": {
+            "type": "string"
+          },
           "documentId": {
             "type": "string"
           },
           "title": {
             "type": "string"
           },
-          "body": {
-            "type": "object"
-          },
           "revisionId": {
             "type": "string"
+          },
+          "lastModifiedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "changedSegments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "documentUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "eventType",
+          "documentId",
+          "revisionId",
+          "lastModifiedTime"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "eventType": "documentUpdated",
+        "documentId": "1A2B3C4D5E6F7G8H9",
+        "title": "Q4 Launch Brief",
+        "revisionId": "15",
+        "lastModifiedTime": "2024-12-09T17:35:11.482Z",
+        "updatedBy": "casey.nguyen@example.com",
+        "changedSegments": [
+          "body.content[5].paragraph",
+          "body.content[6].table"
+        ],
+        "documentUrl": "https://docs.google.com/document/d/1A2B3C4D5E6F7G8H9/edit",
+        "_meta": {
+          "raw": {
+            "source": "driveActivity",
+            "activity": {
+              "primaryActionDetail": "edit"
+            }
+          }
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
+        "strategy": "primaryKey",
+        "primaryKey": "revisionId",
+        "cursor": "lastModifiedTime"
       },
       "runtimes": [
+        "node",
         "appsScript"
       ],
       "fallback": null

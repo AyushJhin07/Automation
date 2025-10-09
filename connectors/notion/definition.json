@@ -227,7 +227,7 @@
           "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
           "createdTime": "2024-12-08T16:45:00Z",
           "lastEditedTime": "2024-12-09T08:30:15Z",
-          "icon": "\ud83d\ude80",
+          "icon": "🚀",
           "cover": null,
           "properties": {
             "Status": {
@@ -366,7 +366,7 @@
           "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
           "createdTime": "2024-12-08T16:45:00Z",
           "lastEditedTime": "2024-12-09T08:30:15Z",
-          "icon": "\ud83d\ude80",
+          "icon": "🚀",
           "cover": null,
           "properties": {
             "Status": {
@@ -496,7 +496,7 @@
           "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
           "createdTime": "2024-12-08T16:45:00Z",
           "lastEditedTime": "2024-12-09T08:30:15Z",
-          "icon": "\ud83d\ude80",
+          "icon": "🚀",
           "cover": null,
           "properties": {
             "Status": {
@@ -935,7 +935,7 @@
           "type": "bulleted_list_item",
           "hasChildren": false,
           "lastEditedTime": "2024-12-09T08:31:22Z",
-          "text": "Review launch checklist \u2705"
+          "text": "Review launch checklist ✅"
         }
       },
       "runtimes": [
