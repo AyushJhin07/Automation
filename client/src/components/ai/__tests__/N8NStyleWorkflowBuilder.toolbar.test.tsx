@@ -5,6 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 const authFetchMock = vi.fn<typeof fetch>();
 const logoutMock = vi.fn();
+const isDevIgnoreQueueEnabledMock = vi.fn(() => false);
 
 vi.mock('@/store/authStore', () => ({
   useAuthStore: (selector: any) => {
@@ -20,6 +21,10 @@ vi.mock('@/store/authStore', () => ({
 const queueHealthMock = vi.fn();
 vi.mock('@/hooks/useQueueHealth', () => ({
   useQueueHealth: (...args: any[]) => queueHealthMock(...args),
+}));
+
+vi.mock('@/config/featureFlags', () => ({
+  isDevIgnoreQueueEnabled: (...args: any[]) => isDevIgnoreQueueEnabledMock(...args),
 }));
 
 const workerHeartbeatMock = vi.fn();
@@ -88,6 +93,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
       unobserve() {}
       disconnect() {}
     };
+    isDevIgnoreQueueEnabledMock.mockReturnValue(false);
     queueHealthMock.mockReturnValue({
       health: {
         status: 'pass',
@@ -137,6 +143,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     workerHeartbeatMock.mockReset();
     authFetchMock.mockReset();
     localStorage.clear();
+    isDevIgnoreQueueEnabledMock.mockReset();
   });
 
   it('disables the run button when queue health is failing', async () => {
@@ -165,6 +172,36 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     await waitFor(() => {
       expect(runButton).toBeDisabled();
     });
+  });
+
+  it('shows a durability warning but keeps run enabled when the dev override flag is set', async () => {
+    queueHealthMock.mockReturnValue({
+      health: {
+        status: 'fail',
+        durable: false,
+        message: 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.',
+        latencyMs: null,
+        checkedAt: new Date().toISOString(),
+      },
+      status: 'fail',
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    isDevIgnoreQueueEnabledMock.mockReturnValue(true);
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+
+    expect(
+      screen.getByText(/Queue driver is running in non-durable in-memory mode/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ENABLE_DEV_IGNORE_QUEUE is active/i)).toBeInTheDocument();
   });
 
   it('disables the run button when no workers are reporting', async () => {

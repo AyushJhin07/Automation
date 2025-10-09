@@ -31,6 +31,7 @@ import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { isDevIgnoreQueueEnabled } from '@/config/featureFlags';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -1909,7 +1910,7 @@ const GraphEditorContent = () => {
     summary: workerSummary,
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
-  const queueReady = queueStatus === 'pass';
+  const rawQueueReady = queueStatus === 'pass';
   const workersOnline =
     workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
   const workerIssues = useMemo(() => {
@@ -1948,7 +1949,7 @@ const GraphEditorContent = () => {
   const logout = useAuthStore((state) => state.logout);
   const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
-    if (queueReady) {
+    if (rawQueueReady) {
       return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
     }
     const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
@@ -1957,7 +1958,35 @@ const GraphEditorContent = () => {
       return detail;
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
-  }, [queueReady, queueHealth, queueHealthError, queueGuidance]);
+  }, [rawQueueReady, queueHealth, queueHealthError, queueGuidance]);
+
+  const queueDurabilityBypassed = useMemo(() => {
+    if (rawQueueReady) {
+      return false;
+    }
+    if (!queueHealth || queueHealth.durable !== false) {
+      return false;
+    }
+    return isDevIgnoreQueueEnabled();
+  }, [rawQueueReady, queueHealth]);
+
+  const queueReady = rawQueueReady || queueDurabilityBypassed;
+
+  const queueDurabilityWarningMessage = useMemo(() => {
+    if (!queueDurabilityBypassed) {
+      return null;
+    }
+
+    const rawMessage = (queueHealth?.message ?? '').trim();
+    const baseMessage = rawMessage.length > 0
+      ? (rawMessage.endsWith('.') ? rawMessage : `${rawMessage}.`)
+      : 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.';
+
+    return (
+      `${baseMessage} ENABLE_DEV_IGNORE_QUEUE is active for development. ` +
+      'Workflow runs may be lost if this process restarts—connect Redis and disable the flag for durable testing.'
+    );
+  }, [queueDurabilityBypassed, queueHealth?.message]);
   const ensureWorkflowId = useCallback(
     async (
       payload?: NodeGraph,
@@ -4138,8 +4167,16 @@ const GraphEditorContent = () => {
           workersOnline={workersOnline}
           workerStatusMessage={workerStatusMessage}
           overflowActions={editorOverflowActions}
-          banner={
-            runBanner ? (
+          banner={(() => {
+            const queueBanner = queueDurabilityWarningMessage ? (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+                <AlertTitle>In-memory queue mode</AlertTitle>
+                <AlertDescription>{queueDurabilityWarningMessage}</AlertDescription>
+              </Alert>
+            ) : null;
+
+            const runBannerNode = runBanner ? (
               <Alert
                 variant={runBanner.type === 'error' ? 'destructive' : 'default'}
                 className={clsx(
@@ -4153,11 +4190,24 @@ const GraphEditorContent = () => {
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                <AlertTitle>{runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}</AlertTitle>
+                <AlertTitle>
+                  {runBanner.type === 'error' ? 'Workflow run failed' : 'Workflow run succeeded'}
+                </AlertTitle>
                 <AlertDescription>{runBanner.message}</AlertDescription>
               </Alert>
-            ) : null
-          }
+            ) : null;
+
+            if (!queueBanner && !runBannerNode) {
+              return null;
+            }
+
+            return (
+              <div className="space-y-2">
+                {queueBanner}
+                {runBannerNode}
+              </div>
+            );
+          })()}
         />
 
         <div className="center-pane__canvas">

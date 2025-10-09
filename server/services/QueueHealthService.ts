@@ -4,6 +4,7 @@ import type { OrganizationRegion } from '../database/schema.js';
 import { getRedisConnectionOptions } from '../queue/BullMQFactory.js';
 import { getActiveQueueDriver, QueueDriverUnavailableError } from '../queue/index.js';
 import { getErrorMessage } from '../types/common.js';
+import { FLAGS } from '../env.js';
 
 export type QueueHealthStatus = {
   status: 'pass' | 'fail';
@@ -157,6 +158,12 @@ export async function assertQueueIsReady(options: {
     ].join('\n');
 
     console.error(message);
+    if (FLAGS.ENABLE_DEV_IGNORE_QUEUE) {
+      console.warn(
+        '[Queue] ENABLE_DEV_IGNORE_QUEUE=true detected in development. Continuing with in-memory queue despite durability warnings.'
+      );
+      return;
+    }
     throw new QueueDriverUnavailableError(message);
   }
 
