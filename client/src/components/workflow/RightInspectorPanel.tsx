@@ -10,7 +10,10 @@ import { Textarea } from "../ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import SmartParametersPanel from "./SmartParametersPanel";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
-import type { RuntimeCapabilityIssue } from "@/services/runtimeCapabilitiesService";
+import type {
+  RuntimeCapabilityIssue,
+  RuntimeCapabilityMode,
+} from "@/services/runtimeCapabilitiesService";
 import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "../../../shared";
 
 export interface SelectedNodeRuntimeSupport {
@@ -22,6 +25,9 @@ export interface SelectedNodeRuntimeSupport {
   operationLabel?: string;
   kind?: 'action' | 'trigger';
   runtime?: RuntimeKey;
+  mode?: RuntimeCapabilityMode;
+  nativeSupported?: boolean;
+  fallbackRuntime?: RuntimeKey;
 }
 
 export interface RightInspectorPanelProps {
@@ -68,7 +74,12 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   }
 
   const runtimeSupportMessage = useMemo(() => {
-    if (!runtimeSupportStatus || runtimeSupportStatus.supported) {
+    if (!runtimeSupportStatus) {
+      return null;
+    }
+
+    const mode = runtimeSupportStatus.mode ?? (runtimeSupportStatus.supported ? 'native' : 'unavailable');
+    if (mode === 'native') {
       return null;
     }
 
@@ -82,6 +93,14 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
       ? `the ${RUNTIME_DISPLAY_NAMES[runtimeSupportStatus.runtime] ?? runtimeSupportStatus.runtime} runtime`
       : 'this runtime environment';
 
+    if (mode === 'fallback') {
+      const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
+      const fallbackLabel = runtimeSupportStatus.fallbackRuntime
+        ? RUNTIME_DISPLAY_NAMES[runtimeSupportStatus.fallbackRuntime] ?? runtimeSupportStatus.fallbackRuntime
+        : 'Node.js';
+      return `${connector} ${noun} "${operationLabel}" will run via ${fallbackLabel} fallback until ${runtimeLabel} is enabled.`;
+    }
+
     if (runtimeSupportStatus.reason === 'missing-operation') {
       const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
       return `${connector} ${noun} "${operationLabel}" isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
@@ -89,6 +108,8 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
 
     return `${connector} isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
   }, [runtimeSupportStatus]);
+
+  const runtimeAlertTone = runtimeSupportStatus?.mode === 'fallback' ? 'warning' : 'error';
 
   return (
     <div
@@ -171,9 +192,17 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
 
       {/* Content */}
       <div className="p-6 space-y-6">
-        {runtimeSupportMessage && (
-          <Alert className="bg-amber-50 border-amber-200 text-amber-900">
-            <AlertTitle>Runtime limitation</AlertTitle>
+        {runtimeSupportMessage && runtimeSupportStatus && (
+          <Alert
+            className={
+              runtimeAlertTone === 'warning'
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }
+          >
+            <AlertTitle>
+              {runtimeAlertTone === 'warning' ? 'Fallback execution' : 'Runtime limitation'}
+            </AlertTitle>
             <AlertDescription>{runtimeSupportMessage}</AlertDescription>
           </Alert>
         )}

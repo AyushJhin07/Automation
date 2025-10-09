@@ -136,6 +136,137 @@ describe("NodeSidebar connector metadata integration", () => {
     expect(actionButton).toBeDisabled();
     expect(actionButton).toHaveAttribute("data-runtime-supported", "false");
     expect(actionButton).toHaveAttribute("draggable", "false");
-    expect(within(appCard).getByTestId("runtime-badge-alpha-app-sync")).toHaveTextContent(/runtime unavailable/i);
+    expect(within(appCard).getByTestId("runtime-badge-alpha-app-sync")).toHaveTextContent(/unavailable/i);
+  });
+
+  it("surfaces fallback mode when runtime support is missing but connector implementation exists", () => {
+    const catalog = {
+      connectors: {
+        "beta-app": {
+          name: "Beta App",
+          category: "Testing",
+          hasImplementation: true,
+          actions: [
+            {
+              id: "sync",
+              name: "Sync",
+              description: "Sync records",
+              parameters: {},
+              nodeType: "action.beta-app.sync",
+            },
+          ],
+          triggers: [],
+        },
+      },
+    };
+
+    const connectorDefinitions = {
+      "beta-app": {
+        id: "beta-app",
+        name: "Beta App",
+        hasImplementation: true,
+        actions: [{ id: "sync", name: "Sync" }],
+        triggers: [],
+      },
+    } as any;
+
+    const runtimeCapabilities = mergeWithFallbackCapabilities({} as any);
+    const runtimeCapabilityIndex = buildRuntimeCapabilityIndex(runtimeCapabilities, connectorDefinitions);
+
+    render(
+      <NodeSidebar
+        onAddNode={vi.fn()}
+        catalog={catalog}
+        loading={false}
+        connectorDefinitions={connectorDefinitions}
+        runtimeCapabilities={runtimeCapabilities}
+        runtimeCapabilitiesLoading={false}
+        runtimeCapabilityIndex={runtimeCapabilityIndex}
+      />,
+    );
+
+    const appCard = screen.getByTestId("app-card-beta-app");
+    const actionButton = within(appCard).getByTestId("sidebar-node-beta-app-sync");
+
+    expect(actionButton).not.toBeDisabled();
+    expect(actionButton).toHaveAttribute("data-runtime-mode", "fallback");
+    expect(actionButton).toHaveAttribute("data-runtime-supported", "true");
+    expect(within(appCard).getByTestId("runtime-badge-beta-app-sync")).toHaveTextContent(/fallback: node\.js/i);
+  });
+
+  it("updates runtime badges when native support becomes available", () => {
+    const catalog = {
+      connectors: {
+        "gamma-app": {
+          name: "Gamma App",
+          category: "Testing",
+          hasImplementation: true,
+          actions: [
+            {
+              id: "send",
+              name: "Send",
+              description: "Send records",
+              parameters: {},
+              nodeType: "action.gamma-app.send",
+            },
+          ],
+          triggers: [],
+        },
+      },
+    };
+
+    const connectorDefinitions = {
+      "gamma-app": {
+        id: "gamma-app",
+        name: "Gamma App",
+        hasImplementation: true,
+        actions: [{ id: "send", name: "Send" }],
+        triggers: [],
+      },
+    } as any;
+
+    const initialCapabilities = mergeWithFallbackCapabilities({} as any);
+    const initialIndex = buildRuntimeCapabilityIndex(initialCapabilities, connectorDefinitions);
+
+    const { rerender } = render(
+      <NodeSidebar
+        onAddNode={vi.fn()}
+        catalog={catalog}
+        loading={false}
+        connectorDefinitions={connectorDefinitions}
+        runtimeCapabilities={initialCapabilities}
+        runtimeCapabilitiesLoading={false}
+        runtimeCapabilityIndex={initialIndex}
+      />,
+    );
+
+    const appCard = screen.getByTestId("app-card-gamma-app");
+    const actionButton = within(appCard).getByTestId("sidebar-node-gamma-app-send");
+    expect(actionButton).toHaveAttribute("data-runtime-mode", "fallback");
+
+    const nativeCapabilities = mergeWithFallbackCapabilities({
+      "gamma-app": {
+        appId: "gamma-app",
+        actions: new Set(["send"]),
+        triggers: new Set<string>(),
+      },
+    } as any);
+    const nativeIndex = buildRuntimeCapabilityIndex(nativeCapabilities, connectorDefinitions);
+
+    rerender(
+      <NodeSidebar
+        onAddNode={vi.fn()}
+        catalog={catalog}
+        loading={false}
+        connectorDefinitions={connectorDefinitions}
+        runtimeCapabilities={nativeCapabilities}
+        runtimeCapabilitiesLoading={false}
+        runtimeCapabilityIndex={nativeIndex}
+      />,
+    );
+
+    const updatedBadge = within(appCard).getByTestId("runtime-badge-gamma-app-send");
+    expect(updatedBadge).toHaveTextContent(/runtime ready/i);
+    expect(within(appCard).getByTestId("sidebar-node-gamma-app-send")).toHaveAttribute("data-runtime-mode", "native");
   });
 });

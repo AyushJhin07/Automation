@@ -1,10 +1,13 @@
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
+import type { RuntimeKey } from '@shared/runtimes';
 
 export const RUNTIME_WILDCARD = '*';
 
 export type RuntimeOperationKind = 'action' | 'trigger';
 export type RuntimeCapabilityIssue = 'missing-app' | 'missing-operation';
+
+export type RuntimeCapabilityMode = 'native' | 'fallback' | 'unavailable';
 
 export interface RuntimeCapabilityEntry {
   appId: string;
@@ -18,6 +21,9 @@ export interface RuntimeCapabilityOperationStatus extends RuntimeCapabilityCheck
   appId: string;
   kind: RuntimeOperationKind;
   operationId: string;
+  mode: RuntimeCapabilityMode;
+  nativeSupported: boolean;
+  fallbackRuntime?: RuntimeKey;
 }
 
 export interface RuntimeCapabilityIndexEntry {
@@ -36,6 +42,8 @@ export interface RuntimeCapabilityCheckResult {
 }
 
 const CACHE_DURATION_MS = 60 * 1000;
+
+const DEFAULT_FALLBACK_RUNTIME: RuntimeKey = 'node';
 
 let cachedCapabilities: RuntimeCapabilityMap | null = null;
 let cacheExpiresAt = 0;
@@ -326,6 +334,10 @@ const assignOperationStatus = (
   appId: string,
   kind: RuntimeOperationKind,
   operationId?: string | null,
+  options?: {
+    preferFallback?: boolean;
+    fallbackRuntime?: RuntimeKey;
+  },
 ) => {
   const normalizedAppId = normalizeRuntimeAppId(appId);
   if (!normalizedAppId) {
@@ -339,14 +351,28 @@ const assignOperationStatus = (
   const normalizedOperationId =
     capability.normalizedOperationId ?? normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
 
+  const nativeSupported = capability.supported;
+  let supported = capability.supported;
+  let mode: RuntimeCapabilityMode = nativeSupported ? 'native' : 'unavailable';
+  let fallbackRuntime: RuntimeKey | undefined;
+
+  if (!nativeSupported && options?.preferFallback) {
+    supported = true;
+    mode = 'fallback';
+    fallbackRuntime = options.fallbackRuntime ?? DEFAULT_FALLBACK_RUNTIME;
+  }
+
   bucket[normalizedOperationId] = {
     appId: normalizedAppId,
     kind,
     operationId: normalizedOperationId,
-    supported: capability.supported,
+    supported,
     issue: capability.issue,
     normalizedAppId: capability.normalizedAppId ?? normalizedAppId,
     normalizedOperationId,
+    mode,
+    nativeSupported,
+    fallbackRuntime,
   };
 };
 
@@ -371,7 +397,12 @@ const addConnectorDefinitionOperations = (
 
     ensureIndexEntry(index, normalizedAppId);
 
-    const visit = (kind: RuntimeOperationKind, list: Array<{ id?: string | null }> | undefined) => {
+    const fallbackEligible = definition?.hasImplementation !== false;
+
+    const visit = (
+      kind: RuntimeOperationKind,
+      list: Array<{ id?: string | null }> | undefined,
+    ) => {
       if (!Array.isArray(list)) {
         return;
       }
@@ -380,7 +411,10 @@ const addConnectorDefinitionOperations = (
         if (!entry) {
           return;
         }
-        assignOperationStatus(index, capabilities, normalizedAppId, kind, entry.id ?? undefined);
+        assignOperationStatus(index, capabilities, normalizedAppId, kind, entry.id ?? undefined, {
+          preferFallback: fallbackEligible,
+          fallbackRuntime: fallbackEligible ? DEFAULT_FALLBACK_RUNTIME : undefined,
+        });
       });
     };
 
