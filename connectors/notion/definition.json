@@ -42,16 +42,36 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "workspaceName": {
+            "type": "string"
+          },
+          "botName": {
+            "type": "string"
+          },
+          "botId": {
+            "type": "string"
           }
         },
         "required": [
-          "success"
+          "success",
+          "workspaceName",
+          "botName",
+          "botId"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "workspaceName": "Automation HQ",
+        "botName": "Automation Connector",
+        "botId": "automation-connector-1234"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_page",
@@ -134,16 +154,104 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "boolean"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastEditedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "icon": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cover": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "properties": {
+                "type": "object",
+                "description": "Simplified view of Notion page properties",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "createdTime",
+              "lastEditedTime"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "page"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "page": {
+          "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+          "parentId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+          "workspace": false,
+          "title": "Launch Briefing Agenda",
+          "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
+          "createdTime": "2024-12-08T16:45:00Z",
+          "lastEditedTime": "2024-12-09T08:30:15Z",
+          "icon": "\ud83d\ude80",
+          "cover": null,
+          "properties": {
+            "Status": {
+              "type": "select",
+              "name": "In Progress"
+            },
+            "Owner": {
+              "type": "people",
+              "people": [
+                "Taylor Morgan"
+              ]
+            },
+            "Review date": {
+              "type": "date",
+              "start": "2024-12-11"
+            }
+          }
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_page",
@@ -185,16 +293,104 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "boolean"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastEditedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "icon": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cover": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "properties": {
+                "type": "object",
+                "description": "Simplified view of Notion page properties",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "createdTime",
+              "lastEditedTime"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "page"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "page": {
+          "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+          "parentId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+          "workspace": false,
+          "title": "Launch Briefing Agenda",
+          "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
+          "createdTime": "2024-12-08T16:45:00Z",
+          "lastEditedTime": "2024-12-09T08:30:15Z",
+          "icon": "\ud83d\ude80",
+          "cover": null,
+          "properties": {
+            "Status": {
+              "type": "select",
+              "name": "In Progress"
+            },
+            "Owner": {
+              "type": "people",
+              "people": [
+                "Taylor Morgan"
+              ]
+            },
+            "Review date": {
+              "type": "date",
+              "start": "2024-12-11"
+            }
+          }
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_page",
@@ -227,16 +423,104 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "boolean"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastEditedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "icon": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cover": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "properties": {
+                "type": "object",
+                "description": "Simplified view of Notion page properties",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "createdTime",
+              "lastEditedTime"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "page"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "page": {
+          "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+          "parentId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+          "workspace": false,
+          "title": "Launch Briefing Agenda",
+          "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
+          "createdTime": "2024-12-08T16:45:00Z",
+          "lastEditedTime": "2024-12-09T08:30:15Z",
+          "icon": "\ud83d\ude80",
+          "cover": null,
+          "properties": {
+            "Status": {
+              "type": "select",
+              "name": "In Progress"
+            },
+            "Owner": {
+              "type": "people",
+              "people": [
+                "Taylor Morgan"
+              ]
+            },
+            "Review date": {
+              "type": "date",
+              "start": "2024-12-11"
+            }
+          }
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_database_entry",
@@ -274,16 +558,78 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "entry": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "databaseId": {
+                "type": "string"
+              },
+              "createdTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastEditedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "properties": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "databaseId",
+              "createdTime",
+              "lastEditedTime"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "entry"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "entry": {
+          "id": "2f1b4a35-91d2-4f16-8c4d-e3b786caa012",
+          "databaseId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+          "createdTime": "2024-12-09T08:20:03Z",
+          "lastEditedTime": "2024-12-09T08:22:45Z",
+          "properties": {
+            "Task": {
+              "type": "title",
+              "text": "Assemble launch metrics"
+            },
+            "Status": {
+              "type": "status",
+              "name": "In Progress"
+            },
+            "Owner": {
+              "type": "people",
+              "people": [
+                "Alex Rivera"
+              ]
+            },
+            "Due Date": {
+              "type": "date",
+              "start": "2024-12-10"
+            }
+          }
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "query_database",
@@ -331,16 +677,97 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "databaseId": {
+                  "type": "string"
+                },
+                "createdTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "lastEditedTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "properties": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "id",
+                "databaseId",
+                "createdTime",
+                "lastEditedTime"
+              ],
+              "additionalProperties": true
+            },
+            "description": "Database pages returned by the Notion query"
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor to continue the paginated query"
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         },
         "required": [
-          "success"
+          "success",
+          "results",
+          "hasMore"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "results": [
+          {
+            "id": "2f1b4a35-91d2-4f16-8c4d-e3b786caa012",
+            "databaseId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+            "createdTime": "2024-12-09T08:20:03Z",
+            "lastEditedTime": "2024-12-09T08:22:45Z",
+            "properties": {
+              "Task": {
+                "type": "title",
+                "text": "Assemble launch metrics"
+              },
+              "Status": {
+                "type": "status",
+                "name": "In Progress"
+              },
+              "Owner": {
+                "type": "people",
+                "people": [
+                  "Alex Rivera"
+                ]
+              },
+              "Due Date": {
+                "type": "date",
+                "start": "2024-12-10"
+              }
+            }
+          }
+        ],
+        "nextCursor": null,
+        "hasMore": false
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "append_block_children",
@@ -374,16 +801,65 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "hasChildren": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "hasChildren"
+              ],
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "blocks"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "blocks": [
+          {
+            "id": "c8d1e2f3-1234-5678-90ab-cdef12345678",
+            "type": "heading_2",
+            "hasChildren": false,
+            "text": "Meeting Agenda"
+          },
+          {
+            "id": "a1b2c3d4-5678-90ab-cdef-111213141516",
+            "type": "bulleted_list_item",
+            "hasChildren": false,
+            "text": "Review launch checklist"
+          }
+        ]
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_block",
@@ -413,16 +889,60 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "block": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "hasChildren": {
+                "type": "boolean"
+              },
+              "lastEditedTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "hasChildren",
+              "lastEditedTime"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "block"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "block": {
+          "id": "a1b2c3d4-5678-90ab-cdef-111213141516",
+          "type": "bulleted_list_item",
+          "hasChildren": false,
+          "lastEditedTime": "2024-12-09T08:31:22Z",
+          "text": "Review launch checklist \u2705"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_block_children",
@@ -459,16 +979,65 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "hasChildren": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "hasChildren"
+              ],
+              "additionalProperties": true
+            }
           }
         },
         "required": [
-          "success"
+          "success",
+          "blocks"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "blocks": [
+          {
+            "id": "c8d1e2f3-1234-5678-90ab-cdef12345678",
+            "type": "heading_2",
+            "hasChildren": false,
+            "text": "Meeting Agenda"
+          },
+          {
+            "id": "a1b2c3d4-5678-90ab-cdef-111213141516",
+            "type": "bulleted_list_item",
+            "hasChildren": false,
+            "text": "Review launch checklist"
+          }
+        ]
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "search",
@@ -545,16 +1114,80 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "object": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri"
+                }
+              },
+              "required": [
+                "id",
+                "object"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         },
         "required": [
-          "success"
+          "success",
+          "results",
+          "hasMore"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "results": [
+          {
+            "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+            "object": "page",
+            "title": "Launch Briefing Agenda",
+            "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36"
+          },
+          {
+            "id": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+            "object": "database",
+            "title": "Launch Checklist",
+            "url": null
+          }
+        ],
+        "nextCursor": null,
+        "hasMore": false
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -579,36 +1212,61 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "object": {
-            "type": "string"
-          },
           "id": {
             "type": "string"
           },
-          "created_time": {
+          "createdTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
             "type": "string"
           },
-          "last_edited_time": {
-            "type": "string"
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "workspace": {
+            "type": "boolean"
           },
           "properties": {
-            "type": "object"
-          },
-          "parent": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "createdTime",
+          "title"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+        "createdTime": "2024-12-08T16:45:00Z",
+        "title": "Launch Briefing Agenda",
+        "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
+        "workspace": false,
+        "properties": {
+          "Status": {
+            "type": "select",
+            "name": "In Progress"
+          }
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "page_updated",
@@ -634,30 +1292,56 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "object": {
-            "type": "string"
-          },
           "id": {
             "type": "string"
           },
-          "last_edited_time": {
+          "lastEditedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
             "type": "string"
           },
-          "properties": {
-            "type": "object"
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "changedProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "lastEditedTime"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": "6b1d9ab7-f8f5-4a91-90e7-91ee5ed12c36",
+        "lastEditedTime": "2024-12-09T08:30:15Z",
+        "title": "Launch Briefing Agenda",
+        "url": "https://www.notion.so/automation/Launch-Briefing-Agenda-6b1d9ab7f8f54a9190e791ee5ed12c36",
+        "changedProperties": [
+          "Status",
+          "Owner"
+        ]
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "lastEditedTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "database_entry_created",
@@ -676,33 +1360,65 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "object": {
-            "type": "string"
-          },
           "id": {
             "type": "string"
           },
-          "created_time": {
+          "databaseId": {
             "type": "string"
           },
-          "properties": {
-            "type": "object"
+          "createdTime": {
+            "type": "string",
+            "format": "date-time"
           },
-          "parent": {
-            "type": "object"
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "databaseId",
+          "createdTime"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": "2f1b4a35-91d2-4f16-8c4d-e3b786caa012",
+        "databaseId": "d24e8b90-2fa4-4a32-a1b2-3e0b7d1c4f18",
+        "createdTime": "2024-12-09T08:20:03Z",
+        "title": "Assemble launch metrics",
+        "properties": {
+          "Status": {
+            "type": "status",
+            "name": "In Progress"
+          },
+          "Owner": {
+            "type": "people",
+            "people": [
+              "Alex Rivera"
+            ]
+          }
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

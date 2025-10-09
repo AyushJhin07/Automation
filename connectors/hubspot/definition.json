@@ -74,7 +74,12 @@
           "crm.objects.contacts.read",
           "crm.objects.deals.write"
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_deal",
@@ -206,7 +211,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "search_deals",
@@ -358,7 +368,12 @@
             "after": "MjAyNC0xMi0wOVQxMDozMDowMFo="
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_deals",
@@ -497,7 +512,12 @@
             "after": "NTM2MjM="
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_deal_stage",
@@ -597,7 +617,12 @@
             "lastmodifieddate": "2024-12-09T12:01:45.000Z"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_contact",
@@ -751,7 +776,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_contact",
@@ -891,7 +921,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_contact",
@@ -1006,7 +1041,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "search_contacts",
@@ -1155,7 +1195,12 @@
             "after": "MjAx"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_deal",
@@ -1295,7 +1340,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_deal",
@@ -1409,7 +1459,12 @@
             "lastmodifieddate": "2024-12-09T16:32:05.000Z"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_company",
@@ -1533,7 +1588,12 @@
           },
           "archived": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_ticket",
@@ -1649,7 +1709,12 @@
             "createdate": "2024-12-09T12:55:12.000Z"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_note",
@@ -1748,7 +1813,12 @@
             "hs_note_body_preview": "Followed up with customer about deployment..."
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "send_email",
@@ -1814,7 +1884,12 @@
         "messageId": "email_123456789",
         "status": "SENT",
         "sentAt": "2024-12-09T15:05:22.000Z"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -1908,9 +1983,15 @@
         "createdAt": "2024-12-09T14:21:17.000Z"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "contact_updated",
@@ -2011,9 +2092,15 @@
         ]
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "updatedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "deal_created",
@@ -2098,9 +2185,15 @@
         "createdAt": "2024-11-30T15:05:10.000Z"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "deal_stage_changed",
@@ -2159,9 +2252,15 @@
         "amount": 145000
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "changedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

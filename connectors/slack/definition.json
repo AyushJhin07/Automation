@@ -88,7 +88,12 @@
         "user": "automation.bot",
         "user_id": "U23456789",
         "url": "https://acme.slack.com/"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "send_message",
@@ -215,7 +220,12 @@
           "username": "automation-bot",
           "ts": "1733756457.000200"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_channel",
@@ -298,7 +308,12 @@
           "created": 1733756000,
           "num_members": 1
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "invite_to_channel",
@@ -402,7 +417,12 @@
           ],
           "num_members": 3
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "upload_file",
@@ -517,7 +537,12 @@
           "created": 1733756123,
           "user": "U024BE7LH"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_channel_info",
@@ -642,7 +667,12 @@
           "is_private": false,
           "num_members": 42
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_channels",
@@ -740,7 +770,12 @@
         "response_metadata": {
           "next_cursor": "dXNlcjpVMDI0QkU3TEg="
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_user_info",
@@ -831,7 +866,12 @@
             "image_72": "https://secure.gravatar.com/avatar/abc123?s=72"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_users",
@@ -938,7 +978,12 @@
         "response_metadata": {
           "next_cursor": ""
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "add_reaction",
@@ -1006,7 +1051,12 @@
         "channel": "C024BE7LT",
         "timestamp": "1733756457.000200",
         "reaction": "thumbsup"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "schedule_message",
@@ -1100,7 +1150,12 @@
           "type": "message",
           "user": "U024BE7LH"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_files",
@@ -1223,7 +1278,12 @@
           "page": 1,
           "pages": 3
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "conversations_history",
@@ -1342,7 +1402,12 @@
         "response_metadata": {
           "next_cursor": ""
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -1541,9 +1606,15 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "event_ts"
+        "primaryKey": "event_id",
+        "cursor": "eventTime"
       },
-      "dedupeKey": "event_ts"
+      "dedupeKey": "event_id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "reaction_added",
@@ -1727,9 +1798,15 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "event_ts"
+        "primaryKey": "event_id",
+        "cursor": "eventTime"
       },
-      "dedupeKey": "event_ts"
+      "dedupeKey": "event_id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "user_joined_channel",
@@ -1891,9 +1968,15 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "event_ts"
+        "primaryKey": "event_id",
+        "cursor": "eventTime"
       },
-      "dedupeKey": "event_ts"
+      "dedupeKey": "event_id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

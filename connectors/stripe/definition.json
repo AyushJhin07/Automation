@@ -65,7 +65,12 @@
         "livemode": false,
         "email": "finance@example.com",
         "defaultCurrency": "usd"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_customer",
@@ -249,7 +254,12 @@
             "country": "US"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_payment_intent",
@@ -410,7 +420,12 @@
             "invoice": "INV-2024-1209"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_subscription",
@@ -582,7 +597,12 @@
           "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
           "collection_method": "charge_automatically"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_refund",
@@ -687,7 +707,12 @@
             "order": "SO-9182"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_subscription",
@@ -900,7 +925,12 @@
           "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
           "collection_method": "charge_automatically"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_refund",
@@ -1027,7 +1057,12 @@
             "order": "SO-9182"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "retrieve_customer",
@@ -1141,7 +1176,12 @@
             "country": "US"
           }
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_payment_intents",
@@ -1292,7 +1332,12 @@
         ],
         "has_more": false,
         "nextPage": null
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_subscription",
@@ -1475,7 +1520,12 @@
           "latest_invoice": "in_1Q5t1aJd6m2sdfjK",
           "collection_method": "charge_automatically"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -1617,9 +1667,15 @@
         }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "created"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "payment_failed",
@@ -1760,9 +1816,15 @@
         }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "created"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "subscription_created",
@@ -1956,9 +2018,15 @@
         }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "created"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "invoice_payment_succeeded",
@@ -2095,9 +2163,15 @@
         }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "created"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

@@ -41,16 +41,79 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "authenticated": {
+            "type": "boolean",
+            "description": "Whether the token is valid for GitHub API requests"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "login": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "login",
+              "id"
+            ],
+            "additionalProperties": true
+          },
+          "rateLimit": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "remaining": {
+                "type": "integer"
+              },
+              "resetAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "limit",
+              "remaining",
+              "resetAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "authenticated",
+          "user"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "authenticated": true,
+        "user": {
+          "login": "automation-bot",
+          "id": 13579,
+          "htmlUrl": "https://github.com/automation-bot"
+        },
+        "rateLimit": {
+          "limit": 5000,
+          "remaining": 4992,
+          "resetAt": "2024-12-09T10:00:00Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_issue",
@@ -107,19 +170,180 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "issue": {
+            "type": "object",
+            "description": "GitHub issue representation",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "assignees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "repository": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "owner",
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
           }
         },
         "required": [
-          "success"
+          "success",
+          "issue"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "issue": {
+          "id": 1823456789,
+          "number": 42,
+          "title": "Fix pagination bug in workflow list",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+          "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+          "labels": [
+            {
+              "id": 601,
+              "name": "bug",
+              "color": "d73a4a"
+            },
+            {
+              "id": 775,
+              "name": "priority-medium",
+              "color": "fbca04"
+            }
+          ],
+          "assignees": [
+            {
+              "login": "automation-engineer",
+              "id": 90210
+            }
+          ],
+          "author": {
+            "login": "product-automation-bot",
+            "id": 12345678
+          },
+          "repository": {
+            "owner": "example-org",
+            "name": "automation-service"
+          },
+          "createdAt": "2024-12-08T17:22:13Z",
+          "updatedAt": "2024-12-09T10:04:11Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "close_issue",
@@ -151,19 +375,180 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "issue": {
+            "type": "object",
+            "description": "GitHub issue representation",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "assignees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "repository": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "owner",
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
           }
         },
         "required": [
-          "success"
+          "success",
+          "issue"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "issue": {
+          "id": 1823456789,
+          "number": 42,
+          "title": "Fix pagination bug in workflow list",
+          "state": "closed",
+          "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+          "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+          "labels": [
+            {
+              "id": 601,
+              "name": "bug",
+              "color": "d73a4a"
+            },
+            {
+              "id": 775,
+              "name": "priority-medium",
+              "color": "fbca04"
+            }
+          ],
+          "assignees": [
+            {
+              "login": "automation-engineer",
+              "id": 90210
+            }
+          ],
+          "author": {
+            "login": "product-automation-bot",
+            "id": 12345678
+          },
+          "repository": {
+            "owner": "example-org",
+            "name": "automation-service"
+          },
+          "createdAt": "2024-12-08T17:22:13Z",
+          "updatedAt": "2024-12-09T10:04:11Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "add_labels_to_issue",
@@ -205,16 +590,189 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "issue": {
+            "type": "object",
+            "description": "GitHub issue representation",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "assignees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "repository": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "owner",
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Labels that are now applied to the issue"
           }
         },
         "required": [
-          "success"
+          "success",
+          "issue",
+          "labels"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "issue": {
+          "id": 1823456789,
+          "number": 42,
+          "title": "Fix pagination bug in workflow list",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+          "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+          "labels": [
+            {
+              "id": 601,
+              "name": "bug",
+              "color": "d73a4a"
+            },
+            {
+              "id": 775,
+              "name": "priority-medium",
+              "color": "fbca04"
+            }
+          ],
+          "assignees": [
+            {
+              "login": "automation-engineer",
+              "id": 90210
+            }
+          ],
+          "author": {
+            "login": "product-automation-bot",
+            "id": 12345678
+          },
+          "repository": {
+            "owner": "example-org",
+            "name": "automation-service"
+          },
+          "createdAt": "2024-12-08T17:22:13Z",
+          "updatedAt": "2024-12-09T10:04:11Z"
+        },
+        "labels": [
+          "bug",
+          "priority-medium"
+        ]
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_issue",
@@ -279,19 +837,180 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "issue": {
+            "type": "object",
+            "description": "GitHub issue representation",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "assignees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "repository": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "owner",
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
           }
         },
         "required": [
-          "success"
+          "success",
+          "issue"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "issue": {
+          "id": 1823456789,
+          "number": 42,
+          "title": "Fix pagination bug in workflow list",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+          "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+          "labels": [
+            {
+              "id": 601,
+              "name": "bug",
+              "color": "d73a4a"
+            },
+            {
+              "id": 775,
+              "name": "priority-medium",
+              "color": "fbca04"
+            }
+          ],
+          "assignees": [
+            {
+              "login": "automation-engineer",
+              "id": 90210
+            }
+          ],
+          "author": {
+            "login": "product-automation-bot",
+            "id": 12345678
+          },
+          "repository": {
+            "owner": "example-org",
+            "name": "automation-service"
+          },
+          "createdAt": "2024-12-08T17:22:13Z",
+          "updatedAt": "2024-12-09T10:04:11Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_issue",
@@ -326,19 +1045,172 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates whether the operation succeeded."
+          "issue": {
+            "type": "object",
+            "description": "GitHub issue representation",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "assignees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "repository": {
+                "type": "object",
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "owner",
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "issue"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "id": 1823456789,
+        "number": 42,
+        "title": "Fix pagination bug in workflow list",
+        "state": "open",
+        "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+        "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+        "labels": [
+          {
+            "id": 601,
+            "name": "bug",
+            "color": "d73a4a"
+          },
+          {
+            "id": 775,
+            "name": "priority-medium",
+            "color": "fbca04"
+          }
+        ],
+        "assignees": [
+          {
+            "login": "automation-engineer",
+            "id": 90210
+          }
+        ],
+        "author": {
+          "login": "product-automation-bot",
+          "id": 12345678
+        },
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        },
+        "createdAt": "2024-12-08T17:22:13Z",
+        "updatedAt": "2024-12-09T10:04:11Z"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_issues",
@@ -418,16 +1290,217 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "GitHub issue representation",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "htmlUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "body": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "labels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "assignees": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "login": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "login",
+                      "id"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "author": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                },
+                "repository": {
+                  "type": "object",
+                  "properties": {
+                    "owner": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "owner",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "title",
+                "state",
+                "htmlUrl",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "description": "Issues returned by the GitHub REST API"
+          },
+          "nextPageToken": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor for fetching the next page of issues using the GitHub Link header"
           }
         },
         "required": [
-          "success"
+          "success",
+          "issues"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "issues": [
+          {
+            "id": 1823456789,
+            "number": 42,
+            "title": "Fix pagination bug in workflow list",
+            "state": "open",
+            "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+            "body": "Pagination breaks when filters are active. Capture request parameters and add regression test.",
+            "labels": [
+              {
+                "id": 601,
+                "name": "bug",
+                "color": "d73a4a"
+              },
+              {
+                "id": 775,
+                "name": "priority-medium",
+                "color": "fbca04"
+              }
+            ],
+            "assignees": [
+              {
+                "login": "automation-engineer",
+                "id": 90210
+              }
+            ],
+            "author": {
+              "login": "product-automation-bot",
+              "id": 12345678
+            },
+            "repository": {
+              "owner": "example-org",
+              "name": "automation-service"
+            },
+            "createdAt": "2024-12-08T17:22:13Z",
+            "updatedAt": "2024-12-09T10:04:11Z"
+          },
+          {
+            "id": 1823456790,
+            "number": 43,
+            "title": "Document connector scaffolding script",
+            "state": "open",
+            "htmlUrl": "https://github.com/example-org/automation-service/issues/43",
+            "body": "Add README section describing metadata scaffolding workflow.",
+            "labels": [
+              {
+                "id": 888,
+                "name": "documentation",
+                "color": "0075ca"
+              }
+            ],
+            "assignees": [],
+            "author": {
+              "login": "docs-writer",
+              "id": 321654
+            },
+            "repository": {
+              "owner": "example-org",
+              "name": "automation-service"
+            },
+            "createdAt": "2024-12-09T08:02:00Z",
+            "updatedAt": "2024-12-09T08:02:00Z"
+          }
+        ],
+        "nextPageToken": "Y3Vyc29yPTQz"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_pull_request",
@@ -487,16 +1560,98 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "pullRequest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "headRef": {
+                "type": "string"
+              },
+              "baseRef": {
+                "type": "string"
+              },
+              "merged": {
+                "type": "boolean"
+              },
+              "mergeable": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "headRef",
+              "baseRef",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "pullRequest"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "pullRequest": {
+          "id": 1415926535,
+          "number": 108,
+          "title": "Add metadata scaffolding helper",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/pull/108",
+          "body": "Implements helper to backfill runtimes and dedupe settings across connectors.",
+          "headRef": "automation/add-metadata-helper",
+          "baseRef": "main",
+          "merged": false,
+          "mergeable": true,
+          "createdAt": "2024-12-08T20:55:12Z",
+          "updatedAt": "2024-12-09T09:41:33Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_pull_request",
@@ -554,16 +1709,98 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "pullRequest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "headRef": {
+                "type": "string"
+              },
+              "baseRef": {
+                "type": "string"
+              },
+              "merged": {
+                "type": "boolean"
+              },
+              "mergeable": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "headRef",
+              "baseRef",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "pullRequest"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "pullRequest": {
+          "id": 1415926535,
+          "number": 108,
+          "title": "Add metadata scaffolding helper",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/pull/108",
+          "body": "Implements helper to backfill runtimes and dedupe settings across connectors.",
+          "headRef": "automation/add-metadata-helper",
+          "baseRef": "main",
+          "merged": false,
+          "mergeable": true,
+          "createdAt": "2024-12-08T20:55:12Z",
+          "updatedAt": "2024-12-09T09:41:33Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "merge_pull_request",
@@ -619,16 +1856,109 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "pullRequest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "body": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "headRef": {
+                "type": "string"
+              },
+              "baseRef": {
+                "type": "string"
+              },
+              "merged": {
+                "type": "boolean"
+              },
+              "mergeable": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "title",
+              "state",
+              "htmlUrl",
+              "headRef",
+              "baseRef",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
+          },
+          "sha": {
+            "type": "string",
+            "description": "Commit SHA created by the merge"
+          },
+          "message": {
+            "type": "string"
           }
         },
         "required": [
-          "success"
+          "success",
+          "pullRequest",
+          "sha"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "pullRequest": {
+          "id": 1415926535,
+          "number": 108,
+          "title": "Add metadata scaffolding helper",
+          "state": "open",
+          "htmlUrl": "https://github.com/example-org/automation-service/pull/108",
+          "body": "Implements helper to backfill runtimes and dedupe settings across connectors.",
+          "headRef": "automation/add-metadata-helper",
+          "baseRef": "main",
+          "merged": true,
+          "mergeable": true,
+          "createdAt": "2024-12-08T20:55:12Z",
+          "updatedAt": "2024-12-09T09:41:33Z",
+          "mergedSha": "abc123def4567890"
+        },
+        "sha": "abc123def4567890",
+        "message": "Pull Request successfully merged"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_pull_requests",
@@ -699,16 +2029,112 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "htmlUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "body": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "headRef": {
+                  "type": "string"
+                },
+                "baseRef": {
+                  "type": "string"
+                },
+                "merged": {
+                  "type": "boolean"
+                },
+                "mergeable": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "title",
+                "state",
+                "htmlUrl",
+                "headRef",
+                "baseRef",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "description": "Pull requests returned by the GitHub API"
+          },
+          "nextPageToken": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor for fetching the next page of pull requests"
           }
         },
         "required": [
-          "success"
+          "success",
+          "pullRequests"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "pullRequests": [
+          {
+            "id": 1415926535,
+            "number": 108,
+            "title": "Add metadata scaffolding helper",
+            "state": "open",
+            "htmlUrl": "https://github.com/example-org/automation-service/pull/108",
+            "body": "Implements helper to backfill runtimes and dedupe settings across connectors.",
+            "headRef": "automation/add-metadata-helper",
+            "baseRef": "main",
+            "merged": false,
+            "mergeable": true,
+            "createdAt": "2024-12-08T20:55:12Z",
+            "updatedAt": "2024-12-09T09:41:33Z"
+          }
+        ],
+        "nextPageToken": null
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_comment",
@@ -749,16 +2175,81 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "comment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "body": {
+                "type": "string"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "body",
+              "htmlUrl",
+              "user",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "comment"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "comment": {
+          "id": 987654321,
+          "body": "Thanks for the fix! Regression tests look great.",
+          "htmlUrl": "https://github.com/example-org/automation-service/issues/42#issuecomment-1234567890",
+          "user": {
+            "login": "qa-analyst",
+            "id": 600123
+          },
+          "createdAt": "2024-12-09T09:50:05Z",
+          "updatedAt": "2024-12-09T09:50:05Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_repository",
@@ -789,16 +2280,107 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "repository": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "fullName": {
+                "type": "string"
+              },
+              "private": {
+                "type": "boolean"
+              },
+              "htmlUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "defaultBranch": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "pushedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "owner": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "login",
+                  "id"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "fullName",
+              "private",
+              "htmlUrl",
+              "defaultBranch",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "repository"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "repository": {
+          "id": 1122334455,
+          "name": "automation-service",
+          "fullName": "example-org/automation-service",
+          "private": false,
+          "htmlUrl": "https://github.com/example-org/automation-service",
+          "description": "Automation platform connectors and workflow engine.",
+          "defaultBranch": "main",
+          "createdAt": "2023-05-01T15:12:31Z",
+          "updatedAt": "2024-12-09T09:40:00Z",
+          "pushedAt": "2024-12-09T09:38:44Z",
+          "owner": {
+            "login": "example-org",
+            "id": 999888777
+          }
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_repositories",
@@ -872,16 +2454,121 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "private": {
+                  "type": "boolean"
+                },
+                "htmlUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "defaultBranch": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "pushedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "owner": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "login",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "fullName",
+                "private",
+                "htmlUrl",
+                "defaultBranch",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": true
+            },
+            "description": "Repositories returned for the authenticated user"
+          },
+          "nextPageToken": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor derived from the Link header for subsequent pages"
           }
         },
         "required": [
-          "success"
+          "success",
+          "repositories"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "repositories": [
+          {
+            "id": 1122334455,
+            "name": "automation-service",
+            "fullName": "example-org/automation-service",
+            "private": false,
+            "htmlUrl": "https://github.com/example-org/automation-service",
+            "description": "Automation platform connectors and workflow engine.",
+            "defaultBranch": "main",
+            "createdAt": "2023-05-01T15:12:31Z",
+            "updatedAt": "2024-12-09T09:40:00Z",
+            "pushedAt": "2024-12-09T09:38:44Z",
+            "owner": {
+              "login": "example-org",
+              "id": 999888777
+            }
+          }
+        ],
+        "nextPageToken": null
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_webhook",
@@ -948,16 +2635,92 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "webhook": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "config": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "contentType": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url",
+                  "contentType"
+                ],
+                "additionalProperties": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "active",
+              "events",
+              "config",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "webhook"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "webhook": {
+          "id": 123987654,
+          "name": "web",
+          "active": true,
+          "events": [
+            "push",
+            "pull_request"
+          ],
+          "config": {
+            "url": "https://automation.example.com/webhooks/github",
+            "contentType": "json"
+          },
+          "createdAt": "2024-12-09T09:05:21Z",
+          "updatedAt": "2024-12-09T09:05:21Z"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -996,33 +2759,104 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer"
+          },
           "action": {
             "type": "string"
           },
           "number": {
-            "type": "number"
+            "type": "integer"
           },
-          "issue": {
-            "type": "object"
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "htmlUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "repository": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "owner",
+              "name"
+            ],
+            "additionalProperties": true
           },
-          "sender": {
-            "type": "object"
+          "author": {
+            "type": "object",
+            "properties": {
+              "login": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "login",
+              "id"
+            ],
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "action",
+          "number",
+          "title",
+          "state",
+          "htmlUrl",
+          "createdAt",
+          "repository"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 1823456789,
+        "action": "opened",
+        "number": 42,
+        "title": "Fix pagination bug in workflow list",
+        "state": "open",
+        "htmlUrl": "https://github.com/example-org/automation-service/issues/42",
+        "createdAt": "2024-12-08T17:22:13Z",
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        },
+        "author": {
+          "login": "product-automation-bot",
+          "id": 12345678
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "pull_request_opened",
@@ -1056,33 +2890,109 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "action": {
-            "type": "string"
+          "id": {
+            "type": "integer"
           },
           "number": {
-            "type": "number"
+            "type": "integer"
           },
-          "pull_request": {
-            "type": "object"
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "htmlUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "headRef": {
+            "type": "string"
+          },
+          "baseRef": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "repository": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "owner",
+              "name"
+            ],
+            "additionalProperties": true
           },
-          "sender": {
-            "type": "object"
+          "author": {
+            "type": "object",
+            "properties": {
+              "login": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "login",
+              "id"
+            ],
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "number",
+          "title",
+          "state",
+          "htmlUrl",
+          "headRef",
+          "baseRef",
+          "createdAt",
+          "repository"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 1415926535,
+        "number": 108,
+        "title": "Add metadata scaffolding helper",
+        "state": "open",
+        "htmlUrl": "https://github.com/example-org/automation-service/pull/108",
+        "headRef": "automation/add-metadata-helper",
+        "baseRef": "main",
+        "createdAt": "2024-12-08T20:55:12Z",
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        },
+        "author": {
+          "login": "automation-engineer",
+          "id": 90210
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "push",
@@ -1116,36 +3026,114 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "ref": {
             "type": "string"
           },
-          "before": {
+          "commitSha": {
             "type": "string"
           },
-          "after": {
-            "type": "string"
-          },
-          "commits": {
-            "type": "array"
+          "pushedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "repository": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "owner",
+              "name"
+            ],
+            "additionalProperties": true
           },
-          "pusher": {
-            "type": "object"
+          "commits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "author": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": true
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "message",
+                "timestamp"
+              ],
+              "additionalProperties": true
+            }
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "ref",
+          "commitSha",
+          "pushedAt",
+          "repository"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "ref": "refs/heads/main",
+        "commitSha": "4f9b2c7d8e1f",
+        "pushedAt": "2024-12-09T09:38:44Z",
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        },
+        "commits": [
+          {
+            "id": "4f9b2c7d8e1f",
+            "message": "Update connector metadata scaffolding",
+            "author": {
+              "name": "Automation Bot",
+              "email": "bot@example.com"
+            },
+            "timestamp": "2024-12-09T09:38:44Z"
+          }
+        ]
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "commitSha",
+        "cursor": "pushedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "issue_closed",
@@ -1175,27 +3163,104 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer"
+          },
           "action": {
             "type": "string"
           },
-          "issue": {
-            "type": "object"
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "htmlUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "repository": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "owner",
+              "name"
+            ],
+            "additionalProperties": true
+          },
+          "closer": {
+            "type": "object",
+            "properties": {
+              "login": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "login",
+              "id"
+            ],
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "action",
+          "number",
+          "title",
+          "state",
+          "htmlUrl",
+          "closedAt",
+          "repository"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 1823000000,
+        "action": "closed",
+        "number": 40,
+        "title": "Refresh OAuth scopes list",
+        "state": "closed",
+        "htmlUrl": "https://github.com/example-org/automation-service/issues/40",
+        "closedAt": "2024-12-09T08:30:04Z",
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        },
+        "closer": {
+          "login": "automation-engineer",
+          "id": 90210
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "closedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "pull_request_merged",
@@ -1225,27 +3290,83 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "action": {
+          "id": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "title": {
             "type": "string"
           },
-          "pull_request": {
-            "type": "object"
+          "state": {
+            "type": "string"
+          },
+          "htmlUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "mergedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mergeCommitSha": {
+            "type": "string"
           },
           "repository": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "owner",
+              "name"
+            ],
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "number",
+          "title",
+          "state",
+          "htmlUrl",
+          "mergedAt",
+          "repository"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 1415000000,
+        "number": 105,
+        "title": "Improve connector dedupe defaults",
+        "state": "closed",
+        "htmlUrl": "https://github.com/example-org/automation-service/pull/105",
+        "mergedAt": "2024-12-08T11:15:42Z",
+        "mergeCommitSha": "abc123def4567890",
+        "repository": {
+          "owner": "example-org",
+          "name": "automation-service"
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "mergedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {
