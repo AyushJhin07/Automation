@@ -1606,10 +1606,10 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "event_id",
+        "primaryKey": "event_ts",
         "cursor": "eventTime"
       },
-      "dedupeKey": "event_id",
+      "dedupeKey": "event_ts",
       "runtimes": [
         "node",
         "appsScript"
