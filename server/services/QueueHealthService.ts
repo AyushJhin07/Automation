@@ -95,7 +95,22 @@ async function pingRedis(region?: OrganizationRegion): Promise<QueueHealthStatus
 export async function checkQueueHealth(region?: OrganizationRegion): Promise<QueueHealthStatus> {
   const regionKey = resolveRegionKey(region);
   const activeDriver = getActiveQueueDriver();
-  const durable = activeDriver === 'bullmq';
+  const durable = activeDriver === 'bullmq' || activeDriver === 'mock';
+
+  if (activeDriver === 'mock') {
+    const status: QueueHealthStatus = {
+      status: 'pass',
+      durable: true,
+      message: 'Mock queue driver active. Redis connectivity checks bypassed.',
+      latencyMs: 0,
+      checkedAt: new Date().toISOString(),
+    };
+    cachedStatus = status;
+    cachedRegionKey = regionKey;
+    lastCheck = Date.now();
+    inflightCheck = null;
+    return status;
+  }
 
   if (!durable) {
     const status: QueueHealthStatus = {
