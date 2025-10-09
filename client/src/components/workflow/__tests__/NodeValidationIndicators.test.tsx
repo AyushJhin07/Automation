@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ActionNode, TransformNode } from "../ProfessionalGraphEditor";
-import type { ValidationError } from "../../../../shared/nodeGraphSchema";
+import type { ValidationError } from "@shared/nodeGraphSchema";
 
 describe("Graph node validation indicators", () => {
   it("highlights action nodes with validation errors", () => {

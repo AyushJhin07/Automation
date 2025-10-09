@@ -17,7 +17,8 @@ import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { RefreshCw } from "lucide-react";
 import { buildMetadataFromNode } from "./metadata";
-import type { EvaluatedValue } from "../../../../shared/nodeGraphSchema";
+import type { EvaluatedValue } from "@shared/nodeGraphSchema";
+import type { NodeIOMetadata } from "@shared/metadata";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
 import { normalizeConnectorId } from "@/services/connectorDefinitionsService";
 
@@ -54,6 +55,7 @@ export type UpstreamNodeSummary = {
     app?: string;
     metadata?: NodeMetadataSummary;
     outputMetadata?: NodeMetadataSummary;
+    io?: NodeIOMetadata;
     [key: string]: any;
   };
 };
@@ -336,6 +338,7 @@ const gatherMetadata = (node: UpstreamNodeSummary): NodeMetadataSummary => {
     extractOutputMetadataSummary(data.connectorMetadata) ??
     extractOutputMetadataSummary(data.metadata) ??
     extractOutputMetadataSummary(data.outputMetadata) ??
+    extractOutputMetadataSummary(data.io as NodeIOMetadata | undefined) ??
     extractOutputMetadataSummary((data as any).ioMetadata);
   const directMeta = cloneMetadataSummary(data.metadata);
   const outputMeta = cloneMetadataSummary(data.outputMetadata);
