@@ -253,13 +253,7 @@ app.use((req, res, next) => {
     // Do not rethrow here to avoid crashing the process; rely on logging/monitoring
   });
 
-  // Only setup Vite in development, after routes are registered.
-  // Allow disabling in constrained environments via DISABLE_VITE=true.
-  if (app.get('env') === 'development' && process.env.DISABLE_VITE !== 'true') {
-    await setupVite(app, server);
-  } else {
-    // In production or when Vite is disabled, try serving static assets.
-    // Fall back gracefully if the client build isn't present.
+  const setupStaticFallback = () => {
     try {
       serveStatic(app);
     } catch (e: any) {
@@ -268,6 +262,19 @@ app.use((req, res, next) => {
       );
       app.get('/', (_req, res) => res.send('Server running OK 🚀'));
     }
+  };
+
+  // Only setup Vite in development, after routes are registered.
+  // Allow disabling in constrained environments via DISABLE_VITE=true.
+  if (app.get('env') === 'development' && process.env.DISABLE_VITE !== 'true') {
+    const didSetupVite = await setupVite(app, server);
+    if (!didSetupVite) {
+      setupStaticFallback();
+    }
+  } else {
+    // In production or when Vite is disabled, try serving static assets.
+    // Fall back gracefully if the client build isn't present.
+    setupStaticFallback();
   }
 
   const parsedPort = Number.parseInt(env.PORT, 10);
