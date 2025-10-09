@@ -41,7 +41,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_expense",
@@ -127,7 +131,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_expense_reports",
@@ -194,7 +202,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_expense_report",
@@ -239,7 +251,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "export_report",
@@ -300,7 +316,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_policies",
@@ -335,7 +355,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_policy_tags",
@@ -380,7 +404,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "upload_receipt",
@@ -429,7 +457,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -473,7 +505,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "expense_report_approved",
@@ -507,7 +543,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "expense_created",
@@ -544,7 +584,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

@@ -41,7 +41,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_product",
@@ -118,7 +122,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_product",
@@ -169,7 +177,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_product",
@@ -204,7 +216,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_products",
@@ -267,7 +283,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_order",
@@ -325,7 +345,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -364,7 +388,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "product_updated",
@@ -398,7 +426,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

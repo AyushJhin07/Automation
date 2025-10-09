@@ -44,7 +44,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_contact",
@@ -182,7 +186,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_contact",
@@ -222,7 +230,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_contact",
@@ -310,7 +322,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "delete_contact",
@@ -345,7 +361,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_contacts",
@@ -400,7 +420,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "search_contacts",
@@ -447,7 +471,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_contact_group",
@@ -487,7 +515,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_contact_groups",
@@ -536,7 +568,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -575,7 +611,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "contact_updated",
@@ -612,7 +652,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

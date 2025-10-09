@@ -42,7 +42,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "start_time_entry",
@@ -114,7 +118,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "stop_time_entry",
@@ -149,7 +157,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_time_entry",
@@ -228,7 +240,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_time_entry",
@@ -305,7 +321,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "delete_time_entry",
@@ -345,7 +365,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_time_entry",
@@ -385,7 +409,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_time_entries",
@@ -456,7 +484,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_current_time_entry",
@@ -484,7 +516,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_project",
@@ -569,7 +605,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_project",
@@ -653,7 +693,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_project",
@@ -693,7 +737,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_projects",
@@ -754,7 +802,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_client",
@@ -798,7 +850,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_clients",
@@ -837,7 +893,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_workspace",
@@ -872,7 +932,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_workspaces",
@@ -905,7 +969,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -999,7 +1067,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "time_entry_updated",
@@ -1073,7 +1145,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "time_entry_deleted",
@@ -1123,7 +1199,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "project_created",
@@ -1205,7 +1285,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

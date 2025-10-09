@@ -45,7 +45,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_envelope",
@@ -204,7 +208,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_envelope",
@@ -248,7 +256,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_envelopes",
@@ -339,7 +351,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_envelope_status",
@@ -379,7 +395,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_recipients",
@@ -427,7 +447,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "download_document",
@@ -483,7 +507,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "void_envelope",
@@ -528,7 +556,11 @@
       },
       "sample": {
         "success": true
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -569,7 +601,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "envelope_sent",
@@ -603,7 +639,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "recipient_signed",
@@ -637,7 +677,11 @@
       "dedupe": {
         "strategy": "id",
         "path": "id"
-      }
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

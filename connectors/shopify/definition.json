@@ -42,16 +42,66 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "shop": {
+            "type": "object",
+            "description": "Metadata about the connected Shopify shop",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "plan": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "domain"
+            ],
+            "additionalProperties": true
+          },
+          "apiVersion": {
+            "type": "string",
+            "description": "Shopify Admin API version used for the request"
           }
         },
         "required": [
-          "success"
+          "success",
+          "shop"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "shop": {
+          "id": 673829102,
+          "name": "demo-store",
+          "email": "owner@example.com",
+          "domain": "demo-store.myshopify.com",
+          "plan": "shopify",
+          "timezone": "America/Los_Angeles"
+        },
+        "apiVersion": "2024-10"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_product",
@@ -153,16 +203,184 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "product": {
+            "type": "object",
+            "description": "Shopify product resource",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "handle": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "vendor": {
+                "type": "string"
+              },
+              "productType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "variants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "inventoryQuantity": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer"
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "position"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "product"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "product": {
+          "id": 8593027462103,
+          "title": "Performance Hoodie",
+          "status": "active",
+          "handle": "performance-hoodie",
+          "tags": [
+            "Winter 2024",
+            "Featured"
+          ],
+          "vendor": "Acme Apparel",
+          "productType": "Sweaters",
+          "createdAt": "2024-12-08T21:11:02-05:00",
+          "updatedAt": "2024-12-09T07:42:55-05:00",
+          "variants": [
+            {
+              "id": 47639201813623,
+              "title": "Black / Small",
+              "sku": "HOODIE-BLK-S",
+              "price": "78.00",
+              "inventoryQuantity": 24
+            },
+            {
+              "id": 47639201846391,
+              "title": "Black / Medium",
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00",
+              "inventoryQuantity": 18
+            }
+          ],
+          "options": [
+            {
+              "id": 1122334455,
+              "name": "Color",
+              "position": 1,
+              "values": [
+                "Black",
+                "Forest"
+              ]
+            },
+            {
+              "id": 1122334456,
+              "name": "Size",
+              "position": 2,
+              "values": [
+                "Small",
+                "Medium",
+                "Large"
+              ]
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_product",
@@ -212,16 +430,184 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "product": {
+            "type": "object",
+            "description": "Shopify product resource",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "handle": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "vendor": {
+                "type": "string"
+              },
+              "productType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "variants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "inventoryQuantity": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer"
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "position"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "product"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "product": {
+          "id": 8593027462103,
+          "title": "Performance Hoodie",
+          "status": "active",
+          "handle": "performance-hoodie",
+          "tags": [
+            "Winter 2024",
+            "Featured"
+          ],
+          "vendor": "Acme Apparel",
+          "productType": "Sweaters",
+          "createdAt": "2024-12-08T21:11:02-05:00",
+          "updatedAt": "2024-12-09T07:42:55-05:00",
+          "variants": [
+            {
+              "id": 47639201813623,
+              "title": "Black / Small",
+              "sku": "HOODIE-BLK-S",
+              "price": "78.00",
+              "inventoryQuantity": 24
+            },
+            {
+              "id": 47639201846391,
+              "title": "Black / Medium",
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00",
+              "inventoryQuantity": 18
+            }
+          ],
+          "options": [
+            {
+              "id": 1122334455,
+              "name": "Color",
+              "position": 1,
+              "values": [
+                "Black",
+                "Forest"
+              ]
+            },
+            {
+              "id": 1122334456,
+              "name": "Size",
+              "position": 2,
+              "values": [
+                "Small",
+                "Medium",
+                "Large"
+              ]
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_product",
@@ -251,16 +637,184 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "product": {
+            "type": "object",
+            "description": "Shopify product resource",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "handle": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "vendor": {
+                "type": "string"
+              },
+              "productType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "variants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "inventoryQuantity": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer"
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "position"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "product"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "product": {
+          "id": 8593027462103,
+          "title": "Performance Hoodie",
+          "status": "active",
+          "handle": "performance-hoodie",
+          "tags": [
+            "Winter 2024",
+            "Featured"
+          ],
+          "vendor": "Acme Apparel",
+          "productType": "Sweaters",
+          "createdAt": "2024-12-08T21:11:02-05:00",
+          "updatedAt": "2024-12-09T07:42:55-05:00",
+          "variants": [
+            {
+              "id": 47639201813623,
+              "title": "Black / Small",
+              "sku": "HOODIE-BLK-S",
+              "price": "78.00",
+              "inventoryQuantity": 24
+            },
+            {
+              "id": 47639201846391,
+              "title": "Black / Medium",
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00",
+              "inventoryQuantity": 18
+            }
+          ],
+          "options": [
+            {
+              "id": 1122334455,
+              "name": "Color",
+              "position": 1,
+              "values": [
+                "Black",
+                "Forest"
+              ]
+            },
+            {
+              "id": 1122334456,
+              "name": "Size",
+              "position": 2,
+              "values": [
+                "Small",
+                "Medium",
+                "Large"
+              ]
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_products",
@@ -318,16 +872,198 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Shopify product resource",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "handle": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "vendor": {
+                  "type": "string"
+                },
+                "productType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "variants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "sku": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "price": {
+                        "type": "string"
+                      },
+                      "inventoryQuantity": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "price"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "integer"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "position"
+                    ],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "createdAt"
+              ],
+              "additionalProperties": true
+            },
+            "description": "List of products returned from the Shopify API"
+          },
+          "nextPageInfo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor for retrieving the next page of results"
           }
         },
         "required": [
-          "success"
+          "success",
+          "products"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "products": [
+          {
+            "id": 8593027462103,
+            "title": "Performance Hoodie",
+            "status": "active",
+            "handle": "performance-hoodie",
+            "tags": [
+              "Winter 2024",
+              "Featured"
+            ],
+            "vendor": "Acme Apparel",
+            "productType": "Sweaters",
+            "createdAt": "2024-12-08T21:11:02-05:00",
+            "updatedAt": "2024-12-09T07:42:55-05:00",
+            "variants": [
+              {
+                "id": 47639201813623,
+                "title": "Black / Small",
+                "sku": "HOODIE-BLK-S",
+                "price": "78.00",
+                "inventoryQuantity": 24
+              },
+              {
+                "id": 47639201846391,
+                "title": "Black / Medium",
+                "sku": "HOODIE-BLK-M",
+                "price": "78.00",
+                "inventoryQuantity": 18
+              }
+            ],
+            "options": [
+              {
+                "id": 1122334455,
+                "name": "Color",
+                "position": 1,
+                "values": [
+                  "Black",
+                  "Forest"
+                ]
+              },
+              {
+                "id": 1122334456,
+                "name": "Size",
+                "position": 2,
+                "values": [
+                  "Small",
+                  "Medium",
+                  "Large"
+                ]
+              }
+            ]
+          }
+        ],
+        "nextPageInfo": "eyJwYWdlIjoyfQ=="
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_customer",
@@ -414,16 +1150,136 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "firstName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lastName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "address1": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "string"
+                    },
+                    "country": {
+                      "type": "string"
+                    },
+                    "zip": {
+                      "type": "string"
+                    },
+                    "default": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "address1",
+                    "city",
+                    "country"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "state",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "customer"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "customer": {
+          "id": 6942039485127,
+          "email": "casey.taylor@example.com",
+          "firstName": "Casey",
+          "lastName": "Taylor",
+          "phone": "+1-415-555-0168",
+          "state": "enabled",
+          "tags": [
+            "VIP",
+            "Newsletter"
+          ],
+          "createdAt": "2024-05-18T10:22:47-04:00",
+          "updatedAt": "2024-12-09T08:12:30-05:00",
+          "addresses": [
+            {
+              "id": 87654321098,
+              "address1": "123 Market Street",
+              "city": "San Francisco",
+              "country": "United States",
+              "zip": "94105",
+              "default": true
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_customer",
@@ -474,16 +1330,136 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "firstName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lastName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "address1": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "string"
+                    },
+                    "country": {
+                      "type": "string"
+                    },
+                    "zip": {
+                      "type": "string"
+                    },
+                    "default": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "address1",
+                    "city",
+                    "country"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "state",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "customer"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "customer": {
+          "id": 6942039485127,
+          "email": "casey.taylor@example.com",
+          "firstName": "Casey",
+          "lastName": "Taylor",
+          "phone": "+1-415-555-0168",
+          "state": "enabled",
+          "tags": [
+            "VIP",
+            "Newsletter"
+          ],
+          "createdAt": "2024-05-18T10:22:47-04:00",
+          "updatedAt": "2024-12-09T08:12:30-05:00",
+          "addresses": [
+            {
+              "id": 87654321098,
+              "address1": "123 Market Street",
+              "city": "San Francisco",
+              "country": "United States",
+              "zip": "94105",
+              "default": true
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_order",
@@ -513,16 +1489,152 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "order": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "orderNumber": {
+                "type": "integer"
+              },
+              "financialStatus": {
+                "type": "string"
+              },
+              "fulfillmentStatus": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "currency": {
+                "type": "string"
+              },
+              "currentSubtotalPrice": {
+                "type": "string"
+              },
+              "currentTotalPrice": {
+                "type": "string"
+              },
+              "totalTax": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "customerId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "lineItems": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "quantity",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "orderNumber",
+              "financialStatus",
+              "currency",
+              "currentTotalPrice",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "order"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "order": {
+          "id": 5423891056723,
+          "name": "#1045",
+          "orderNumber": 1045,
+          "financialStatus": "paid",
+          "fulfillmentStatus": "fulfilled",
+          "currency": "USD",
+          "currentSubtotalPrice": "212.00",
+          "currentTotalPrice": "229.28",
+          "totalTax": "17.28",
+          "email": "casey.taylor@example.com",
+          "createdAt": "2024-12-08T18:55:01-05:00",
+          "updatedAt": "2024-12-09T09:20:14-05:00",
+          "customerId": 6942039485127,
+          "lineItems": [
+            {
+              "id": 1357911131517,
+              "title": "Performance Hoodie - Black / Medium",
+              "quantity": 1,
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00"
+            },
+            {
+              "id": 1357911131518,
+              "title": "Thermal Running Leggings - Medium",
+              "quantity": 1,
+              "sku": "LEGGINGS-THERM-M",
+              "price": "134.00"
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_orders",
@@ -595,16 +1707,166 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "orderNumber": {
+                  "type": "integer"
+                },
+                "financialStatus": {
+                  "type": "string"
+                },
+                "fulfillmentStatus": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "currentSubtotalPrice": {
+                  "type": "string"
+                },
+                "currentTotalPrice": {
+                  "type": "string"
+                },
+                "totalTax": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "customerId": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "lineItems": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer"
+                      },
+                      "sku": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "price": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "quantity",
+                      "price"
+                    ],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "orderNumber",
+                "financialStatus",
+                "currency",
+                "currentTotalPrice",
+                "createdAt"
+              ],
+              "additionalProperties": true
+            },
+            "description": "Orders returned from Shopify"
+          },
+          "nextPageInfo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor for retrieving the next page of results"
           }
         },
         "required": [
-          "success"
+          "success",
+          "orders"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "orders": [
+          {
+            "id": 5423891056723,
+            "name": "#1045",
+            "orderNumber": 1045,
+            "financialStatus": "paid",
+            "fulfillmentStatus": "fulfilled",
+            "currency": "USD",
+            "currentSubtotalPrice": "212.00",
+            "currentTotalPrice": "229.28",
+            "totalTax": "17.28",
+            "email": "casey.taylor@example.com",
+            "createdAt": "2024-12-08T18:55:01-05:00",
+            "updatedAt": "2024-12-09T09:20:14-05:00",
+            "customerId": 6942039485127,
+            "lineItems": [
+              {
+                "id": 1357911131517,
+                "title": "Performance Hoodie - Black / Medium",
+                "quantity": 1,
+                "sku": "HOODIE-BLK-M",
+                "price": "78.00"
+              },
+              {
+                "id": 1357911131518,
+                "title": "Thermal Running Leggings - Medium",
+                "quantity": 1,
+                "sku": "LEGGINGS-THERM-M",
+                "price": "134.00"
+              }
+            ]
+          }
+        ],
+        "nextPageInfo": "eyJvcmRlcl9pZCI6NTQyMzg5MTA1NjcyMywibGltaXQiOjF9"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_order",
@@ -749,16 +2011,152 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "order": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "orderNumber": {
+                "type": "integer"
+              },
+              "financialStatus": {
+                "type": "string"
+              },
+              "fulfillmentStatus": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "currency": {
+                "type": "string"
+              },
+              "currentSubtotalPrice": {
+                "type": "string"
+              },
+              "currentTotalPrice": {
+                "type": "string"
+              },
+              "totalTax": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "customerId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "lineItems": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "quantity",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "orderNumber",
+              "financialStatus",
+              "currency",
+              "currentTotalPrice",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "order"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "order": {
+          "id": 5423891056723,
+          "name": "#1045",
+          "orderNumber": 1045,
+          "financialStatus": "paid",
+          "fulfillmentStatus": "fulfilled",
+          "currency": "USD",
+          "currentSubtotalPrice": "212.00",
+          "currentTotalPrice": "229.28",
+          "totalTax": "17.28",
+          "email": "casey.taylor@example.com",
+          "createdAt": "2024-12-08T18:55:01-05:00",
+          "updatedAt": "2024-12-09T09:20:14-05:00",
+          "customerId": 6942039485127,
+          "lineItems": [
+            {
+              "id": 1357911131517,
+              "title": "Performance Hoodie - Black / Medium",
+              "quantity": 1,
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00"
+            },
+            {
+              "id": 1357911131518,
+              "title": "Thermal Running Leggings - Medium",
+              "quantity": 1,
+              "sku": "LEGGINGS-THERM-M",
+              "price": "134.00"
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_order",
@@ -797,16 +2195,152 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "order": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "orderNumber": {
+                "type": "integer"
+              },
+              "financialStatus": {
+                "type": "string"
+              },
+              "fulfillmentStatus": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "currency": {
+                "type": "string"
+              },
+              "currentSubtotalPrice": {
+                "type": "string"
+              },
+              "currentTotalPrice": {
+                "type": "string"
+              },
+              "totalTax": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "customerId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "lineItems": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer"
+                    },
+                    "sku": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "price": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "quantity",
+                    "price"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "orderNumber",
+              "financialStatus",
+              "currency",
+              "currentTotalPrice",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "order"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "order": {
+          "id": 5423891056723,
+          "name": "#1045",
+          "orderNumber": 1045,
+          "financialStatus": "paid",
+          "fulfillmentStatus": "fulfilled",
+          "currency": "USD",
+          "currentSubtotalPrice": "212.00",
+          "currentTotalPrice": "229.28",
+          "totalTax": "17.28",
+          "email": "casey.taylor@example.com",
+          "createdAt": "2024-12-08T18:55:01-05:00",
+          "updatedAt": "2024-12-09T09:20:14-05:00",
+          "customerId": 6942039485127,
+          "lineItems": [
+            {
+              "id": 1357911131517,
+              "title": "Performance Hoodie - Black / Medium",
+              "quantity": 1,
+              "sku": "HOODIE-BLK-M",
+              "price": "78.00"
+            },
+            {
+              "id": 1357911131518,
+              "title": "Thermal Running Leggings - Medium",
+              "quantity": 1,
+              "sku": "LEGGINGS-THERM-M",
+              "price": "134.00"
+            }
+          ]
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "fulfill_order",
@@ -868,16 +2402,75 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "fulfillment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "orderId": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string"
+              },
+              "trackingCompany": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "trackingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "trackingUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "orderId",
+              "status",
+              "createdAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "fulfillment"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "fulfillment": {
+          "id": 7321980456123,
+          "orderId": 5423891056723,
+          "status": "success",
+          "trackingCompany": "UPS",
+          "trackingNumber": "1Z999AA10123456784",
+          "trackingUrl": "https://wwwapps.ups.com/WebTracking/track?track=yes&trackNums=1Z999AA10123456784",
+          "createdAt": "2024-12-09T09:21:45-05:00"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_inventory",
@@ -913,16 +2506,53 @@
           "success": {
             "type": "boolean",
             "description": "Indicates whether the operation succeeded."
+          },
+          "inventoryLevel": {
+            "type": "object",
+            "properties": {
+              "inventoryItemId": {
+                "type": "integer"
+              },
+              "locationId": {
+                "type": "integer"
+              },
+              "available": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "inventoryItemId",
+              "locationId",
+              "available",
+              "updatedAt"
+            ],
+            "additionalProperties": true
           }
         },
         "required": [
-          "success"
+          "success",
+          "inventoryLevel"
         ],
         "additionalProperties": true
       },
       "sample": {
-        "success": true
-      }
+        "success": true,
+        "inventoryLevel": {
+          "inventoryItemId": 47639201813623,
+          "locationId": 68845568423,
+          "available": 22,
+          "updatedAt": "2024-12-09T09:30:11-05:00"
+        }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -966,48 +2596,100 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
+            "type": "integer",
+            "description": "Shopify order identifier"
+          },
+          "name": {
             "type": "string"
           },
-          "order_number": {
-            "type": "number"
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "email": {
+          "financialStatus": {
             "type": "string"
           },
-          "total_price": {
+          "fulfillmentStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalPrice": {
             "type": "string"
           },
           "currency": {
             "type": "string"
           },
-          "financial_status": {
-            "type": "string"
-          },
-          "fulfillment_status": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string"
-          },
           "customer": {
-            "type": "object"
-          },
-          "line_items": {
-            "type": "array"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "firstName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lastName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "email"
+            ],
+            "additionalProperties": true
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "financialStatus",
+          "totalPrice",
+          "currency"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 5423891056723,
+        "name": "#1045",
+        "createdAt": "2024-12-08T18:55:01-05:00",
+        "financialStatus": "paid",
+        "fulfillmentStatus": "unfulfilled",
+        "totalPrice": "229.28",
+        "currency": "USD",
+        "customer": {
+          "id": 6942039485127,
+          "email": "casey.taylor@example.com",
+          "firstName": "Casey",
+          "lastName": "Taylor"
+        }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "order_updated",
@@ -1036,33 +2718,76 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
+            "type": "integer"
+          },
+          "name": {
             "type": "string"
           },
-          "order_number": {
-            "type": "number"
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "updated_at": {
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "financialStatus": {
             "type": "string"
           },
-          "financial_status": {
+          "fulfillmentStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalPrice": {
             "type": "string"
           },
-          "fulfillment_status": {
+          "currency": {
             "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Fields that changed in the update"
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "name",
+          "updatedAt"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 5423891056723,
+        "name": "#1045",
+        "createdAt": "2024-12-08T18:55:01-05:00",
+        "updatedAt": "2024-12-09T09:20:14-05:00",
+        "financialStatus": "paid",
+        "fulfillmentStatus": "fulfilled",
+        "totalPrice": "229.28",
+        "changes": [
+          "fulfillmentStatus"
+        ],
+        "currency": "USD"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "updatedAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "order_paid",
@@ -1083,33 +2808,54 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
+            "type": "integer"
+          },
+          "name": {
             "type": "string"
           },
-          "order_number": {
-            "type": "number"
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "total_price": {
+          "financialStatus": {
             "type": "string"
           },
-          "customer": {
-            "type": "object"
+          "totalPrice": {
+            "type": "string"
           },
-          "created_at": {
+          "currency": {
             "type": "string"
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "name",
+          "paidAt"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 5423891056723,
+        "name": "#1045",
+        "paidAt": "2024-12-08T18:56:11-05:00",
+        "financialStatus": "paid",
+        "totalPrice": "229.28",
+        "currency": "USD"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "paidAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "product_created",
@@ -1139,36 +2885,50 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "integer"
           },
           "title": {
             "type": "string"
           },
-          "vendor": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
             "type": "string"
           },
-          "product_type": {
+          "handle": {
             "type": "string"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "variants": {
-            "type": "array"
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "title",
+          "createdAt"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 8593027462103,
+        "title": "Performance Hoodie",
+        "createdAt": "2024-12-08T21:11:02-05:00",
+        "status": "active",
+        "handle": "performance-hoodie"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "customer_created",
@@ -1189,36 +2949,57 @@
         "additionalProperties": false
       },
       "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "integer"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email"
           },
-          "first_name": {
-            "type": "string"
+          "firstName": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
-          "last_name": {
-            "type": "string"
+          "lastName": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
-          "created_at": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "string"
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
-        "$schema": "http://json-schema.org/draft-07/schema#"
+        "required": [
+          "id",
+          "email",
+          "createdAt"
+        ],
+        "additionalProperties": true
       },
       "sample": {
-        "success": true
+        "id": 6942039485127,
+        "email": "casey.taylor@example.com",
+        "firstName": "Casey",
+        "lastName": "Taylor",
+        "createdAt": "2024-05-18T10:22:47-04:00"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdAt"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

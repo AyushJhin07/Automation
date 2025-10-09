@@ -74,7 +74,12 @@
         "messagesTotal": 2531,
         "threadsTotal": 842,
         "historyId": "9876543210"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "send_email",
@@ -160,7 +165,12 @@
         "labelIds": [
           "SENT"
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "search_emails",
@@ -245,7 +255,12 @@
         ],
         "nextPageToken": "054321abc",
         "resultSizeEstimate": 25
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_email",
@@ -373,7 +388,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "send_reply",
@@ -437,7 +457,12 @@
           "SENT",
           "INBOX"
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "mark_as_read",
@@ -495,7 +520,12 @@
           "INBOX",
           "STARRED"
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "add_label",
@@ -562,7 +592,12 @@
           "IMPORTANT",
           "Label_123"
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -793,7 +828,7 @@
             "size": 18234
           }
         ],
-        "threadSnippet": "Latest reply: Looks great—publishing to the board workspace shortly.",
+        "threadSnippet": "Latest reply: Looks great\u2014publishing to the board workspace shortly.",
         "_meta": {
           "raw": {
             "id": "1890f0ae5e3c1b3d",
@@ -824,7 +859,12 @@
         "primaryKey": "id",
         "cursor": "receivedAt"
       },
-      "dedupeKey": "id"
+      "dedupeKey": "id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "email_received_from",
@@ -1018,7 +1058,7 @@
           "IMPORTANT"
         ],
         "subject": "Signed agreement received",
-        "snippet": "Great news—we have the countersigned agreement attached.",
+        "snippet": "Great news\u2014we have the countersigned agreement attached.",
         "from": "chief.partnerships@example.com",
         "fromName": "Chief Partnerships",
         "to": [
@@ -1074,7 +1114,12 @@
         "primaryKey": "id",
         "cursor": "receivedAt"
       },
-      "dedupeKey": "id"
+      "dedupeKey": "id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "email_with_attachment",
@@ -1323,7 +1368,12 @@
         "primaryKey": "id",
         "cursor": "receivedAt"
       },
-      "dedupeKey": "id"
+      "dedupeKey": "id",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "release": {

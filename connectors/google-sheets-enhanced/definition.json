@@ -128,7 +128,12 @@
             }
           }
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "append_row",
@@ -220,7 +225,12 @@
             "Closed Won"
           ]
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_cell",
@@ -306,7 +316,12 @@
             "December"
           ]
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_range",
@@ -419,7 +434,12 @@
             54000
           ]
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_values",
@@ -526,7 +546,12 @@
             "Closed Won"
           ]
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "clear_range",
@@ -576,7 +601,12 @@
         "success": true,
         "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
         "clearedRange": "Raw Data!E2:E100"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_sheet",
@@ -651,7 +681,12 @@
         "sheetId": 987654321,
         "title": "Q1 Forecast",
         "index": 2
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "delete_sheet",
@@ -701,7 +736,12 @@
         "success": true,
         "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
         "sheetId": 654321987
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "duplicate_sheet",
@@ -760,7 +800,12 @@
         "spreadsheetId": "1vD2xQ9pUoJlMnOpQrStUvWxYz",
         "sheetId": 222333444,
         "title": "Summary (Copy)"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "format_cells",
@@ -860,7 +905,12 @@
           },
           "horizontalAlignment": "CENTER"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "find_replace",
@@ -961,7 +1011,12 @@
             "In Progress"
           ]
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "sort_range",
@@ -1060,7 +1115,12 @@
             "sortOrder": "DESCENDING"
           }
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -1209,7 +1269,12 @@
         "primaryKey": "rowId",
         "cursor": "addedAt"
       },
-      "dedupeKey": "rowId"
+      "dedupeKey": "rowId",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "cell_updated",
@@ -1334,7 +1399,12 @@
         "primaryKey": "changeId",
         "cursor": "updatedAt"
       },
-      "dedupeKey": "changeId"
+      "dedupeKey": "changeId",
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {

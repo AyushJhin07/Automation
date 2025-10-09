@@ -98,7 +98,12 @@
           "usage": "4294967296",
           "usageInDrive": "2147483648"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_file",
@@ -242,7 +247,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "upload_file",
@@ -376,7 +386,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_file",
@@ -511,7 +526,12 @@
           "size": "256000",
           "md5Checksum": "d41d8cd98f00b204e9800998ecf8427e"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "download_file",
@@ -585,7 +605,12 @@
         "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "size": 256000,
         "content": "UEsDBBQABgAIAAAAIQD..."
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "list_files",
@@ -728,7 +753,12 @@
           }
         ],
         "nextPageToken": "next-page-token"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "create_folder",
@@ -855,7 +885,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "move_file",
@@ -985,7 +1020,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "copy_file",
@@ -1114,7 +1154,12 @@
             }
           ]
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "delete_file",
@@ -1156,7 +1201,12 @@
       "sample": {
         "success": true,
         "fileId": "1ZdR3m6X1kL9Pq7z8"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "share_file",
@@ -1266,7 +1316,12 @@
           "emailAddress": "teammate@example.com",
           "link": "https://drive.google.com/file/d/1ZdR3m6X1kL9Pq7z8/view"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "get_file_permissions",
@@ -1356,7 +1411,12 @@
             "allowFileDiscovery": false
           }
         ]
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_file_metadata",
@@ -1491,7 +1551,12 @@
           ],
           "description": "Updated launch plan"
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "delete_permission",
@@ -1543,7 +1608,12 @@
         "success": true,
         "fileId": "1ZdR3m6X1kL9Pq7z8",
         "permissionId": "987654321"
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "update_permission",
@@ -1636,7 +1706,12 @@
           "emailAddress": "reviewer@example.com",
           "allowFileDiscovery": false
         }
-      }
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "triggers": [
@@ -1728,9 +1803,15 @@
         ]
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "createdTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "file_updated",
@@ -1806,9 +1887,15 @@
         }
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "modifiedTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     },
     {
       "id": "file_shared",
@@ -1889,9 +1976,15 @@
         "sharedTime": "2024-12-09T12:30:00Z"
       },
       "dedupe": {
-        "strategy": "id",
-        "path": "id"
-      }
+        "strategy": "primaryKey",
+        "primaryKey": "id",
+        "cursor": "sharedTime"
+      },
+      "runtimes": [
+        "node",
+        "appsScript"
+      ],
+      "fallback": null
     }
   ],
   "testConnection": {
