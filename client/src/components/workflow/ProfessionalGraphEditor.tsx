@@ -1630,24 +1630,39 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                     {/* Triggers */}
                     {app.triggers.map((t) => {
                       const runtimeId = t.runtimeId ?? t.id;
-                      const capability = runtimeCapabilitiesLoading
-                        ? { supported: true }
+                      const capabilityStatus = runtimeCapabilitiesLoading
+                        ? null
                         : getRuntimeCapabilityStatus(
                             runtimeCapabilityIndex,
                             capabilityAppId,
                             'trigger',
                             runtimeId,
-                          ) ??
-                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
-                      const previewOnly = !capability.supported;
-                      const tooltipText = capability.issue === 'missing-app'
-                        ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
-                        : `${appDisplayName} trigger "${t.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`;
+                          );
+                      const capabilityFallback =
+                        capabilityStatus ??
+                        checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
+
+                      const mode = capabilityStatus?.mode ?? (capabilityFallback.supported ? 'native' : 'unavailable');
+                      const isUnavailable = mode === 'unavailable';
+                      const isFallback = mode === 'fallback';
+                      const isSupported = !isUnavailable;
+                      const issue = capabilityStatus?.issue ?? capabilityFallback.issue;
+                      const fallbackRuntimeName = capabilityStatus?.fallbackRuntime
+                        ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
+                        : RUNTIME_DISPLAY_NAMES.node;
+
+                      const tooltipText = isUnavailable
+                        ? issue === 'missing-app'
+                          ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                          : `${appDisplayName} trigger "${t.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                        : isFallback
+                          ? `${appDisplayName} trigger "${t.name}" will run via ${fallbackRuntimeName} fallback until ${ACTIVE_RUNTIME_LABEL} supports it.`
+                          : null;
 
                       const button = (
                         <button
                           onClick={() => {
-                            if (previewOnly) return;
+                            if (!isSupported) return;
                             const initialParams = t.params || {};
                             onAddNode('trigger', {
                               label: t.name,
@@ -1662,18 +1677,20 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                           }}
                           className={clsx(
                             'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-emerald-300',
-                            previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-emerald-200',
+                            isUnavailable && 'opacity-60 cursor-not-allowed border-dashed hover:border-emerald-200',
+                            isFallback && 'border-amber-300/80 bg-amber-50/70 hover:border-amber-300',
                           )}
-                          draggable={!previewOnly}
+                          draggable={isSupported}
                           onDragStart={(event) => {
-                            if (previewOnly) {
+                            if (!isSupported) {
                               event.preventDefault();
                               event.stopPropagation();
                             }
                           }}
-                          disabled={previewOnly}
-                          data-runtime-supported={previewOnly ? 'false' : 'true'}
-                          data-runtime-preview={previewOnly ? 'true' : undefined}
+                          disabled={isUnavailable}
+                          data-runtime-supported={isSupported ? 'true' : 'false'}
+                          data-runtime-mode={mode}
+                          data-runtime-fallback={isFallback ? 'true' : undefined}
                           data-testid={`sidebar-trigger-${app.appId}-${t.id}`}
                         >
                           <div className="flex items-center gap-3">
@@ -1689,13 +1706,19 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                                 <Badge
                                   className={clsx(
                                     'text-[10px] uppercase tracking-wide',
-                                    previewOnly
-                                      ? 'bg-amber-100 text-amber-700 border-amber-200'
-                                      : 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                    isUnavailable
+                                      ? 'bg-rose-100 text-rose-700 border-rose-200'
+                                      : isFallback
+                                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                        : 'bg-emerald-100 text-emerald-700 border-emerald-200',
                                   )}
                                   data-testid={`runtime-badge-${app.appId}-${t.id}`}
                                 >
-                                  {previewOnly ? 'Runtime unavailable' : 'Runtime ready'}
+                                  {isUnavailable
+                                    ? 'Unavailable'
+                                    : isFallback
+                                      ? `Fallback: ${fallbackRuntimeName}`
+                                      : 'Runtime ready'}
                                 </Badge>
                               )}
                               <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
@@ -1706,7 +1729,7 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                         </button>
                       );
 
-                      if (!previewOnly) {
+                      if (!tooltipText) {
                         return React.cloneElement(button, { key: t.id });
                       }
 
@@ -1726,24 +1749,39 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                     {app.actions.map((a) => {
                       const runtimeId = a.runtimeId ?? a.id;
                       const capabilityKind = a.kind === 'trigger' ? 'trigger' : 'action';
-                      const capability = runtimeCapabilitiesLoading
-                        ? { supported: true }
+                      const capabilityStatus = runtimeCapabilitiesLoading
+                        ? null
                         : getRuntimeCapabilityStatus(
                             runtimeCapabilityIndex,
                             capabilityAppId,
                             capabilityKind,
                             runtimeId,
-                          ) ??
-                          checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
-                      const previewOnly = !capability.supported;
-                      const tooltipText = capability.issue === 'missing-app'
-                        ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
-                        : `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`;
+                          );
+                      const capabilityFallback =
+                        capabilityStatus ??
+                        checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
+
+                      const mode = capabilityStatus?.mode ?? (capabilityFallback.supported ? 'native' : 'unavailable');
+                      const isUnavailable = mode === 'unavailable';
+                      const isFallback = mode === 'fallback';
+                      const isSupported = !isUnavailable;
+                      const issue = capabilityStatus?.issue ?? capabilityFallback.issue;
+                      const fallbackRuntimeName = capabilityStatus?.fallbackRuntime
+                        ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
+                        : RUNTIME_DISPLAY_NAMES.node;
+
+                      const tooltipText = isUnavailable
+                        ? issue === 'missing-app'
+                          ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                          : `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                        : isFallback
+                          ? `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" will run via ${fallbackRuntimeName} fallback until ${ACTIVE_RUNTIME_LABEL} supports it.`
+                          : null;
 
                       const button = (
                         <button
                           onClick={() => {
-                            if (previewOnly) return;
+                            if (!isSupported) return;
                             const initialParams = a.params || {};
                             onAddNode(a.kind === 'transform' ? 'transform' : 'action', {
                               label: a.name,
@@ -1758,18 +1796,20 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                           }}
                           className={clsx(
                             'group text-left p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all duration-200 hover:border-blue-300',
-                            previewOnly && 'opacity-60 cursor-not-allowed border-dashed hover:border-blue-200',
+                            isUnavailable && 'opacity-60 cursor-not-allowed border-dashed hover:border-blue-200',
+                            isFallback && 'border-amber-300/80 bg-amber-50/70 hover:border-amber-300',
                           )}
-                          draggable={!previewOnly}
+                          draggable={isSupported}
                           onDragStart={(event) => {
-                            if (previewOnly) {
+                            if (!isSupported) {
                               event.preventDefault();
                               event.stopPropagation();
                             }
                           }}
-                          disabled={previewOnly}
-                          data-runtime-supported={previewOnly ? 'false' : 'true'}
-                          data-runtime-preview={previewOnly ? 'true' : undefined}
+                          disabled={isUnavailable}
+                          data-runtime-supported={isSupported ? 'true' : 'false'}
+                          data-runtime-mode={mode}
+                          data-runtime-fallback={isFallback ? 'true' : undefined}
                           data-testid={`sidebar-node-${app.appId}-${a.id}`}
                         >
                           <div className="flex items-center gap-3">
@@ -1792,13 +1832,19 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                                 <Badge
                                   className={clsx(
                                     'text-[10px] uppercase tracking-wide',
-                                    previewOnly
-                                      ? 'bg-amber-100 text-amber-700 border-amber-200'
-                                      : 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                    isUnavailable
+                                      ? 'bg-rose-100 text-rose-700 border-rose-200'
+                                      : isFallback
+                                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                        : 'bg-emerald-100 text-emerald-700 border-emerald-200',
                                   )}
                                   data-testid={`runtime-badge-${app.appId}-${a.id}`}
                                 >
-                                  {previewOnly ? 'Runtime unavailable' : 'Runtime ready'}
+                                  {isUnavailable
+                                    ? 'Unavailable'
+                                    : isFallback
+                                      ? `Fallback: ${fallbackRuntimeName}`
+                                      : 'Runtime ready'}
                                 </Badge>
                               )}
                               <span
@@ -1816,7 +1862,7 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                         </button>
                       );
 
-                      if (!previewOnly) {
+                      if (!tooltipText) {
                         return React.cloneElement(button, { key: a.id });
                       }
 
@@ -1831,6 +1877,7 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                         </Tooltip>
                       );
                     })}
+
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -2334,9 +2381,17 @@ const GraphEditorContent = () => {
         (value) => typeof value === 'string' && value.trim().length > 0,
       );
 
-      const support =
-        getRuntimeCapabilityStatus(runtimeCapabilityIndex, normalized, kind, operationId) ??
-        checkRuntimeCapability(runtimeCapabilities, normalized, kind, operationId);
+      const capabilityStatus =
+        getRuntimeCapabilityStatus(runtimeCapabilityIndex, normalized, kind, operationId) ?? null;
+      const capabilityFallback =
+        capabilityStatus ?? checkRuntimeCapability(runtimeCapabilities, normalized, kind, operationId);
+      const mode = capabilityStatus?.mode ?? (capabilityFallback.supported ? 'native' : 'unavailable');
+      const isSupported = mode !== 'unavailable';
+      const nativeSupported = capabilityStatus?.nativeSupported ?? capabilityFallback.supported;
+      const fallbackRuntime = capabilityStatus?.fallbackRuntime;
+      const reason = capabilityStatus?.issue ?? capabilityFallback.issue;
+      const normalizedOperation =
+        capabilityStatus?.normalizedOperationId ?? capabilityFallback.normalizedOperationId ?? undefined;
       const appLabel =
         typeof data.appName === 'string' && data.appName.trim().length > 0
           ? data.appName
@@ -2355,27 +2410,18 @@ const GraphEditorContent = () => {
               ? data.displayName
               : undefined;
 
-      if (support.supported) {
-        return {
-          supported: true,
-          appId: normalized,
-          appLabel,
-          operationId: operationId ?? support.normalizedOperationId,
-          operationLabel,
-          kind,
-          runtime: DEFAULT_RUNTIME,
-        };
-      }
-
       return {
-        supported: false,
-        reason: support.issue,
+        supported: isSupported,
+        reason: mode === 'native' ? undefined : reason,
         appId: normalized,
         appLabel,
-        operationId: operationId ?? support.normalizedOperationId,
+        operationId: operationId ?? normalizedOperation,
         operationLabel,
         kind,
         runtime: DEFAULT_RUNTIME,
+        mode,
+        nativeSupported,
+        fallbackRuntime,
       };
     },
     [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading, runtimeCapabilityIndex],
@@ -2386,7 +2432,8 @@ const GraphEditorContent = () => {
       return null;
     }
     const status = getNodeRuntimeSupport(selectedNode);
-    return status.supported ? null : status;
+    const mode = status.mode ?? (status.supported ? 'native' : 'unavailable');
+    return mode === 'native' ? null : status;
   }, [getNodeRuntimeSupport, runtimeCapabilitiesLoading, selectedNode]);
 
   const findUnsupportedNode = useCallback(() => {
@@ -2396,7 +2443,8 @@ const GraphEditorContent = () => {
 
     for (const node of nodes) {
       const support = getNodeRuntimeSupport(node);
-      if (!support.supported) {
+      const mode = support.mode ?? (support.supported ? 'native' : 'unavailable');
+      if (mode === 'unavailable') {
         return { node, support } as const;
       }
     }
