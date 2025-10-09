@@ -1,6 +1,6 @@
 import { normalizeConnectorId } from '@/services/connectorDefinitionsService';
 import type { ConnectorDefinitionMap } from '@/services/connectorDefinitionsService';
-import type { RuntimeKey } from '@shared/runtimes';
+import { ALL_RUNTIMES, type RuntimeKey } from '@shared/runtimes';
 
 export const RUNTIME_WILDCARD = '*';
 
@@ -11,11 +11,17 @@ export type RuntimeCapabilityMode = 'native' | 'fallback' | 'unavailable';
 
 export interface RuntimeCapabilityEntry {
   appId: string;
-  actions: Set<string>;
-  triggers: Set<string>;
+  actions: Record<string, RuntimeCapabilityOperationStatus>;
+  triggers: Record<string, RuntimeCapabilityOperationStatus>;
 }
 
 export type RuntimeCapabilityMap = Record<string, RuntimeCapabilityEntry>;
+
+export interface RuntimeCapabilityIssueDetail {
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+}
 
 export interface RuntimeCapabilityOperationStatus extends RuntimeCapabilityCheckResult {
   appId: string;
@@ -24,6 +30,15 @@ export interface RuntimeCapabilityOperationStatus extends RuntimeCapabilityCheck
   mode: RuntimeCapabilityMode;
   nativeSupported: boolean;
   fallbackRuntime?: RuntimeKey;
+  nativeRuntimes?: RuntimeKey[];
+  fallbackRuntimes?: RuntimeKey[];
+  enabledNativeRuntimes?: RuntimeKey[];
+  enabledFallbackRuntimes?: RuntimeKey[];
+  disabledNativeRuntimes?: RuntimeKey[];
+  disabledFallbackRuntimes?: RuntimeKey[];
+  resolvedRuntime?: RuntimeKey | null;
+  availability?: RuntimeCapabilityMode;
+  issues?: RuntimeCapabilityIssueDetail[];
 }
 
 export interface RuntimeCapabilityIndexEntry {
@@ -49,10 +64,97 @@ let cachedCapabilities: RuntimeCapabilityMap | null = null;
 let cacheExpiresAt = 0;
 let inFlightRequest: Promise<RuntimeCapabilityMap> | null = null;
 
+const RUNTIME_KEY_SET = new Set<RuntimeKey>(ALL_RUNTIMES);
+
+const normalizeRuntimeKeyValue = (value: unknown): RuntimeKey | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (RUNTIME_KEY_SET.has(trimmed as RuntimeKey)) {
+    return trimmed as RuntimeKey;
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  switch (normalized) {
+    case 'node':
+    case 'nodejs':
+      return 'node';
+    case 'appsscript':
+    case 'appscriptautomation':
+      return 'appsScript';
+    case 'cloudworker':
+      return 'cloudWorker';
+    default:
+      return undefined;
+  }
+};
+
+const normalizeRuntimeKeyList = (value: unknown): RuntimeKey[] => {
+  if (!value) {
+    return [];
+  }
+
+  const runtimes = new Set<RuntimeKey>();
+
+  const assign = (candidate: unknown) => {
+    const runtime = normalizeRuntimeKeyValue(candidate);
+    if (runtime) {
+      runtimes.add(runtime);
+    }
+  };
+
+  if (Array.isArray(value)) {
+    value.forEach(assign);
+  } else if (typeof value === 'object') {
+    Object.values(value as Record<string, unknown>).forEach(assign);
+  } else {
+    assign(value);
+  }
+
+  return Array.from(runtimes);
+};
+
+const createDefaultOperationStatus = (
+  appId: string,
+  kind: RuntimeOperationKind,
+  operationId: string,
+): RuntimeCapabilityOperationStatus => ({
+  appId,
+  kind,
+  operationId,
+  supported: true,
+  issue: undefined,
+  normalizedAppId: appId,
+  normalizedOperationId: operationId,
+  mode: 'native',
+  nativeSupported: true,
+});
+
+const createWildcardStatus = (
+  appId: string,
+  kind: RuntimeOperationKind,
+): RuntimeCapabilityOperationStatus => ({
+  ...createDefaultOperationStatus(appId, kind, RUNTIME_WILDCARD),
+  availability: 'native',
+  resolvedRuntime: 'node',
+  nativeRuntimes: ['node'],
+  enabledNativeRuntimes: ['node'],
+});
+
 const cloneCapabilityEntry = (entry: RuntimeCapabilityEntry): RuntimeCapabilityEntry => ({
   appId: entry.appId,
-  actions: new Set(entry.actions),
-  triggers: new Set(entry.triggers),
+  actions: Object.fromEntries(
+    Object.entries(entry.actions).map(([key, value]) => [key, { ...value }]),
+  ),
+  triggers: Object.fromEntries(
+    Object.entries(entry.triggers).map(([key, value]) => [key, { ...value }]),
+  ),
 });
 
 const cloneCapabilityMap = (map: RuntimeCapabilityMap): RuntimeCapabilityMap => {
@@ -66,18 +168,18 @@ const cloneCapabilityMap = (map: RuntimeCapabilityMap): RuntimeCapabilityMap => 
 export const createFallbackRuntimeCapabilities = (): RuntimeCapabilityMap => ({
   core: {
     appId: 'core',
-    actions: new Set([RUNTIME_WILDCARD]),
-    triggers: new Set([RUNTIME_WILDCARD]),
+    actions: { [RUNTIME_WILDCARD]: createWildcardStatus('core', 'action') },
+    triggers: { [RUNTIME_WILDCARD]: createWildcardStatus('core', 'trigger') },
   },
   'built-in': {
     appId: 'built-in',
-    actions: new Set([RUNTIME_WILDCARD]),
-    triggers: new Set([RUNTIME_WILDCARD]),
+    actions: { [RUNTIME_WILDCARD]: createWildcardStatus('built-in', 'action') },
+    triggers: { [RUNTIME_WILDCARD]: createWildcardStatus('built-in', 'trigger') },
   },
   time: {
     appId: 'time',
-    actions: new Set([RUNTIME_WILDCARD]),
-    triggers: new Set([RUNTIME_WILDCARD]),
+    actions: { [RUNTIME_WILDCARD]: createWildcardStatus('time', 'action') },
+    triggers: { [RUNTIME_WILDCARD]: createWildcardStatus('time', 'trigger') },
   },
 });
 
@@ -181,20 +283,145 @@ const normalizeOperationList = (raw: unknown): Set<string> => {
 const normalizeCapabilityPayload = (raw: unknown): RuntimeCapabilityMap => {
   const normalized: RuntimeCapabilityMap = {};
 
-  const assignEntry = (appId: unknown, payload: any) => {
-    const normalizedAppId = normalizeRuntimeAppId(appId);
-    if (!normalizedAppId) {
+  const ensureEntry = (appId: string): RuntimeCapabilityEntry => {
+    if (!normalized[appId]) {
+      normalized[appId] = {
+        appId,
+        actions: {},
+        triggers: {},
+      };
+    }
+    return normalized[appId];
+  };
+
+  const assignStatus = (
+    entry: RuntimeCapabilityEntry,
+    kind: RuntimeOperationKind,
+    status: RuntimeCapabilityOperationStatus,
+  ) => {
+    const bucket = kind === 'trigger' ? entry.triggers : entry.actions;
+    const key = status.normalizedOperationId ?? status.operationId;
+    bucket[key] = status;
+  };
+
+  const buildStatusFromSummary = (
+    appId: string,
+    kind: RuntimeOperationKind,
+    summary: Record<string, any>,
+  ): RuntimeCapabilityOperationStatus => {
+    const normalizedId =
+      normalizeRuntimeOperationId(summary.normalizedId ?? summary.id ?? summary.operationId) ??
+      RUNTIME_WILDCARD;
+    const nativeRuntimes = normalizeRuntimeKeyList(summary.nativeRuntimes);
+    const fallbackRuntimes = normalizeRuntimeKeyList(summary.fallbackRuntimes);
+    const enabledNativeRuntimes = normalizeRuntimeKeyList(summary.enabledNativeRuntimes);
+    const enabledFallbackRuntimes = normalizeRuntimeKeyList(summary.enabledFallbackRuntimes);
+    const disabledNativeRuntimes = normalizeRuntimeKeyList(summary.disabledNativeRuntimes);
+    const disabledFallbackRuntimes = normalizeRuntimeKeyList(summary.disabledFallbackRuntimes);
+    const availabilityRaw = typeof summary.availability === 'string' ? summary.availability : undefined;
+    const availability: RuntimeCapabilityMode =
+      availabilityRaw === 'native' || availabilityRaw === 'fallback' || availabilityRaw === 'unavailable'
+        ? availabilityRaw
+        : enabledNativeRuntimes.length > 0
+        ? 'native'
+        : enabledFallbackRuntimes.length > 0
+        ? 'fallback'
+        : 'unavailable';
+    const resolvedRuntime = normalizeRuntimeKeyValue(summary.resolvedRuntime) ?? null;
+    const fallbackRuntime =
+      availability === 'fallback'
+        ? normalizeRuntimeKeyValue(summary.fallbackRuntime) ??
+          resolvedRuntime ??
+          enabledFallbackRuntimes[0] ??
+          fallbackRuntimes[0] ??
+          DEFAULT_FALLBACK_RUNTIME
+        : undefined;
+    const supported = availability !== 'unavailable';
+    const nativeSupported =
+      typeof summary.nativeSupported === 'boolean'
+        ? summary.nativeSupported
+        : enabledNativeRuntimes.length > 0;
+
+    const issues = Array.isArray(summary.issues)
+      ? (summary.issues as Array<Record<string, any>>).map((issue) => ({
+          severity: issue?.severity === 'warning' ? 'warning' : 'error',
+          code: typeof issue?.code === 'string' ? issue.code : 'runtime.issue',
+          message: typeof issue?.message === 'string' ? issue.message : '',
+        }))
+      : undefined;
+
+    return {
+      appId,
+      kind,
+      operationId: normalizedId,
+      supported,
+      issue: supported ? undefined : 'missing-operation',
+      normalizedAppId: appId,
+      normalizedOperationId: normalizedId,
+      mode: availability,
+      nativeSupported,
+      fallbackRuntime,
+      nativeRuntimes,
+      fallbackRuntimes,
+      enabledNativeRuntimes,
+      enabledFallbackRuntimes,
+      disabledNativeRuntimes,
+      disabledFallbackRuntimes,
+      resolvedRuntime,
+      availability,
+      issues,
+    };
+  };
+
+  const assignLegacyOperations = (
+    entry: RuntimeCapabilityEntry,
+    kind: RuntimeOperationKind,
+    source: unknown,
+  ) => {
+    const operations = normalizeOperationList(source);
+    if (operations.size === 0) {
       return;
     }
 
-    const actions = normalizeOperationList(payload?.actions);
-    const triggers = normalizeOperationList(payload?.triggers);
+    const bucket = kind === 'trigger' ? entry.triggers : entry.actions;
+    operations.forEach((operationId) => {
+      if (bucket[operationId]) {
+        return;
+      }
+      assignStatus(entry, kind, createDefaultOperationStatus(entry.appId, kind, operationId));
+    });
+  };
 
-    normalized[normalizedAppId] = {
-      appId: normalizedAppId,
-      actions,
-      triggers,
-    };
+  const assignFromPayload = (payload: Record<string, any>) => {
+    const appId = normalizeRuntimeAppId(
+      payload.app ?? payload.application ?? payload.appId ?? payload.id ?? payload.slug ?? payload.connectorId,
+    );
+    if (!appId) {
+      return;
+    }
+
+    const entry = ensureEntry(appId);
+
+    if (payload.actionDetails && typeof payload.actionDetails === 'object') {
+      Object.values(payload.actionDetails as Record<string, any>).forEach((detail) => {
+        if (!detail || typeof detail !== 'object') {
+          return;
+        }
+        assignStatus(entry, 'action', buildStatusFromSummary(appId, 'action', detail as Record<string, any>));
+      });
+    }
+
+    if (payload.triggerDetails && typeof payload.triggerDetails === 'object') {
+      Object.values(payload.triggerDetails as Record<string, any>).forEach((detail) => {
+        if (!detail || typeof detail !== 'object') {
+          return;
+        }
+        assignStatus(entry, 'trigger', buildStatusFromSummary(appId, 'trigger', detail as Record<string, any>));
+      });
+    }
+
+    assignLegacyOperations(entry, 'action', payload.actions);
+    assignLegacyOperations(entry, 'trigger', payload.triggers);
   };
 
   if (Array.isArray(raw)) {
@@ -202,10 +429,7 @@ const normalizeCapabilityPayload = (raw: unknown): RuntimeCapabilityMap => {
       if (!entry || typeof entry !== 'object') {
         continue;
       }
-      const value = entry as Record<string, any>;
-      const appId =
-        value.app ?? value.application ?? value.appId ?? value.id ?? value.slug ?? value.connectorId;
-      assignEntry(appId, value);
+      assignFromPayload(entry as Record<string, any>);
     }
     return normalized;
   }
@@ -215,9 +439,7 @@ const normalizeCapabilityPayload = (raw: unknown): RuntimeCapabilityMap => {
       if (!value || typeof value !== 'object') {
         return;
       }
-      const payload = value as Record<string, any>;
-      const appId = payload.app ?? payload.application ?? payload.appId ?? payload.id ?? key;
-      assignEntry(appId, payload);
+      assignFromPayload({ ...(value as Record<string, any>), id: key });
     });
     return normalized;
   }
@@ -287,17 +509,29 @@ export const checkRuntimeCapability = (
   }
 
   const bucket = kind === 'trigger' ? capabilities.triggers : capabilities.actions;
-  if (bucket.has(RUNTIME_WILDCARD)) {
-    return { supported: true, normalizedAppId };
-  }
-
   const normalizedOperationId = normalizeRuntimeOperationId(operationId);
-  if (!normalizedOperationId) {
-    return { supported: bucket.size > 0, normalizedAppId };
+
+  if (normalizedOperationId) {
+    const status = bucket[normalizedOperationId];
+    if (status) {
+      return status;
+    }
   }
 
-  if (bucket.has(normalizedOperationId)) {
-    return { supported: true, normalizedAppId, normalizedOperationId };
+  const wildcardStatus = bucket[RUNTIME_WILDCARD];
+  if (wildcardStatus) {
+    return wildcardStatus;
+  }
+
+  if (!normalizedOperationId) {
+    const hasAny = Object.keys(bucket).length > 0;
+    return hasAny
+      ? {
+          ...createDefaultOperationStatus(normalizedAppId, kind, RUNTIME_WILDCARD),
+          normalizedAppId,
+          normalizedOperationId: RUNTIME_WILDCARD,
+        }
+      : { supported: false, issue: 'missing-operation', normalizedAppId };
   }
 
   return {
@@ -351,29 +585,30 @@ const assignOperationStatus = (
   const normalizedOperationId =
     capability.normalizedOperationId ?? normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
 
-  const nativeSupported = capability.supported;
-  let supported = capability.supported;
-  let mode: RuntimeCapabilityMode = nativeSupported ? 'native' : 'unavailable';
-  let fallbackRuntime: RuntimeKey | undefined;
-
-  if (!nativeSupported && options?.preferFallback) {
-    supported = true;
-    mode = 'fallback';
-    fallbackRuntime = options.fallbackRuntime ?? DEFAULT_FALLBACK_RUNTIME;
-  }
-
-  bucket[normalizedOperationId] = {
+  const baseStatus: RuntimeCapabilityOperationStatus = {
     appId: normalizedAppId,
     kind,
     operationId: normalizedOperationId,
-    supported,
+    supported: capability.supported,
     issue: capability.issue,
     normalizedAppId: capability.normalizedAppId ?? normalizedAppId,
     normalizedOperationId,
-    mode,
-    nativeSupported,
-    fallbackRuntime,
+    mode: capability.supported ? 'native' : 'unavailable',
+    nativeSupported: capability.supported,
   };
+
+  const mergedStatus: RuntimeCapabilityOperationStatus = {
+    ...baseStatus,
+    ...(capability as RuntimeCapabilityOperationStatus),
+  };
+
+  if (!mergedStatus.supported && options?.preferFallback && mergedStatus.mode === 'unavailable') {
+    mergedStatus.supported = true;
+    mergedStatus.mode = 'fallback';
+    mergedStatus.fallbackRuntime = options.fallbackRuntime ?? DEFAULT_FALLBACK_RUNTIME;
+  }
+
+  bucket[normalizedOperationId] = mergedStatus;
 };
 
 const addConnectorDefinitionOperations = (

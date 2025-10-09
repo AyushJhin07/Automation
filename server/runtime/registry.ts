@@ -3,7 +3,11 @@ import { resolve } from 'node:path';
 
 import { buildOperationKeyCandidates, getRuntimeOpHandlers } from '../workflow/compiler/op-map.js';
 import { env } from '../env.js';
-import { enabledRuntimes, type EnabledRuntimeSet, type RuntimeIdentifier } from './capabilities.js';
+import {
+  enabledRuntimes,
+  type EnabledRuntimeSet,
+  type RuntimeIdentifier,
+} from './capabilities.js';
 
 interface GenericConnectorOperation {
   type: 'action' | 'trigger';
@@ -11,6 +15,8 @@ interface GenericConnectorOperation {
   operation: string;
   endpoint: string;
   method: string;
+  runtimes: RuntimeIdentifier[];
+  fallbackRuntimes: RuntimeIdentifier[];
 }
 
 export interface RuntimeAppOperations {
@@ -44,7 +50,7 @@ export interface RuntimeCapabilitySummary {
   triggerDetails: Record<string, RuntimeCapabilityOperationSummary>;
 }
 
-const RUNTIME_PRIORITY: RuntimeIdentifier[] = ['node', 'apps_script', 'cloud_worker'];
+const RUNTIME_PRIORITY: RuntimeIdentifier[] = ['node', 'appsScript', 'cloudWorker'];
 
 type CapabilitySource = 'native' | 'fallback';
 
@@ -124,9 +130,9 @@ const runtimeIsEnabled = (runtime: RuntimeIdentifier, flags: EnabledRuntimeSet):
   switch (runtime) {
     case 'node':
       return flags.node;
-    case 'apps_script':
+    case 'appsScript':
       return flags.appsScript;
-    case 'cloud_worker':
+    case 'cloudWorker':
       return flags.cloudWorker;
     default:
       return false;
@@ -201,13 +207,13 @@ const runtimeAliasMap: Record<string, RuntimeIdentifier> = {
   node: 'node',
   nodejs: 'node',
   node_js: 'node',
-  'apps-script': 'apps_script',
-  apps_script: 'apps_script',
-  appsscript: 'apps_script',
-  gas: 'apps_script',
-  cloudworker: 'cloud_worker',
-  cloud_worker: 'cloud_worker',
-  worker: 'cloud_worker',
+  'apps-script': 'appsScript',
+  apps_script: 'appsScript',
+  appsscript: 'appsScript',
+  gas: 'appsScript',
+  cloudworker: 'cloudWorker',
+  cloud_worker: 'cloudWorker',
+  worker: 'cloudWorker',
 };
 
 const normalizeRuntimeId = (value: unknown): RuntimeIdentifier | undefined => {
@@ -544,6 +550,58 @@ const ensureManifestRuntimeSupport = (): void => {
 function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
   const operations: GenericConnectorOperation[] = [];
 
+  const collectRuntimes = (target: Set<RuntimeIdentifier>, value: unknown) => {
+    for (const runtime of normalizeRuntimeList(value)) {
+      target.add(runtime);
+    }
+  };
+
+  const deriveRuntimeMetadata = (operation: Record<string, unknown>): OperationRuntimeConfig => {
+    const native = new Set<RuntimeIdentifier>();
+    const fallback = new Set<RuntimeIdentifier>();
+
+    collectRuntimes(native, operation.runtimes);
+    collectRuntimes(native, operation.runtime);
+
+    const runtimeObject =
+      operation.runtime && typeof operation.runtime === 'object'
+        ? (operation.runtime as Record<string, unknown>)
+        : null;
+
+    if (runtimeObject) {
+      collectRuntimes(
+        native,
+        runtimeObject.native ??
+          runtimeObject.primary ??
+          runtimeObject.preferred ??
+          runtimeObject.supported ??
+          runtimeObject.runtimes ??
+          runtimeObject.runtime ??
+          runtimeObject.default ??
+          runtimeObject.defaults,
+      );
+      collectRuntimes(
+        fallback,
+        runtimeObject.fallback ??
+          runtimeObject.fallbacks ??
+          runtimeObject.alternatives ??
+          runtimeObject.backup ??
+          runtimeObject.fallbackRuntime ??
+          runtimeObject.fallbackRuntimes,
+      );
+    }
+
+    collectRuntimes(fallback, (operation as Record<string, unknown>).fallback);
+    collectRuntimes(fallback, (operation as Record<string, unknown>).fallbacks);
+    collectRuntimes(fallback, (operation as Record<string, unknown>).fallbackRuntime);
+    collectRuntimes(fallback, (operation as Record<string, unknown>).fallbackRuntimes);
+
+    return {
+      native: Array.from(native),
+      fallback: Array.from(fallback),
+    };
+  };
+
   try {
     const manifestPath = resolve(process.cwd(), 'server', 'connector-manifest.json');
     const manifestRaw = readFileSync(manifestPath, 'utf-8');
@@ -585,12 +643,18 @@ function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
           if (!operationId || !endpoint || !method) {
             continue;
           }
+          const runtimeMetadata =
+            action && typeof action === 'object'
+              ? deriveRuntimeMetadata(action as Record<string, unknown>)
+              : { native: [], fallback: [] };
           operations.push({
             type: 'action',
             app: connectorId,
             operation: operationId,
             endpoint,
             method,
+            runtimes: runtimeMetadata.native,
+            fallbackRuntimes: runtimeMetadata.fallback,
           });
         }
 
@@ -601,12 +665,18 @@ function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
           if (!operationId || !endpoint || !method) {
             continue;
           }
+          const runtimeMetadata =
+            trigger && typeof trigger === 'object'
+              ? deriveRuntimeMetadata(trigger as Record<string, unknown>)
+              : { native: [], fallback: [] };
           operations.push({
             type: 'trigger',
             app: connectorId,
             operation: operationId,
             endpoint,
             method,
+            runtimes: runtimeMetadata.native,
+            fallbackRuntimes: runtimeMetadata.fallback,
           });
         }
       } catch (error) {
@@ -647,7 +717,13 @@ function buildGenericRuntimeRegistry(): Record<string, RuntimeAppOperations> {
       method: operation.method,
     };
 
-    recordRuntimeCapability(operation.type, operation.app, operation.operation, 'node', 'fallback');
+    for (const runtime of operation.runtimes) {
+      recordRuntimeCapability(operation.type, operation.app, operation.operation, runtime, 'native');
+    }
+
+    for (const runtime of operation.fallbackRuntimes) {
+      recordRuntimeCapability(operation.type, operation.app, operation.operation, runtime, 'fallback');
+    }
   }
 
   return registry;

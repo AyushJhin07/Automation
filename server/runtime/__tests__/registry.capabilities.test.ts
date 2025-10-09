@@ -37,13 +37,17 @@ process.env.GENERIC_EXECUTOR_ENABLED = 'true';
     slackCapabilities.actions.includes('send_message'),
     'slack send_message action should be exposed via runtime registry when generic executor is enabled',
   );
-  const slackResolutionWithFallback = resolveRuntime({
+  const slackResolution = resolveRuntime({
     kind: 'action',
     appId: 'slack',
     operationId: 'send_message',
   });
-  assert.equal(slackResolutionWithFallback.availability, 'fallback');
-  assert.equal(slackResolutionWithFallback.runtime, 'node');
+  assert.equal(slackResolution.availability, 'native');
+  assert.equal(slackResolution.runtime, 'node');
+  assert.ok(
+    slackResolution.enabledNativeRuntimes.includes('node'),
+    'native runtimes should include node when generic executor is enabled',
+  );
 }
 
 process.env.GENERIC_EXECUTOR_ENABLED = 'false';
