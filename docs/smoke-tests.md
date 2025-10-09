@@ -54,4 +54,4 @@ Prereqs: `GENERIC_EXECUTOR_ENABLED=true` in `.env`, JWT for auth.
   a minimal workflow for each supported action, and execute it through
   `/api/executions/dry-run`. The summary table flags fallback runs, prints
   OK/SKIP/FAIL totals, and exits non-zero when any action fails so CI pipelines
-  can block regressions.
+  can block regressions.【F:scripts/smoke-supported.ts†L400-L607】
