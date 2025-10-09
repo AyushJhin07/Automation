@@ -425,7 +425,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -522,7 +521,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -625,7 +623,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -724,7 +721,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -829,7 +825,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -929,7 +924,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -1068,7 +1062,6 @@
         }
       },
       "runtimes": [
-        "node",
         "appsScript"
       ],
       "fallback": null
@@ -1093,6 +1086,10 @@
           "eventType": {
             "type": "string",
             "description": "Type of change reported by the Drive activity feed."
+          },
+          "id": {
+            "type": "string",
+            "description": "Drive file identifier returned by the Google Drive API."
           },
           "documentId": {
             "type": "string"
@@ -1131,7 +1128,7 @@
         },
         "required": [
           "eventType",
-          "documentId",
+          "id",
           "title",
           "createdTime",
           "documentUrl"
@@ -1140,6 +1137,7 @@
       },
       "sample": {
         "eventType": "documentCreated",
+        "id": "1A2B3C4D5E6F7G8H9",
         "documentId": "1A2B3C4D5E6F7G8H9",
         "title": "Q4 Launch Brief",
         "createdTime": "2024-12-09T17:12:03.921Z",
@@ -1158,7 +1156,7 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "documentId",
+        "primaryKey": "id",
         "cursor": "createdTime"
       },
       "runtimes": [
@@ -1190,13 +1188,14 @@
           "eventType": {
             "type": "string"
           },
+          "id": {
+            "type": "string",
+            "description": "Drive file identifier returned by the Google Drive API."
+          },
           "documentId": {
             "type": "string"
           },
           "title": {
-            "type": "string"
-          },
-          "revisionId": {
             "type": "string"
           },
           "lastModifiedTime": {
@@ -1228,17 +1227,16 @@
         },
         "required": [
           "eventType",
-          "documentId",
-          "revisionId",
+          "id",
           "lastModifiedTime"
         ],
         "additionalProperties": true
       },
       "sample": {
         "eventType": "documentUpdated",
+        "id": "1A2B3C4D5E6F7G8H9",
         "documentId": "1A2B3C4D5E6F7G8H9",
         "title": "Q4 Launch Brief",
-        "revisionId": "15",
         "lastModifiedTime": "2024-12-09T17:35:11.482Z",
         "updatedBy": "casey.nguyen@example.com",
         "changedSegments": [
@@ -1257,7 +1255,7 @@
       },
       "dedupe": {
         "strategy": "primaryKey",
-        "primaryKey": "revisionId",
+        "primaryKey": "id",
         "cursor": "lastModifiedTime"
       },
       "runtimes": [
