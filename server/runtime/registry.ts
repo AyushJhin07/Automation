@@ -534,11 +534,19 @@ const applyConnectorRuntimeConfig = (config: ConnectorRuntimeConfigNormalized): 
   applyBucket('trigger', triggers);
 };
 
+let manifestRuntimeSupportInitialized = false;
+
 const ensureManifestRuntimeSupport = (): void => {
+  if (manifestRuntimeSupportInitialized) {
+    return;
+  }
+
   const manifests = loadConnectorRuntimeManifest();
   for (const config of Object.values(manifests)) {
     applyConnectorRuntimeConfig(config);
   }
+
+  manifestRuntimeSupportInitialized = true;
 };
 
 function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
