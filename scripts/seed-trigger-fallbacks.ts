@@ -2,7 +2,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const DEFAULT_RUNTIMES = Object.freeze(['node'] as const);
+import { CONNECTOR_RUNTIME_OVERRIDES, type TriggerRuntimeOverride } from './runtime-defaults.config.js';
+
+const DEFAULT_TRIGGER_RUNTIMES = Object.freeze(['node'] as const);
+const DEFAULT_TRIGGER_FALLBACK: null = null;
 const DEFAULT_TRIGGER_DEDUPE = Object.freeze({
   strategy: 'cursor',
   cursor: {
@@ -35,31 +38,64 @@ async function findDefinitionFiles(dir: string): Promise<string[]> {
 type TriggerDefinition = Record<string, any>;
 
 type ConnectorDefinition = {
+  id?: string;
   triggers?: unknown;
 };
 
-function ensureTriggerDefaults(trigger: TriggerDefinition): boolean {
+function cloneValue<T>(value: T): T {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getTriggerOverride(appId: string, triggerId?: string): TriggerRuntimeOverride | undefined {
+  const override = CONNECTOR_RUNTIME_OVERRIDES[appId]?.triggers;
+  if (!override) {
+    return undefined;
+  }
+
+  const resolved: TriggerRuntimeOverride = {};
+  if (override.all) {
+    Object.assign(resolved, override.all);
+  }
+  if (triggerId && override.byId?.[triggerId]) {
+    Object.assign(resolved, override.byId[triggerId]);
+  }
+
+  return Object.keys(resolved).length > 0 ? resolved : undefined;
+}
+
+function ensureTriggerDefaults(appId: string, triggerId: string | undefined, trigger: TriggerDefinition): boolean {
   let changed = false;
 
+  const override = getTriggerOverride(appId, triggerId);
+  const runtimes = override?.runtimes ?? DEFAULT_TRIGGER_RUNTIMES;
   if (!Array.isArray(trigger.runtimes) || trigger.runtimes.length === 0) {
-    trigger.runtimes = [...DEFAULT_RUNTIMES];
+    trigger.runtimes = [...runtimes];
     changed = true;
   }
 
-  if (!Object.prototype.hasOwnProperty.call(trigger, 'fallback') || trigger.fallback === undefined) {
-    trigger.fallback = null;
+  const fallback = override?.fallback ?? DEFAULT_TRIGGER_FALLBACK;
+  const hasFallbackKey = Object.prototype.hasOwnProperty.call(trigger, 'fallback');
+  if (!hasFallbackKey || trigger.fallback === undefined) {
+    trigger.fallback = cloneValue(fallback);
+    changed = true;
+  } else if (trigger.fallback === null && override?.fallback !== undefined && override.fallback !== null) {
+    trigger.fallback = cloneValue(override.fallback);
     changed = true;
   }
 
+  const dedupeOverride = override?.dedupe ?? DEFAULT_TRIGGER_DEDUPE;
   if (!trigger.dedupe || typeof trigger.dedupe !== 'object') {
-    trigger.dedupe = JSON.parse(JSON.stringify(DEFAULT_TRIGGER_DEDUPE));
+    trigger.dedupe = cloneValue(dedupeOverride);
     changed = true;
   }
 
   return changed;
 }
 
-function applyDefaults(definition: ConnectorDefinition): boolean {
+function applyDefaults(definition: ConnectorDefinition, appId: string): boolean {
   const triggers = definition.triggers;
 
   if (!triggers) {
@@ -70,17 +106,24 @@ function applyDefaults(definition: ConnectorDefinition): boolean {
 
   if (Array.isArray(triggers)) {
     for (const trigger of triggers) {
-      if (trigger && typeof trigger === 'object' && ensureTriggerDefaults(trigger)) {
-        changed = true;
+      if (trigger && typeof trigger === 'object') {
+        const triggerId = typeof trigger.id === 'string' ? trigger.id : undefined;
+        if (ensureTriggerDefaults(appId, triggerId, trigger)) {
+          changed = true;
+        }
       }
     }
     return changed;
   }
 
   if (typeof triggers === 'object') {
-    for (const trigger of Object.values(triggers as Record<string, unknown>)) {
-      if (trigger && typeof trigger === 'object' && ensureTriggerDefaults(trigger as TriggerDefinition)) {
-        changed = true;
+    for (const [key, rawTrigger] of Object.entries(triggers as Record<string, unknown>)) {
+      if (rawTrigger && typeof rawTrigger === 'object') {
+        const trigger = rawTrigger as TriggerDefinition;
+        const triggerId = typeof trigger.id === 'string' ? trigger.id : key;
+        if (ensureTriggerDefaults(appId, triggerId, trigger)) {
+          changed = true;
+        }
       }
     }
   }
@@ -88,7 +131,21 @@ function applyDefaults(definition: ConnectorDefinition): boolean {
   return changed;
 }
 
-async function processDefinition(file: string): Promise<boolean> {
+function getConnectorId(file: string): string | null {
+  const relative = path.relative(connectorsDir, file);
+  if (relative.startsWith('..')) {
+    return null;
+  }
+  const [connectorId] = relative.split(path.sep);
+  return connectorId ?? null;
+}
+
+async function processDefinition(file: string): Promise<{ updated: boolean; connectorId: string | null }> {
+  const connectorId = getConnectorId(file);
+  if (!connectorId) {
+    return { updated: false, connectorId: null };
+  }
+
   const raw = await fs.readFile(file, 'utf8');
   let definition: ConnectorDefinition;
 
@@ -98,13 +155,13 @@ async function processDefinition(file: string): Promise<boolean> {
     throw new Error(`Failed to parse ${file}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  if (!applyDefaults(definition)) {
-    return false;
+  if (!applyDefaults(definition, connectorId)) {
+    return { updated: false, connectorId };
   }
 
   const formatted = `${JSON.stringify(definition, null, 2)}\n`;
   await fs.writeFile(file, formatted, 'utf8');
-  return true;
+  return { updated: true, connectorId };
 }
 
 async function main(): Promise<void> {
@@ -120,9 +177,11 @@ async function main(): Promise<void> {
   let updated = 0;
 
   for (const file of files) {
-    if (await processDefinition(file)) {
+    const { updated: fileUpdated, connectorId } = await processDefinition(file);
+    if (fileUpdated) {
       updated += 1;
-      console.log(`Updated ${path.relative(repoRoot, file)}`);
+      const displayId = connectorId ? `${connectorId}/definition.json` : path.relative(repoRoot, file);
+      console.log(`Updated ${displayId}`);
     }
   }
 

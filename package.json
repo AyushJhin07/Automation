@@ -50,6 +50,7 @@
     "audit:bronze": "node scripts/audit-bronze.js",
     "audit:secrets": "tsx scripts/audit-secrets.ts",
     "scaffold:connector-metadata": "node scripts/scaffold-connector-metadata.js",
+    "scaffold:runtimes": "tsx scripts/default-actions-to-node.ts && tsx scripts/seed-trigger-fallbacks.ts",
     "smoke:e2e": "node scripts/e2e-smoke.js",
     "smoke:connectors": "tsx scripts/connector-smoke.ts",
     "smoke:supported": "tsx scripts/smoke-supported.ts",

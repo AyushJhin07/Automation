@@ -4,7 +4,7 @@ Use this guide when shipping or updating connector definitions so runtime covera
 
 ## Required runtime metadata (`runtimes` and `fallback`)
 
-Every action and trigger definition must declare a `runtimes` array plus a `fallback` key so the runtime registry, Generic Executor, and debugging surfaces stay in sync. The catalog automation scripts enforce those fields when seeding defaults, but new contributions should include them up front to avoid churn in follow-up passes.【F:scripts/default-actions-to-node.ts†L35-L75】【F:scripts/seed-trigger-fallbacks.ts†L41-L80】 When you add bespoke fallback handling, document the HTTP behaviour directly in the manifest and cross-link the [Runtime Environment and Fallback Guide](../runtimes-and-fallbacks.md) for reviewers who need environment context.
+Every action and trigger definition must declare a `runtimes` array plus a `fallback` key so the runtime registry, Generic Executor, and debugging surfaces stay in sync. The catalog automation scripts enforce those fields when seeding defaults, but new contributions should include them up front to avoid churn in follow-up passes.【F:scripts/default-actions-to-node.ts†L63-L113】【F:scripts/seed-trigger-fallbacks.ts†L69-L125】 When you add bespoke fallback handling, document the HTTP behaviour directly in the manifest and cross-link the [Runtime Environment and Fallback Guide](../runtimes-and-fallbacks.md) for reviewers who need environment context.
 
 ## Declare runtime coverage (`runtimes`)
 
@@ -30,6 +30,10 @@ Every action and trigger must include an `outputSchema` with a `$schema` pointer
 ## Configure trigger deduplication (`dedupe`)
 
 Triggers also require a `dedupe` object so the platform can suppress repeats. The validator enforces that triggers provide a structured dedupe configuration, and the Google Calendar definition demonstrates the expected `strategy`/`path` pattern.【F:scripts/validate-connectors.ts†L52-L81】【F:connectors/google-calendar/definition.json†L857-L863】 Reuse existing strategies where possible so downstream persistence components can keep working without changes.
+
+## Seed runtime defaults automatically
+
+Run `npm run scaffold:runtimes` to backfill missing runtime metadata after editing manifests. The helper chains the action and trigger seeders so `runtimes`, `fallback`, and `dedupe` values remain consistent across the catalog.【F:package.json†L52-L56】【F:scripts/default-actions-to-node.ts†L63-L183】【F:scripts/seed-trigger-fallbacks.ts†L69-L195】 When a connector needs a non-Node runtime or bespoke default, add an entry to `CONNECTOR_RUNTIME_OVERRIDES` so future runs respect the override without touching every manifest.【F:scripts/runtime-defaults.config.ts†L1-L61】
 
 ## Run the connector lint suite
 
