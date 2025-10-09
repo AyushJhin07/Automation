@@ -29,6 +29,30 @@ import {
 } from '../observability/index.js';
 import { organizationService } from '../services/OrganizationService.js';
 import { executionResumeTokenService } from '../services/ExecutionResumeTokenService.js';
+import {
+  getFallbackHandler,
+  type FallbackHandlerResult,
+  type FallbackResultItem,
+} from '../runtime/fallbackRegistry.js';
+
+interface PollingExecutionLogEntry {
+  message: string;
+  details?: Record<string, any>;
+}
+
+interface PollingResultItem {
+  payload: any;
+  dedupeToken?: string;
+}
+
+interface PollingExecutionResult {
+  mode: 'native' | 'fallback';
+  items: PollingResultItem[];
+  cursor?: Record<string, any> | null;
+  logs?: PollingExecutionLogEntry[];
+  diagnostics?: Record<string, any>;
+  latencyMs?: number;
+}
 
 type QueueService = {
   enqueue: (request: QueueRunRequest) => Promise<{ executionId: string }>;
@@ -71,6 +95,8 @@ export class WebhookManager {
 
   private static readonly MAX_DEDUPE_TOKENS = TriggerPersistenceService.DEFAULT_MAX_DEDUPE_TOKENS;
   private static readonly DEFAULT_REPLAY_TOLERANCE_SECONDS = 15 * 60; // 15 minutes
+
+  private static readonly FALLBACK_METADATA_KEY = '__runtime';
 
   public static getInstance(): WebhookManager {
     if (!WebhookManager.instance) {
@@ -119,6 +145,103 @@ export class WebhookManager {
       nextPoll,
       nextPollAt,
     };
+  }
+
+  private normalizeFallbackKeyValue(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private resolvePollingFallbackKey(trigger: PollingTrigger): string | null {
+    const metadata = trigger.metadata ?? {};
+    const candidates: Array<unknown> = [
+      metadata.fallbackKey,
+      metadata.fallback_key,
+      metadata?.fallback?.key,
+      metadata?.runtime?.fallbackKey,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = this.normalizeFallbackKeyValue(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    const mode = typeof metadata.mode === 'string' ? metadata.mode.toLowerCase() : null;
+    if (mode === 'fallback') {
+      const baseKey = `${trigger.appId}.${trigger.triggerId}`.toLowerCase();
+      return baseKey;
+    }
+
+    return null;
+  }
+
+  private normalizeFallbackItems(items: Array<FallbackResultItem | any> | undefined): PollingResultItem[] {
+    if (!items || items.length === 0) {
+      return [];
+    }
+
+    return items.map(item => this.normalizeFallbackItem(item));
+  }
+
+  private normalizeFallbackItem(item: FallbackResultItem | any): PollingResultItem {
+    if (item && typeof item === 'object' && 'payload' in item) {
+      const candidate = item as FallbackResultItem;
+      return {
+        payload: candidate.payload,
+        dedupeToken: typeof candidate.dedupeToken === 'string' ? candidate.dedupeToken : undefined,
+      };
+    }
+
+    return { payload: item };
+  }
+
+  private normalizeNativeItems(value: any): PollingResultItem[] {
+    if (value == null) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(entry => ({ payload: entry }));
+    }
+
+    return [{ payload: value }];
+  }
+
+  private attachFallbackDiagnostics(
+    trigger: PollingTrigger,
+    execution: PollingExecutionResult,
+    timestamp: Date,
+  ): void {
+    const metadata = trigger.metadata ?? {};
+    const diagnostics = execution.diagnostics ?? {};
+    const fallbackMetadata = {
+      mode: 'fallback',
+      handlerKey: diagnostics.handlerKey ?? this.resolvePollingFallbackKey(trigger),
+      itemCount: execution.items.length,
+      latencyMs: execution.latencyMs ?? null,
+      timestamp: timestamp.toISOString(),
+    };
+
+    const logs = execution.logs ?? [];
+
+    const runtimeMetadata = {
+      ...(metadata[WebhookManager.FALLBACK_METADATA_KEY] ?? {}),
+      lastRun: fallbackMetadata,
+      logs,
+      diagnostics,
+    };
+
+    trigger.metadata = {
+      ...metadata,
+      [WebhookManager.FALLBACK_METADATA_KEY]: runtimeMetadata,
+    };
+
+    trigger.lastStatus = 'fallback';
   }
 
   private normalizeNonNegativeNumber(value: unknown): number | undefined {
@@ -1073,13 +1196,32 @@ export class WebhookManager {
       });
 
       // Execute the specific polling logic based on app and trigger
-      const results = await this.executeAppSpecificPoll(trigger);
+      const execution = await this.executeAppSpecificPoll(trigger);
+      if (execution.cursor !== undefined) {
+        trigger.cursor = execution.cursor ?? null;
+      }
+
+      if (execution.mode === 'fallback') {
+        this.attachFallbackDiagnostics(trigger, execution, now);
+      } else {
+        trigger.lastStatus = 'success';
+      }
+
+      const results = execution.items.map(item => item.payload);
 
       if (results && results.length > 0) {
-        console.log(`📊 Poll found ${results.length} new items for ${trigger.appId}.${trigger.triggerId}`);
+        console.log(
+          `📊 Poll found ${results.length} new items for ${trigger.appId}.${trigger.triggerId}`,
+          {
+            mode: execution.mode,
+            handlerKey: execution.diagnostics?.handlerKey,
+            latencyMs: execution.latencyMs,
+          },
+        );
 
         // Process each result as a trigger event
-        for (const result of results) {
+        for (const [index, item] of execution.items.entries()) {
+          const result = item.payload;
           const organizationId =
             (trigger.metadata && (trigger.metadata as any).organizationId) ||
             trigger.organizationId;
@@ -1111,9 +1253,14 @@ export class WebhookManager {
           const toleranceMs = replayWindowSeconds * 1000;
           const providerId = this.resolvePollingProviderId(trigger);
 
-          const dedupeToken = trigger.dedupeKey && result[trigger.dedupeKey]
-            ? createHash('md5').update(`${trigger.id}-${result[trigger.dedupeKey]}`).digest('hex')
-            : this.createEventHash(event);
+          const dedupeToken =
+            item.dedupeToken && item.dedupeToken.trim().length > 0
+              ? item.dedupeToken
+              : trigger.dedupeKey && result && result[trigger.dedupeKey] != null
+              ? createHash('md5')
+                  .update(`${trigger.id}-${String(result[trigger.dedupeKey])}`)
+                  .digest('hex')
+              : this.createEventHash(event);
 
           event.dedupeToken = dedupeToken;
 
@@ -1158,14 +1305,74 @@ export class WebhookManager {
   /**
    * Execute app-specific polling logic
    */
-  private async executeAppSpecificPoll(trigger: PollingTrigger): Promise<any[]> {
+  private async executeAppSpecificPoll(trigger: PollingTrigger): Promise<PollingExecutionResult> {
     try {
       const context = await this.resolvePollingContext(trigger);
       if (!context) {
         console.warn(
           `⚠️ Skipping polling for ${trigger.appId}.${trigger.triggerId} - missing credentials or connection context`
         );
-        return [];
+        return { mode: 'native', items: [] };
+      }
+
+      const fallbackKey = this.resolvePollingFallbackKey(trigger);
+      if (fallbackKey) {
+        const fallbackHandler = getFallbackHandler(fallbackKey);
+        if (fallbackHandler) {
+          const fallbackLogs: PollingExecutionLogEntry[] = [];
+          const start = Date.now();
+          try {
+            const result =
+              ((await fallbackHandler({
+                trigger,
+                cursor: trigger.cursor ?? null,
+                now: new Date(),
+                log: (message, details) => {
+                  fallbackLogs.push({ message, ...(details ? { details } : {}) });
+                },
+              })) as FallbackHandlerResult | void | null) ?? { items: [] };
+
+            const items = this.normalizeFallbackItems(result.items);
+            const latencyMs = result.latencyMs ?? Date.now() - start;
+            const normalizedLogs: PollingExecutionLogEntry[] = [
+              ...fallbackLogs,
+              ...((result.logs ?? []).map(entry =>
+                typeof entry === 'string' ? { message: entry } : entry,
+              ) as PollingExecutionLogEntry[]),
+            ];
+
+            console.log(`🛟 Executed fallback handler ${fallbackKey}`, {
+              mode: 'fallback',
+              handlerKey: fallbackKey,
+              itemCount: items.length,
+              latencyMs,
+            });
+
+            return {
+              mode: 'fallback',
+              items,
+              cursor: result.cursor ?? trigger.cursor ?? null,
+              logs: normalizedLogs,
+              diagnostics: {
+                handlerKey: fallbackKey,
+                ...(result.diagnostics ?? {}),
+                mode: 'fallback',
+                itemCount: items.length,
+              },
+              latencyMs,
+            };
+          } catch (error) {
+            console.error(
+              `❌ Fallback handler ${fallbackKey} failed for ${trigger.appId}.${trigger.triggerId}:`,
+              getErrorMessage(error),
+            );
+            throw error;
+          }
+        } else {
+          console.warn(
+            `⚠️ No fallback handler registered for key ${fallbackKey}; continuing with default polling`,
+          );
+        }
       }
 
       const clientConstructor = this.resolveClientConstructor(trigger.appId);
@@ -1179,11 +1386,24 @@ export class WebhookManager {
         : baseParams;
 
       if (clientConstructor) {
+        const start = Date.now();
         const client: any = new clientConstructor(context.credentials, context.additionalConfig);
         if (typeof client[methodName] === 'function') {
           const response = await client[methodName](enrichedParams);
-          if (!response) return [];
-          return Array.isArray(response) ? response : [response];
+          if (!response) {
+            return { mode: 'native', items: [], latencyMs: Date.now() - start };
+          }
+          const items = this.normalizeNativeItems(response);
+          return {
+            mode: 'native',
+            items,
+            latencyMs: Date.now() - start,
+            diagnostics: {
+              mode: 'native',
+              handlerKey: `${trigger.appId}.${methodName}`,
+              itemCount: items.length,
+            },
+          };
         }
         console.warn(`⚠️ Polling method ${methodName} not implemented for ${trigger.appId}`);
       } else {
@@ -1195,6 +1415,7 @@ export class WebhookManager {
         const { env } = await import('../env.js');
         if (env.GENERIC_EXECUTOR_ENABLED) {
           const { genericExecutor } = await import('../integrations/GenericExecutor.js');
+          const start = Date.now();
           const generic = await genericExecutor.execute({
             appId: trigger.appId,
             functionId: trigger.triggerId,
@@ -1203,9 +1424,19 @@ export class WebhookManager {
           });
           if (generic.success) {
             const data = generic.data;
-            if (Array.isArray(data)) return data;
-            if (data && Array.isArray(data.items)) return data.items;
-            return data ? [data] : [];
+            const normalizedItems = this.normalizeNativeItems(
+              Array.isArray(data) ? data : data?.items ?? data,
+            );
+            return {
+              mode: 'native',
+              items: normalizedItems,
+              latencyMs: Date.now() - start,
+              diagnostics: {
+                mode: 'native',
+                handlerKey: 'generic_executor',
+                itemCount: normalizedItems.length,
+              },
+            };
           } else {
             console.warn(`⚠️ Generic polling failed for ${trigger.appId}.${trigger.triggerId}: ${generic.error}`);
           }
@@ -1214,13 +1445,13 @@ export class WebhookManager {
         console.warn('⚠️ Generic polling path unavailable:', (err as any)?.message || String(err));
       }
 
-      return [];
+      return { mode: 'native', items: [] };
     } catch (error) {
       console.error(
         `❌ Failed to execute polling for ${trigger.appId}.${trigger.triggerId}:`,
         getErrorMessage(error)
       );
-      return [];
+      throw error;
     }
   }
 
