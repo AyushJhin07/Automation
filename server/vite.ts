@@ -3,7 +3,6 @@ import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
@@ -25,6 +24,27 @@ export async function setupVite(app: Express, server: Server) {
     hmr: { server },
     allowedHosts: true,
   };
+
+  let viteConfig;
+  try {
+    ({ default: viteConfig } = await import("../vite.config"));
+  } catch (error) {
+    if (
+      (error as NodeJS.ErrnoException)?.code === "ERR_MODULE_NOT_FOUND" &&
+      error instanceof Error &&
+      error.message.includes("vite-tsconfig-paths")
+    ) {
+      const message =
+        "Failed to load Vite config because 'vite-tsconfig-paths' is missing. " +
+        "Install it with 'npm install -D vite-tsconfig-paths' or ensure dev dependencies are available.";
+      console.error(message);
+      const enhancedError = new Error(message);
+      (enhancedError as Error & { cause?: unknown }).cause = error;
+      throw enhancedError;
+    }
+
+    throw error;
+  }
 
   const vite = await createViteServer({
     ...viteConfig,
