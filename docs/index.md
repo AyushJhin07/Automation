@@ -24,7 +24,7 @@
 - Architecture
   - docs/architecture/connector-modules.md
 - Runtime
-  - docs/runtimes-and-fallbacks.md
+  - [Runtime Environment and Fallback Guide](docs/runtimes-and-fallbacks.md)
 - Connectors
   - docs/connectors/authoring.md
   - docs/connectors/output-schemas.md
