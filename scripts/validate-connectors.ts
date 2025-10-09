@@ -11,11 +11,17 @@ const connectorsDir = path.join(repoRoot, 'connectors');
 
 type ConnectorDefinition = {
   id?: string;
-  actions?: Record<string, ConnectorOperation>;
-  triggers?: Record<string, ConnectorOperation>;
+  actions?: ConnectorOperationCollection;
+  triggers?: ConnectorOperationCollection;
 };
 
+type ConnectorOperationCollection =
+  | ConnectorOperation[]
+  | Record<string, ConnectorOperation | undefined>
+  | undefined;
+
 type ConnectorOperation = {
+  id?: string;
   name?: string;
   outputSchema?: {
     $schema?: string;
@@ -24,36 +30,74 @@ type ConnectorOperation = {
   sample?: unknown;
   dedupe?: unknown;
   runtimes?: unknown;
+  fallback?: unknown;
   [key: string]: unknown;
 };
 
+type NormalizedRuntimeEntry = {
+  key: string;
+  enabled: boolean;
+};
+
 const KNOWN_RUNTIMES = new Set(ALL_RUNTIMES);
+
+function normalizeRuntimeEntry(entry: unknown): NormalizedRuntimeEntry | null {
+  if (typeof entry === 'string') {
+    return { key: entry, enabled: true };
+  }
+
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const candidate = entry as { key?: unknown; enabled?: unknown };
+  if (typeof candidate.key !== 'string') {
+    return null;
+  }
+
+  if (
+    candidate.enabled !== undefined &&
+    typeof candidate.enabled !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return {
+    key: candidate.key,
+    enabled: candidate.enabled !== undefined ? candidate.enabled : true,
+  };
+}
 
 function validateRuntimes(
   identifier: string,
   runtimes: ConnectorOperation['runtimes'],
   errors: string[],
-) {
+): { hasKnownRuntime: boolean; enabledCount: number } {
   if (!Array.isArray(runtimes) || runtimes.length === 0) {
     errors.push(`${identifier} is missing a runtimes array`);
-    return;
+    return { hasKnownRuntime: false, enabledCount: 0 };
   }
 
   const invalidEntries: unknown[] = [];
   const seen = new Set<string>();
+  let enabledCount = 0;
 
   for (const entry of runtimes) {
-    if (typeof entry !== 'string') {
+    const normalized = normalizeRuntimeEntry(entry);
+    if (!normalized) {
       invalidEntries.push(entry);
       continue;
     }
 
-    if (!KNOWN_RUNTIMES.has(entry)) {
+    if (!KNOWN_RUNTIMES.has(normalized.key)) {
       invalidEntries.push(entry);
       continue;
     }
 
-    seen.add(entry);
+    seen.add(normalized.key);
+    if (normalized.enabled) {
+      enabledCount += 1;
+    }
   }
 
   if (invalidEntries.length > 0) {
@@ -64,6 +108,8 @@ function validateRuntimes(
   if (seen.size === 0) {
     errors.push(`${identifier} does not specify any valid runtimes`);
   }
+
+  return { hasKnownRuntime: seen.size > 0, enabledCount };
 }
 
 function hasSchemaField(outputSchema: ConnectorOperation['outputSchema']): boolean {
@@ -98,7 +144,7 @@ function checkOperation(
   operation: ConnectorOperation | undefined,
   errors: string[],
 ) {
-  if (!operation) {
+  if (!operation || typeof operation !== 'object') {
     errors.push(`${connectorId}: ${type} "${key}" is undefined`);
     return;
   }
@@ -122,7 +168,36 @@ function checkOperation(
     errors.push(`${identifier} is missing a dedupe configuration`);
   }
 
-  validateRuntimes(identifier, operation.runtimes, errors);
+  const { enabledCount } = validateRuntimes(identifier, operation.runtimes, errors);
+  const hasFallback = operation.fallback !== undefined && operation.fallback !== null;
+
+  if (enabledCount === 0 && !hasFallback) {
+    errors.push(`${identifier} must declare at least one enabled runtime or provide a fallback`);
+  }
+}
+
+function iterateOperations(
+  collection: ConnectorOperationCollection,
+  callback: (key: string, operation: ConnectorOperation | undefined) => void,
+) {
+  if (!collection) {
+    return;
+  }
+
+  if (Array.isArray(collection)) {
+    for (const [index, operation] of collection.entries()) {
+      const key =
+        operation && typeof operation.id === 'string'
+          ? operation.id
+          : `index ${index}`;
+      callback(key, operation);
+    }
+    return;
+  }
+
+  for (const [key, operation] of Object.entries(collection)) {
+    callback(key, operation);
+  }
 }
 
 async function validateDefinition(file: string, errors: string[]) {
@@ -138,20 +213,13 @@ async function validateDefinition(file: string, errors: string[]) {
 
   const connectorId = definition.id ?? path.basename(path.dirname(file));
 
-  const entries: Array<['action' | 'trigger', Record<string, ConnectorOperation> | undefined]> = [
-    ['action', definition.actions],
-    ['trigger', definition.triggers],
-  ];
+  iterateOperations(definition.actions, (key, operation) => {
+    checkOperation('action', connectorId, key, operation, errors);
+  });
 
-  for (const [type, collection] of entries) {
-    if (!collection) {
-      continue;
-    }
-
-    for (const [key, operation] of Object.entries(collection)) {
-      checkOperation(type, connectorId, key, operation, errors);
-    }
-  }
+  iterateOperations(definition.triggers, (key, operation) => {
+    checkOperation('trigger', connectorId, key, operation, errors);
+  });
 }
 
 async function main() {
