@@ -191,9 +191,14 @@ beforeEach(() => {
       hasExecutionWorker: true,
       schedulerHealthy: true,
       timerHealthy: true,
+      usesPublicHeartbeat: false,
+      queueStatus: null,
+      queueDurable: null,
+      queueMessage: null,
     },
     scheduler: null,
     queue: null,
+    source: 'admin',
     lastUpdated: new Date().toISOString(),
     isLoading: false,
     error: null,
@@ -867,26 +872,31 @@ describe("ProfessionalGraphEditor validation gating", () => {
   });
 
   it('disables the run button when worker telemetry reports no active workers', async () => {
-    workerHeartbeatMock.mockReturnValue({
-      workers: [],
-      environmentWarnings: [],
-      summary: {
-        totalWorkers: 0,
-        healthyWorkers: 0,
-        staleWorkers: 0,
-        totalQueueDepth: 0,
-        maxQueueDepth: 0,
-        hasExecutionWorker: false,
-        schedulerHealthy: false,
-        timerHealthy: false,
-      },
-      scheduler: null,
-      queue: null,
-      lastUpdated: new Date().toISOString(),
-      isLoading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+  workerHeartbeatMock.mockReturnValue({
+    workers: [],
+    environmentWarnings: [],
+    summary: {
+      totalWorkers: 0,
+      healthyWorkers: 0,
+      staleWorkers: 0,
+      totalQueueDepth: 0,
+      maxQueueDepth: 0,
+      hasExecutionWorker: false,
+      schedulerHealthy: false,
+      timerHealthy: false,
+      usesPublicHeartbeat: false,
+      queueStatus: null,
+      queueDurable: null,
+      queueMessage: null,
+    },
+    scheduler: null,
+    queue: null,
+    source: 'admin',
+    lastUpdated: new Date().toISOString(),
+    isLoading: false,
+    error: null,
+    refresh: vi.fn(),
+  });
 
     const { default: ProfessionalGraphEditor } = await loadEditor();
     render(<ProfessionalGraphEditor />);

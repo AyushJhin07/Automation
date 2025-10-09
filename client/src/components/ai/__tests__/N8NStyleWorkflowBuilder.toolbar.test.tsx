@@ -119,9 +119,14 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
         hasExecutionWorker: true,
         schedulerHealthy: true,
         timerHealthy: true,
+        usesPublicHeartbeat: false,
+        queueStatus: null,
+        queueDurable: null,
+        queueMessage: null,
       },
       scheduler: null,
       queue: null,
+      source: 'admin',
       lastUpdated: new Date().toISOString(),
       isLoading: false,
       error: null,
@@ -174,6 +179,59 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     });
   });
 
+  it('enables the run button when only the public heartbeat reports a healthy queue', async () => {
+    queueHealthMock.mockReturnValue({
+      health: null,
+      status: 'fail',
+      isLoading: false,
+      error: 'Forbidden',
+      refresh: vi.fn(),
+    });
+    const freshHeartbeat = new Date().toISOString();
+    workerHeartbeatMock.mockReturnValue({
+      workers: [
+        {
+          id: 'exec-1',
+          name: 'Execution worker',
+          queueDepth: 0,
+          heartbeatAt: freshHeartbeat,
+          secondsSinceHeartbeat: 5,
+          isHeartbeatStale: false,
+        },
+      ],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 1,
+        healthyWorkers: 1,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: true,
+        schedulerHealthy: false,
+        timerHealthy: false,
+        usesPublicHeartbeat: true,
+        queueStatus: 'pass',
+        queueDurable: true,
+        queueMessage: 'Queue healthy via public heartbeat',
+      },
+      scheduler: null,
+      queue: { queueHealth: { status: 'pass', durable: true, message: 'Queue healthy via public heartbeat' } },
+      source: 'public',
+      lastUpdated: freshHeartbeat,
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+  });
+
   it('shows a durability warning but keeps run enabled when the dev override flag is set', async () => {
     queueHealthMock.mockReturnValue({
       health: {
@@ -204,6 +262,51 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     expect(screen.getByText(/ENABLE_DEV_IGNORE_QUEUE is active/i)).toBeInTheDocument();
   });
 
+  it('keeps runs enabled but surfaces scheduler warnings for admin users', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [
+        {
+          id: 'exec-1',
+          name: 'Execution worker',
+          queueDepth: 0,
+          heartbeatAt: new Date().toISOString(),
+          secondsSinceHeartbeat: 3,
+          isHeartbeatStale: false,
+        },
+      ],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 1,
+        healthyWorkers: 1,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: true,
+        schedulerHealthy: false,
+        timerHealthy: true,
+        usesPublicHeartbeat: false,
+        queueStatus: null,
+        queueDurable: null,
+        queueMessage: null,
+      },
+      scheduler: { postgresAvailable: false },
+      queue: null,
+      source: 'admin',
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
+    render(<Builder />);
+
+    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+    });
+  });
+
   it('disables the run button when no workers are reporting', async () => {
     workerHeartbeatMock.mockReturnValue({
       workers: [],
@@ -217,9 +320,14 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
         hasExecutionWorker: false,
         schedulerHealthy: false,
         timerHealthy: false,
+        usesPublicHeartbeat: false,
+        queueStatus: null,
+        queueDurable: null,
+        queueMessage: null,
       },
       scheduler: null,
       queue: null,
+      source: 'admin',
       lastUpdated: new Date().toISOString(),
       isLoading: false,
       error: null,

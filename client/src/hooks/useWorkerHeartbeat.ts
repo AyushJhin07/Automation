@@ -26,6 +26,10 @@ export type WorkerHeartbeatSummary = {
   hasExecutionWorker: boolean;
   schedulerHealthy: boolean;
   timerHealthy: boolean;
+  usesPublicHeartbeat: boolean;
+  queueStatus: 'pass' | 'warn' | 'fail' | null;
+  queueDurable: boolean | null;
+  queueMessage: string | null;
 };
 
 export type WorkerHeartbeatSnapshot = {
@@ -34,6 +38,7 @@ export type WorkerHeartbeatSnapshot = {
   summary: WorkerHeartbeatSummary;
   scheduler: Record<string, any> | null;
   queue: Record<string, any> | null;
+  source: 'admin' | 'public';
   lastUpdated: string | null;
   isLoading: boolean;
   error: string | null;
@@ -195,6 +200,7 @@ type NormalizedSnapshot = {
   environmentWarnings: EnvironmentWarningMessage[];
   scheduler: Record<string, any> | null;
   queue: Record<string, any> | null;
+  source: 'admin' | 'public';
 };
 
 const normalizeEnvironmentWarnings = (rawWarnings: any[]): EnvironmentWarningMessage[] => {
@@ -309,12 +315,13 @@ const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): Norma
     environmentWarnings: normalizedWarnings,
     scheduler,
     queue,
+    source: 'admin',
   };
 };
 
 const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): NormalizedSnapshot => {
   if (!payload || typeof payload !== 'object') {
-    return { workers: [], environmentWarnings: [], scheduler: null, queue: null };
+    return { workers: [], environmentWarnings: [], scheduler: null, queue: null, source: 'public' };
   }
 
   const queueDepths = (payload as any).queueDepths ?? {};
@@ -364,9 +371,21 @@ const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): No
     });
   }
 
+  const rawQueueHealth = (payload as any).queueHealth ?? null;
+  const queueHealth =
+    rawQueueHealth && typeof rawQueueHealth === 'object'
+      ? (rawQueueHealth as Record<string, any>)
+      : statusValue
+        ? { status: statusValue, message: statusMessage ?? null }
+        : null;
+
+  if (queueHealth && typeof (payload as any).durable === 'boolean' && queueHealth.durable === undefined) {
+    queueHealth.durable = Boolean((payload as any).durable);
+  }
+
   const queueTelemetry = {
     queueDepths,
-    queueHealth: (payload as any).queueHealth ?? null,
+    queueHealth,
     leases: Array.isArray((payload as any).leases) ? (payload as any).leases : [],
   };
 
@@ -375,6 +394,7 @@ const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): No
     environmentWarnings: warnings,
     scheduler: null,
     queue: queueTelemetry,
+    source: 'public',
   };
 };
 
@@ -384,6 +404,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
   const [environmentWarnings, setEnvironmentWarnings] = useState<EnvironmentWarningMessage[]>([]);
   const [schedulerTelemetry, setSchedulerTelemetry] = useState<Record<string, any> | null>(null);
   const [queueTelemetry, setQueueTelemetry] = useState<Record<string, any> | null>(null);
+  const [source, setSource] = useState<'admin' | 'public'>('admin');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -431,6 +452,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
       setEnvironmentWarnings(snapshot.environmentWarnings);
       setSchedulerTelemetry(snapshot.scheduler);
       setQueueTelemetry(snapshot.queue);
+      setSource(snapshot.source);
       setError(null);
       setLastUpdated(new Date().toISOString());
     } catch (caughtError: any) {
@@ -472,6 +494,18 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
   }, [fetchStatus, poll, intervalMs]);
 
   const summary = useMemo<WorkerHeartbeatSummary>(() => {
+    const queueHealth = queueTelemetry?.queueHealth ?? null;
+    const queueStatus =
+      queueHealth && typeof queueHealth.status === 'string'
+        ? (queueHealth.status as 'pass' | 'warn' | 'fail')
+        : null;
+    const queueDurable =
+      queueHealth && typeof queueHealth.durable === 'boolean' ? Boolean(queueHealth.durable) : null;
+    const queueMessage =
+      queueHealth && typeof queueHealth.message === 'string' && queueHealth.message.length > 0
+        ? queueHealth.message
+        : null;
+
     if (!workers.length) {
       const { schedulerHealthy, timerHealthy } = resolveSchedulerHealth(schedulerTelemetry);
       return {
@@ -483,6 +517,10 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
         hasExecutionWorker: false,
         schedulerHealthy,
         timerHealthy,
+        usesPublicHeartbeat: source === 'public',
+        queueStatus,
+        queueDurable,
+        queueMessage,
       };
     }
 
@@ -501,8 +539,12 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
       hasExecutionWorker: healthyWorkers > 0,
       schedulerHealthy,
       timerHealthy,
+      usesPublicHeartbeat: source === 'public',
+      queueStatus,
+      queueDurable,
+      queueMessage,
     };
-  }, [workers, schedulerTelemetry]);
+  }, [workers, schedulerTelemetry, queueTelemetry, source]);
 
   return {
     workers,
@@ -510,6 +552,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
     summary,
     scheduler: schedulerTelemetry,
     queue: queueTelemetry,
+    source,
     lastUpdated,
     isLoading,
     error,

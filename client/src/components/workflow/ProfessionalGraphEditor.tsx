@@ -1901,7 +1901,6 @@ const GraphEditorContent = () => {
   const [isValidating, setIsValidating] = useState(false);
   const {
     health: queueHealth,
-    status: queueStatus,
     isLoading: isQueueHealthLoading,
     error: queueHealthError,
   } = useQueueHealth({ intervalMs: 30000 });
@@ -1910,22 +1909,59 @@ const GraphEditorContent = () => {
     summary: workerSummary,
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
-  const rawQueueReady = queueStatus === 'pass';
-  const workersOnline =
-    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
-  const workerIssues = useMemo(() => {
+  const effectiveQueueStatus = queueHealth?.status ?? workerSummary.queueStatus ?? 'fail';
+  const effectiveQueueDurable =
+    queueHealth?.durable ??
+    (typeof workerSummary.queueDurable === 'boolean' ? workerSummary.queueDurable : null);
+  const effectiveQueueMessage =
+    queueHealth?.message ??
+    workerSummary.queueMessage ??
+    queueHealthError ??
+    'Execution queue is unavailable';
+  const queueStatusPass = effectiveQueueStatus === 'pass';
+  const queueDurableHealthy = effectiveQueueDurable !== false;
+  const workersOnline = workerSummary.hasExecutionWorker;
+  const workerNotices = useMemo(() => {
+    const messages = workerEnvironmentWarnings.map((warning) => warning.message);
+    if (!workerSummary.usesPublicHeartbeat) {
+      if (!workerSummary.schedulerHealthy) {
+        messages.push('Scheduler connectivity degraded. Scheduled triggers may not fire.');
+      }
+      if (!workerSummary.timerHealthy) {
+        messages.push('Timer dispatcher lock unavailable. Timed workflows may be delayed.');
+      }
+    }
+    return messages;
+  }, [
+    workerEnvironmentWarnings,
+    workerSummary.schedulerHealthy,
+    workerSummary.timerHealthy,
+    workerSummary.usesPublicHeartbeat,
+  ]);
+  const workerBlockingMessage = useMemo(() => {
     if (workersOnline) {
-      return [] as string[];
+      return undefined;
     }
     if (workerEnvironmentWarnings.length > 0) {
-      return workerEnvironmentWarnings.map((warning) => warning.message);
+      return workerEnvironmentWarnings[0]?.message;
     }
     if (isWorkerStatusLoading) {
-      return ['Checking worker and scheduler status…'];
+      return 'Checking worker and scheduler status…';
     }
-    return [WORKER_FLEET_GUIDANCE];
+    return WORKER_FLEET_GUIDANCE;
   }, [workersOnline, workerEnvironmentWarnings, isWorkerStatusLoading]);
-  const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
+  const workerStatusMessage = useMemo(() => {
+    const parts = [] as string[];
+    if (workerBlockingMessage) {
+      parts.push(workerBlockingMessage);
+    }
+    workerNotices.forEach((message) => {
+      if (message && !parts.includes(message)) {
+        parts.push(message);
+      }
+    });
+    return parts.join(' ');
+  }, [workerBlockingMessage, workerNotices]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [runBanner, setRunBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -1949,27 +1985,30 @@ const GraphEditorContent = () => {
   const logout = useAuthStore((state) => state.logout);
   const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
-    if (rawQueueReady) {
-      return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
+    if (queueStatusPass && queueDurableHealthy) {
+      return (
+        effectiveQueueMessage || 'Worker and scheduler processes are connected to the queue.'
+      );
     }
-    const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
+    const detail = effectiveQueueMessage;
     const suffix = detail.endsWith('.') ? '' : '.';
     if (detail.includes(queueGuidance)) {
       return detail;
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
-  }, [rawQueueReady, queueHealth, queueHealthError, queueGuidance]);
+  }, [queueStatusPass, queueDurableHealthy, effectiveQueueMessage, queueGuidance]);
 
   const queueDurabilityBypassed = useMemo(() => {
-    if (rawQueueReady) {
+    if (queueStatusPass) {
       return false;
     }
-    if (!queueHealth || queueHealth.durable !== false) {
+    if (effectiveQueueDurable !== false) {
       return false;
     }
     return isDevIgnoreQueueEnabled();
-  }, [rawQueueReady, queueHealth]);
+  }, [queueStatusPass, effectiveQueueDurable]);
 
+  const rawQueueReady = queueStatusPass && queueDurableHealthy;
   const queueReady = rawQueueReady || queueDurabilityBypassed;
 
   const queueDurabilityWarningMessage = useMemo(() => {
@@ -1977,7 +2016,7 @@ const GraphEditorContent = () => {
       return null;
     }
 
-    const rawMessage = (queueHealth?.message ?? '').trim();
+    const rawMessage = (effectiveQueueMessage ?? '').trim();
     const baseMessage = rawMessage.length > 0
       ? (rawMessage.endsWith('.') ? rawMessage : `${rawMessage}.`)
       : 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.';
@@ -1986,7 +2025,7 @@ const GraphEditorContent = () => {
       `${baseMessage} ENABLE_DEV_IGNORE_QUEUE is active for development. ` +
       'Workflow runs may be lost if this process restarts—connect Redis and disable the flag for durable testing.'
     );
-  }, [queueDurabilityBypassed, queueHealth?.message]);
+  }, [queueDurabilityBypassed, effectiveQueueMessage]);
   const ensureWorkflowId = useCallback(
     async (
       payload?: NodeGraph,
