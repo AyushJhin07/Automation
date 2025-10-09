@@ -4,6 +4,16 @@ import path from "path";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 
+function resolveClientDistPath(): string | undefined {
+  const candidates = [
+    path.resolve(import.meta.dirname, "public"),
+    path.resolve(import.meta.dirname, "../dist/public"),
+    path.resolve(process.cwd(), "dist/public"),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
 function extractMissingModuleName(error: unknown): string | undefined {
   if (error && typeof error === "object" && "message" in error) {
     const message = String((error as Error).message);
@@ -126,11 +136,17 @@ export async function setupVite(app: Express, server: Server): Promise<boolean> 
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = resolveClientDistPath();
 
-  if (!fs.existsSync(distPath)) {
+  if (!distPath) {
+    const expectedPaths = [
+      path.resolve(import.meta.dirname, "public"),
+      path.resolve(import.meta.dirname, "../dist/public"),
+      path.resolve(process.cwd(), "dist/public"),
+    ];
+
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory. Checked: ${expectedPaths.join(", ")}. Make sure to build the client first.`,
     );
   }
 
