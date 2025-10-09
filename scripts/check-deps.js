@@ -61,17 +61,50 @@ async function extractImports(filePath) {
   }
 }
 
+async function loadTypeScriptAliases() {
+  const aliases = {
+    exact: new Set(),
+    prefixes: new Set()
+  };
+
+  try {
+    const tsconfigPath = path.resolve('tsconfig.json');
+    const tsconfigContent = await fs.readFile(tsconfigPath, 'utf8');
+    const tsconfig = JSON.parse(tsconfigContent);
+    const paths = tsconfig?.compilerOptions?.paths ?? {};
+
+    for (const alias of Object.keys(paths)) {
+      if (alias.endsWith('/*')) {
+        aliases.prefixes.add(alias.slice(0, -1));
+      } else {
+        aliases.exact.add(alias);
+      }
+    }
+  } catch (error) {
+    console.log(`${colors.yellow}Warning: Could not read TypeScript aliases from tsconfig.json${colors.reset}`);
+  }
+
+  return aliases;
+}
+
+const tsconfigAliases = await loadTypeScriptAliases();
+
 function isExternalPackage(importPath) {
   // Exclude relative paths, absolute paths, Node.js built-ins, and TypeScript path aliases
   if (importPath.startsWith('.') || importPath.startsWith('/') || importPath.startsWith('node:')) {
     return false;
   }
-  
-  // Exclude common TypeScript path aliases
-  if (importPath.startsWith('@/') || importPath.startsWith('@shared/')) {
+
+  if (tsconfigAliases.exact.has(importPath)) {
     return false;
   }
-  
+
+  for (const prefix of tsconfigAliases.prefixes) {
+    if (importPath.startsWith(prefix)) {
+      return false;
+    }
+  }
+
   return true;
 }
 
