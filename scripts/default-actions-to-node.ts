@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { CONNECTOR_RUNTIME_OVERRIDES, type ActionRuntimeOverride } from './runtime-defaults.config.js';
+import { CONNECTOR_RUNTIME_OVERRIDES, type ActionRuntimeOverride } from './runtime-defaults.config.ts';
 
 const DEFAULT_ACTION_RUNTIMES = Object.freeze(['node'] as const);
 const DEFAULT_FALLBACK: null = null;
