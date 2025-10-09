@@ -721,8 +721,10 @@ export class WorkflowRuntime {
     }
 
     const forcedFallback = runtimeSelection?.availability === 'fallback';
+    const plannedRuntime = runtimeSelection?.runtime;
+    const shouldForceGenericFallback = forcedFallback && !plannedRuntime;
 
-    if (forcedFallback) {
+    if (shouldForceGenericFallback) {
       if (!env.GENERIC_EXECUTOR_ENABLED) {
         throw new Error(
           `Fallback runtime required for ${appId}.${functionId}, but the generic executor is disabled.`
@@ -745,6 +747,13 @@ export class WorkflowRuntime {
         throw new Error(message);
       }
       responseData = genericResult.data ?? null;
+    } else if (forcedFallback) {
+      const response = await integrationManager.executeFunction(integrationParams);
+      if (!response.success) {
+        throw new Error(response.error || `Failed to execute ${appId}.${functionId}`);
+      }
+      responseData = response.data ?? null;
+      executionTime = response.executionTime;
     } else if (!env.GENERIC_EXECUTOR_ENABLED) {
       const response = await integrationManager.executeFunction(integrationParams);
       if (!response.success) {
