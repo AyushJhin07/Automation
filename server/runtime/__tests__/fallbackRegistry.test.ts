@@ -111,7 +111,9 @@ const runHandler = async (
 }
 
 {
-  const httpClient: HttpClient = async url => {
+  const requests: Array<{ url: string; init?: Record<string, any> }> = [];
+  const httpClient: HttpClient = async (url, init) => {
+    requests.push({ url, init });
     assert.ok(url.startsWith('https://www.googleapis.com/drive/v3/files'));
     return {
       ok: true,
@@ -140,6 +142,13 @@ const runHandler = async (
     },
   );
 
+  assert.equal(requests.length, 1, 'drive fallback should issue a single HTTP request');
+  const docUrl = new URL(requests[0]!.url);
+  const docQuery = docUrl.searchParams.get('q') ?? '';
+  assert.ok(
+    docQuery.includes("mimeType contains 'application/vnd.google-apps.document'"),
+    'docs alias should default to Docs MIME filter when none provided',
+  );
   assert.equal(result.items?.length, 2, 'drive fallback should return mock files');
   assert.equal(result.items?.[0]?.payload.id, 'file-1');
   assert.equal(result.cursor?.pageToken, 'drive-next-token');
@@ -148,6 +157,41 @@ const runHandler = async (
   assert.equal(result.diagnostics?.handlerKey, 'google_drive.files.watch');
   assert.equal(result.diagnostics?.mode, 'fallback');
   assert.ok(logs.length > 0, 'drive fallback should log activity');
+}
+
+{
+  const requests: Array<{ url: string; init?: Record<string, any> }> = [];
+  const httpClient: HttpClient = async (url, init) => {
+    requests.push({ url, init });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ files: [], nextPageToken: null }),
+    };
+  };
+
+  await runHandler(
+    'google_drive.files.watch',
+    {
+      appId: 'google_drive',
+      triggerId: 'files.watch',
+      metadata: { fallbackKey: 'google_drive.files.watch' },
+    },
+    null,
+    {
+      httpClient,
+      credentials: { accessToken: 'drive-token' },
+    },
+  );
+
+  assert.equal(requests.length, 1, 'drive polling should make exactly one request');
+  const driveUrl = new URL(requests[0]!.url);
+  const driveQuery = driveUrl.searchParams.get('q') ?? '';
+  assert.equal(
+    driveQuery.includes("mimeType contains 'application/vnd.google-apps.document'"),
+    false,
+    'drive fallback without MIME type should not filter to Docs by default',
+  );
 }
 
 {
