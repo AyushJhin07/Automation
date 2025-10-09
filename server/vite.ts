@@ -27,7 +27,7 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export async function setupVite(app: Express, server: Server) {
+export async function setupVite(app: Express, server: Server): Promise<boolean> {
   let viteModule: typeof import("vite") | undefined;
   try {
     viteModule = await import("vite");
@@ -40,11 +40,11 @@ export async function setupVite(app: Express, server: Server) {
       console.warn("👉 Original error:", error);
     }
 
-    return;
+    return false;
   }
 
   if (!viteModule) {
-    return;
+    return false;
   }
 
   const { createServer: createViteServer, createLogger } = viteModule;
@@ -58,7 +58,7 @@ export async function setupVite(app: Express, server: Server) {
   let viteConfig;
   try {
     const viteConfigModule = await import("../vite.config.ts");
-    viteConfig = viteConfigModule.default ?? viteConfigModule;
+    viteConfig = viteConfigModule?.default ?? viteConfigModule;
   } catch (error) {
     const isModuleNotFound =
       (error as NodeJS.ErrnoException)?.code === "ERR_MODULE_NOT_FOUND";
@@ -79,7 +79,7 @@ export async function setupVite(app: Express, server: Server) {
       );
     }
 
-    return;
+    return false;
   }
 
   const vite = await createViteServer({
@@ -121,6 +121,8 @@ export async function setupVite(app: Express, server: Server) {
       next(e);
     }
   });
+
+  return true;
 }
 
 export function serveStatic(app: Express) {
