@@ -7,15 +7,12 @@ vite.config.ts.*
 # Security and runtime artifacts
 .env
 .env.*
+!.env.local.example
 !.env.example
 *.log
 logs/
 .temp-deployments/
+
 .data/
-.env
-
-.env
-.env.*
-
 configs/connector-smoke.config.json
 
