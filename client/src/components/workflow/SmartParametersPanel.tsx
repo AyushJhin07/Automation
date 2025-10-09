@@ -65,9 +65,12 @@ type MetadataRefreshState = {
   error: string | null;
   reason?: string | null;
   updatedAt?: number;
+  warnings?: string[] | null;
+  connector?: string | null;
+  extras?: Record<string, any> | null;
 };
 
-const METADATA_REFRESH_ENDPOINT = "/api/workflows/metadata/refresh";
+const METADATA_REFRESH_ENDPOINT = "/api/metadata/resolve";
 
 const AI_MAPPING_DISABLED_MESSAGE =
   "AI mapping is disabled until an AI provider is configured.";
@@ -111,6 +114,24 @@ const DEFAULT_OUTPUT_CHANNEL_KEYS = ["$", "default", "main", "data", "output", "
 
 const isPlainObject = (value: unknown): value is Record<string, any> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+
+const toPlainObject = <T extends Record<string, any> = Record<string, any>>(
+  value: unknown,
+): T | undefined => {
+  if (!isPlainObject(value)) {
+    return undefined;
+  }
+  return value as T;
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter((entry): entry is string => entry.length > 0);
+};
 
 const toPreviewableValue = (value: unknown): any => {
   if (Array.isArray(value)) {
@@ -864,6 +885,9 @@ export function SmartParametersPanel({
       status: "idle",
       error: null,
       reason: null,
+      warnings: null,
+      connector: null,
+      extras: null,
     });
   const [aiCapability, setAiCapability] = useState<AIMappingCapability | null>(
     null,
@@ -887,7 +911,14 @@ export function SmartParametersPanel({
   useEffect(() => {
     metadataRefreshAbortRef.current?.abort();
     metadataRefreshAbortRef.current = null;
-    setMetadataRefreshState({ status: "idle", error: null, reason: null });
+    setMetadataRefreshState({
+      status: "idle",
+      error: null,
+      reason: null,
+      warnings: null,
+      connector: null,
+      extras: null,
+    });
   }, [node?.id]);
 
   useEffect(() => {
@@ -932,6 +963,9 @@ export function SmartParametersPanel({
         status: "loading",
         error: null,
         reason: reason ?? null,
+        warnings: null,
+        connector: null,
+        extras: null,
       });
 
       const currentNodes = (() => {
@@ -1035,24 +1069,138 @@ export function SmartParametersPanel({
             : undefined,
       }));
 
-      const payload = {
-        nodeId: node.id,
+      const paramsPayload =
+        paramsValue && typeof paramsValue === "object" && !Array.isArray(paramsValue)
+          ? { ...(paramsValue as Record<string, any>) }
+          : {};
+
+      const connectorCandidates = [
+        serializedCurrentNode?.data?.connectorKey,
+        serializedCurrentNode?.data?.connectorId,
+        serializedCurrentNode?.app,
+        serializedCurrentNode?.data?.app,
+        node?.data?.connectorId,
+        node?.data?.app,
+        node?.data?.provider,
         app,
-        operation: opId,
-        params: paramsValue,
-        node: serializedCurrentNode,
-        graph: {
-          nodes: serializedNodes,
-          edges: serializedEdges,
-        },
+      ];
+
+      const connectorInput =
+        connectorCandidates.find(
+          (candidate): candidate is string =>
+            typeof candidate === "string" && candidate.trim().length > 0,
+        ) ?? "";
+
+      const connectorSlug = normalizeConnectorId(
+        connectorInput || app || serializedCurrentNode?.app || "",
+      );
+
+      let inlineCredentials =
+        toPlainObject(serializedCurrentNode?.data?.credentials) ??
+        toPlainObject(serializedCurrentNode?.data?.parameters?.credentials) ??
+        toPlainObject((paramsPayload as any)?.credentials);
+
+      if (
+        inlineCredentials &&
+        Object.prototype.hasOwnProperty.call(paramsPayload, "credentials")
+      ) {
+        delete (paramsPayload as any).credentials;
+      }
+
+      const extractConnectionId = (value: unknown): string | undefined => {
+        if (typeof value === "string" && value.trim().length > 0) {
+          return value.trim();
+        }
+        const object = toPlainObject(value);
+        if (!object) {
+          return undefined;
+        }
+        const candidate =
+          object.connectionId ??
+          object.connectionID ??
+          object.connection_id ??
+          object.auth?.connectionId ??
+          object.auth?.connectionID ??
+          object.auth?.connection_id;
+        if (typeof candidate === "string" && candidate.trim().length > 0) {
+          return candidate.trim();
+        }
+        return undefined;
       };
+
+      const connectionId =
+        extractConnectionId(serializedCurrentNode?.data) ??
+        extractConnectionId(serializedCurrentNode?.data?.parameters) ??
+        extractConnectionId(paramsValue) ??
+        extractConnectionId(node?.data);
+
+      const optionsPayload: Record<string, any> = {
+        nodeId: node.id,
+        operation: serializedCurrentNode?.operation ?? opId ?? undefined,
+        app: serializedCurrentNode?.app ?? app ?? undefined,
+      };
+
+      if (serializedNodes.length > 0 || serializedEdges.length > 0) {
+        optionsPayload.graph = { nodes: serializedNodes, edges: serializedEdges };
+      }
+
+      if (serializedCurrentNode) {
+        optionsPayload.node = serializedCurrentNode;
+      }
+
+      Object.keys(optionsPayload).forEach((key) => {
+        if (
+          optionsPayload[key] === undefined ||
+          optionsPayload[key] === null ||
+          (typeof optionsPayload[key] === "object" &&
+            !Array.isArray(optionsPayload[key]) &&
+            Object.keys(optionsPayload[key] as Record<string, any>).length === 0 &&
+            key !== "nodeId")
+        ) {
+          if (key !== "nodeId") {
+            delete optionsPayload[key];
+          }
+        }
+      });
+
+      if (!connectorSlug) {
+        if (metadataRefreshAbortRef.current === controller) {
+          metadataRefreshAbortRef.current = null;
+        }
+        setMetadataRefreshState({
+          status: "idle",
+          error: null,
+          reason: reason ?? null,
+          warnings: null,
+          connector: null,
+          extras: null,
+        });
+        return;
+      }
+
+      const requestBody: Record<string, any> = {
+        connector: connectorSlug,
+        params: paramsPayload,
+      };
+
+      if (connectionId) {
+        requestBody.connectionId = connectionId;
+      }
+
+      if (inlineCredentials) {
+        requestBody.credentials = inlineCredentials;
+      }
+
+      if (Object.keys(optionsPayload).length > 0) {
+        requestBody.options = optionsPayload;
+      }
 
       try {
         const response = await fetch(METADATA_REFRESH_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
-          body: JSON.stringify(payload),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -1067,6 +1215,10 @@ export function SmartParametersPanel({
             status: "error",
             error: message,
             reason: reason ?? null,
+            warnings: null,
+            connector: connectorSlug,
+            extras: null,
+            updatedAt: Date.now(),
           });
           return;
         }
@@ -1075,6 +1227,33 @@ export function SmartParametersPanel({
         if (controller.signal.aborted || !isMountedRef.current) {
           return;
         }
+
+        if (!result?.success) {
+          const warningsFromServer = toStringArray(result?.warnings);
+          if (metadataRefreshAbortRef.current === controller) {
+            metadataRefreshAbortRef.current = null;
+          }
+          const message =
+            typeof result?.error === "string" && result.error.trim().length > 0
+              ? result.error
+              : `Metadata refresh failed (${response.status})`;
+          setMetadataRefreshState({
+            status: "error",
+            error: message,
+            reason: reason ?? null,
+            warnings: warningsFromServer.length ? warningsFromServer : null,
+            connector:
+              typeof result?.connector === "string" && result.connector.trim().length > 0
+                ? result.connector
+                : connectorSlug,
+            extras: toPlainObject(result?.extras) ?? null,
+            updatedAt: Date.now(),
+          });
+          return;
+        }
+
+        const extrasFromServer = toPlainObject(result?.extras) ?? null;
+        const warningsFromServer = toStringArray(result?.warnings);
 
         const extractMetadata = (value: any) => {
           if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -1101,11 +1280,51 @@ export function SmartParametersPanel({
           metadataRefreshAbortRef.current = null;
         }
 
+        if (warningsFromServer.length > 0) {
+          console.warn(
+            `Metadata refresh warnings for ${connectorSlug}:`,
+            warningsFromServer,
+          );
+        }
+
+        if (extrasFromServer) {
+          const tabsFromServer = toStringArray(extrasFromServer.tabs);
+          if (tabsFromServer.length > 0) {
+            const spreadsheetIdCandidate =
+              (paramsPayload as any)?.spreadsheetId ??
+              (paramsPayload as any)?.sheetId ??
+              (paramsPayload as any)?.sheet_id ??
+              (serializedCurrentNode?.data?.parameters as any)?.spreadsheetId ??
+              (serializedCurrentNode?.data?.parameters as any)?.sheetId ??
+              (serializedCurrentNode?.data?.parameters as any)?.sheet_id ??
+              (paramsValue as any)?.spreadsheetId ??
+              (paramsValue as any)?.sheetId ??
+              (paramsValue as any)?.sheet_id ??
+              (paramsValue as any)?.spreadsheet ??
+              undefined;
+            const spreadsheetId =
+              typeof spreadsheetIdCandidate === "string"
+                ? spreadsheetIdCandidate.trim()
+                : "";
+            setSheetMetadata((prev) => ({
+              spreadsheetId: spreadsheetId || prev?.spreadsheetId || "",
+              tabs: tabsFromServer,
+              status: "success",
+            }));
+          }
+        }
+
         setMetadataRefreshState({
           status: "success",
           error: null,
           reason: reason ?? null,
           updatedAt: Date.now(),
+          warnings: warningsFromServer.length ? warningsFromServer : null,
+          connector:
+            typeof result?.connector === "string" && result.connector.trim().length > 0
+              ? result.connector
+              : connectorSlug,
+          extras: extrasFromServer,
         });
 
         if (!metadataFromServer && !outputMetadataFromServer) {
@@ -1175,6 +1394,10 @@ export function SmartParametersPanel({
           status: "error",
           error: message,
           reason: reason ?? null,
+          warnings: null,
+          connector: connectorSlug,
+          extras: null,
+          updatedAt: Date.now(),
         });
       }
     },
