@@ -3,6 +3,8 @@
 This guide covers the quickest path to booting the platform locally with Docker Compose.
 
 > 📘 **Need a mental model for the runtime?** Read the [Workflow Runtime Interaction Guide](./architecture/workflow-runtime-interactions.md) to understand how WorkflowRuntime, IntegrationManager, GenericExecutor, and RetryManager coordinate while you run local flows.
+>
+> 🧭 **Configuring runtimes and fallbacks?** The [Runtime Environment and Fallback Guide](./runtimes-and-fallbacks.md) maps the required environment variables, worker commands, and metadata conventions referenced below.
 
 ## 1. Prepare environment variables
 
