@@ -1,3 +1,26 @@
+const sharedQueueEnv = (() => {
+  const base = {
+    NODE_ENV: 'production',
+    QUEUE_REDIS_HOST: process.env.QUEUE_REDIS_HOST ?? '127.0.0.1',
+    QUEUE_REDIS_PORT: process.env.QUEUE_REDIS_PORT ?? '6379',
+    QUEUE_REDIS_DB: process.env.QUEUE_REDIS_DB ?? '0',
+  };
+
+  if (process.env.QUEUE_REDIS_USERNAME) {
+    base.QUEUE_REDIS_USERNAME = process.env.QUEUE_REDIS_USERNAME;
+  }
+
+  if (process.env.QUEUE_REDIS_PASSWORD) {
+    base.QUEUE_REDIS_PASSWORD = process.env.QUEUE_REDIS_PASSWORD;
+  }
+
+  if (process.env.QUEUE_REDIS_TLS) {
+    base.QUEUE_REDIS_TLS = process.env.QUEUE_REDIS_TLS;
+  }
+
+  return base;
+})();
+
 module.exports = {
   apps: [
     {
@@ -7,7 +30,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: 'production',
+        ...sharedQueueEnv,
       },
     },
     {
@@ -17,7 +40,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: 'production',
+        ...sharedQueueEnv,
       },
     },
     {
@@ -27,7 +50,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: 'production',
+        ...sharedQueueEnv,
       },
     },
     {
@@ -37,7 +60,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: 'production',
+        ...sharedQueueEnv,
       },
     },
     {
@@ -47,7 +70,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: 'production',
+        ...sharedQueueEnv,
       },
     },
   ],
