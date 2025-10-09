@@ -69,6 +69,7 @@ const sanitizeToken = (token?: string): string | undefined => {
 const sanitizeStoredAuthState = (state: StoredAuthState): StoredAuthState => ({
   ...state,
   token: sanitizeToken(state.token),
+  refreshToken: sanitizeToken(state.refreshToken),
 });
 
 const persistState = (state: StoredAuthState) => {
@@ -199,24 +200,73 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   authFetch: async (input, init) => {
-    const token = sanitizeToken(get().token);
-    const organizationId = get().activeOrganizationId;
-    const headers = new Headers(init?.headers);
-    if (!headers.has('Content-Type') && init?.body && !(init.body instanceof FormData)) {
-      headers.set('Content-Type', 'application/json');
-    }
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    if (organizationId) {
-      headers.set('X-Organization-Id', organizationId);
+    const performRequest = async (tokenOverride?: string) => {
+      const state = get();
+      const token = sanitizeToken(tokenOverride ?? state.token);
+      const headers = new Headers(init?.headers);
+      if (!headers.has('Content-Type') && init?.body && !(init.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
+      }
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      if (state.activeOrganizationId) {
+        headers.set('X-Organization-Id', state.activeOrganizationId);
+      }
+      return fetch(input, { ...init, headers });
+    };
+
+    const response = await performRequest();
+    if (response.status !== 401) {
+      return response;
     }
 
-    const response = await fetch(input, { ...init, headers });
-    if (response.status === 401) {
+    const storedRefreshToken = sanitizeToken(get().refreshToken);
+    if (!storedRefreshToken) {
+      await get().logout(true);
+      return response;
+    }
+
+    let refreshedToken: string | undefined;
+    try {
+      const refreshResponse = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: storedRefreshToken })
+      });
+
+      const refreshData = await refreshResponse.json().catch(() => null);
+      if (!refreshResponse.ok || !refreshData?.success || !refreshData?.token) {
+        const errorMessage = refreshData?.error || `refresh failed with status ${refreshResponse.status}`;
+        console.warn('Token refresh failed:', errorMessage);
+        await get().logout(true);
+        return response;
+      }
+
+      const nextState: StoredAuthState = {
+        token: refreshData.token,
+        refreshToken: refreshData.refreshToken,
+        user: refreshData.user ?? get().user,
+        organizations: refreshData.organizations ?? get().organizations,
+        activeOrganization: refreshData.activeOrganization ?? get().activeOrganization,
+        activeOrganizationId:
+          refreshData.activeOrganizationId ?? refreshData.activeOrganization?.id ?? get().activeOrganizationId,
+      };
+      persistState(nextState);
+      set((state) => ({ ...state, ...nextState }));
+      refreshedToken = nextState.token;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      console.warn('Token refresh failed:', message);
+      await get().logout(true);
+      return response;
+    }
+
+    const retryResponse = await performRequest(refreshedToken);
+    if (retryResponse.status === 401) {
       await get().logout(true);
     }
-    return response;
+    return retryResponse;
   },
   refreshOrganizations: async () => {
     if (!get().token) return;
