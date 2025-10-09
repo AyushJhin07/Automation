@@ -143,6 +143,35 @@ const mergeParameters = (
   return merged;
 };
 
+const resolveTriggerFallbackAlias = (trigger: PollingTrigger): string | null => {
+  const metadata = trigger.metadata ?? {};
+  const candidates: Array<unknown> = [
+    (metadata as Record<string, any>).fallbackKey,
+    (metadata as Record<string, any>).fallback_key,
+    metadata?.fallback?.key,
+    metadata?.runtime?.fallbackKey,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const normalized = normalizeKey(candidate);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+  }
+
+  const appId = typeof trigger.appId === 'string' ? trigger.appId.trim() : '';
+  const triggerId = typeof trigger.triggerId === 'string' ? trigger.triggerId.trim() : '';
+
+  if (appId && triggerId) {
+    const normalized = normalizeKey(`${appId}.${triggerId}`);
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  return null;
+};
+
 const gmailMessagesListFallback: FallbackHandler = async context => {
   const start = Date.now();
   const httpClient = resolveHttpClient(context);
@@ -332,12 +361,16 @@ const driveFilesPollingFallback: FallbackHandler = async context => {
   }
 
   const queryParts: string[] = ['trashed = false'];
+  const fallbackAlias = resolveTriggerFallbackAlias(context.trigger);
+  const shouldRestrictToDocs =
+    typeof fallbackAlias === 'string' && fallbackAlias.startsWith('google_docs.');
+
   if (params.folderId) {
     queryParts.push(`'${String(params.folderId).replace(/'/g, "\\'")}' in parents`);
   }
   if (params.mimeType) {
     queryParts.push(`mimeType = '${String(params.mimeType)}'`);
-  } else {
+  } else if (shouldRestrictToDocs) {
     queryParts.push("mimeType contains 'application/vnd.google-apps.document'");
   }
   if (params.modifiedAfter) {
