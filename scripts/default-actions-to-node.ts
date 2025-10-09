@@ -2,7 +2,51 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const DEFAULT_RUNTIMES = Object.freeze(['node'] as const);
+type ActionDefinition = {
+  id?: string;
+  runtimes?: unknown;
+  fallback?: unknown;
+  dedupe?: unknown;
+  [key: string]: unknown;
+};
+
+type ActionBucket = ActionDefinition[] | Record<string, ActionDefinition>;
+
+type ConnectorDefinition = {
+  actions?: ActionBucket | null;
+};
+
+type FunctionDefaults = {
+  runtimes?: string[] | null;
+  fallback?: unknown;
+  dedupe?: unknown;
+};
+
+type ConnectorActionOverrides = {
+  /** Skip processing this connector entirely. */
+  skip?: boolean;
+  /** Defaults applied to every action before falling back to the global defaults. */
+  defaults?: FunctionDefaults;
+  /** Per-action overrides keyed by action id (or dictionary key). */
+  actions?: Record<string, FunctionDefaults>;
+};
+
+const GLOBAL_ACTION_DEFAULTS: Required<FunctionDefaults> = Object.freeze({
+  runtimes: ['node'],
+  fallback: null,
+  dedupe: null,
+});
+
+const CONNECTOR_ACTION_OVERRIDES: Record<string, ConnectorActionOverrides> = {
+  // Add connector specific overrides here as needed.
+  // Example:
+  // 'salesforce-enhanced': {
+  //   defaults: { runtimes: ['node', 'python'] },
+  //   actions: {
+  //     query: { fallback: { strategy: 'generic' } },
+  //   },
+  // },
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,32 +70,104 @@ async function findDefinitionFiles(dir: string): Promise<string[]> {
   return files;
 }
 
-type ActionDefinition = Record<string, any>;
-
-type ConnectorDefinition = {
-  actions?: unknown;
-};
-
-function ensureActionDefaults(action: ActionDefinition): boolean {
-  let changed = false;
-
-  if (!Array.isArray(action.runtimes) || action.runtimes.length === 0) {
-    action.runtimes = [...DEFAULT_RUNTIMES];
-    changed = true;
+function mergeDefaults(base: FunctionDefaults, source?: FunctionDefaults): FunctionDefaults {
+  if (!source) {
+    return base;
   }
 
-  if (!Object.prototype.hasOwnProperty.call(action, 'fallback') || action.fallback === undefined) {
-    action.fallback = null;
-    changed = true;
+  const merged: FunctionDefaults = { ...base };
+
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined) {
+      (merged as Record<string, unknown>)[key] = value as unknown;
+    }
+  }
+
+  return merged;
+}
+
+function buildActionDefaults(connectorId: string, actionId?: string): FunctionDefaults {
+  const connectorConfig = CONNECTOR_ACTION_OVERRIDES[connectorId];
+  const base = mergeDefaults(GLOBAL_ACTION_DEFAULTS, connectorConfig?.defaults);
+
+  if (!actionId || !connectorConfig?.actions) {
+    return base;
+  }
+
+  const actionOverride = connectorConfig.actions[actionId];
+  if (!actionOverride) {
+    return base;
+  }
+
+  return mergeDefaults(base, actionOverride);
+}
+
+function cloneValue<T>(value: T): T {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function resolveActionId(action: ActionDefinition, fallbackId?: string): string | undefined {
+  if (typeof action.id === 'string' && action.id.length > 0) {
+    return action.id;
+  }
+  if (fallbackId) {
+    return fallbackId;
+  }
+  return undefined;
+}
+
+function ensureActionDefaults(
+  action: ActionDefinition,
+  connectorId: string,
+  fallbackId?: string,
+): boolean {
+  const connectorConfig = CONNECTOR_ACTION_OVERRIDES[connectorId];
+  if (connectorConfig?.skip) {
+    return false;
+  }
+
+  const actionId = resolveActionId(action, fallbackId);
+  const defaults = buildActionDefaults(connectorId, actionId);
+
+  let changed = false;
+
+  if (defaults.runtimes !== undefined) {
+    const runtimes = action.runtimes;
+    if (!Array.isArray(runtimes) || runtimes.length === 0 || !runtimes.every(item => typeof item === 'string')) {
+      action.runtimes = defaults.runtimes === null ? null : cloneValue(defaults.runtimes);
+      changed = true;
+    }
+  }
+
+  if (defaults.fallback !== undefined) {
+    if (!Object.prototype.hasOwnProperty.call(action, 'fallback') || action.fallback === undefined) {
+      action.fallback = cloneValue(defaults.fallback);
+      changed = true;
+    }
+  }
+
+  if (defaults.dedupe !== undefined) {
+    if (!Object.prototype.hasOwnProperty.call(action, 'dedupe') || action.dedupe === undefined) {
+      action.dedupe = cloneValue(defaults.dedupe);
+      changed = true;
+    }
   }
 
   return changed;
 }
 
-function applyDefaults(definition: ConnectorDefinition): boolean {
+function applyDefaults(definition: ConnectorDefinition, connectorId: string): boolean {
   const actions = definition.actions;
 
   if (!actions) {
+    return false;
+  }
+
+  const connectorConfig = CONNECTOR_ACTION_OVERRIDES[connectorId];
+  if (connectorConfig?.skip) {
     return false;
   }
 
@@ -59,7 +175,7 @@ function applyDefaults(definition: ConnectorDefinition): boolean {
 
   if (Array.isArray(actions)) {
     for (const action of actions) {
-      if (action && typeof action === 'object' && ensureActionDefaults(action)) {
+      if (action && typeof action === 'object' && ensureActionDefaults(action, connectorId)) {
         changed = true;
       }
     }
@@ -67,8 +183,8 @@ function applyDefaults(definition: ConnectorDefinition): boolean {
   }
 
   if (typeof actions === 'object') {
-    for (const action of Object.values(actions as Record<string, unknown>)) {
-      if (action && typeof action === 'object' && ensureActionDefaults(action as ActionDefinition)) {
+    for (const [key, action] of Object.entries(actions)) {
+      if (action && typeof action === 'object' && ensureActionDefaults(action, connectorId, key)) {
         changed = true;
       }
     }
@@ -77,17 +193,25 @@ function applyDefaults(definition: ConnectorDefinition): boolean {
   return changed;
 }
 
+function getConnectorId(definitionPath: string): string {
+  const relative = path.relative(connectorsDir, definitionPath);
+  const [connectorId] = relative.split(path.sep);
+  return connectorId;
+}
+
 async function processDefinition(file: string): Promise<boolean> {
   const raw = await fs.readFile(file, 'utf8');
   let definition: ConnectorDefinition;
 
   try {
-    definition = JSON.parse(raw);
+    definition = JSON.parse(raw) as ConnectorDefinition;
   } catch (error) {
     throw new Error(`Failed to parse ${file}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  if (!applyDefaults(definition)) {
+  const connectorId = getConnectorId(file);
+
+  if (!applyDefaults(definition, connectorId)) {
     return false;
   }
 

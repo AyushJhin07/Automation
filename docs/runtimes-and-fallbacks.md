@@ -37,8 +37,8 @@ When adding a new connector or expanding coverage, ensure its definition include
 
 When we backfill runtime metadata across the catalog, run the automation scripts in order so the generated patches stay repeatable:
 
-1. `tsx scripts/default-actions-to-node.ts` – fills in missing `runtimes: ['node']` and `fallback: null` on every action definition.
-2. `tsx scripts/seed-trigger-fallbacks.ts` – adds conservative cursor-based defaults (`runtimes`, `fallback`, and `dedupe`) anywhere a trigger omits them.
-3. Review the highest-traffic connectors by hand to tighten the cursor paths, dedupe keys, or runtime overrides before landing the change set.
+1. `npm run scaffold:runtimes` – runs the action and trigger scaffolding scripts in sequence so the patches stay consistent. The action pass (`scripts/default-actions-to-node.ts`) fills in missing `runtimes: ['node']`, `fallback: null`, and `dedupe: null` fields. The trigger pass (`scripts/seed-trigger-fallbacks.ts`) seeds a conservative cursor-based dedupe strategy along with the same runtime and fallback defaults.
+   - Connector-specific overrides live in the `CONNECTOR_ACTION_OVERRIDES` and `CONNECTOR_TRIGGER_OVERRIDES` maps. Populate those maps when a connector or individual function needs bespoke defaults instead of editing the generated manifest by hand.【F:scripts/default-actions-to-node.ts†L41-L70】【F:scripts/seed-trigger-fallbacks.ts†L42-L71】
+2. Review the highest-traffic connectors by hand to tighten the cursor paths, dedupe keys, or runtime overrides before landing the change set.
 
 Recording the sequence keeps contributors aligned on how the defaults were produced and makes it easier to iterate on the seeded values without conflicting local edits.
