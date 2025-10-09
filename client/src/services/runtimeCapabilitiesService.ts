@@ -147,14 +147,116 @@ const createWildcardStatus = (
   enabledNativeRuntimes: ['node'],
 });
 
+const cloneCapabilityStatus = (
+  appId: string,
+  kind: RuntimeOperationKind,
+  operationId: string,
+  status?: RuntimeCapabilityOperationStatus,
+): RuntimeCapabilityOperationStatus => {
+  const normalizedOperationId = normalizeRuntimeOperationId(
+    status?.normalizedOperationId ?? status?.operationId ?? operationId,
+  ) ?? normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
+
+  const base = createDefaultOperationStatus(appId, kind, normalizedOperationId);
+
+  if (!status || typeof status !== 'object') {
+    return base;
+  }
+
+  const cloned: RuntimeCapabilityOperationStatus = {
+    ...base,
+    ...status,
+    appId: status.appId ?? base.appId,
+    kind: status.kind ?? base.kind,
+    operationId: status.operationId ?? normalizedOperationId,
+    normalizedAppId: status.normalizedAppId ?? base.normalizedAppId,
+    normalizedOperationId: status.normalizedOperationId ?? normalizedOperationId,
+  };
+
+  return cloned;
+};
+
+const cloneCapabilityBucket = (
+  appId: string,
+  kind: RuntimeOperationKind,
+  bucket: unknown,
+): Record<string, RuntimeCapabilityOperationStatus> => {
+  const normalized: Record<string, RuntimeCapabilityOperationStatus> = {};
+
+  const assignFromOperationId = (operationId: unknown) => {
+    if (typeof operationId !== 'string') {
+      return;
+    }
+    const normalizedId = normalizeRuntimeOperationId(operationId) ?? RUNTIME_WILDCARD;
+    normalized[normalizedId] = cloneCapabilityStatus(appId, kind, normalizedId);
+  };
+
+  const assignFromStatus = (
+    operationId: string | undefined,
+    status: RuntimeCapabilityOperationStatus | undefined,
+  ) => {
+    const key =
+      normalizeRuntimeOperationId(operationId) ??
+      normalizeRuntimeOperationId(status?.normalizedOperationId) ??
+      normalizeRuntimeOperationId(status?.operationId) ??
+      RUNTIME_WILDCARD;
+    normalized[key] = cloneCapabilityStatus(appId, kind, key, status);
+  };
+
+  if (!bucket) {
+    return normalized;
+  }
+
+  if (bucket instanceof Set) {
+    bucket.forEach(assignFromOperationId);
+    return normalized;
+  }
+
+  if (bucket instanceof Map) {
+    bucket.forEach((value, key) => {
+      if (value && typeof value === 'object') {
+        assignFromStatus(typeof key === 'string' ? key : undefined, value as RuntimeCapabilityOperationStatus);
+      } else {
+        assignFromOperationId(key);
+      }
+    });
+    return normalized;
+  }
+
+  if (Array.isArray(bucket)) {
+    bucket.forEach((entry) => {
+      if (!entry) {
+        return;
+      }
+      if (typeof entry === 'string') {
+        assignFromOperationId(entry);
+        return;
+      }
+      if (typeof entry === 'object') {
+        const status = entry as RuntimeCapabilityOperationStatus;
+        assignFromStatus(status.operationId ?? status.normalizedOperationId, status);
+      }
+    });
+    return normalized;
+  }
+
+  if (typeof bucket === 'object') {
+    Object.entries(bucket as Record<string, any>).forEach(([key, value]) => {
+      if (value && typeof value === 'object' && 'supported' in (value as Record<string, any>)) {
+        assignFromStatus(key, value as RuntimeCapabilityOperationStatus);
+      } else {
+        assignFromOperationId(key);
+      }
+    });
+  }
+
+  return normalized;
+};
+
 const cloneCapabilityEntry = (entry: RuntimeCapabilityEntry): RuntimeCapabilityEntry => ({
   appId: entry.appId,
-  actions: Object.fromEntries(
-    Object.entries(entry.actions).map(([key, value]) => [key, { ...value }]),
-  ),
-  triggers: Object.fromEntries(
-    Object.entries(entry.triggers).map(([key, value]) => [key, { ...value }]),
-  ),
+  actions: cloneCapabilityBucket(entry.appId, 'action', entry.actions),
+  triggers: cloneCapabilityBucket(entry.appId, 'trigger', entry.triggers),
 });
 
 const cloneCapabilityMap = (map: RuntimeCapabilityMap): RuntimeCapabilityMap => {
@@ -677,10 +779,10 @@ export const buildRuntimeCapabilityIndex = (
 
       ensureIndexEntry(index, normalizedAppId);
 
-      entry.actions.forEach((operationId) => {
+      Object.keys(entry.actions).forEach((operationId) => {
         assignOperationStatus(index, capabilities, normalizedAppId, 'action', operationId);
       });
-      entry.triggers.forEach((operationId) => {
+      Object.keys(entry.triggers).forEach((operationId) => {
         assignOperationStatus(index, capabilities, normalizedAppId, 'trigger', operationId);
       });
     });
