@@ -46,7 +46,7 @@ export type {
   WorkerOptions,
 } from './types.js';
 
-type QueueDriverName = 'bullmq' | 'inmemory';
+type QueueDriverName = 'bullmq' | 'inmemory' | 'mock';
 
 export class QueueDriverUnavailableError extends Error {
   public readonly code = 'QUEUE_DRIVER_UNAVAILABLE';
@@ -69,6 +69,10 @@ const state: QueueDriverState = {
 
 function resolveInitialDriver(): QueueDriverName {
   const override = process.env.QUEUE_DRIVER?.toLowerCase();
+  if (override === 'mock') {
+    console.warn('[Queue] QUEUE_DRIVER=mock detected. Using durable in-memory queue driver for tests.');
+    return 'mock';
+  }
   if (override === 'inmemory') {
     console.warn('[Queue] QUEUE_DRIVER=inmemory detected. Using in-memory queue driver.');
     return 'inmemory';

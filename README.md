@@ -77,6 +77,10 @@ npm run dev:smoke
 
 To switch to a proper setup later, remove `QUEUE_DRIVER=inmemory`, ensure Redis is running, and either keep the inline worker on or start a dedicated worker in a second terminal with `npm run dev:worker`.
 
+### Durable mock queue (for automated tests)
+
+When Redis is unavailable but you still need `/api/health/queue` to report a durable queue (for example in automated smoke tests), set `QUEUE_DRIVER=mock`. The mock driver reuses the in-memory queue implementation but reports a passing, durable status through the health checks so that UI actions like the Run button remain enabled. This mode should only be used for local development and automated testing.
+
 ## Health Checks
 
 - Queue heartbeat: `curl http://localhost:5000/api/production/queue/heartbeat`
