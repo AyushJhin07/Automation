@@ -46,6 +46,7 @@ import {
   WorkflowExecutionStepRepository,
   type InitializedStepDescriptor,
 } from '../workflow/WorkflowExecutionStepRepository.js';
+import { planWorkflowRuntimeSelections } from '../workflow/runtimePlanner.js';
 import {
   assertQueueIsReady,
   checkQueueHealth,
@@ -1779,6 +1780,7 @@ class ExecutionQueueService {
         };
 
     try {
+      const runtimePlan = planWorkflowRuntimeSelections(wf.graph as any);
       const result = await workflowRuntime.executeWorkflow(
         wf.graph as any,
         initialData,
@@ -1789,6 +1791,7 @@ class ExecutionQueueService {
           triggerType: job.data.triggerType ?? execution.triggerType ?? 'manual',
           resumeState,
           mode: 'step',
+          runtimePlan,
         }
       );
 

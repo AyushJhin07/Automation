@@ -29,6 +29,7 @@ import { genericExecutor } from '../integrations/GenericExecutor';
 import { env } from '../env';
 import { connectionService } from '../services/ConnectionService';
 import { getErrorMessage } from '../types/common';
+import type { WorkflowRuntimePlan, NodeRuntimePlanEntry } from '../workflow/runtimePlanner.js';
 
 const DEFAULT_NODE_TIMEOUT_MS = 30_000;
 
@@ -40,6 +41,7 @@ export interface WorkflowRuntimeOptions {
   triggerType?: string;
   resumeState?: WorkflowResumeState | null;
   mode?: 'workflow' | 'step';
+  runtimePlan?: WorkflowRuntimePlan;
 }
 
 interface NormalizedRuntimeOptions {
@@ -70,6 +72,7 @@ export interface ExecutionContext {
   organizationId?: string;
   idempotencyKeys: Record<string, string>;
   requestHashes: Record<string, string>;
+  runtimePlan?: WorkflowRuntimePlan;
 }
 
 export interface ExecutionResult {
@@ -142,6 +145,7 @@ export class WorkflowRuntime {
       organizationId: options.organizationId,
       idempotencyKeys: resumeState?.idempotencyKeys ? { ...resumeState.idempotencyKeys } : {},
       requestHashes: resumeState?.requestHashes ? { ...resumeState.requestHashes } : {},
+      runtimePlan: options.runtimePlan,
     };
 
     const runtimeOptions = this.normalizeOptions(options);
@@ -582,7 +586,8 @@ export class WorkflowRuntime {
       // Placeholder for other node types
       default:
         if (this.isConnectorNode(node, resolvedParams)) {
-          return await this.executeConnectorNode(node, context, resolvedParams);
+          const runtimeSelection = context.runtimePlan?.[node.id];
+          return await this.executeConnectorNode(node, context, resolvedParams, runtimeSelection);
         }
 
         console.warn(`⚠️  Node type ${node.type} not supported in server-side execution`);
@@ -630,7 +635,8 @@ export class WorkflowRuntime {
   private async executeConnectorNode(
     node: GraphNode,
     context: ExecutionContext,
-    resolvedParams: Record<string, any>
+    resolvedParams: Record<string, any>,
+    runtimeSelection?: NodeRuntimePlanEntry
   ): Promise<any> {
     const data = (node.data ?? {}) as Record<string, any>;
     const appCandidate = this.selectString(
@@ -706,7 +712,40 @@ export class WorkflowRuntime {
     let responseData: any;
     let fallbackError: string | undefined;
 
-    if (!env.GENERIC_EXECUTOR_ENABLED) {
+    if (runtimeSelection?.availability === 'unavailable') {
+      const issueMessage = runtimeSelection.issues[0]?.message;
+      const message = issueMessage
+        ? issueMessage
+        : `Execution for ${appId}.${functionId} is not available in this environment.`;
+      throw new Error(message);
+    }
+
+    const forcedFallback = runtimeSelection?.availability === 'fallback';
+
+    if (forcedFallback) {
+      if (!env.GENERIC_EXECUTOR_ENABLED) {
+        throw new Error(
+          `Fallback runtime required for ${appId}.${functionId}, but the generic executor is disabled.`
+        );
+      }
+
+      const genericParams = this.prepareGenericParameters(baseParameters, idempotencyKey);
+      const start = Date.now();
+      const genericResult = await genericExecutor.execute({
+        appId,
+        functionId,
+        parameters: genericParams,
+        credentials: credentialResolution.credentials,
+      });
+      executor = 'generic';
+      executionTime = Date.now() - start;
+      if (!genericResult.success) {
+        const message = genericResult.error
+          || `Fallback runtime ${runtimeSelection.runtime ?? 'generic'} failed for ${appId}.${functionId}`;
+        throw new Error(message);
+      }
+      responseData = genericResult.data ?? null;
+    } else if (!env.GENERIC_EXECUTOR_ENABLED) {
       const response = await integrationManager.executeFunction(integrationParams);
       if (!response.success) {
         throw new Error(response.error || `Failed to execute ${appId}.${functionId}`);
@@ -744,6 +783,18 @@ export class WorkflowRuntime {
     metadata.executor = executor;
     if (fallbackError && executor === 'generic') {
       metadata.integrationFallbackReason = fallbackError;
+    }
+
+    if (runtimeSelection) {
+      metadata.runtimePlan = {
+        availability: runtimeSelection.availability,
+        runtime: runtimeSelection.runtime,
+        issues: runtimeSelection.issues,
+      } as Record<string, any>;
+    }
+
+    if (!fallbackError && executor === 'generic' && forcedFallback) {
+      metadata.integrationFallbackReason = 'planned_fallback';
     }
 
     this.setNodeMetadata(context.executionId, node.id, metadata);
