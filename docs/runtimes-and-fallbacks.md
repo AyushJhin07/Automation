@@ -32,3 +32,13 @@ Use the `start:*` variants in production (`npm run start:worker`, etc.) when run
 4. **Client capability checks** – the frontend caches the capabilities map, providing fallback entries for built-in runtimes and warning users when an operation lacks runtime coverage.【F:client/src/services/runtimeCapabilitiesService.ts†L1-L160】 Runtime unit tests confirm that connectors such as Slack only appear when the generic executor flag is enabled, preventing accidental exposure when bespoke coverage is required.【F:server/runtime/__tests__/registry.capabilities.test.ts†L1-L41】
 
 When adding a new connector or expanding coverage, ensure its definition includes the HTTP metadata needed for the registry to derive fallback routes. Combined with the environment flags above, this keeps runtime behaviour predictable across development, staging, and production.
+
+## Backfilling connector defaults
+
+When we backfill runtime metadata across the catalog, run the automation scripts in order so the generated patches stay repeatable:
+
+1. `tsx scripts/default-actions-to-node.ts` – fills in missing `runtimes: ['node']` and `fallback: null` on every action definition.
+2. `tsx scripts/seed-trigger-fallbacks.ts` – adds conservative cursor-based defaults (`runtimes`, `fallback`, and `dedupe`) anywhere a trigger omits them.
+3. Review the highest-traffic connectors by hand to tighten the cursor paths, dedupe keys, or runtime overrides before landing the change set.
+
+Recording the sequence keeps contributors aligned on how the defaults were produced and makes it easier to iterate on the seeded values without conflicting local edits.
