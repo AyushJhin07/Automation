@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { ConnectorRegistry } from '../ConnectorRegistry';
 import { getRuntimeCapabilities } from '../runtime/registry.js';
+import { enabledRuntimes } from '../runtime/capabilities.js';
 import { getErrorMessage } from '../types/common';
 
 const router = Router();
@@ -10,6 +11,7 @@ router.get('/api/registry/capabilities', (_req, res) => {
   res.json({
     success: true,
     capabilities: getRuntimeCapabilities(),
+    runtimes: enabledRuntimes(),
   });
 });
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 process.env.GENERIC_EXECUTOR_ENABLED = 'false';
 
-const { getRuntimeCapabilities, hasRuntimeImplementation } = await import('../registry.js');
+const { getRuntimeCapabilities, resolveRuntime } = await import('../registry.js');
 
 {
   const capabilities = getRuntimeCapabilities();
@@ -13,7 +13,8 @@ const { getRuntimeCapabilities, hasRuntimeImplementation } = await import('../re
     httpCapabilities.actions.includes('request'),
     'http capabilities should include the request action',
   );
-  assert.equal(hasRuntimeImplementation('action', 'http', 'request'), true);
+  const httpResolution = resolveRuntime({ kind: 'action', appId: 'http', operationId: 'request' });
+  assert.equal(httpResolution.availability === 'native', true);
 }
 
 {
@@ -21,7 +22,8 @@ const { getRuntimeCapabilities, hasRuntimeImplementation } = await import('../re
   const slackCapabilities = capabilities.find(entry => entry.app === 'slack');
 
   assert.ok(!slackCapabilities || !slackCapabilities.actions.includes('send_message'));
-  assert.equal(hasRuntimeImplementation('action', 'slack', 'send_message'), false);
+  const slackResolution = resolveRuntime({ kind: 'action', appId: 'slack', operationId: 'send_message' });
+  assert.equal(slackResolution.availability === 'unavailable', true);
 }
 
 process.env.GENERIC_EXECUTOR_ENABLED = 'true';
@@ -35,7 +37,13 @@ process.env.GENERIC_EXECUTOR_ENABLED = 'true';
     slackCapabilities.actions.includes('send_message'),
     'slack send_message action should be exposed via runtime registry when generic executor is enabled',
   );
-  assert.equal(hasRuntimeImplementation('action', 'slack', 'send_message'), true);
+  const slackResolutionWithFallback = resolveRuntime({
+    kind: 'action',
+    appId: 'slack',
+    operationId: 'send_message',
+  });
+  assert.equal(slackResolutionWithFallback.availability, 'fallback');
+  assert.equal(slackResolutionWithFallback.runtime, 'node');
 }
 
 process.env.GENERIC_EXECUTOR_ENABLED = 'false';

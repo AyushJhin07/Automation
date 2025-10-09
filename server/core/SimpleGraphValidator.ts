@@ -2,7 +2,7 @@ import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import graphSchema from '../../schemas/graph.schema.json';
 import { NodeGraph, ValidationError, ValidationResult } from '../../shared/nodeGraphSchema';
-import { hasRuntimeImplementation } from '../runtime/registry.js';
+import { resolveRuntime } from '../runtime/registry.js';
 
 export interface ValidatorOptions {
   allowActionOnly?: boolean;
@@ -431,22 +431,41 @@ export class SimpleGraphValidator {
         (typeof node?.op === 'string' && node.op.trim()) ||
         operationFromType;
 
-      const normalizedOperation = operationCandidate ? operationCandidate.replace(/\./g, '_') : '';
       const normalizedApp = appFromType;
 
-      if (!normalizedOperation) {
+      if (!operationCandidate) {
         continue;
       }
 
       const category = categoryRaw as 'action' | 'trigger';
+      const resolution = resolveRuntime({
+        kind: category,
+        appId: normalizedApp,
+        operationId: operationCandidate,
+      });
 
-      if (!hasRuntimeImplementation(category, normalizedApp, normalizedOperation)) {
+      if (resolution.issues.length === 0 && resolution.availability !== 'unavailable') {
+        continue;
+      }
+
+      if (resolution.issues.length === 0 && resolution.availability === 'unavailable') {
         errors.push({
           nodeId: node.id,
           path: `/nodes/${node.id}/type`,
-          message: `Execution for ${normalizedApp}.${normalizedOperation} is not implemented in this environment`,
+          message: `Execution for ${normalizedApp}.${operationCandidate} is not available in this environment`,
           severity: 'error',
-          code: 'UNSUPPORTED_OPERATION'
+          code: 'UNSUPPORTED_OPERATION',
+        });
+        continue;
+      }
+
+      for (const issue of resolution.issues) {
+        errors.push({
+          nodeId: node.id,
+          path: `/nodes/${node.id}/type`,
+          message: issue.message,
+          severity: issue.severity === 'error' ? 'error' : 'warning',
+          code: issue.code ?? (issue.severity === 'error' ? 'UNSUPPORTED_OPERATION' : 'RUNTIME_WARNING'),
         });
       }
     }
