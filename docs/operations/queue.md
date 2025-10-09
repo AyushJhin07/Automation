@@ -144,8 +144,10 @@ The factory exports typed job payloads (e.g. `workflow.execute`) so that enqueue
 
 ## Incident response polling
 
-Administrators can poll the execution infrastructure via `GET /api/admin/workers/status` when triaging queue incidents. The
-endpoint is protected by the standard admin token middleware and returns structured JSON suitable for dashboards or ad-hoc
+Operators with the `execution:read` permission (granted to admins, members, and viewers by default) can poll the execution
+infrastructure via `GET /api/admin/workers/status` when triaging queue incidents. The endpoint now checks the RBAC permission
+directly, allowing incident responders without the `admin` role to access telemetry while still rejecting callers who lack the
+required capability. It returns structured JSON suitable for dashboards or ad-hoc
 scripts. A sample response includes:
 
 ```json

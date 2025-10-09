@@ -2412,7 +2412,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get('/api/admin/workers/status', authenticateToken, adminOnly, async (_req, res) => {
+  app.get('/api/admin/workers/status', authenticateToken, requirePermission('execution:read'), async (_req, res) => {
     try {
       const executionTelemetry = executionQueueService.getTelemetrySnapshot();
       const schedulerTelemetry = getSchedulerLockService().getTelemetrySnapshot();
