@@ -56,6 +56,9 @@ describe('useWorkerHeartbeat fallback handling', () => {
     expect(result.current.environmentWarnings).toHaveLength(1);
     expect(result.current.environmentWarnings[0].message).toBe('Detected stale heartbeat');
     expect(result.current.summary.staleWorkers).toBe(1);
+    expect(result.current.summary.usesPublicHeartbeat).toBe(true);
+    expect(result.current.summary.queueStatus).toBe('warn');
+    expect(result.current.summary.queueDurable).toBeNull();
   });
 
   it('adds a stale heartbeat warning when the fallback reports a pass status', async () => {
@@ -67,6 +70,7 @@ describe('useWorkerHeartbeat fallback handling', () => {
         jsonResponse({
           status: { status: 'pass', message: 'Execution worker healthy' },
           worker: { id: 'exec-2', latestHeartbeatAt: staleHeartbeat },
+          durable: true,
           queueDepths: {
             default: { waiting: 0, delayed: 0, active: 0, paused: 0 },
           },
@@ -91,5 +95,8 @@ describe('useWorkerHeartbeat fallback handling', () => {
       'Execution worker heartbeat is stale; check that the worker process is running.',
     );
     expect(result.current.summary.staleWorkers).toBe(1);
+    expect(result.current.summary.queueStatus).toBe('pass');
+    expect(result.current.summary.queueDurable).toBe(true);
+    expect(result.current.summary.queueMessage).toBe('Execution worker healthy');
   });
 });

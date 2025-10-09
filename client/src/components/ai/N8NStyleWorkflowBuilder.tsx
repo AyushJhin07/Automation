@@ -215,7 +215,6 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const navigate = useNavigate();
   const {
     health: queueHealth,
-    status: queueStatus,
     isLoading: isQueueHealthLoading,
     error: queueHealthError,
   } = useQueueHealth({ intervalMs: 30000 });
@@ -224,45 +223,85 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     summary: workerSummary,
     isLoading: isWorkerStatusLoading,
   } = useWorkerHeartbeat({ intervalMs: 30000 });
-  const rawQueueReady = queueStatus === 'pass';
-  const workerFleetReady =
-    workerSummary.hasExecutionWorker && workerSummary.schedulerHealthy && workerSummary.timerHealthy;
-  const workerIssues = useMemo(() => {
+  const effectiveQueueStatus = queueHealth?.status ?? workerSummary.queueStatus ?? 'fail';
+  const effectiveQueueDurable =
+    queueHealth?.durable ??
+    (typeof workerSummary.queueDurable === 'boolean' ? workerSummary.queueDurable : null);
+  const effectiveQueueMessage =
+    queueHealth?.message ??
+    workerSummary.queueMessage ??
+    queueHealthError ??
+    'Execution queue is unavailable';
+  const queueStatusPass = effectiveQueueStatus === 'pass';
+  const queueDurableHealthy = effectiveQueueDurable !== false;
+  const workerFleetReady = workerSummary.hasExecutionWorker;
+  const workerNotices = useMemo(() => {
+    const messages = workerEnvironmentWarnings.map((warning) => warning.message);
+    if (!workerSummary.usesPublicHeartbeat) {
+      if (!workerSummary.schedulerHealthy) {
+        messages.push('Scheduler connectivity degraded. Scheduled triggers may not fire.');
+      }
+      if (!workerSummary.timerHealthy) {
+        messages.push('Timer dispatcher lock unavailable. Timed workflows may be delayed.');
+      }
+    }
+    return messages;
+  }, [
+    workerEnvironmentWarnings,
+    workerSummary.schedulerHealthy,
+    workerSummary.timerHealthy,
+    workerSummary.usesPublicHeartbeat,
+  ]);
+  const workerBlockingMessage = useMemo(() => {
     if (workerFleetReady) {
-      return [] as string[];
+      return undefined;
     }
     if (workerEnvironmentWarnings.length > 0) {
-      return workerEnvironmentWarnings.map((warning) => warning.message);
+      return workerEnvironmentWarnings[0]?.message;
     }
     if (isWorkerStatusLoading) {
-      return ['Checking worker and scheduler status…'];
+      return 'Checking worker and scheduler status…';
     }
-    return [WORKER_FLEET_GUIDANCE];
+    return WORKER_FLEET_GUIDANCE;
   }, [workerFleetReady, workerEnvironmentWarnings, isWorkerStatusLoading]);
-  const workerStatusMessage = useMemo(() => workerIssues.join(' '), [workerIssues]);
+  const workerStatusMessage = useMemo(() => {
+    const parts = [] as string[];
+    if (workerBlockingMessage) {
+      parts.push(workerBlockingMessage);
+    }
+    workerNotices.forEach((message) => {
+      if (message && !parts.includes(message)) {
+        parts.push(message);
+      }
+    });
+    return parts.join(' ');
+  }, [workerBlockingMessage, workerNotices]);
   const queueGuidance = WORKER_FLEET_GUIDANCE;
   const queueStatusMessage = useMemo(() => {
-    if (rawQueueReady) {
-      return queueHealth?.message || 'Worker and scheduler processes are connected to the queue.';
+    if (queueStatusPass && queueDurableHealthy) {
+      return (
+        effectiveQueueMessage || 'Worker and scheduler processes are connected to the queue.'
+      );
     }
-    const detail = queueHealth?.message || queueHealthError || 'Execution queue is unavailable';
+    const detail = effectiveQueueMessage;
     const suffix = detail.endsWith('.') ? '' : '.';
     if (detail.includes(queueGuidance)) {
       return detail;
     }
     return `${detail}${suffix} ${queueGuidance}`.trim();
-  }, [rawQueueReady, queueHealth, queueHealthError, queueGuidance]);
+  }, [queueStatusPass, queueDurableHealthy, effectiveQueueMessage, queueGuidance]);
 
   const queueDurabilityBypassed = useMemo(() => {
-    if (rawQueueReady) {
+    if (queueStatusPass) {
       return false;
     }
-    if (!queueHealth || queueHealth.durable !== false) {
+    if (effectiveQueueDurable !== false) {
       return false;
     }
     return isDevIgnoreQueueEnabled();
-  }, [rawQueueReady, queueHealth]);
+  }, [queueStatusPass, effectiveQueueDurable]);
 
+  const rawQueueReady = queueStatusPass && queueDurableHealthy;
   const queueReady = rawQueueReady || queueDurabilityBypassed;
 
   const queueDurabilityWarningMessage = useMemo(() => {
@@ -270,7 +309,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return null;
     }
 
-    const rawMessage = (queueHealth?.message ?? '').trim();
+    const rawMessage = (effectiveQueueMessage ?? '').trim();
     const baseMessage = rawMessage.length > 0
       ? (rawMessage.endsWith('.') ? rawMessage : `${rawMessage}.`)
       : 'Queue driver is running in non-durable in-memory mode. Jobs will not be persisted.';
@@ -279,7 +318,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       `${baseMessage} ENABLE_DEV_IGNORE_QUEUE is active for development. ` +
       'Runs may be lost if the process restarts—connect Redis and turn off the flag when validating durability.'
     );
-  }, [queueDurabilityBypassed, queueHealth?.message]);
+  }, [queueDurabilityBypassed, effectiveQueueMessage]);
   const runHealthTooltip = useMemo(() => {
     const parts = [] as string[];
     if (workerStatusMessage) {
@@ -315,7 +354,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return 'Add at least one node before running.';
     }
     if (!workerFleetReady) {
-      return workerStatusMessage || WORKER_FLEET_GUIDANCE;
+      return workerBlockingMessage || WORKER_FLEET_GUIDANCE;
     }
     if (!queueReady) {
       return queueStatusMessage;
@@ -338,7 +377,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     token,
     nodes.length,
     workerFleetReady,
-    workerStatusMessage,
+    workerBlockingMessage,
     queueReady,
     queueStatusMessage,
     combinedBlockingErrors,

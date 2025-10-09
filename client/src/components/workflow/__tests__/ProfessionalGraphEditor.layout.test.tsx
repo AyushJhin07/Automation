@@ -65,9 +65,29 @@ vi.mock("@/hooks/useQueueHealth", () => ({
 
 vi.mock("@/hooks/useWorkerHeartbeat", () => ({
   useWorkerHeartbeat: () => ({
+    workers: [],
     environmentWarnings: [],
-    summary: { hasExecutionWorker: true, schedulerHealthy: true, timerHealthy: true },
+    summary: {
+      totalWorkers: 1,
+      healthyWorkers: 1,
+      staleWorkers: 0,
+      totalQueueDepth: 0,
+      maxQueueDepth: 0,
+      hasExecutionWorker: true,
+      schedulerHealthy: true,
+      timerHealthy: true,
+      usesPublicHeartbeat: false,
+      queueStatus: null,
+      queueDurable: null,
+      queueMessage: null,
+    },
+    scheduler: null,
+    queue: null,
+    source: 'admin',
+    lastUpdated: new Date().toISOString(),
     isLoading: false,
+    error: null,
+    refresh: vi.fn(),
   }),
   WORKER_FLEET_GUIDANCE: "Start the worker fleet to enable executions.",
 }));
