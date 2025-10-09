@@ -1253,9 +1253,12 @@ export class WebhookManager {
           const toleranceMs = replayWindowSeconds * 1000;
           const providerId = this.resolvePollingProviderId(trigger);
 
+          const fallbackDedupeToken =
+            typeof item.dedupeToken === 'string' ? item.dedupeToken.trim() : '';
+
           const dedupeToken =
-            item.dedupeToken && item.dedupeToken.trim().length > 0
-              ? item.dedupeToken
+            fallbackDedupeToken.length > 0
+              ? createHash('md5').update(`${trigger.id}-${fallbackDedupeToken}`).digest('hex')
               : trigger.dedupeKey && result && result[trigger.dedupeKey] != null
               ? createHash('md5')
                   .update(`${trigger.id}-${String(result[trigger.dedupeKey])}`)
