@@ -2,6 +2,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { ALL_RUNTIMES } from '../shared/runtimes.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
@@ -21,8 +23,48 @@ type ConnectorOperation = {
   } | null;
   sample?: unknown;
   dedupe?: unknown;
+  runtimes?: unknown;
   [key: string]: unknown;
 };
+
+const KNOWN_RUNTIMES = new Set(ALL_RUNTIMES);
+
+function validateRuntimes(
+  identifier: string,
+  runtimes: ConnectorOperation['runtimes'],
+  errors: string[],
+) {
+  if (!Array.isArray(runtimes) || runtimes.length === 0) {
+    errors.push(`${identifier} is missing a runtimes array`);
+    return;
+  }
+
+  const invalidEntries: unknown[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of runtimes) {
+    if (typeof entry !== 'string') {
+      invalidEntries.push(entry);
+      continue;
+    }
+
+    if (!KNOWN_RUNTIMES.has(entry)) {
+      invalidEntries.push(entry);
+      continue;
+    }
+
+    seen.add(entry);
+  }
+
+  if (invalidEntries.length > 0) {
+    const list = invalidEntries.map((value) => JSON.stringify(value)).join(', ');
+    errors.push(`${identifier} has invalid runtime entries: [${list}]`);
+  }
+
+  if (seen.size === 0) {
+    errors.push(`${identifier} does not specify any valid runtimes`);
+  }
+}
 
 function hasSchemaField(outputSchema: ConnectorOperation['outputSchema']): boolean {
   if (!outputSchema || typeof outputSchema !== 'object') {
@@ -79,6 +121,8 @@ function checkOperation(
   ) {
     errors.push(`${identifier} is missing a dedupe configuration`);
   }
+
+  validateRuntimes(identifier, operation.runtimes, errors);
 }
 
 async function validateDefinition(file: string, errors: string[]) {

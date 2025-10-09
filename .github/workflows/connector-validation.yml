@@ -1,4 +1,4 @@
-name: Connector Validation
+name: Connector Metadata
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - 'connectors/**'
       - 'scripts/validate-connectors.ts'
+      - 'scripts/validate-connector-ops.ts'
+      - 'shared/runtimes.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/connector-validation.yml'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'connectors/**'
       - 'scripts/validate-connectors.ts'
+      - 'scripts/validate-connector-ops.ts'
+      - 'shared/runtimes.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/connector-validation.yml'
