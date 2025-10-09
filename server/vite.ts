@@ -4,6 +4,18 @@ import path from "path";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 
+function extractMissingModuleName(error: unknown): string | undefined {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = String((error as Error).message);
+    const match = message.match(/Cannot find (?:module|package) ['"]([^'"]+)['"]/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return undefined;
+}
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -45,16 +57,20 @@ export async function setupVite(app: Express, server: Server) {
 
   let viteConfig;
   try {
-    ({ default: viteConfig } = await import("../vite.config.ts"));
+    const viteConfigModule = await import("../vite.config.ts");
+    viteConfig = viteConfigModule.default ?? viteConfigModule;
   } catch (error) {
-    const missingPlugin =
-      (error as NodeJS.ErrnoException)?.code === "ERR_MODULE_NOT_FOUND" &&
-      error instanceof Error &&
-      error.message.includes("vite-tsconfig-paths");
+    const isModuleNotFound =
+      (error as NodeJS.ErrnoException)?.code === "ERR_MODULE_NOT_FOUND";
 
-    if (missingPlugin) {
+    if (isModuleNotFound) {
+      const missingModule = extractMissingModuleName(error);
+      const missingLabel = missingModule
+        ? `'${missingModule}'`
+        : "a Vite plugin or dependency";
+
       console.warn(
-        "⚠️  Failed to load Vite config because 'vite-tsconfig-paths' is missing. Install dev dependencies (npm install) or add 'npm install -D vite-tsconfig-paths'.",
+        `⚠️  Failed to load Vite config because ${missingLabel} is missing. Install dev dependencies (npm install) or disable Vite with DISABLE_VITE=true.`,
       );
     } else {
       console.warn(
