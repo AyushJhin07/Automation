@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import SmartParametersPanel from "./SmartParametersPanel";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
 import type { RuntimeCapabilityIssue } from "@/services/runtimeCapabilitiesService";
+import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "../../../shared";
 
 export interface SelectedNodeRuntimeSupport {
   supported: boolean;
@@ -20,6 +21,7 @@ export interface SelectedNodeRuntimeSupport {
   operationId?: string;
   operationLabel?: string;
   kind?: 'action' | 'trigger';
+  runtime?: RuntimeKey;
 }
 
 export interface RightInspectorPanelProps {
@@ -76,12 +78,16 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
       runtimeSupportStatus.operationId ??
       (runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action');
 
+    const runtimeLabel = runtimeSupportStatus.runtime
+      ? `the ${RUNTIME_DISPLAY_NAMES[runtimeSupportStatus.runtime] ?? runtimeSupportStatus.runtime} runtime`
+      : 'this runtime environment';
+
     if (runtimeSupportStatus.reason === 'missing-operation') {
       const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
-      return `${connector} ${noun} "${operationLabel}" isn't enabled in this runtime environment. Remove or replace the node before running.`;
+      return `${connector} ${noun} "${operationLabel}" isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
     }
 
-    return `${connector} isn't enabled in this runtime environment. Remove or replace the node before running.`;
+    return `${connector} isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
   }, [runtimeSupportStatus]);
 
   return (
