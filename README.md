@@ -27,7 +27,12 @@ npm run dev:stack
 - `npm run dev:timers`
 - `npm run dev:rotation`
 
-Inline worker is disabled in this mode, so queue health maps to the dedicated worker process.
+Inline worker is disabled in this mode, so queue health maps to the dedicated worker process. When you do need to collapse the
+API and execution worker into a single process for quick debugging, create `.env.local` alongside `.env.development` and set
+`ENABLE_INLINE_WORKER=true` (see `.env.local.example`). The API loads `.env.local` last so the override applies only to your
+machine. Remember to delete or flip the flag before committing changes or running the multi-process commands that shared
+environments rely on—`npm run dev:stack`, `npm run dev:worker`, and the production `pm2` scripts all expect the inline worker to
+stay disabled.
 
 ### Split-process development
 

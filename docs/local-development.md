@@ -20,7 +20,9 @@ This guide covers the quickest path to booting the platform locally with Docker 
 3. Edit `.env.development` to match your local setup. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
    The runtime now records whether a key came from AWS Secrets Manager, a local `.env` file, or the deterministic development fallback—check the admin-only `GET /api/health/credentials` endpoint when you need to confirm which secrets are active.
 
-4. If your local database has not yet been migrated to the envelope-encryption schema, enable the development fallback for OAuth tokens:
+4. When you need single-process execution for quick debugging, create `.env.local` (ignored by git) next to `.env.development` and add `ENABLE_INLINE_WORKER=true`. The API resolves `.env.local` last, so the override remains local to your machine. A ready-to-copy snippet lives in `.env.local.example`. Remove the flag or set it back to `false` before pushing changes or running shared scripts such as `npm run dev:stack`, `npm run dev:worker`, or the production `pm2` ecosystem—those flows rely on the dedicated worker process.
+
+5. If your local database has not yet been migrated to the envelope-encryption schema, enable the development fallback for OAuth tokens:
 
    ```bash
    echo "ALLOW_PLAINTEXT_TOKENS_IN_DEV=true" >> .env.development
@@ -152,12 +154,15 @@ mode when booting the stack:
    independently.
 
 2. **Inline worker (single terminal)**
-   - Leave `ENABLE_INLINE_WORKER` unset or set it to `true` in `.env.development`.
+   - Leave `ENABLE_INLINE_WORKER` unset or set it to `true` in `.env.development` (or `.env.local`).
    - Run `npm run dev:api`.
    When the flag resolves to true, the API boot sequence automatically starts the execution worker
    inside the same Node process. This is convenient for quick smoke tests when you do not need
    separate worker logs. Export `ENABLE_INLINE_WORKER=false` (or `DISABLE_INLINE_WORKER_AUTOSTART=true`)
    to return to the dedicated worker model.
+   - ⚠️ Keep the inline worker disabled in production, shared staging environments, and any time you
+     rely on the multi-process scripts (`npm run dev:stack`, Docker Compose, or the `pm2` process
+     list). Those flows expect a dedicated worker so the queue stays isolated from API latency.
 
 In development and CI the API now refuses to finish booting if it cannot detect a fresh execution
 worker heartbeat. When you see the startup failure, start `npm run dev:worker`/`npm run dev:scheduler`
