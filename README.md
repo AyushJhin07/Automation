@@ -29,6 +29,20 @@ npm run dev:stack
 
 Inline worker is disabled in this mode, so queue health maps to the dedicated worker process.
 
+### Split-process development
+
+Prefer to supervise each process yourself? Open three terminals and run:
+
+```bash
+npm run dev:api
+npm run dev:worker
+npm run dev:scheduler
+```
+
+Add `npm run dev:timers` (and `npm run dev:rotation`) when you need timers or encryption-key rotation locally. Watch the worker
+terminal for dequeue logs and the scheduler terminal for "promoted" messages to confirm the queue is flowing; leave the inline
+worker disabled (`ENABLE_INLINE_WORKER=false`) so API latency stays consistent while you iterate.
+
 If Redis is misconfigured or `QUEUE_DRIVER=inmemory`, `dev:stack` now fails fast with guidance similar to:
 
 ```

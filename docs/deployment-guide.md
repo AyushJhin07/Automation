@@ -18,6 +18,7 @@
 - Process topology
   - Run the web API/UI: `NODE_ENV=production node dist/index.js` (or `tsx server/index.ts` during development).
   - Run at least one execution worker: `NODE_ENV=production tsx server/workers/execution.ts` (scale horizontally for more throughput).
+  - Prefer the existing package scripts when wiring up Heroku, PM2, systemd, or another supervisor: `npm run start:api`, `npm run start:worker`, and `npm run start:scheduler` map one-to-one with the Procfile entries and apply the expected environment guards. Add `npm run start:timers` and `npm run start:rotation` when you provision the timers and encryption rotation processes.
   - A root-level `Procfile` defines the production process manifest (`web`, `worker`, `scheduler`, `timers`, `encryption-rotation`) so platforms like Heroku, Render, or PM2 can auto-discover the correct bundles (`dist/index.js`, `dist/workers/execution.js`, `dist/workers/scheduler.js`, `dist/workers/timerDispatcher.js`, `dist/workers/encryption-rotation.js`).
   - The generated `ecosystem.config.js` mirrors the Procfile for PM2 deployments:
 
@@ -27,14 +28,16 @@
     pm2 status
     ```
 
-  - Use a process supervisor (systemd, PM2, etc.) to restart the web and worker processes and to forward `SIGTERM` for graceful shutdowns.
-  - Both processes require the same environment (DATABASE_URL, API keys). Workers will drain in-flight jobs before exiting.
+- Use a process supervisor (systemd, PM2, etc.) to restart the web and worker processes and to forward `SIGTERM` for graceful shutdowns.
+- Both processes require the same environment (DATABASE_URL, API keys). Workers will drain in-flight jobs before exiting.
+- Keep `ENABLE_INLINE_WORKER` unset or `false` in production so the API stays responsive while the dedicated worker fleet drains the queue that the scheduler promotes jobs into.
 
 ## Platform-specific process manifests
 
 ### Heroku
 
 - The root [`Procfile`](../Procfile) declares **five** dyno types: `web`, `worker`, `scheduler`, `timers`, and `encryption-rotation`. Provision one dyno for each so background jobs, timers, and key-rotation jobs continue to run during deploys.【F:Procfile†L1-L5】
+- Heroku dynos inherit the repo’s `npm run start:<process>` scripts (`start:api`, `start:worker`, `start:scheduler`, `start:timers`, `start:rotation`), so you do not need custom commands—use the defaults to keep inline mode disabled and to ensure the scheduler continues promoting jobs while the worker drains the queue.
 - Add a [release phase](https://devcenter.heroku.com/articles/release-phase) that runs `npm run check:queue` followed by `curl -fsS "$APP_URL/api/production/queue/heartbeat" | jq -e '.status.status == "pass"'` to fail the deploy if Redis or the worker heartbeat is unavailable.【F:scripts/ci-smoke.ts†L32-L58】【F:docs/operations/monitoring.md†L33-L58】
 - Use Heroku Redis or point `QUEUE_REDIS_*` at an external instance; the API exits on startup when Redis is unreachable.【F:scripts/dev-stack.ts†L111-L160】
 
