@@ -2,7 +2,7 @@ import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import graphSchema from '../../schemas/graph.schema.json';
 import { NodeGraph, ValidationError, ValidationResult } from '../../shared/nodeGraphSchema';
-import { resolveRuntime } from '../runtime/registry.js';
+import { resolveNodeRuntimePlan } from '../workflow/runtimePlanner.js';
 
 export interface ValidatorOptions {
   allowActionOnly?: boolean;
@@ -438,28 +438,35 @@ export class SimpleGraphValidator {
       }
 
       const category = categoryRaw as 'action' | 'trigger';
-      const resolution = resolveRuntime({
-        kind: category,
-        appId: normalizedApp,
-        operationId: operationCandidate,
-      });
-
-      if (resolution.issues.length === 0 && resolution.availability !== 'unavailable') {
+      const runtimePlan = resolveNodeRuntimePlan(node as any);
+      if (!runtimePlan) {
         continue;
       }
 
-      if (resolution.issues.length === 0 && resolution.availability === 'unavailable') {
-        errors.push({
-          nodeId: node.id,
-          path: `/nodes/${node.id}/type`,
-          message: `Execution for ${normalizedApp}.${operationCandidate} is not available in this environment`,
-          severity: 'error',
-          code: 'UNSUPPORTED_OPERATION',
-        });
-        continue;
+      if (runtimePlan.availability === 'unavailable') {
+        if (runtimePlan.issues.length === 0) {
+          errors.push({
+            nodeId: node.id,
+            path: `/nodes/${node.id}/type`,
+            message: `Execution for ${normalizedApp}.${operationCandidate} is not available in this environment`,
+            severity: 'error',
+            code: 'UNSUPPORTED_OPERATION',
+          });
+          continue;
+        }
       }
 
-      for (const issue of resolution.issues) {
+      const issues = runtimePlan.issues.length > 0
+        ? runtimePlan.issues
+        : runtimePlan.availability === 'fallback'
+          ? [{
+              severity: 'warning' as const,
+              code: 'runtime.fallback',
+              message: `Using fallback runtime for ${normalizedApp}.${operationCandidate}.`,
+            }]
+          : [];
+
+      for (const issue of issues) {
         errors.push({
           nodeId: node.id,
           path: `/nodes/${node.id}/type`,
