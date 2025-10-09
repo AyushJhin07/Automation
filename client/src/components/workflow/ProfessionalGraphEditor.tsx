@@ -86,9 +86,9 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
-import type { ValidationError } from '../../../shared/nodeGraphSchema';
-import { DEFAULT_RUNTIME, RUNTIME_DISPLAY_NAMES } from '../../../shared';
+import { NodeGraph, GraphNode, VisualNode } from '@shared/nodeGraphSchema';
+import type { ValidationError } from '@shared/nodeGraphSchema';
+import { DEFAULT_RUNTIME, RUNTIME_DISPLAY_NAMES } from '@shared';
 import clsx from 'clsx';
 import debounce from 'lodash/debounce';
 import type { DebouncedFunc } from 'lodash';

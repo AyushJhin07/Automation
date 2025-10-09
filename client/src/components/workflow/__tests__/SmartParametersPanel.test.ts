@@ -4,7 +4,7 @@ import { answersToGraph } from "../../../../../server/workflow/answers-to-graph"
 import { enrichWorkflowNode } from "../../../../../server/workflow/node-metadata";
 import { resolveAllParams } from "../../../../../server/core/ParameterResolver";
 import type { WorkflowNode } from "../../../../../common/workflow-types";
-import type { ParameterContext } from "../../../../../shared/nodeGraphSchema";
+import type { ParameterContext } from "@shared/nodeGraphSchema";
 
 import {
   computeMetadataSuggestions,

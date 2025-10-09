@@ -36,7 +36,7 @@ import {
   Filter,
   Globe
 } from 'lucide-react';
-import { NodeGraph, Question, ValidationError } from '../../../shared/nodeGraphSchema';
+import { NodeGraph, Question, ValidationError } from '@shared/nodeGraphSchema';
 import { AutomationSpec as AutomationSpecZ } from '../../core/spec';
 import { useSpecStore } from '../../state/specStore';
 

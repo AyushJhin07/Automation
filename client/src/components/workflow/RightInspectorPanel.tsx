@@ -14,7 +14,7 @@ import type {
   RuntimeCapabilityIssue,
   RuntimeCapabilityMode,
 } from "@/services/runtimeCapabilitiesService";
-import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "../../../shared";
+import { type RuntimeKey, RUNTIME_DISPLAY_NAMES } from "@shared";
 
 export interface SelectedNodeRuntimeSupport {
   supported: boolean;
