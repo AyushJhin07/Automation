@@ -88,6 +88,7 @@ import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { NodeGraph, GraphNode, VisualNode } from '../../../shared/nodeGraphSchema';
 import type { ValidationError } from '../../../shared/nodeGraphSchema';
+import { DEFAULT_RUNTIME, RUNTIME_DISPLAY_NAMES } from '../../../shared';
 import clsx from 'clsx';
 import debounce from 'lodash/debounce';
 import type { DebouncedFunc } from 'lodash';
@@ -162,6 +163,9 @@ const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
   success: 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]',
   error: 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.7)]'
 };
+
+const ACTIVE_RUNTIME_NAME = RUNTIME_DISPLAY_NAMES[DEFAULT_RUNTIME] ?? DEFAULT_RUNTIME;
+const ACTIVE_RUNTIME_LABEL = `the ${ACTIVE_RUNTIME_NAME} runtime`;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isUuid = (value: unknown): value is string =>
@@ -1637,8 +1641,8 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                           checkRuntimeCapability(runtimeCapabilities, capabilityAppId, 'trigger', runtimeId);
                       const previewOnly = !capability.supported;
                       const tooltipText = capability.issue === 'missing-app'
-                        ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
-                        : `${appDisplayName} trigger "${t.name}" isn't enabled in the current runtime environment yet.`;
+                        ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                        : `${appDisplayName} trigger "${t.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`;
 
                       const button = (
                         <button
@@ -1733,8 +1737,8 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                           checkRuntimeCapability(runtimeCapabilities, capabilityAppId, capabilityKind, runtimeId);
                       const previewOnly = !capability.supported;
                       const tooltipText = capability.issue === 'missing-app'
-                        ? `${appDisplayName} isn't enabled in the current runtime environment yet.`
-                        : `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" isn't enabled in the current runtime environment yet.`;
+                        ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
+                        : `${appDisplayName} ${capabilityKind === 'trigger' ? 'trigger' : 'action'} "${a.name}" isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`;
 
                       const button = (
                         <button
@@ -2359,6 +2363,7 @@ const GraphEditorContent = () => {
           operationId: operationId ?? support.normalizedOperationId,
           operationLabel,
           kind,
+          runtime: DEFAULT_RUNTIME,
         };
       }
 
@@ -2370,6 +2375,7 @@ const GraphEditorContent = () => {
         operationId: operationId ?? support.normalizedOperationId,
         operationLabel,
         kind,
+        runtime: DEFAULT_RUNTIME,
       };
     },
     [normalizeAppName, runtimeCapabilities, runtimeCapabilitiesLoading, runtimeCapabilityIndex],
@@ -2417,8 +2423,8 @@ const GraphEditorContent = () => {
             : undefined;
 
       const message = support.reason === 'missing-operation' && operationName
-        ? `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" is not available in this runtime yet. Remove or replace this node before continuing.`
-        : `${appName} is not enabled in this runtime. Remove or replace this node before continuing.`;
+        ? `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" is not available in ${ACTIVE_RUNTIME_LABEL} yet. Remove or replace this node before continuing.`
+        : `${appName} is not enabled in ${ACTIVE_RUNTIME_LABEL}. Remove or replace this node before continuing.`;
 
       setRunBanner({ type: 'error', message });
       toast.error(message);
