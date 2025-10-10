@@ -130,7 +130,7 @@ Processes:
 - `timers`: `dist/workers/timerDispatcher.js`
 - `encryption-rotation`: `dist/workers/encryption-rotation.js`
 
-Ensure `DATABASE_URL`, `QUEUE_REDIS_*`, and secrets exist in the environment before starting.
+Ensure `DATABASE_URL`, `QUEUE_REDIS_*`, `RUNTIME_APPS_SCRIPT_ENABLED=true`, and secrets exist in the environment before starting.
 
 ## Webhooks
 
