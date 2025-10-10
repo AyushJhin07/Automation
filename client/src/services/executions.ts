@@ -1,5 +1,5 @@
 import { authStore } from '@/store/authStore';
-import type { RuntimeKey } from '@shared/runtimes';
+import type { ExecutionRuntimeRequest } from '@shared/runtimes';
 
 export type ExecutionTriggerType = string;
 
@@ -7,7 +7,7 @@ export type EnqueueExecutionParams = {
   workflowId: string;
   triggerType: ExecutionTriggerType;
   initialData: unknown;
-  runtime?: RuntimeKey;
+  runtime?: ExecutionRuntimeRequest;
 };
 
 export type EnqueueExecutionResult = {

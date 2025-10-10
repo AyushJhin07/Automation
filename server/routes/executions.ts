@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
+import { EXECUTION_RUNTIME_DEFAULT, EXECUTION_RUNTIME_REQUESTS } from '@shared/runtimes';
 
 import { runExecutionManager } from '../core/RunExecutionManager.js';
 import { retryManager } from '../core/RetryManager.js';
@@ -155,6 +156,7 @@ const manualRunSchema = z.object({
     .min(1, 'dedupeKey must be a non-empty string')
     .max(128, 'dedupeKey is too long')
     .optional(),
+  runtime: z.enum(EXECUTION_RUNTIME_REQUESTS).optional(),
 });
 
 const dryRunSchema = z.object({
@@ -293,6 +295,7 @@ router.post('/', requirePermission('workflow:deploy'), async (req, res) => {
       triggerData: payload.triggerData ?? null,
       initialData: payload.initialData,
       dedupeKey: payload.dedupeKey ?? null,
+      runtime: payload.runtime ?? EXECUTION_RUNTIME_DEFAULT,
     });
 
     auditLogService.record({
@@ -304,6 +307,7 @@ router.post('/', requirePermission('workflow:deploy'), async (req, res) => {
         workflowId: payload.workflowId,
         executionId,
         triggerType: payload.triggerType ?? 'manual',
+        runtime: payload.runtime ?? EXECUTION_RUNTIME_DEFAULT,
       },
     });
 
@@ -314,6 +318,7 @@ router.post('/', requirePermission('workflow:deploy'), async (req, res) => {
       workflowId: payload.workflowId,
       executionId,
       triggerType: payload.triggerType ?? 'manual',
+      runtime: payload.runtime ?? EXECUTION_RUNTIME_DEFAULT,
     });
 
     return res.status(202).json({ success: true, executionId, workflowId: payload.workflowId });

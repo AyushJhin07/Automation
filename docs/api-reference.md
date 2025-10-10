@@ -248,6 +248,7 @@ Content-Type: application/json
 {
   "workflowId": "wf-789",
   "triggerType": "manual",
+  "runtime": "nodeJs",
   "triggerData": {
     "source": "api",
     "notes": "Run from incident response playbook"
@@ -270,6 +271,7 @@ Content-Type: application/json
 * `429 EXECUTION_QUOTA_EXCEEDED` – organization execution throughput or concurrency limits were reached.
 * `429 CONNECTOR_CONCURRENCY_EXCEEDED` – connector-specific concurrency guard blocked the run.
 * `429 USAGE_QUOTA_EXCEEDED` – per-user usage quotas prevent the run (returns `details.quotaType`).
+* Requests accept an optional `runtime` of `appsScript` (default) or `nodeJs` to select the execution environment.
 
 ### **Dry Run Workflow**
 

@@ -104,6 +104,27 @@ try {
     assert.equal(captured.workflowId, sampleWorkflow.id, 'enqueue should receive workflow id');
     assert.equal(captured.organizationId, organizationId, 'enqueue should include organization id');
     assert.equal(captured.userId, userId, 'enqueue should include user id');
+    assert.equal(captured.runtime, 'appsScript', 'enqueue should default runtime to appsScript');
+
+    (executionQueueService as any).enqueue = originalEnqueue;
+  }
+
+  {
+    const originalEnqueue = executionQueueService.enqueue.bind(executionQueueService);
+    let captured: any = null;
+    (executionQueueService as any).enqueue = async (params: any) => {
+      captured = params;
+      return { executionId: 'exec-manual-node' };
+    };
+
+    const response = await fetch(`${baseUrl}/api/executions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflowId: sampleWorkflow.id, runtime: 'nodeJs' }),
+    });
+
+    assert.equal(response.status, 202, 'manual run with node runtime should enqueue');
+    assert.equal(captured.runtime, 'nodeJs', 'enqueue should receive requested runtime');
 
     (executionQueueService as any).enqueue = originalEnqueue;
   }

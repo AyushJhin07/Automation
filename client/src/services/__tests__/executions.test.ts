@@ -57,14 +57,14 @@ try {
       workflowId: 'wf-runtime',
       triggerType: 'manual',
       initialData: null,
-      runtime: 'node',
+      runtime: 'nodeJs',
     });
 
     assert.equal(calls.length, 1);
     const body = calls[0]?.init?.body as string | undefined;
     assert.ok(body, 'request body should include runtime payload');
     const parsed = JSON.parse(body ?? '{}');
-    assert.equal(parsed.runtime, 'node');
+    assert.equal(parsed.runtime, 'nodeJs');
   })();
 
   await (async () => {
