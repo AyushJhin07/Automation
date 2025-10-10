@@ -14,7 +14,8 @@ export interface RuntimeFlagSummary {
 
 const RUNTIME_FLAG_DEFAULTS: EnabledRuntimeSet = {
   node: true,
-  appsScript: false,
+  // Apps Script now defaults to enabled; set RUNTIME_APPS_SCRIPT_ENABLED=false to disable per environment.
+  appsScript: true,
   cloudWorker: false,
 };
 
