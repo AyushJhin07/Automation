@@ -818,3 +818,274 @@ export const getRuntimeCapabilityStatus = (
 
   return bucket[normalizedOperationId] ?? bucket[RUNTIME_WILDCARD];
 };
+
+export interface RuntimeNodeCandidate {
+  id?: string | number;
+  type?: string | null;
+  data?: Record<string, any> | null;
+}
+
+export interface RuntimeNodeSupportSummary {
+  supported: boolean;
+  kind: RuntimeOperationKind;
+  appId?: string;
+  appLabel?: string;
+  operationId?: string;
+  operationLabel?: string;
+  reason?: RuntimeCapabilityIssue;
+  mode?: RuntimeCapabilityMode;
+  nativeSupported: boolean;
+  fallbackRuntime?: RuntimeKey;
+}
+
+export interface RuntimeUnsupportedNodeDetection {
+  node: RuntimeNodeCandidate;
+  support: RuntimeNodeSupportSummary;
+}
+
+type RuntimeSupportEvaluationOptions = {
+  runtimeCapabilities?: RuntimeCapabilityMap | null;
+  runtimeCapabilityIndex?: RuntimeCapabilityIndex | null;
+};
+
+const coerceString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const determineNodeKind = (candidate: RuntimeNodeCandidate): RuntimeOperationKind => {
+  const data = (candidate?.data ?? {}) as Record<string, any>;
+  const role = coerceString(data.role ?? data.kind)?.toLowerCase() ?? '';
+  const type = coerceString(candidate?.type)?.toLowerCase() ?? '';
+
+  if (role.includes('trigger') || type.startsWith('trigger')) {
+    return 'trigger';
+  }
+  if (role.includes('transform') || type.startsWith('transform')) {
+    return 'action';
+  }
+  if (data.triggerId) {
+    return 'trigger';
+  }
+
+  return 'action';
+};
+
+const parseNodeTypeParts = (value: unknown): string[] => {
+  const raw = coerceString(value);
+  if (!raw) {
+    return [];
+  }
+  return raw.split('.').filter((part) => part && part.trim().length > 0);
+};
+
+const collectAppCandidates = (candidate: RuntimeNodeCandidate): string[] => {
+  const data = (candidate?.data ?? {}) as Record<string, any>;
+  const values: string[] = [];
+  const push = (value: unknown) => {
+    const str = coerceString(value);
+    if (str) {
+      values.push(str);
+    }
+  };
+
+  push(data.app);
+  push(data.appName);
+  push(data.application);
+  push(data.connectorId);
+  push(data.connector);
+  push(data.provider);
+  push(data.integration);
+  push(data.service);
+
+  const typeParts = parseNodeTypeParts(candidate?.type);
+  if (typeParts.length >= 1) {
+    push(typeParts[0]);
+  }
+  if (typeParts.length >= 2) {
+    push(typeParts[1]);
+  }
+
+  const dataNodeTypeParts = parseNodeTypeParts(data.nodeType);
+  if (dataNodeTypeParts.length >= 1) {
+    push(dataNodeTypeParts[0]);
+  }
+  if (dataNodeTypeParts.length >= 2) {
+    push(dataNodeTypeParts[1]);
+  }
+
+  return values;
+};
+
+const collectOperationCandidates = (
+  candidate: RuntimeNodeCandidate,
+  kind: RuntimeOperationKind,
+): string[] => {
+  const data = (candidate?.data ?? {}) as Record<string, any>;
+  const params = (data.parameters ?? data.params ?? {}) as Record<string, any>;
+  const values: string[] = [];
+
+  const push = (value: unknown) => {
+    const str = coerceString(value);
+    if (str) {
+      values.push(str);
+    }
+  };
+
+  if (kind === 'trigger') {
+    push(data.triggerId);
+  } else {
+    push(data.actionId);
+  }
+
+  push(data.operationId);
+  push(data.operation);
+  push(data.operationKey);
+  push(data.function);
+  push(data.selectedFunction);
+  push(params.operationId);
+  push(params.operation);
+  push(params.function);
+
+  const dataNodeTypeParts = parseNodeTypeParts(data.nodeType);
+  if (dataNodeTypeParts.length >= 3) {
+    push(dataNodeTypeParts[2]);
+  } else if (dataNodeTypeParts.length >= 2) {
+    push(dataNodeTypeParts[1]);
+  }
+
+  const typeParts = parseNodeTypeParts(candidate?.type);
+  if (typeParts.length >= 3) {
+    push(typeParts[2]);
+  } else if (typeParts.length >= 2) {
+    push(typeParts[1]);
+  }
+
+  return values;
+};
+
+export const evaluateAppsScriptSupportForNode = (
+  candidate: RuntimeNodeCandidate,
+  options: RuntimeSupportEvaluationOptions = {},
+): RuntimeNodeSupportSummary => {
+  const kind = determineNodeKind(candidate);
+  const data = (candidate?.data ?? {}) as Record<string, any>;
+
+  const appCandidates = collectAppCandidates(candidate);
+  let normalizedAppId: string | undefined;
+  let appLabel: string | undefined;
+
+  for (const value of appCandidates) {
+    const normalized = normalizeRuntimeAppId(value);
+    if (normalized) {
+      normalizedAppId = normalized;
+      appLabel = value;
+      break;
+    }
+  }
+
+  const fallbackAppLabel =
+    coerceString(data.appName) ??
+    coerceString(data.application) ??
+    coerceString(data.app) ??
+    coerceString(data.connector) ??
+    coerceString(data.provider) ??
+    undefined;
+
+  const resolvedAppLabel = appLabel ?? fallbackAppLabel;
+
+  if (!normalizedAppId) {
+    return {
+      supported: true,
+      kind,
+      appId: undefined,
+      appLabel: resolvedAppLabel,
+      operationId: undefined,
+      operationLabel: coerceString(data.label) ?? coerceString(data.name) ?? coerceString(data.displayName),
+      reason: undefined,
+      mode: 'native',
+      nativeSupported: true,
+      fallbackRuntime: undefined,
+    };
+  }
+
+  const operationCandidates = collectOperationCandidates(candidate, kind);
+  const rawOperation = operationCandidates.find((value) => value && value.length > 0);
+  const normalizedOperationId = normalizeRuntimeOperationId(rawOperation);
+
+  const capabilityStatus = options.runtimeCapabilityIndex
+    ? getRuntimeCapabilityStatus(options.runtimeCapabilityIndex, normalizedAppId, kind, normalizedOperationId)
+    : undefined;
+
+  const fallbackStatus = options.runtimeCapabilities
+    ? (checkRuntimeCapability(
+        options.runtimeCapabilities,
+        normalizedAppId,
+        kind,
+        normalizedOperationId,
+      ) as RuntimeCapabilityOperationStatus)
+    : undefined;
+
+  const fallbackMode = fallbackStatus?.mode;
+  const resolvedMode: RuntimeCapabilityMode =
+    capabilityStatus?.mode ??
+    (fallbackMode === 'native' || fallbackMode === 'fallback' || fallbackMode === 'unavailable'
+      ? fallbackMode
+      : undefined) ??
+    ((fallbackStatus?.supported ?? false) ? 'native' : 'unavailable');
+
+  const nativeSupported =
+    capabilityStatus?.nativeSupported ??
+    (typeof fallbackStatus?.nativeSupported === 'boolean'
+      ? fallbackStatus.nativeSupported
+      : resolvedMode === 'native');
+
+  const supported = resolvedMode === 'native' && nativeSupported !== false;
+
+  const normalizedOperation =
+    capabilityStatus?.normalizedOperationId ??
+    (fallbackStatus?.normalizedOperationId ?? normalizedOperationId ?? undefined);
+
+  const operationLabel =
+    coerceString(data.label) ??
+    coerceString(data.name) ??
+    coerceString(data.displayName) ??
+    (normalizedOperation && normalizedOperation !== RUNTIME_WILDCARD ? normalizedOperation : undefined);
+
+  return {
+    supported,
+    kind,
+    appId: normalizedAppId,
+    appLabel: resolvedAppLabel ?? normalizedAppId,
+    operationId: normalizedOperation,
+    operationLabel,
+    reason: capabilityStatus?.issue ?? fallbackStatus?.issue,
+    mode: resolvedMode,
+    nativeSupported,
+    fallbackRuntime: capabilityStatus?.fallbackRuntime ?? fallbackStatus?.fallbackRuntime,
+  };
+};
+
+export const findAppsScriptUnsupportedNode = (
+  nodes: RuntimeNodeCandidate[] | null | undefined,
+  options: RuntimeSupportEvaluationOptions = {},
+): RuntimeUnsupportedNodeDetection | null => {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return null;
+  }
+
+  for (const node of nodes) {
+    if (!node) {
+      continue;
+    }
+    const support = evaluateAppsScriptSupportForNode(node, options);
+    if (!support.supported) {
+      return { node, support };
+    }
+  }
+
+  return null;
+};

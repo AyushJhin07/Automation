@@ -42,6 +42,32 @@ try {
   })();
 
   await (async () => {
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    authStore.setState({
+      authFetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        calls.push({ input, init });
+        return new Response(
+          JSON.stringify({ success: true, executionId: 'exec-456' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      },
+    } as any);
+
+    await enqueueExecution({
+      workflowId: 'wf-runtime',
+      triggerType: 'manual',
+      initialData: null,
+      runtime: 'node',
+    });
+
+    assert.equal(calls.length, 1);
+    const body = calls[0]?.init?.body as string | undefined;
+    assert.ok(body, 'request body should include runtime payload');
+    const parsed = JSON.parse(body ?? '{}');
+    assert.equal(parsed.runtime, 'node');
+  })();
+
+  await (async () => {
     authStore.setState({
       authFetch: async () =>
         new Response(
