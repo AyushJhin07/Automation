@@ -4,6 +4,7 @@ const sharedQueueEnv = (() => {
     QUEUE_REDIS_HOST: process.env.QUEUE_REDIS_HOST ?? '127.0.0.1',
     QUEUE_REDIS_PORT: process.env.QUEUE_REDIS_PORT ?? '6379',
     QUEUE_REDIS_DB: process.env.QUEUE_REDIS_DB ?? '0',
+    RUNTIME_APPS_SCRIPT_ENABLED: process.env.RUNTIME_APPS_SCRIPT_ENABLED ?? 'true',
   };
 
   if (process.env.QUEUE_REDIS_USERNAME) {
