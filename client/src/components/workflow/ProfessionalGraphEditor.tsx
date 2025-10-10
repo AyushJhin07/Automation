@@ -82,6 +82,8 @@ import {
   MapPin,
   Calculator,
   CheckCircle2,
+  CircleSlash2,
+  Server,
   Link,
   Download,
 } from 'lucide-react';
@@ -156,6 +158,40 @@ const STATUS_RING: Record<ExecutionStatus, string> = {
   running: 'ring-2 ring-amber-300/60 shadow-lg shadow-amber-200/40',
   success: 'ring-2 ring-emerald-300/60 shadow-lg shadow-emerald-200/30',
   error: 'ring-2 ring-red-400/60 shadow-lg shadow-red-200/40'
+};
+
+type RuntimeStatusMode = 'native' | 'fallback' | 'unavailable';
+
+const getRuntimeStatusPresentation = (
+  mode: RuntimeStatusMode,
+  fallbackRuntimeName?: string,
+) => {
+  if (mode === 'native') {
+    return {
+      label: 'Apps Script ready',
+      Icon: CheckCircle2,
+      className: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+    } as const;
+  }
+
+  if (mode === 'fallback') {
+    const fallbackLabel =
+      fallbackRuntimeName && fallbackRuntimeName !== RUNTIME_DISPLAY_NAMES.node
+        ? `${fallbackRuntimeName} only`
+        : 'Node.js only';
+
+    return {
+      label: fallbackLabel,
+      Icon: Server,
+      className: 'text-amber-700 bg-amber-50 border-amber-200',
+    } as const;
+  }
+
+  return {
+    label: 'Unavailable',
+    Icon: CircleSlash2,
+    className: 'text-rose-700 bg-rose-50 border-rose-200',
+  } as const;
 };
 
 const STATUS_INDICATOR: Record<ExecutionStatus, string> = {
@@ -1652,6 +1688,9 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                         ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
                         : RUNTIME_DISPLAY_NAMES.node;
 
+                      const runtimeStatus = getRuntimeStatusPresentation(mode, fallbackRuntimeName);
+                      const RuntimeStatusIcon = runtimeStatus.Icon;
+
                       const tooltipText = isUnavailable
                         ? issue === 'missing-app'
                           ? `${appDisplayName} isn't enabled in ${ACTIVE_RUNTIME_LABEL} yet.`
@@ -1704,23 +1743,23 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             </div>
                             <div className="ml-auto flex items-center gap-2">
                               {!runtimeCapabilitiesLoading && (
-                                <Badge
-                                  className={clsx(
-                                    'text-[10px] uppercase tracking-wide',
-                                    isUnavailable
-                                      ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                      : isFallback
-                                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                        : 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                  )}
-                                  data-testid={`runtime-badge-${app.appId}-${t.id}`}
-                                >
-                                  {isUnavailable
-                                    ? 'Unavailable'
-                                    : isFallback
-                                      ? `Fallback: ${fallbackRuntimeName}`
-                                      : 'Runtime ready'}
-                                </Badge>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className={clsx(
+                                        'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px]',
+                                        runtimeStatus.className,
+                                      )}
+                                      aria-label={runtimeStatus.label}
+                                      data-testid={`runtime-status-${app.appId}-${t.id}`}
+                                    >
+                                      <RuntimeStatusIcon className="h-3 w-3" aria-hidden="true" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {runtimeStatus.label}
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                               <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
                                 trigger
@@ -1770,6 +1809,9 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                       const fallbackRuntimeName = capabilityStatus?.fallbackRuntime
                         ? RUNTIME_DISPLAY_NAMES[capabilityStatus.fallbackRuntime] ?? capabilityStatus.fallbackRuntime
                         : RUNTIME_DISPLAY_NAMES.node;
+
+                      const runtimeStatus = getRuntimeStatusPresentation(mode, fallbackRuntimeName);
+                      const RuntimeStatusIcon = runtimeStatus.Icon;
 
                       const tooltipText = isUnavailable
                         ? issue === 'missing-app'
@@ -1830,23 +1872,23 @@ export const NodeSidebar: React.FC<NodeSidebarProps> = ({
                             </div>
                             <div className="ml-auto flex items-center gap-2">
                               {!runtimeCapabilitiesLoading && (
-                                <Badge
-                                  className={clsx(
-                                    'text-[10px] uppercase tracking-wide',
-                                    isUnavailable
-                                      ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                      : isFallback
-                                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                        : 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                  )}
-                                  data-testid={`runtime-badge-${app.appId}-${a.id}`}
-                                >
-                                  {isUnavailable
-                                    ? 'Unavailable'
-                                    : isFallback
-                                      ? `Fallback: ${fallbackRuntimeName}`
-                                      : 'Runtime ready'}
-                                </Badge>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className={clsx(
+                                        'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px]',
+                                        runtimeStatus.className,
+                                      )}
+                                      aria-label={runtimeStatus.label}
+                                      data-testid={`runtime-status-${app.appId}-${a.id}`}
+                                    >
+                                      <RuntimeStatusIcon className="h-3 w-3" aria-hidden="true" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {runtimeStatus.label}
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                               <span
                                 className={clsx(

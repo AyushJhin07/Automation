@@ -86,8 +86,8 @@ describe("NodeSidebar connector metadata integration", () => {
       iconWrapper.querySelector('svg[data-lucide="brain"]'),
     ).not.toBeNull();
 
-    const runtimeBadge = within(appCard).getByTestId("runtime-badge-novel-ai-analyze");
-    expect(runtimeBadge).toHaveTextContent(/runtime ready/i);
+    const runtimeIndicator = within(appCard).getByTestId("runtime-status-novel-ai-analyze");
+    expect(runtimeIndicator).toHaveAttribute("aria-label", "Apps Script ready");
     const actionButton = within(appCard).getByTestId("sidebar-node-novel-ai-analyze");
     expect(actionButton).toHaveAttribute("data-runtime-supported", "true");
     expect(actionButton).toHaveAttribute("draggable", "true");
@@ -136,7 +136,10 @@ describe("NodeSidebar connector metadata integration", () => {
     expect(actionButton).toBeDisabled();
     expect(actionButton).toHaveAttribute("data-runtime-supported", "false");
     expect(actionButton).toHaveAttribute("draggable", "false");
-    expect(within(appCard).getByTestId("runtime-badge-alpha-app-sync")).toHaveTextContent(/unavailable/i);
+    expect(within(appCard).getByTestId("runtime-status-alpha-app-sync")).toHaveAttribute(
+      "aria-label",
+      "Unavailable",
+    );
   });
 
   it("surfaces fallback mode when runtime support is missing but connector implementation exists", () => {
@@ -191,7 +194,10 @@ describe("NodeSidebar connector metadata integration", () => {
     expect(actionButton).not.toBeDisabled();
     expect(actionButton).toHaveAttribute("data-runtime-mode", "fallback");
     expect(actionButton).toHaveAttribute("data-runtime-supported", "true");
-    expect(within(appCard).getByTestId("runtime-badge-beta-app-sync")).toHaveTextContent(/fallback: node\.js/i);
+    expect(within(appCard).getByTestId("runtime-status-beta-app-sync")).toHaveAttribute(
+      "aria-label",
+      "Node.js only",
+    );
   });
 
   it("updates runtime badges when native support becomes available", () => {
@@ -265,8 +271,8 @@ describe("NodeSidebar connector metadata integration", () => {
       />,
     );
 
-    const updatedBadge = within(appCard).getByTestId("runtime-badge-gamma-app-send");
-    expect(updatedBadge).toHaveTextContent(/runtime ready/i);
+    const updatedIndicator = within(appCard).getByTestId("runtime-status-gamma-app-send");
+    expect(updatedIndicator).toHaveAttribute("aria-label", "Apps Script ready");
     expect(within(appCard).getByTestId("sidebar-node-gamma-app-send")).toHaveAttribute("data-runtime-mode", "native");
   });
 });
