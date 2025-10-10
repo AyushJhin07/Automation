@@ -158,6 +158,8 @@ router.post(
     return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
   }
 
+  const userIdString = String(userId).trim();
+
   if (!organizationId) {
     return res.status(400).json({ success: false, error: 'ORGANIZATION_REQUIRED' });
   }
@@ -174,9 +176,10 @@ router.post(
     if (connectionId) {
       const connectionIdString = String(connectionId).trim();
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(connectionIdString);
-      const isDevUserPlaceholder = connectionIdString === 'dev-user';
+      const userIsUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userIdString);
+      const isDevUserPlaceholder = connectionIdString === 'dev-user' || userIdString === 'dev-user';
 
-      if (!isUuid || isDevUserPlaceholder) {
+      if (!isUuid || !userIsUuid || isDevUserPlaceholder) {
         return res.status(200).json({
           success: false,
           error: 'CONNECTION_NOT_FOUND_DEV',
