@@ -25,7 +25,7 @@ Preferred communication style: Simple, everyday language.
 - **Storage Interface**: Abstract storage layer with in-memory implementation (ready for database expansion)
 
 ### Data Storage Solutions
-- **PostgreSQL with Drizzle ORM**: Configured for production database with Neon serverless driver
+- **PostgreSQL with Drizzle ORM**: Configured for production database using the Node Postgres driver
 - **Schema Definition**: Shared schema files using Drizzle with Zod validation
 - **Database Migrations**: Drizzle Kit for schema management and migrations
 - **Development Fallback**: In-memory storage implementation for development/testing
@@ -60,10 +60,9 @@ Preferred communication style: Simple, everyday language.
 - **Lucide React** for consistent iconography
 - **Class Variance Authority** for component variant management
 
-#### Backend and Database
 - **Express.js** for server framework
 - **Drizzle ORM** with PostgreSQL dialect
-- **@neondatabase/serverless** for PostgreSQL connection
+- **pg** (`node-postgres`) for PostgreSQL connection pooling
 - **Drizzle Kit** for database schema management
 - **Drizzle Zod** for runtime validation
 

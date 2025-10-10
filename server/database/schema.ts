@@ -1,5 +1,6 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool, type PoolConfig } from 'pg';
+import type { ConnectionOptions } from 'tls';
 import {
   pgTable,
   text,
@@ -1611,9 +1612,50 @@ const schemaRegistry = {
 
 export type DatabaseSchema = typeof schemaRegistry;
 
+function shouldUseSSL(connectionString: string): boolean {
+  const toggle = process.env.DATABASE_SSL?.toLowerCase();
+  if (toggle === 'true') {
+    return true;
+  }
+  if (toggle === 'false') {
+    return false;
+  }
+
+  try {
+    const url = new URL(connectionString);
+    const host = url.hostname.toLowerCase();
+    if (!host) {
+      return false;
+    }
+    return host !== 'localhost' && host !== '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+function createPool(connectionString: string): Pool {
+  const poolConfig: PoolConfig = {
+    connectionString,
+  };
+
+  const maxConnections = process.env.DATABASE_POOL_SIZE;
+  if (maxConnections) {
+    const parsed = Number.parseInt(maxConnections, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      poolConfig.max = parsed;
+    }
+  }
+
+  if (shouldUseSSL(connectionString)) {
+    poolConfig.ssl = { rejectUnauthorized: false } as ConnectionOptions;
+  }
+
+  return new Pool(poolConfig);
+}
+
 function createDrizzleClient(connectionString: string) {
-  const sql = neon(connectionString);
-  return drizzle(sql, { schema: schemaRegistry });
+  const pool = createPool(connectionString);
+  return drizzle(pool, { schema: schemaRegistry });
 }
 
 // Database connection
