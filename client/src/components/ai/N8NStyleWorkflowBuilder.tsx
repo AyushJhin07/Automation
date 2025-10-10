@@ -62,7 +62,10 @@ import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
 import { useRuntimeCapabilityIndex } from '@/hooks/useRuntimeCapabilityIndex';
 import { collectNodeConfigurationErrors } from '@/components/workflow/nodeConfigurationValidation';
-import { findAppsScriptUnsupportedNode } from '@/services/runtimeCapabilitiesService';
+import {
+  findAppsScriptUnsupportedNode,
+  type RuntimeUnsupportedNodeDetection,
+} from '@/services/runtimeCapabilitiesService';
 import type { ValidationError } from '@shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { isDevIgnoreQueueEnabled } from '@/config/featureFlags';
@@ -350,22 +353,26 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   const runtimeSelectionWasManualRef = useRef(false);
   const appsScriptDisableAnalyticsRef = useRef<string | null>(null);
   const [selectedRuntime, setSelectedRuntime] = useState<RuntimeKey>('appsScript');
-  const appsScriptUnsupportedDetection = useMemo(() => {
+  const appsScriptUnsupportedDetections = useMemo<RuntimeUnsupportedNodeDetection[]>(() => {
     if (runtimeCapabilitiesLoading) {
-      return null;
+      return [];
     }
-    return findAppsScriptUnsupportedNode(nodes, {
-      runtimeCapabilities,
-      runtimeCapabilityIndex,
-    });
+    return (
+      findAppsScriptUnsupportedNode(nodes, {
+        runtimeCapabilities,
+        runtimeCapabilityIndex,
+      }) ?? []
+    );
   }, [nodes, runtimeCapabilitiesLoading, runtimeCapabilities, runtimeCapabilityIndex]);
-  const appsScriptSupported = !appsScriptUnsupportedDetection;
+  const primaryAppsScriptUnsupportedDetection =
+    appsScriptUnsupportedDetections.length > 0 ? appsScriptUnsupportedDetections[0] : null;
+  const appsScriptSupported = appsScriptUnsupportedDetections.length === 0;
   const runtimeUnsupportedAnalyticsContext = useMemo(() => {
-    if (!appsScriptUnsupportedDetection) {
+    if (!primaryAppsScriptUnsupportedDetection) {
       return null;
     }
 
-    const { support } = appsScriptUnsupportedDetection;
+    const { support } = primaryAppsScriptUnsupportedDetection;
     const connectorId = sanitizeAnalyticsConnectorId(
       support.appId ?? support.appLabel ?? '',
     ) ?? undefined;
@@ -381,7 +388,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       reason: support.reason,
       mode: support.mode,
     };
-  }, [appsScriptUnsupportedDetection]);
+  }, [primaryAppsScriptUnsupportedDetection]);
 
   useEffect(() => {
     if (!appsScriptSupported && selectedRuntime === 'appsScript') {
@@ -394,12 +401,12 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   }, [appsScriptSupported, selectedRuntime]);
 
   useEffect(() => {
-    if (!appsScriptUnsupportedDetection) {
+    if (!primaryAppsScriptUnsupportedDetection) {
       appsScriptDisableAnalyticsRef.current = null;
       return;
     }
 
-    const { support } = appsScriptUnsupportedDetection;
+    const { support } = primaryAppsScriptUnsupportedDetection;
     const context = runtimeUnsupportedAnalyticsContext;
     const signatureParts = [
       context?.connectorId ?? sanitizeAnalyticsConnectorId(support.appId ?? support.appLabel ?? '') ?? 'unknown',
@@ -426,7 +433,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       manualSelection: runtimeSelectionWasManualRef.current,
     });
   }, [
-    appsScriptUnsupportedDetection,
+    primaryAppsScriptUnsupportedDetection,
     runtimeUnsupportedAnalyticsContext,
     selectedRuntime,
   ]);
@@ -463,20 +470,33 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     [selectedRuntime, appsScriptSupported, runtimeUnsupportedAnalyticsContext],
   );
 
+  const primaryFallbackRuntimeName = useMemo(() => {
+    const fallbackRuntimeKey =
+      primaryAppsScriptUnsupportedDetection?.support.fallbackRuntime ?? 'node';
+    return RUNTIME_DISPLAY_NAMES[fallbackRuntimeKey] ?? fallbackRuntimeKey;
+  }, [primaryAppsScriptUnsupportedDetection]);
   const appsScriptUnsupportedReason = useMemo(() => {
-    if (!appsScriptSupported && appsScriptUnsupportedDetection) {
-      const { support } = appsScriptUnsupportedDetection;
+    if (appsScriptSupported) {
+      return null;
+    }
+
+    if (appsScriptUnsupportedDetections.length <= 1 && primaryAppsScriptUnsupportedDetection) {
+      const { support } = primaryAppsScriptUnsupportedDetection;
       const appName = support.appLabel || support.appId || 'This connector';
       const operationName = support.operationLabel || support.operationId;
-      const fallbackRuntimeKey = support.fallbackRuntime ?? 'node';
-      const fallbackRuntimeName = RUNTIME_DISPLAY_NAMES[fallbackRuntimeKey] ?? fallbackRuntimeKey;
       if (operationName) {
-        return `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" isn't available in Apps Script yet. Run it in ${fallbackRuntimeName} instead.`;
+        return `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" isn't available in Apps Script yet. Run it in ${primaryFallbackRuntimeName} instead.`;
       }
-      return `${appName} isn't available in Apps Script yet. Run it in ${fallbackRuntimeName} instead.`;
+      return `${appName} isn't available in Apps Script yet. Run it in ${primaryFallbackRuntimeName} instead.`;
     }
-    return null;
-  }, [appsScriptSupported, appsScriptUnsupportedDetection]);
+
+    return `${appsScriptUnsupportedDetections.length} nodes aren't available in Apps Script yet. Run this workflow in ${primaryFallbackRuntimeName} instead.`;
+  }, [
+    appsScriptSupported,
+    appsScriptUnsupportedDetections,
+    primaryAppsScriptUnsupportedDetection,
+    primaryFallbackRuntimeName,
+  ]);
 
   const runtimeDisplayName = RUNTIME_DISPLAY_NAMES[selectedRuntime] ?? 'Apps Script';
   const runtimeReady = selectedRuntime !== 'appsScript' || appsScriptSupported;
@@ -488,6 +508,73 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     }
     return undefined;
   }, [runtimeReady, appsScriptUnsupportedReason]);
+  const appsScriptUnsupportedList = useMemo(
+    () =>
+      appsScriptUnsupportedDetections.map((detection, index) => {
+        const { support, node } = detection;
+        const appName = support.appLabel || support.appId || 'This connector';
+        const operationName = support.operationLabel || support.operationId;
+        const fallbackRuntimeKey = support.fallbackRuntime ?? 'node';
+        const fallbackRuntimeName =
+          RUNTIME_DISPLAY_NAMES[fallbackRuntimeKey] ?? fallbackRuntimeKey;
+        const label = operationName
+          ? `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}"`
+          : appName;
+        const message = operationName
+          ? `${label} isn't available in Apps Script yet.`
+          : `${appName} isn't available in Apps Script yet.`;
+
+        return {
+          id: String(node?.id ?? index),
+          detection,
+          label,
+          message,
+          fallbackRuntimeName,
+        };
+      }),
+    [appsScriptUnsupportedDetections],
+  );
+  const handleFocusUnsupportedNode = useCallback(
+    (detection: RuntimeUnsupportedNodeDetection) => {
+      if (!reactFlowInstance) {
+        return;
+      }
+
+      const nodeIdValue = detection.node?.id;
+      if (nodeIdValue === undefined || nodeIdValue === null) {
+        return;
+      }
+
+      const nodeId = String(nodeIdValue);
+      const instanceNode =
+        typeof (reactFlowInstance as any).getNode === 'function'
+          ? ((reactFlowInstance as any).getNode(nodeId) as Node | undefined)
+          : undefined;
+      const targetNode =
+        instanceNode ?? nodes.find((node) => node.id === nodeId) ?? null;
+      if (!targetNode) {
+        return;
+      }
+
+      if (typeof reactFlowInstance.fitView === 'function') {
+        reactFlowInstance.fitView({
+          nodes: [targetNode],
+          duration: 500,
+          padding: 0.6,
+        });
+        return;
+      }
+
+      const position = targetNode.positionAbsolute ?? targetNode.position ?? { x: 0, y: 0 };
+      if (typeof (reactFlowInstance as any).setCenter === 'function') {
+        (reactFlowInstance as any).setCenter(position.x, position.y, {
+          zoom: 1.2,
+          duration: 500,
+        });
+      }
+    },
+    [nodes, reactFlowInstance],
+  );
   const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
     status: 'idle',
     errors: [],
@@ -1730,6 +1817,52 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
 
       {/* Main Workflow Canvas */}
       <div className="flex-1 relative">
+        {appsScriptUnsupportedDetections.length > 0 ? (
+          <div className="pointer-events-none absolute left-4 top-24 z-20 w-[min(360px,calc(100vw-2rem))]">
+            <Card className="pointer-events-auto border border-amber-400/60 bg-amber-500/10 text-amber-100 shadow-xl backdrop-blur">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Apps Script can't run {appsScriptUnsupportedList.length > 1 ? 'these steps yet' : 'this step yet'}
+                </CardTitle>
+                <p className="text-xs text-amber-200/80">
+                  {appsScriptUnsupportedList.length > 1
+                    ? `Remove or replace the steps below, or switch to ${primaryFallbackRuntimeName} to run this workflow.`
+                    : `Remove or replace the step below, or switch to ${primaryFallbackRuntimeName} to run this workflow.`}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {appsScriptUnsupportedList.map(({ id, detection, label, message, fallbackRuntimeName }) => (
+                  <div
+                    key={id}
+                    className="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-amber-100">{label}</div>
+                        <p className="text-xs text-amber-200/80">
+                          {message} Run it in {fallbackRuntimeName} instead.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-400/70 bg-transparent text-amber-100 hover:bg-amber-400/20 hover:text-amber-50"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleFocusUnsupportedNode(detection);
+                        }}
+                      >
+                        Focus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
         <ReactFlowProvider>
           <ReactFlow
             nodes={nodes}
