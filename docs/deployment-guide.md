@@ -6,6 +6,7 @@
   - Configure OAuth client IDs/secrets in deployment environment; never commit .env.
   - Prefer managed secrets: set `SECRET_MANAGER_PROVIDER=aws` and populate AWS Secrets Manager as described in [operations/secret-management](./operations/secret-management.md).
   - Ensure DATABASE_URL is set for persistence.
+  - Set `RUNTIME_APPS_SCRIPT_ENABLED` (defaults to `true`) so API and workers advertise the Apps Script runtime. Override to `false` if the environment should hide Apps Script capabilities.
 - Rate limits
   - See GET /api/status/rate-limits for derived vendor limits; adjust reverse proxy if needed.
 - Health checks
