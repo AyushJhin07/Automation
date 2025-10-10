@@ -42,6 +42,11 @@ router.get('/api/registry/connectors', async (_req, res) => {
             description: action.description,
             params: action.params ?? action.parameters ?? {},
             io: action.io ?? action.ioMetadata ?? action.metadata ?? undefined,
+            runtimeSupport:
+              action.runtimeSupport ?? {
+                appsScript: false,
+                nodeJs: false,
+              },
           }))
         : [],
       triggers: Array.isArray(connector.triggers)
@@ -51,6 +56,11 @@ router.get('/api/registry/connectors', async (_req, res) => {
             description: trigger.description,
             params: trigger.params ?? trigger.parameters ?? {},
             io: trigger.io ?? trigger.ioMetadata ?? trigger.metadata ?? undefined,
+            runtimeSupport:
+              trigger.runtimeSupport ?? {
+                appsScript: false,
+                nodeJs: false,
+              },
           }))
         : [],
     }));
