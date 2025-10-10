@@ -33,6 +33,16 @@ vi.mock('@/hooks/useWorkerHeartbeat', () => ({
   WORKER_FLEET_GUIDANCE: 'Start the execution worker and scheduler processes to run workflows.',
 }));
 
+vi.mock('@/hooks/useRuntimeCapabilityIndex', () => ({
+  useRuntimeCapabilityIndex: () => ({
+    capabilities: {},
+    index: {},
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
+
 vi.mock('@/components/workflow/NodeConfigurationModal', () => ({
   NodeConfigurationModal: () => null,
 }));
@@ -173,7 +183,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
       expect(authFetchMock).toHaveBeenCalled();
     });
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).toBeDisabled();
     });
@@ -226,7 +236,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
     render(<Builder />);
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).not.toBeDisabled();
     });
@@ -251,7 +261,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
     render(<Builder />);
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).not.toBeDisabled();
     });
@@ -301,7 +311,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
     render(<Builder />);
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).not.toBeDisabled();
     });
@@ -337,7 +347,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     const { default: Builder } = await import('../N8NStyleWorkflowBuilder');
     render(<Builder />);
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).toBeDisabled();
     });
@@ -362,7 +372,7 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
       expect(authFetchMock).toHaveBeenCalled();
     });
 
-    const runButton = await screen.findByRole('button', { name: /run workflow/i });
+    const runButton = await screen.findByRole('button', { name: /run in/i });
     await waitFor(() => {
       expect(runButton).toBeDisabled();
     });

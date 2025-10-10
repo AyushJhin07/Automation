@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Node,
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Brain,
@@ -59,10 +60,13 @@ import { ConversationalWorkflowBuilder } from './ConversationalWorkflowBuilder';
 import type { FunctionDefinition } from '@/components/workflow/DynamicParameterForm';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
 import { useWorkerHeartbeat, WORKER_FLEET_GUIDANCE } from '@/hooks/useWorkerHeartbeat';
+import { useRuntimeCapabilityIndex } from '@/hooks/useRuntimeCapabilityIndex';
 import { collectNodeConfigurationErrors } from '@/components/workflow/nodeConfigurationValidation';
+import { findAppsScriptUnsupportedNode } from '@/services/runtimeCapabilitiesService';
 import type { ValidationError } from '@shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { isDevIgnoreQueueEnabled } from '@/config/featureFlags';
+import { RUNTIME_DISPLAY_NAMES, type RuntimeKey } from '@shared/runtimes';
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -333,6 +337,70 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
   }, [workerStatusMessage, queueDurabilityWarningMessage, queueStatusMessage]);
   const isRunHealthLoading = isQueueHealthLoading || isWorkerStatusLoading;
   const runReady = queueReady && workerFleetReady;
+  const {
+    capabilities: runtimeCapabilities,
+    index: runtimeCapabilityIndex,
+    loading: runtimeCapabilitiesLoading,
+  } = useRuntimeCapabilityIndex();
+  const runtimeSelectionWasManualRef = useRef(false);
+  const [selectedRuntime, setSelectedRuntime] = useState<RuntimeKey>('appsScript');
+  const appsScriptUnsupportedDetection = useMemo(() => {
+    if (runtimeCapabilitiesLoading) {
+      return null;
+    }
+    return findAppsScriptUnsupportedNode(nodes, {
+      runtimeCapabilities,
+      runtimeCapabilityIndex,
+    });
+  }, [nodes, runtimeCapabilitiesLoading, runtimeCapabilities, runtimeCapabilityIndex]);
+  const appsScriptSupported = !appsScriptUnsupportedDetection;
+
+  useEffect(() => {
+    if (!appsScriptSupported && selectedRuntime === 'appsScript') {
+      setSelectedRuntime('node');
+      return;
+    }
+    if (appsScriptSupported && !runtimeSelectionWasManualRef.current && selectedRuntime !== 'appsScript') {
+      setSelectedRuntime('appsScript');
+    }
+  }, [appsScriptSupported, selectedRuntime]);
+
+  const handleRuntimeChange = useCallback(
+    (value: string) => {
+      if (!value) {
+        return;
+      }
+      runtimeSelectionWasManualRef.current = true;
+      setSelectedRuntime(value as RuntimeKey);
+    },
+    [],
+  );
+
+  const appsScriptUnsupportedReason = useMemo(() => {
+    if (!appsScriptSupported && appsScriptUnsupportedDetection) {
+      const { support } = appsScriptUnsupportedDetection;
+      const appName = support.appLabel || support.appId || 'This connector';
+      const operationName = support.operationLabel || support.operationId;
+      const fallbackRuntimeKey = support.fallbackRuntime ?? 'node';
+      const fallbackRuntimeName = RUNTIME_DISPLAY_NAMES[fallbackRuntimeKey] ?? fallbackRuntimeKey;
+      if (operationName) {
+        return `${appName} ${support.kind === 'trigger' ? 'trigger' : 'action'} "${operationName}" isn't available in Apps Script yet. Run it in ${fallbackRuntimeName} instead.`;
+      }
+      return `${appName} isn't available in Apps Script yet. Run it in ${fallbackRuntimeName} instead.`;
+    }
+    return null;
+  }, [appsScriptSupported, appsScriptUnsupportedDetection]);
+
+  const runtimeDisplayName = RUNTIME_DISPLAY_NAMES[selectedRuntime] ?? 'Apps Script';
+  const runtimeReady = selectedRuntime !== 'appsScript' || appsScriptSupported;
+  const runtimeBlockedReason = useMemo(() => {
+    if (!runtimeReady) {
+      return (
+        appsScriptUnsupportedReason || 'Apps Script runtime is not available for this workflow yet.'
+      );
+    }
+    return undefined;
+  }, [runtimeReady, appsScriptUnsupportedReason]);
   const [workflowValidation, setWorkflowValidation] = useState<WorkflowValidationState>({
     status: 'idle',
     errors: [],
@@ -359,6 +427,9 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     if (!queueReady) {
       return queueStatusMessage;
     }
+    if (!runtimeReady) {
+      return runtimeBlockedReason;
+    }
     if (combinedBlockingErrors.length > 0) {
       return combinedBlockingErrors[0]?.message;
     }
@@ -380,6 +451,8 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     workerBlockingMessage,
     queueReady,
     queueStatusMessage,
+    runtimeReady,
+    runtimeBlockedReason,
     combinedBlockingErrors,
     workflowValidation.status,
     workflowValidation.message,
@@ -392,19 +465,63 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     !token ||
     !queueReady ||
     !workerFleetReady ||
+    !runtimeReady ||
     combinedBlockingErrors.length > 0 ||
     workflowValidation.status !== 'valid';
 
   const runButtonInner = isRunningWorkflow ? (
     <>
       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      Running…
+      Running in {runtimeDisplayName}…
     </>
   ) : (
     <>
       <Zap className="w-4 h-4 mr-2" />
-      Run Workflow
+      Run in {runtimeDisplayName}
     </>
+  );
+  const runtimeToggle = (
+    <ToggleGroup
+      type="single"
+      value={selectedRuntime}
+      onValueChange={handleRuntimeChange}
+      variant="outline"
+      size="sm"
+      className="bg-gray-800 border border-gray-700 rounded-md px-1 py-0.5"
+      aria-label="Select workflow runtime"
+    >
+      <ToggleGroupItem
+        value="appsScript"
+        disabled={!appsScriptSupported}
+        className={clsx(
+          'text-xs text-gray-200 hover:bg-gray-700',
+          'data-[state=on]:bg-emerald-600 data-[state=on]:text-white',
+        )}
+      >
+        Apps Script
+      </ToggleGroupItem>
+      <ToggleGroupItem
+        value="node"
+        className={clsx(
+          'text-xs text-gray-200 hover:bg-gray-700',
+          'data-[state=on]:bg-blue-600 data-[state=on]:text-white',
+        )}
+      >
+        Node.js
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+  const runtimeToggleControl = appsScriptUnsupportedReason ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{runtimeToggle}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <p>{appsScriptUnsupportedReason}</p>
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    runtimeToggle
   );
 
   const queueBadgeLabel = queueDurabilityBypassed
@@ -984,6 +1101,13 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       return;
     }
 
+    if (selectedRuntime === 'appsScript' && !appsScriptSupported) {
+      toast.error(
+        appsScriptUnsupportedReason || 'Apps Script runtime is not available for this workflow yet.',
+      );
+      return;
+    }
+
     const blockingError = combinedBlockingErrors[0];
     if (blockingError) {
       toast.error(blockingError.message || 'Resolve configuration issues before running.');
@@ -1050,6 +1174,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
         workflowId: savedWorkflowId,
         triggerType: 'manual',
         initialData: null,
+        runtime: selectedRuntime,
       });
 
       toast.success('Workflow execution started');
@@ -1116,6 +1241,9 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     navigate,
     queueReady,
     queueStatusMessage,
+    selectedRuntime,
+    appsScriptSupported,
+    appsScriptUnsupportedReason,
     combinedBlockingErrors,
     workflowValidation.status,
     workflowValidation.message,
@@ -1596,6 +1724,8 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
                 <p>{queueBadgeTooltip}</p>
               </TooltipContent>
             </Tooltip>
+
+            {runtimeToggleControl}
 
             {runDisableReason ? (
               <Tooltip>

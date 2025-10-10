@@ -1,4 +1,5 @@
 import { authStore } from '@/store/authStore';
+import type { RuntimeKey } from '@shared/runtimes';
 
 export type ExecutionTriggerType = string;
 
@@ -6,6 +7,7 @@ export type EnqueueExecutionParams = {
   workflowId: string;
   triggerType: ExecutionTriggerType;
   initialData: unknown;
+  runtime?: RuntimeKey;
 };
 
 export type EnqueueExecutionResult = {
@@ -50,12 +52,18 @@ export const enqueueExecution = async ({
   workflowId,
   triggerType,
   initialData,
+  runtime,
 }: EnqueueExecutionParams): Promise<EnqueueExecutionResult> => {
   const { authFetch } = authStore.getState();
 
+  const payload: Record<string, any> = { workflowId, triggerType, initialData };
+  if (runtime) {
+    payload.runtime = runtime;
+  }
+
   const response = await authFetch('/api/executions', {
     method: 'POST',
-    body: JSON.stringify({ workflowId, triggerType, initialData }),
+    body: JSON.stringify(payload),
   });
 
   const result = (await response.json().catch(() => ({}))) as Record<string, any>;
