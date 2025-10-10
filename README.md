@@ -139,6 +139,12 @@ Ensure `DATABASE_URL`, `QUEUE_REDIS_*`, and secrets exist in the environment bef
 
 For production, point providers at `https://<domain>/api/webhooks/<provider>` routes. See `docs/webhooks-slack-events.md` for examples.
 
+## Runtime support reporting
+
+Use `npm run report:runtime` to generate a connector runtime support report. The script loads the connector registry and runtime planner, then prints every action/trigger alongside whether Node.js and/or Apps Script are enabled. Operations where a runtime is available but disabled by feature flags are annotated separately so operations teams can monitor rollout progress.
+
+The command is safe to run locally or in nightly jobs; it only reads connector definitions and runtime metadata.
+
 ## OAuth Smoke
 
 `npm run dev:oauth` stores a fake connection using the `connections` envelope-encryption columns. Replace the `provider` field and token payload when testing a real provider.
