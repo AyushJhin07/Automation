@@ -81,6 +81,16 @@ try {
     anonymousBody?.data?.connectors ?? anonymousBody?.connectors ?? [];
   assert(Array.isArray(anonymousConnectors) && anonymousConnectors.length > 0);
   anonymousConnectors.forEach((connector: any) => {
+    const firstAction = connector.actions?.[0];
+    if (firstAction) {
+      assert.equal(typeof firstAction.runtimeSupport?.appsScript, 'boolean', 'actions should include runtime support');
+      assert.equal(typeof firstAction.runtimeSupport?.nodeJs, 'boolean', 'actions should expose nodeJs runtime support');
+    }
+    const firstTrigger = connector.triggers?.[0];
+    if (firstTrigger) {
+      assert.equal(typeof firstTrigger.runtimeSupport?.appsScript, 'boolean', 'triggers should include runtime support');
+      assert.equal(typeof firstTrigger.runtimeSupport?.nodeJs, 'boolean', 'triggers should expose nodeJs runtime support');
+    }
     assert.equal(
       connector.pricingTier ?? null,
       null,
@@ -158,6 +168,16 @@ try {
   assert(Array.isArray(authenticatedConnectors) && authenticatedConnectors.length > 0);
 
   authenticatedConnectors.forEach((connector: any) => {
+    const firstAction = connector.actions?.[0];
+    if (firstAction) {
+      assert.equal(typeof firstAction.runtimeSupport?.appsScript, 'boolean', 'actions should include runtime support');
+      assert.equal(typeof firstAction.runtimeSupport?.nodeJs, 'boolean', 'actions should expose nodeJs runtime support');
+    }
+    const firstTrigger = connector.triggers?.[0];
+    if (firstTrigger) {
+      assert.equal(typeof firstTrigger.runtimeSupport?.appsScript, 'boolean', 'triggers should include runtime support');
+      assert.equal(typeof firstTrigger.runtimeSupport?.nodeJs, 'boolean', 'triggers should expose nodeJs runtime support');
+    }
     assert.equal(
       connector.pricingTier ?? null,
       null,

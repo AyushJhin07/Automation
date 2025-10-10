@@ -16,6 +16,7 @@ import type { ConnectorDynamicOptionConfig } from '../common/connectorDynamicOpt
 import { extractDynamicOptionsFromConnector, normalizeDynamicOptionPath } from '../common/connectorDynamicOptions.js';
 import type { OrganizationPlan } from './database/schema';
 import { connectorEntitlementService } from './services/ConnectorEntitlementService';
+import { resolveRuntime } from './runtime/registry.js';
 
 type ConnectorPricingTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
 
@@ -72,6 +73,11 @@ interface ConnectorFunction {
     dailyLimit?: number;
   };
   io?: NodeIOMetadata;
+}
+
+interface ConnectorOperationRuntimeSupport {
+  appsScript: boolean;
+  nodeJs: boolean;
 }
 
 type ConnectorAvailability = 'stable' | 'experimental' | 'disabled';
@@ -166,6 +172,7 @@ export class ConnectorRegistry {
   private apiClients: Map<string, APIClientConstructor> = new Map();
   private manifestMetadataCache: Map<string, ConnectorManifestMetadata> = new Map();
   private initPromise: Promise<void> | null = null;
+  private operationRuntimeSupportCache: Map<string, ConnectorOperationRuntimeSupport> = new Map();
 
   private readonly pricingTierRank: Record<ConnectorPricingTier, number> = {
     free: 0,
@@ -181,6 +188,52 @@ export class ConnectorRegistry {
     enterprise: 3,
     enterprise_plus: 4,
   };
+
+  private getOperationRuntimeSupport(
+    kind: 'action' | 'trigger',
+    appIdRaw: string,
+    operationIdRaw: unknown,
+  ): ConnectorOperationRuntimeSupport {
+    const appId = typeof appIdRaw === 'string' ? appIdRaw.trim() : '';
+    const operationId = typeof operationIdRaw === 'string' ? operationIdRaw.trim() : '';
+
+    if (!appId || !operationId) {
+      return { appsScript: false, nodeJs: false };
+    }
+
+    const cacheKey = `${kind}:${appId}:${operationId}`;
+    const cached = this.operationRuntimeSupportCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const resolution = resolveRuntime({ kind, appId, operationId });
+    const appsScript =
+      resolution.enabledNativeRuntimes.includes('appsScript') ||
+      resolution.enabledFallbackRuntimes.includes('appsScript');
+    const nodeJs =
+      resolution.enabledNativeRuntimes.includes('node') ||
+      resolution.enabledFallbackRuntimes.includes('node');
+
+    const support: ConnectorOperationRuntimeSupport = { appsScript, nodeJs };
+    this.operationRuntimeSupportCache.set(cacheKey, support);
+    return support;
+  }
+
+  private mapConnectorFunctionsWithRuntimeSupport(
+    kind: 'action' | 'trigger',
+    appId: string,
+    functions: ConnectorFunction[] | undefined,
+  ): Array<ConnectorFunction & { runtimeSupport: ConnectorOperationRuntimeSupport }> {
+    if (!Array.isArray(functions)) {
+      return [];
+    }
+
+    return functions.map(fn => ({
+      ...fn,
+      runtimeSupport: this.getOperationRuntimeSupport(kind, appId, fn?.id),
+    }));
+  }
 
   private constructor() {
     const __filename = fileURLToPath(import.meta.url);
@@ -447,6 +500,7 @@ export class ConnectorRegistry {
   private loadAllConnectors(): void {
     this.registry.clear();
     this.manifestMetadataCache.clear();
+    this.operationRuntimeSupportCache.clear();
     let loaded = 0;
     const entries = this.manifestEntries;
     const compilerOpMap = getCompilerOpMap();
@@ -792,6 +846,8 @@ export class ConnectorRegistry {
 
     return connectors.map(entry => ({
       ...entry.definition,
+      actions: this.mapConnectorFunctionsWithRuntimeSupport('action', entry.definition.id, entry.definition.actions),
+      triggers: this.mapConnectorFunctionsWithRuntimeSupport('trigger', entry.definition.id, entry.definition.triggers),
       description: entry.manifest?.description ?? entry.definition.description,
       availability: entry.availability,
       hasRegisteredClient: entry.hasRegisteredClient,
@@ -1100,8 +1156,8 @@ export class ConnectorRegistry {
       connectors[appId] = {
         name: def.name,
         category: def.category,
-        actions: def.actions || [],
-        triggers: def.triggers || [],
+        actions: this.mapConnectorFunctionsWithRuntimeSupport('action', appId, def.actions),
+        triggers: this.mapConnectorFunctionsWithRuntimeSupport('trigger', appId, def.triggers),
         hasRegisteredClient: entry.hasRegisteredClient === true,
         hasImplementation: entry.hasImplementation === true,
         availability: entry.availability,
