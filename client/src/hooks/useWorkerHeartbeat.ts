@@ -203,8 +203,10 @@ type NormalizedSnapshot = {
   source: 'admin' | 'public';
 };
 
+const DEVELOPMENT_WARNING_SUPPRESSIONS: RegExp[] = [/memory/i, /security/i];
+
 const normalizeEnvironmentWarnings = (rawWarnings: any[]): EnvironmentWarningMessage[] => {
-  return rawWarnings
+  const normalized = rawWarnings
     .map((warning, index) => {
       const id = typeof warning?.id === 'string' ? warning.id : `warning-${index}`;
       const message = typeof warning?.message === 'string' ? warning.message : '';
@@ -217,6 +219,14 @@ const normalizeEnvironmentWarnings = (rawWarnings: any[]): EnvironmentWarningMes
       return { id, message, since, queueDepth } satisfies EnvironmentWarningMessage;
     })
     .filter((warning) => warning.message.length > 0);
+
+  if (process.env.NODE_ENV === 'development') {
+    return normalized.filter(
+      (warning) => !DEVELOPMENT_WARNING_SUPPRESSIONS.some((pattern) => pattern.test(warning.message))
+    );
+  }
+
+  return normalized;
 };
 
 const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): NormalizedSnapshot => {
