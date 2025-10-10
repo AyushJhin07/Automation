@@ -67,6 +67,11 @@ import type { ValidationError } from '@shared/nodeGraphSchema';
 import clsx from 'clsx';
 import { isDevIgnoreQueueEnabled } from '@/config/featureFlags';
 import { RUNTIME_DISPLAY_NAMES, type RuntimeKey } from '@shared/runtimes';
+import {
+  sanitizeAnalyticsConnectorId,
+  sanitizeAnalyticsOperationId,
+  trackAnalyticsEvent,
+} from '@/lib/analytics';
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -343,6 +348,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     loading: runtimeCapabilitiesLoading,
   } = useRuntimeCapabilityIndex();
   const runtimeSelectionWasManualRef = useRef(false);
+  const appsScriptDisableAnalyticsRef = useRef<string | null>(null);
   const [selectedRuntime, setSelectedRuntime] = useState<RuntimeKey>('appsScript');
   const appsScriptUnsupportedDetection = useMemo(() => {
     if (runtimeCapabilitiesLoading) {
@@ -354,6 +360,28 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     });
   }, [nodes, runtimeCapabilitiesLoading, runtimeCapabilities, runtimeCapabilityIndex]);
   const appsScriptSupported = !appsScriptUnsupportedDetection;
+  const runtimeUnsupportedAnalyticsContext = useMemo(() => {
+    if (!appsScriptUnsupportedDetection) {
+      return null;
+    }
+
+    const { support } = appsScriptUnsupportedDetection;
+    const connectorId = sanitizeAnalyticsConnectorId(
+      support.appId ?? support.appLabel ?? '',
+    ) ?? undefined;
+    const operationId = sanitizeAnalyticsOperationId(
+      support.operationId ?? support.operationLabel ?? '',
+    ) ?? undefined;
+
+    return {
+      connectorId,
+      operationId,
+      operationKind: support.kind,
+      fallbackRuntime: support.fallbackRuntime,
+      reason: support.reason,
+      mode: support.mode,
+    };
+  }, [appsScriptUnsupportedDetection]);
 
   useEffect(() => {
     if (!appsScriptSupported && selectedRuntime === 'appsScript') {
@@ -365,15 +393,74 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     }
   }, [appsScriptSupported, selectedRuntime]);
 
+  useEffect(() => {
+    if (!appsScriptUnsupportedDetection) {
+      appsScriptDisableAnalyticsRef.current = null;
+      return;
+    }
+
+    const { support } = appsScriptUnsupportedDetection;
+    const context = runtimeUnsupportedAnalyticsContext;
+    const signatureParts = [
+      context?.connectorId ?? sanitizeAnalyticsConnectorId(support.appId ?? support.appLabel ?? '') ?? 'unknown',
+      context?.operationId ?? sanitizeAnalyticsOperationId(support.operationId ?? support.operationLabel ?? '') ?? 'unknown',
+      support.kind ?? 'unknown',
+    ];
+    const signature = signatureParts.join('::');
+
+    if (appsScriptDisableAnalyticsRef.current === signature) {
+      return;
+    }
+
+    appsScriptDisableAnalyticsRef.current = signature;
+
+    trackAnalyticsEvent('runtime.apps_script_disabled', {
+      runtime: 'appsScript',
+      connectorId: context?.connectorId,
+      operationId: context?.operationId,
+      operationKind: context?.operationKind,
+      fallbackRuntime: context?.fallbackRuntime,
+      reason: context?.reason ?? support.reason ?? 'unsupported',
+      mode: context?.mode ?? support.mode,
+      selection: selectedRuntime,
+      manualSelection: runtimeSelectionWasManualRef.current,
+    });
+  }, [
+    appsScriptUnsupportedDetection,
+    runtimeUnsupportedAnalyticsContext,
+    selectedRuntime,
+  ]);
+
   const handleRuntimeChange = useCallback(
     (value: string) => {
       if (!value) {
         return;
       }
+
+      const nextRuntime = value as RuntimeKey;
+      if (nextRuntime === selectedRuntime) {
+        return;
+      }
+
       runtimeSelectionWasManualRef.current = true;
-      setSelectedRuntime(value as RuntimeKey);
+      setSelectedRuntime(nextRuntime);
+
+      const payload: Record<string, unknown> = {
+        from: selectedRuntime,
+        to: nextRuntime,
+      };
+
+      if (!appsScriptSupported && selectedRuntime === 'appsScript' && runtimeUnsupportedAnalyticsContext) {
+        payload.reason = 'apps_script_unsupported';
+        payload.connectorId = runtimeUnsupportedAnalyticsContext.connectorId;
+        payload.operationId = runtimeUnsupportedAnalyticsContext.operationId;
+        payload.operationKind = runtimeUnsupportedAnalyticsContext.operationKind;
+        payload.fallbackRuntime = runtimeUnsupportedAnalyticsContext.fallbackRuntime;
+      }
+
+      trackAnalyticsEvent('runtime.selection_changed', payload);
     },
-    [],
+    [selectedRuntime, appsScriptSupported, runtimeUnsupportedAnalyticsContext],
   );
 
   const appsScriptUnsupportedReason = useMemo(() => {
@@ -1102,6 +1189,17 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     }
 
     if (selectedRuntime === 'appsScript' && !appsScriptSupported) {
+      trackAnalyticsEvent('runtime.run_blocked', {
+        runtime: selectedRuntime,
+        connectorId: runtimeUnsupportedAnalyticsContext?.connectorId,
+        operationId: runtimeUnsupportedAnalyticsContext?.operationId,
+        operationKind: runtimeUnsupportedAnalyticsContext?.operationKind,
+        fallbackRuntime: runtimeUnsupportedAnalyticsContext?.fallbackRuntime,
+        reason:
+          runtimeUnsupportedAnalyticsContext?.reason ??
+          appsScriptUnsupportedReason ??
+          'apps_script_unsupported',
+      });
       toast.error(
         appsScriptUnsupportedReason || 'Apps Script runtime is not available for this workflow yet.',
       );
@@ -1244,6 +1342,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     selectedRuntime,
     appsScriptSupported,
     appsScriptUnsupportedReason,
+    runtimeUnsupportedAnalyticsContext,
     combinedBlockingErrors,
     workflowValidation.status,
     workflowValidation.message,
