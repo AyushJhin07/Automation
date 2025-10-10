@@ -162,7 +162,21 @@ router.post(
     let credentials: Record<string, any> = { ...inlineCredentials };
 
     if (connectionId) {
-      const connection = await connectionService.getConnection(String(connectionId), userId, organizationId);
+      const connectionIdString = String(connectionId).trim();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(connectionIdString);
+      const isDevUserPlaceholder = connectionIdString === 'dev-user';
+
+      if (!isUuid || isDevUserPlaceholder) {
+        return res.status(200).json({
+          success: false,
+          error: 'CONNECTION_NOT_FOUND_DEV',
+          warnings: [
+            'The requested connection is unavailable in the current development environment.',
+          ],
+        });
+      }
+
+      const connection = await connectionService.getConnection(connectionIdString, userId, organizationId);
       if (!connection) {
         return res.status(404).json({ success: false, error: 'CONNECTION_NOT_FOUND' });
       }
