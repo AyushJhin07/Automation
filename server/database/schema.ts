@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import {
   pgTable,
   text,
@@ -1612,8 +1612,16 @@ const schemaRegistry = {
 export type DatabaseSchema = typeof schemaRegistry;
 
 function createDrizzleClient(connectionString: string) {
-  const sql = neon(connectionString);
-  return drizzle(sql, { schema: schemaRegistry });
+  const sslEnabled =
+    typeof process.env.DATABASE_SSL === 'string' &&
+    ['1', 'true', 'yes', 'on'].includes(process.env.DATABASE_SSL.toLowerCase());
+
+  const pool = new Pool({
+    connectionString,
+    ssl: sslEnabled ? { rejectUnauthorized: false } : undefined,
+  });
+
+  return drizzle(pool, { schema: schemaRegistry });
 }
 
 // Database connection

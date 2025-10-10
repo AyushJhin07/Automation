@@ -129,7 +129,7 @@ Processes:
 - `timers`: `dist/workers/timerDispatcher.js`
 - `encryption-rotation`: `dist/workers/encryption-rotation.js`
 
-Ensure `DATABASE_URL`, `QUEUE_REDIS_*`, and secrets exist in the environment before starting.
+Ensure `DATABASE_URL`, `QUEUE_REDIS_*`, and secrets exist in the environment before starting. Set `DATABASE_SSL=true` (or `on`/`yes`/`1`) if your managed Postgres provider requires TLS.
 
 ## Webhooks
 

@@ -67,7 +67,6 @@
     "@google/generative-ai": "0.24.1",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
-    "@neondatabase/serverless": "^0.10.4",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/api-logs": "^0.52.0",
     "@opentelemetry/exporter-jaeger": "2.0.1",
