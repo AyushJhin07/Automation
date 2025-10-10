@@ -25,6 +25,7 @@ const mockEdges: any[] = [];
 
 const originalFetch = global.fetch;
 let fetchMock: vi.Mock;
+const toastMock = vi.fn();
 
 vi.mock("reactflow", async () => {
   const actual = await vi.importActual<any>("reactflow");
@@ -48,6 +49,12 @@ vi.mock("reactflow", async () => {
   };
 });
 
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({
+    toast: toastMock,
+  }),
+}));
+
 import SmartParametersPanel from "../SmartParametersPanel";
 
 describe("SmartParametersPanel metadata-driven UI", () => {
@@ -56,6 +63,7 @@ describe("SmartParametersPanel metadata-driven UI", () => {
     mockEdges.splice(0, mockEdges.length);
     fetchMock = vi.fn((input: RequestInfo | URL) => createJsonResponse({}));
     global.fetch = fetchMock as any;
+    toastMock.mockReset();
   });
 
   afterEach(() => {
@@ -211,6 +219,77 @@ describe("SmartParametersPanel metadata-driven UI", () => {
       expect(screen.getByRole("option", { name: "Server Tab" })).toBeInTheDocument(),
     );
 
+    expect(await screen.findByText(/Sample warning/)).toBeInTheDocument();
+    expect(screen.getByText(/Metadata warnings/i)).toBeInTheDocument();
+
     warnSpy.mockRestore();
+  });
+
+  it("prompts users to connect an account when metadata refresh returns a missing connection error", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = extractUrl(input);
+      if (url === "/api/ai/models") {
+        return createJsonResponse({ providers: { available: [] } });
+      }
+      if (url === "/api/metadata/resolve") {
+        return createJsonResponse({
+          success: false,
+          error: "CONNECTION_NOT_FOUND_DEV",
+          warnings: ["Connect a Sheets account to refresh metadata."],
+        }, 400);
+      }
+      return createJsonResponse({});
+    });
+
+    mockNodes.push({
+      id: "selected",
+      type: "action",
+      selected: true,
+      data: {
+        label: "Sheets Destination",
+        app: "google-sheets",
+        actionId: "append_row",
+        parameters: { spreadsheetId: "sheet-123", sheet: "", range: "" },
+        metadata: {
+          schema: {
+            spreadsheetId: { type: "string", title: "Spreadsheet" },
+            sheet: { type: "string", title: "Sheet" },
+            range: { type: "string", title: "Range" },
+          },
+        },
+      },
+    });
+
+    render(<SmartParametersPanel />);
+
+    await screen.findByText(/Spreadsheet/);
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent("automation:connection-selected", {
+          detail: {
+            nodeId: "selected",
+            params: { spreadsheetId: "sheet-123", sheet: "", range: "" },
+            reason: "connection",
+          },
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
+
+    const toastArgs = toastMock.mock.calls[0]?.[0];
+    expect(toastArgs).toMatchObject({
+      title: expect.stringMatching(/connect an account/i),
+      description: expect.stringMatching(/connect an account/i),
+      variant: "destructive",
+    });
+
+    expect(await screen.findByText(/Metadata refresh failed:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Connect an account for this connector/i)).toBeInTheDocument();
+    expect(screen.queryByText(/CONNECTION_NOT_FOUND/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Metadata warnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/Connect a Sheets account/i)).toBeInTheDocument();
   });
 });
