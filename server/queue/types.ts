@@ -11,6 +11,7 @@ import type {
 
 import type { OrganizationRegion } from '../database/schema.js';
 import type { WorkflowResumeState } from '../types/workflowTimers';
+import type { RuntimeKey } from '@shared/runtimes';
 
 export type ExecutionQueueName = `workflow.execute.${OrganizationRegion}`;
 export type ExecutionStepQueueName = `workflow.run-step.${OrganizationRegion}`;
@@ -28,6 +29,7 @@ export type WorkflowExecuteJobPayload = {
   timerId?: string | null;
   region: OrganizationRegion;
   connectors?: string[];
+  runtime?: RuntimeKey;
 };
 
 export type WorkflowRunStepJobPayload = {

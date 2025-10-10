@@ -53,6 +53,12 @@ import {
   getQueueHealthSnapshot,
   type QueueHealthStatus,
 } from './QueueHealthService.js';
+import {
+  DEFAULT_RUNTIME,
+  mapExecutionRuntimeToRuntimeKey,
+  type ExecutionRuntimeRequest,
+  type RuntimeKey,
+} from '@shared/runtimes';
 
 export type QueueRunRequest = {
   workflowId: string;
@@ -63,6 +69,7 @@ export type QueueRunRequest = {
   initialData?: any;
   resumeState?: WorkflowResumeState | null;
   dedupeKey?: string | null;
+  runtime?: ExecutionRuntimeRequest | RuntimeKey;
   replay?: {
     sourceExecutionId: string;
     mode: 'full' | 'node';
@@ -492,6 +499,9 @@ class ExecutionQueueService {
       req.initialData !== undefined ? sanitizeLogPayload(req.initialData) : undefined;
     const sanitizedResumeState = req.resumeState ? sanitizeLogPayload(req.resumeState) : undefined;
     const dedupeKey = typeof req.dedupeKey === 'string' ? req.dedupeKey.trim() : undefined;
+    const requestedRuntime: ExecutionRuntimeRequest | RuntimeKey =
+      (req.runtime ?? DEFAULT_RUNTIME) as ExecutionRuntimeRequest | RuntimeKey;
+    const runtime = mapExecutionRuntimeToRuntimeKey(requestedRuntime);
 
     const workflowRecord = await WorkflowRepository.getWorkflowById(req.workflowId, req.organizationId);
     if (!workflowRecord || !workflowRecord.graph) {
@@ -523,6 +533,10 @@ class ExecutionQueueService {
       },
       residency: {
         region,
+      },
+      runtime: {
+        requested: requestedRuntime,
+        resolved: runtime,
       },
     };
 
@@ -814,6 +828,7 @@ class ExecutionQueueService {
         triggerData: req.triggerData ?? null,
         connectors,
         region,
+        runtime,
       };
 
       if (sanitizedResumeState) {
