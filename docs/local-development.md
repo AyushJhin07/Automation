@@ -90,7 +90,7 @@ When the queue is misconfigured (for example `QUEUE_DRIVER=inmemory` or a bad Re
 - Aligning `.env`, `.env.development`, and `.env.local` so duplicate keys do not mask each other.
 - Clearing stale exports (for example `export QUEUE_DRIVER=inmemory`) before restarting the stack.
 
-For quick prototyping without Redis you can opt into a development-only bypass by exporting `ENABLE_DEV_IGNORE_QUEUE=true` alongside `QUEUE_DRIVER=inmemory`. The API will still boot and the workflow builders render a prominent banner noting that jobs are held in process memory. This flag is ignored in production builds and should be removed as soon as Redis is available again so queued work is durable.
+For quick prototyping without Redis you can opt into a development-only bypass by exporting `ENABLE_DEV_IGNORE_QUEUE=true` alongside `QUEUE_DRIVER=inmemory`. Without this flag the API refuses to boot after detecting the non-durable queue driver. With it enabled, the API will still start and the workflow builders render a prominent banner noting that jobs are held in process memory. This flag is ignored in production builds and should be removed as soon as Redis is available again so queued work is durable.
 
 After each child process announces itself, the parent probes `/api/health/queue` (API) or pings Redis directly (worker, scheduler, timers, rotation) using that child's environment to confirm every process is pointed at the same durable BullMQ driver before the stack is considered ready.
 

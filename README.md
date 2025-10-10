@@ -60,12 +60,13 @@ After each child process starts, the supervisor pings `/api/health/queue` (for t
 
 ## No-Redis Local (fast path)
 
-For quick local iteration without Redis, run the API with an inline worker and use the in-memory queue driver. This is not durable and is only recommended for isolated testing.
+For quick local iteration without Redis, run the API with an inline worker and use the in-memory queue driver. Set the development-only bypass so the API will finish booting; without it, the startup guard blocks execution when Redis is missing. This is not durable and is only recommended for isolated testing.
 
 ```bash
 # 1) Create .env.development with these overrides
 ENABLE_INLINE_WORKER=true
 QUEUE_DRIVER=inmemory
+ENABLE_DEV_IGNORE_QUEUE=true
 
 # 2) Apply DB migrations to your configured DATABASE_URL
 npx drizzle-kit push
@@ -80,7 +81,7 @@ npm run dev
 npm run dev:smoke
 ```
 
-To switch to a proper setup later, remove `QUEUE_DRIVER=inmemory`, ensure Redis is running, and either keep the inline worker on or start a dedicated worker in a second terminal with `npm run dev:worker`.
+To switch to a proper setup later, remove `QUEUE_DRIVER=inmemory` and `ENABLE_DEV_IGNORE_QUEUE=true`, ensure Redis is running, and either keep the inline worker on or start a dedicated worker in a second terminal with `npm run dev:worker`.
 
 ### Durable mock queue (for automated tests)
 
