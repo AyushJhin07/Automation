@@ -31,6 +31,7 @@ import {
   Brain,
   Sparkles,
   Loader2,
+  RefreshCw,
   Settings,
   Play,
   Save,
@@ -75,6 +76,12 @@ import {
   sanitizeAnalyticsOperationId,
   trackAnalyticsEvent,
 } from '@/lib/analytics';
+
+declare global {
+  interface Window {
+    __runtimeCapabilitiesRefresh?: () => Promise<void>;
+  }
+}
 
 // N8N-Style Custom Node Component (visual only; configuration handled by parent modal)
 const N8NNode: React.FC<NodeProps<any>> = ({ data }) => {
@@ -349,7 +356,23 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     capabilities: runtimeCapabilities,
     index: runtimeCapabilityIndex,
     loading: runtimeCapabilitiesLoading,
+    refresh: refreshRuntimeCapabilities,
   } = useRuntimeCapabilityIndex();
+  const forceRefreshRuntimeCapabilities = useCallback(
+    () => refreshRuntimeCapabilities(true),
+    [refreshRuntimeCapabilities],
+  );
+  const handleRuntimeRefreshClick = useCallback(() => {
+    void forceRefreshRuntimeCapabilities();
+  }, [forceRefreshRuntimeCapabilities]);
+  useEffect(() => {
+    window.__runtimeCapabilitiesRefresh = forceRefreshRuntimeCapabilities;
+    return () => {
+      if (window.__runtimeCapabilitiesRefresh === forceRefreshRuntimeCapabilities) {
+        delete window.__runtimeCapabilitiesRefresh;
+      }
+    };
+  }, [forceRefreshRuntimeCapabilities]);
   const runtimeSelectionWasManualRef = useRef(false);
   const appsScriptDisableAnalyticsRef = useRef<string | null>(null);
   const [selectedRuntime, setSelectedRuntime] = useState<RuntimeKey>('appsScript');
@@ -696,6 +719,29 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     </Tooltip>
   ) : (
     runtimeToggle
+  );
+  const runtimeRefreshButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="text-xs text-gray-300 hover:text-white"
+      onClick={handleRuntimeRefreshClick}
+      disabled={runtimeCapabilitiesLoading}
+    >
+      {runtimeCapabilitiesLoading ? (
+        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+      ) : (
+        <RefreshCw className="w-3 h-3 mr-2" />
+      )}
+      Refresh runtime support
+    </Button>
+  );
+  const runtimeControls = (
+    <div className="flex items-center gap-2">
+      {runtimeToggleControl}
+      {runtimeRefreshButton}
+    </div>
   );
 
   const queueBadgeLabel = queueDurabilityBypassed
@@ -1957,7 +2003,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
               </TooltipContent>
             </Tooltip>
 
-            {runtimeToggleControl}
+            {runtimeControls}
 
             {runDisableReason ? (
               <Tooltip>
