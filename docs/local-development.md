@@ -19,6 +19,7 @@ This guide covers the quickest path to booting the platform locally with Docker 
    This script backfills strong random values for `ENCRYPTION_MASTER_KEY` and `JWT_SECRET`, matching the minimum length enforced by `EncryptionService`.
 3. Edit `.env.development` to match your local setup. Fill in any provider API keys you plan to exercise (OpenAI, Anthropic, Claude, Google, Gemini). Leave them blank to disable those integrations locally.
    The runtime now records whether a key came from AWS Secrets Manager, a local `.env` file, or the deterministic development fallback—check the admin-only `GET /api/health/credentials` endpoint when you need to confirm which secrets are active.
+   The database layer now uses the standard [`node-postgres`](https://node-postgres.com/) driver via Drizzle ORM—set `DATABASE_SSL=true` when pointing at a managed cloud database that enforces TLS and leave it `false` (the default) for localhost or Docker Compose.
 
 4. When you need single-process execution for quick debugging, create `.env.local` (ignored by git) next to `.env.development` and add `ENABLE_INLINE_WORKER=true`. The API resolves `.env.local` last, so the override remains local to your machine. A ready-to-copy snippet lives in `.env.local.example`. Remove the flag or set it back to `false` before pushing changes or running shared scripts such as `npm run dev:stack`, `npm run dev:worker`, or the production `pm2` ecosystem—those flows rely on the dedicated worker process.
 

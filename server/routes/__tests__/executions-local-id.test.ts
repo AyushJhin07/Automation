@@ -22,8 +22,9 @@ const originalEnqueue = executionQueueService.enqueue;
 
 (WorkflowRepository as any).saveWorkflowGraph = async (input: any) => {
   if (input.id && !uuidRegex.test(input.id)) {
-    const error = new Error('invalid input syntax for type uuid');
-    (error as any).name = 'NeonDbError';
+    const error = new Error(`invalid input syntax for type uuid: "${input.id}"`);
+    (error as any).name = 'error';
+    (error as any).code = '22P02';
     throw error;
   }
 
