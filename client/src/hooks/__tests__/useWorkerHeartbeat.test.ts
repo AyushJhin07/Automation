@@ -1,9 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWorkerHeartbeat } from '../useWorkerHeartbeat';
 
 const authFetchMock = vi.fn();
+
+const originalNodeEnv = process.env.NODE_ENV;
 
 vi.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: any) => any) =>
@@ -23,6 +25,10 @@ const jsonResponse = (body: unknown, init?: ResponseInit): Response => {
 describe('useWorkerHeartbeat fallback handling', () => {
   beforeEach(() => {
     authFetchMock.mockReset();
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it('falls back to the queue heartbeat endpoint on 403 and surfaces warnings', async () => {
@@ -98,5 +104,68 @@ describe('useWorkerHeartbeat fallback handling', () => {
     expect(result.current.summary.queueStatus).toBe('pass');
     expect(result.current.summary.queueDurable).toBe(true);
     expect(result.current.summary.queueMessage).toBe('Execution worker healthy');
+  });
+
+  it('filters development-only memory/security warnings', async () => {
+    process.env.NODE_ENV = 'development';
+
+    const warnings = [
+      { id: 'memory-pressure', message: 'Execution worker memory usage is high.' },
+      { id: 'security-scan', message: 'Security agent unavailable for scanning.' },
+      { id: 'queue-backlog', message: 'Queue backlog detected but heartbeats observed.' },
+    ];
+
+    authFetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          executionWorker: {
+            environmentWarnings: warnings,
+            metrics: { queueDepths: {} },
+          },
+          scheduler: {},
+          queue: { status: 'pass', durable: true, message: 'ok' },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useWorkerHeartbeat({ poll: false }));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.environmentWarnings).toHaveLength(1);
+    expect(result.current.environmentWarnings[0].id).toBe('queue-backlog');
+  });
+
+  it('retains warnings outside of development mode', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const warnings = [
+      { id: 'memory-pressure', message: 'Execution worker memory usage is high.' },
+      { id: 'security-scan', message: 'Security agent unavailable for scanning.' },
+      { id: 'queue-backlog', message: 'Queue backlog detected but heartbeats observed.' },
+    ];
+
+    authFetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          executionWorker: {
+            environmentWarnings: warnings,
+            metrics: { queueDepths: {} },
+          },
+          scheduler: {},
+          queue: { status: 'pass', durable: true, message: 'ok' },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useWorkerHeartbeat({ poll: false }));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.environmentWarnings).toHaveLength(3);
   });
 });
