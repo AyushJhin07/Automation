@@ -73,7 +73,7 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
     return null;
   }
 
-  const runtimeSupportMessage = useMemo(() => {
+  const runtimeAvailability = useMemo(() => {
     if (!runtimeSupportStatus) {
       return null;
     }
@@ -83,30 +83,58 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
       return null;
     }
 
-    const connector = runtimeSupportStatus.appLabel ?? 'This connector';
-    const operationLabel =
-      runtimeSupportStatus.operationLabel ??
-      runtimeSupportStatus.operationId ??
-      (runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action');
+    const connectorName = runtimeSupportStatus.appLabel?.trim() || 'This connector';
+    const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
+    const rawOperationLabel =
+      runtimeSupportStatus.operationLabel?.trim() ||
+      runtimeSupportStatus.operationId?.trim() ||
+      '';
+    const subject = rawOperationLabel ? `${connectorName} ${noun} "${rawOperationLabel}"` : `This ${noun}`;
+    const appsScriptLabel = RUNTIME_DISPLAY_NAMES.appsScript ?? 'Apps Script';
+    const nodeLabel = RUNTIME_DISPLAY_NAMES.node ?? 'Node.js';
+    const fallbackRuntime = runtimeSupportStatus.fallbackRuntime;
+    const fallbackLabel =
+      (fallbackRuntime && (RUNTIME_DISPLAY_NAMES[fallbackRuntime] ?? fallbackRuntime)) ||
+      nodeLabel;
+    const runsInNode = mode === 'fallback' && (!fallbackRuntime || fallbackRuntime === 'node');
 
-    const runtimeLabel = runtimeSupportStatus.runtime
-      ? `the ${RUNTIME_DISPLAY_NAMES[runtimeSupportStatus.runtime] ?? runtimeSupportStatus.runtime} runtime`
-      : 'this runtime environment';
+    const availability = {
+      intro: '',
+      statuses: {
+        appsScript: '',
+        node: '',
+      },
+      guidance: [] as string[],
+    };
 
     if (mode === 'fallback') {
-      const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
-      const fallbackLabel = runtimeSupportStatus.fallbackRuntime
-        ? RUNTIME_DISPLAY_NAMES[runtimeSupportStatus.fallbackRuntime] ?? runtimeSupportStatus.fallbackRuntime
-        : 'Node.js';
-      return `${connector} ${noun} "${operationLabel}" will run via ${fallbackLabel} fallback until ${runtimeLabel} is enabled.`;
+      availability.intro = `${subject} isn't available in ${appsScriptLabel} yet.`;
+      availability.statuses.appsScript = 'Not available yet.';
+      availability.statuses.node = runsInNode
+        ? 'Running in Node.js for now.'
+        : 'Not available in Node.js.';
+      availability.guidance.push(
+        runsInNode
+          ? 'Switch to the Node.js runtime above or replace this node.'
+          : `Use the ${fallbackLabel} runtime above or replace this node.`,
+      );
+    } else {
+      availability.intro = rawOperationLabel
+        ? `${connectorName} ${noun} "${rawOperationLabel}" isn't available in ${appsScriptLabel}.`
+        : `${connectorName} isn't available in ${appsScriptLabel}.`;
+      availability.statuses.appsScript = 'Unavailable.';
+
+      const nodeSupported = runtimeSupportStatus.fallbackRuntime === 'node';
+
+      availability.statuses.node = nodeSupported ? 'Available in Node.js.' : 'Not available in Node.js.';
+      availability.guidance.push(
+        nodeSupported
+          ? 'Switch to the Node.js runtime above or replace this node.'
+          : 'Replace this node with a supported operation.',
+      );
     }
 
-    if (runtimeSupportStatus.reason === 'missing-operation') {
-      const noun = runtimeSupportStatus.kind === 'trigger' ? 'trigger' : 'action';
-      return `${connector} ${noun} "${operationLabel}" isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
-    }
-
-    return `${connector} isn't enabled in ${runtimeLabel}. Remove or replace the node before running.`;
+    return availability;
   }, [runtimeSupportStatus]);
 
   const runtimeAlertTone = runtimeSupportStatus?.mode === 'fallback' ? 'warning' : 'error';
@@ -192,7 +220,7 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
 
       {/* Content */}
       <div className="p-6 space-y-6">
-        {runtimeSupportMessage && runtimeSupportStatus && (
+        {runtimeAvailability && runtimeSupportStatus && (
           <Alert
             className={
               runtimeAlertTone === 'warning'
@@ -200,10 +228,32 @@ const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
                 : 'bg-rose-50 border-rose-200 text-rose-900'
             }
           >
-            <AlertTitle>
-              {runtimeAlertTone === 'warning' ? 'Fallback execution' : 'Runtime limitation'}
-            </AlertTitle>
-            <AlertDescription>{runtimeSupportMessage}</AlertDescription>
+            <AlertTitle>Availability</AlertTitle>
+            <AlertDescription>
+              <div className="space-y-3 text-sm">
+                <p>{runtimeAvailability.intro}</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Apps Script</span>
+                    <span className="text-right">{runtimeAvailability.statuses.appsScript}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Node.js</span>
+                    <span className="text-right">{runtimeAvailability.statuses.node}</span>
+                  </div>
+                </div>
+                {runtimeAvailability.guidance.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-medium">Next steps</p>
+                    <ul className="list-disc space-y-1 pl-5">
+                      {runtimeAvailability.guidance.map((item, index) => (
+                        <li key={`${item}-${index}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </AlertDescription>
           </Alert>
         )}
         {lastExecution && (
