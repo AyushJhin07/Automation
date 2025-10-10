@@ -14,7 +14,7 @@ interface UseRuntimeCapabilityIndexResult {
   index: RuntimeCapabilityIndex;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (forceRefresh?: boolean) => Promise<void>;
 }
 
 export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => {
@@ -24,11 +24,11 @@ export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const loaded = await getRuntimeCapabilities();
+      const loaded = await getRuntimeCapabilities(forceRefresh);
       setCapabilities(mergeWithFallbackCapabilities(loaded));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
