@@ -1251,13 +1251,11 @@ export const canWorkflowRunInRuntime = (
 export const findAppsScriptUnsupportedNode = (
   nodes: RuntimeNodeCandidate[] | null | undefined,
   options: RuntimeSupportEvaluationOptions = {},
-): RuntimeUnsupportedNodeDetection | null => {
-  const unsupported = canWorkflowRunInRuntime(
+): RuntimeUnsupportedNodeDetection[] => {
+  return canWorkflowRunInRuntime(
     Array.isArray(nodes) ? nodes : [],
     'appsScript',
     options.runtimeCapabilityIndex ?? null,
     options,
   );
-
-  return unsupported.length > 0 ? unsupported[0] : null;
 };
