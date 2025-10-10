@@ -29,6 +29,7 @@
   - docs/connectors/authoring.md
   - docs/connectors/output-schemas.md
   - docs/connectors/parity.md
+  - [Connector runtime availability](docs/connector-runtime-availability.md)
 - Telemetry
   - GET /api/roadmap
   - GET /api/roadmap/summary
