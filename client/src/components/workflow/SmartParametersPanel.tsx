@@ -21,6 +21,7 @@ import type { EvaluatedValue } from "@shared/nodeGraphSchema";
 import type { NodeIOMetadata } from "@shared/metadata";
 import type { ConnectorDefinitionMap } from "@/services/connectorDefinitionsService";
 import { normalizeConnectorId } from "@/services/connectorDefinitionsService";
+import { useToast } from "@/hooks/use-toast";
 
 export type JSONSchema = {
   type?: string;
@@ -71,6 +72,11 @@ type MetadataRefreshState = {
 };
 
 const METADATA_REFRESH_ENDPOINT = "/api/metadata/resolve";
+
+const CONNECT_ACCOUNT_TOAST = {
+  title: "Connect an account",
+  description: "Connect an account for this connector to refresh metadata.",
+};
 
 const AI_MAPPING_DISABLED_MESSAGE =
   "AI mapping is disabled until an AI provider is configured.";
@@ -892,6 +898,32 @@ export function SmartParametersPanel({
   const [aiCapability, setAiCapability] = useState<AIMappingCapability | null>(
     null,
   );
+  const { toast } = useToast();
+
+  const updateMetadataRefreshState = useCallback(
+    (
+      next:
+        | MetadataRefreshState
+        | ((prev: MetadataRefreshState) => MetadataRefreshState),
+    ) => {
+      setMetadataRefreshState((prev) => {
+        const resolved =
+          typeof next === "function" ? (next as (p: MetadataRefreshState) => MetadataRefreshState)(prev) : next;
+        const merged = { ...prev, ...resolved } as MetadataRefreshState;
+        const hasWarnings =
+          typeof resolved === "object" &&
+          resolved !== null &&
+          Object.prototype.hasOwnProperty.call(resolved, "warnings");
+        return {
+          ...merged,
+          warnings: hasWarnings
+            ? (resolved as MetadataRefreshState).warnings ?? null
+            : prev.warnings ?? null,
+        };
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     storeNodesRef.current = storeNodes as any[];
@@ -911,7 +943,7 @@ export function SmartParametersPanel({
   useEffect(() => {
     metadataRefreshAbortRef.current?.abort();
     metadataRefreshAbortRef.current = null;
-    setMetadataRefreshState({
+    updateMetadataRefreshState({
       status: "idle",
       error: null,
       reason: null,
@@ -919,7 +951,7 @@ export function SmartParametersPanel({
       connector: null,
       extras: null,
     });
-  }, [node?.id]);
+  }, [node?.id, updateMetadataRefreshState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -959,11 +991,52 @@ export function SmartParametersPanel({
       const controller = new AbortController();
       metadataRefreshAbortRef.current = controller;
 
-      setMetadataRefreshState({
+      const reasonValue = reason ?? null;
+
+      const handleConnectionMissingError = (
+        errorValue: unknown,
+        context?: { warnings?: string[] | null; extras?: Record<string, any> | null },
+      ): boolean => {
+        const raw =
+          typeof errorValue === "string"
+            ? errorValue
+            : errorValue && typeof errorValue === "object"
+              ? JSON.stringify(errorValue)
+              : "";
+        if (!raw || !raw.toUpperCase().includes("CONNECTION_NOT_FOUND")) {
+          return false;
+        }
+
+        if (metadataRefreshAbortRef.current === controller) {
+          metadataRefreshAbortRef.current = null;
+        }
+
+        toast({
+          variant: "destructive",
+          ...CONNECT_ACCOUNT_TOAST,
+        });
+
+        const stateUpdate: MetadataRefreshState = {
+          status: "error",
+          error: CONNECT_ACCOUNT_TOAST.description,
+          reason: reasonValue,
+          connector: connectorSlug,
+          extras: context?.extras ?? null,
+          updatedAt: Date.now(),
+        };
+
+        if (context && Object.prototype.hasOwnProperty.call(context, "warnings")) {
+          stateUpdate.warnings = context.warnings ?? null;
+        }
+
+        updateMetadataRefreshState(stateUpdate);
+        return true;
+      };
+
+      updateMetadataRefreshState({
         status: "loading",
         error: null,
-        reason: reason ?? null,
-        warnings: null,
+        reason: reasonValue,
         connector: null,
         extras: null,
       });
@@ -1167,10 +1240,10 @@ export function SmartParametersPanel({
         if (metadataRefreshAbortRef.current === controller) {
           metadataRefreshAbortRef.current = null;
         }
-        setMetadataRefreshState({
+        updateMetadataRefreshState({
           status: "idle",
           error: null,
-          reason: reason ?? null,
+          reason: reasonValue,
           warnings: null,
           connector: null,
           extras: null,
@@ -1205,21 +1278,54 @@ export function SmartParametersPanel({
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => "");
-          const message = errorText?.trim()?.length
-            ? errorText
-            : `Metadata refresh failed (${response.status})`;
+          let parsedBody: any = null;
+          if (errorText) {
+            try {
+              parsedBody = JSON.parse(errorText);
+            } catch {
+              parsedBody = null;
+            }
+          }
+
+          const context: { warnings?: string[] | null; extras?: Record<string, any> | null } = {};
+          if (parsedBody && Object.prototype.hasOwnProperty.call(parsedBody, "warnings")) {
+            const warningsArray = toStringArray(parsedBody.warnings);
+            context.warnings = warningsArray.length ? warningsArray : null;
+          }
+          if (parsedBody && Object.prototype.hasOwnProperty.call(parsedBody, "extras")) {
+            context.extras = toPlainObject(parsedBody.extras) ?? null;
+          }
+
+          if (
+            handleConnectionMissingError(
+              parsedBody?.error ?? errorText,
+              context,
+            )
+          ) {
+            return;
+          }
+
           if (metadataRefreshAbortRef.current === controller) {
             metadataRefreshAbortRef.current = null;
           }
-          setMetadataRefreshState({
+
+          const message = errorText?.trim()?.length
+            ? errorText
+            : `Metadata refresh failed (${response.status})`;
+          const stateUpdate: MetadataRefreshState = {
             status: "error",
             error: message,
-            reason: reason ?? null,
-            warnings: null,
+            reason: reasonValue,
             connector: connectorSlug,
-            extras: null,
+            extras: context.extras ?? null,
             updatedAt: Date.now(),
-          });
+          };
+
+          if (Object.prototype.hasOwnProperty.call(context, "warnings")) {
+            stateUpdate.warnings = context.warnings ?? null;
+          }
+
+          updateMetadataRefreshState(stateUpdate);
           return;
         }
 
@@ -1229,26 +1335,49 @@ export function SmartParametersPanel({
         }
 
         if (!result?.success) {
-          const warningsFromServer = toStringArray(result?.warnings);
           if (metadataRefreshAbortRef.current === controller) {
             metadataRefreshAbortRef.current = null;
           }
-          const message =
+
+          const warningsFromServer = toStringArray(result?.warnings);
+          const extrasFromServer = toPlainObject(result?.extras) ?? null;
+          const connectorFromServer =
+            typeof result?.connector === "string" && result.connector.trim().length > 0
+              ? result.connector
+              : connectorSlug;
+
+          const context: { warnings?: string[] | null; extras?: Record<string, any> | null } = {};
+          if (Object.prototype.hasOwnProperty.call(result ?? {}, "warnings")) {
+            context.warnings =
+              warningsFromServer.length > 0 ? warningsFromServer : null;
+          }
+          if (Object.prototype.hasOwnProperty.call(result ?? {}, "extras")) {
+            context.extras = extrasFromServer;
+          }
+
+          const errorValue =
             typeof result?.error === "string" && result.error.trim().length > 0
               ? result.error
               : `Metadata refresh failed (${response.status})`;
-          setMetadataRefreshState({
+
+          if (handleConnectionMissingError(errorValue, context)) {
+            return;
+          }
+
+          const stateUpdate: MetadataRefreshState = {
             status: "error",
-            error: message,
-            reason: reason ?? null,
-            warnings: warningsFromServer.length ? warningsFromServer : null,
-            connector:
-              typeof result?.connector === "string" && result.connector.trim().length > 0
-                ? result.connector
-                : connectorSlug,
-            extras: toPlainObject(result?.extras) ?? null,
+            error: errorValue,
+            reason: reasonValue,
+            connector: connectorFromServer,
+            extras: context.extras ?? null,
             updatedAt: Date.now(),
-          });
+          };
+
+          if (Object.prototype.hasOwnProperty.call(context, "warnings")) {
+            stateUpdate.warnings = context.warnings ?? null;
+          }
+
+          updateMetadataRefreshState(stateUpdate);
           return;
         }
 
@@ -1314,10 +1443,10 @@ export function SmartParametersPanel({
           }
         }
 
-        setMetadataRefreshState({
+        updateMetadataRefreshState({
           status: "success",
           error: null,
-          reason: reason ?? null,
+          reason: reasonValue,
           updatedAt: Date.now(),
           warnings: warningsFromServer.length ? warningsFromServer : null,
           connector:
@@ -1390,18 +1519,24 @@ export function SmartParametersPanel({
         }
         const message =
           error instanceof Error ? error.message : "Failed to refresh metadata";
-        setMetadataRefreshState({
+        updateMetadataRefreshState({
           status: "error",
           error: message,
-          reason: reason ?? null,
-          warnings: null,
+          reason: reasonValue,
           connector: connectorSlug,
           extras: null,
           updatedAt: Date.now(),
         });
       }
     },
-    [node, rf, app, opId],
+    [
+      node,
+      rf,
+      app,
+      opId,
+      toast,
+      updateMetadataRefreshState,
+    ],
   );
 
   // Load schema when node/app/op changes
@@ -2675,6 +2810,17 @@ export function SmartParametersPanel({
             Metadata refresh failed: {metadataRefreshState.error}
           </div>
         )}
+
+      {metadataRefreshState.warnings?.length ? (
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 space-y-1">
+          <div className="font-medium text-amber-800">Metadata warnings</div>
+          <ul className="list-disc pl-4 space-y-1 text-amber-700">
+            {metadataRefreshState.warnings.map((warning, index) => (
+              <li key={`${warning}-${index}`}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {sheetMetadata?.status === "error" && sheetMetadata.error && (
         <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
