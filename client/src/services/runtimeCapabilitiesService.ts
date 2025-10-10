@@ -29,6 +29,8 @@ export interface RuntimeCapabilityOperationStatus extends RuntimeCapabilityCheck
   operationId: string;
   mode: RuntimeCapabilityMode;
   nativeSupported: boolean;
+  appsScriptSupported?: boolean;
+  nodeJsSupported?: boolean;
   fallbackRuntime?: RuntimeKey;
   nativeRuntimes?: RuntimeKey[];
   fallbackRuntimes?: RuntimeKey[];
@@ -444,6 +446,26 @@ const normalizeCapabilityPayload = (raw: unknown): RuntimeCapabilityMap => {
         ? summary.nativeSupported
         : enabledNativeRuntimes.length > 0;
 
+    const nativeRuntimeSet = new Set<RuntimeKey>();
+    nativeRuntimes.forEach((runtimeKey) => nativeRuntimeSet.add(runtimeKey));
+    enabledNativeRuntimes.forEach((runtimeKey) => nativeRuntimeSet.add(runtimeKey));
+    if (resolvedRuntime && availability !== 'fallback') {
+      nativeRuntimeSet.add(resolvedRuntime);
+    }
+
+    const fallbackRuntimeSet = new Set<RuntimeKey>();
+    fallbackRuntimes.forEach((runtimeKey) => fallbackRuntimeSet.add(runtimeKey));
+    enabledFallbackRuntimes.forEach((runtimeKey) => fallbackRuntimeSet.add(runtimeKey));
+    if (fallbackRuntime) {
+      fallbackRuntimeSet.add(fallbackRuntime);
+    }
+    if (availability === 'fallback' && resolvedRuntime) {
+      fallbackRuntimeSet.add(resolvedRuntime);
+    }
+
+    const appsScriptSupported = nativeRuntimeSet.has('appsScript');
+    const nodeJsSupported = nativeRuntimeSet.has('node') || fallbackRuntimeSet.has('node');
+
     const issues = Array.isArray(summary.issues)
       ? (summary.issues as Array<Record<string, any>>).map((issue) => ({
           severity: issue?.severity === 'warning' ? 'warning' : 'error',
@@ -462,6 +484,8 @@ const normalizeCapabilityPayload = (raw: unknown): RuntimeCapabilityMap => {
       normalizedOperationId: normalizedId,
       mode: availability,
       nativeSupported,
+      appsScriptSupported,
+      nodeJsSupported,
       fallbackRuntime,
       nativeRuntimes,
       fallbackRuntimes,
@@ -832,6 +856,7 @@ export interface RuntimeNodeSupportSummary {
   appLabel?: string;
   operationId?: string;
   operationLabel?: string;
+  runtime?: RuntimeKey;
   reason?: RuntimeCapabilityIssue;
   mode?: RuntimeCapabilityMode;
   nativeSupported: boolean;
@@ -967,8 +992,115 @@ const collectOperationCandidates = (
   return values;
 };
 
-export const evaluateAppsScriptSupportForNode = (
+const deriveRuntimeSupportForStatus = (
+  status: RuntimeCapabilityOperationStatus | undefined,
+  runtime: RuntimeKey,
+): { supported: boolean; mode: RuntimeCapabilityMode; nativeSupported: boolean; fallbackRuntime?: RuntimeKey } => {
+  if (!status) {
+    return { supported: true, mode: 'native', nativeSupported: true };
+  }
+
+  const nativeRuntimeSet = new Set<RuntimeKey>(status.enabledNativeRuntimes ?? []);
+  (status.nativeRuntimes ?? []).forEach((runtimeKey) => nativeRuntimeSet.add(runtimeKey));
+  if (status.resolvedRuntime && status.mode !== 'fallback') {
+    nativeRuntimeSet.add(status.resolvedRuntime);
+  }
+
+  const fallbackRuntimeSet = new Set<RuntimeKey>(status.enabledFallbackRuntimes ?? []);
+  (status.fallbackRuntimes ?? []).forEach((runtimeKey) => fallbackRuntimeSet.add(runtimeKey));
+  if (status.fallbackRuntime) {
+    fallbackRuntimeSet.add(status.fallbackRuntime);
+  }
+  if (status.mode === 'fallback' && status.resolvedRuntime) {
+    fallbackRuntimeSet.add(status.resolvedRuntime);
+  }
+
+  if (runtime === 'appsScript') {
+    const appsScriptNative =
+      typeof status.appsScriptSupported === 'boolean'
+        ? status.appsScriptSupported
+        : nativeRuntimeSet.has('appsScript');
+
+    if (appsScriptNative) {
+      return { supported: true, mode: 'native', nativeSupported: true };
+    }
+
+    const fallbackRuntime = fallbackRuntimeSet.has('node')
+      ? ('node' as RuntimeKey)
+      : status.fallbackRuntime && status.fallbackRuntime !== 'appsScript'
+        ? status.fallbackRuntime
+        : undefined;
+
+    return {
+      supported: false,
+      mode: fallbackRuntime ? 'fallback' : 'unavailable',
+      nativeSupported: false,
+      fallbackRuntime,
+    };
+  }
+
+  if (runtime === 'node') {
+    const nodeNative = nativeRuntimeSet.has('node');
+    const nodeSupported =
+      typeof status.nodeJsSupported === 'boolean'
+        ? status.nodeJsSupported
+        : nodeNative || fallbackRuntimeSet.has('node');
+
+    if (nodeSupported) {
+      return {
+        supported: true,
+        mode: nodeNative ? 'native' : 'fallback',
+        nativeSupported: nodeNative,
+        fallbackRuntime: nodeNative ? undefined : ('node' as RuntimeKey),
+      };
+    }
+
+    const fallbackRuntime =
+      status.fallbackRuntime && status.fallbackRuntime !== 'node'
+        ? status.fallbackRuntime
+        : fallbackRuntimeSet.has('node')
+          ? ('node' as RuntimeKey)
+          : undefined;
+
+    return {
+      supported: false,
+      mode: fallbackRuntime ? 'fallback' : 'unavailable',
+      nativeSupported: false,
+      fallbackRuntime,
+    };
+  }
+
+  if (nativeRuntimeSet.has(runtime)) {
+    return { supported: true, mode: 'native', nativeSupported: true };
+  }
+
+  if (fallbackRuntimeSet.has(runtime)) {
+    return {
+      supported: true,
+      mode: 'fallback',
+      nativeSupported: false,
+      fallbackRuntime: runtime,
+    };
+  }
+
+  const fallbackRuntime =
+    fallbackRuntimeSet.has('node')
+      ? ('node' as RuntimeKey)
+      : status.fallbackRuntime && status.fallbackRuntime !== runtime
+        ? status.fallbackRuntime
+        : undefined;
+
+  return {
+    supported: false,
+    mode: fallbackRuntime ? 'fallback' : 'unavailable',
+    nativeSupported: false,
+    fallbackRuntime,
+  };
+};
+
+export const evaluateRuntimeSupportForNode = (
   candidate: RuntimeNodeCandidate,
+  runtime: RuntimeKey,
   options: RuntimeSupportEvaluationOptions = {},
 ): RuntimeNodeSupportSummary => {
   const kind = determineNodeKind(candidate);
@@ -1005,6 +1137,7 @@ export const evaluateAppsScriptSupportForNode = (
       appLabel: resolvedAppLabel,
       operationId: undefined,
       operationLabel: coerceString(data.label) ?? coerceString(data.name) ?? coerceString(data.displayName),
+      runtime,
       reason: undefined,
       mode: 'native',
       nativeSupported: true,
@@ -1029,21 +1162,8 @@ export const evaluateAppsScriptSupportForNode = (
       ) as RuntimeCapabilityOperationStatus)
     : undefined;
 
-  const fallbackMode = fallbackStatus?.mode;
-  const resolvedMode: RuntimeCapabilityMode =
-    capabilityStatus?.mode ??
-    (fallbackMode === 'native' || fallbackMode === 'fallback' || fallbackMode === 'unavailable'
-      ? fallbackMode
-      : undefined) ??
-    ((fallbackStatus?.supported ?? false) ? 'native' : 'unavailable');
-
-  const nativeSupported =
-    capabilityStatus?.nativeSupported ??
-    (typeof fallbackStatus?.nativeSupported === 'boolean'
-      ? fallbackStatus.nativeSupported
-      : resolvedMode === 'native');
-
-  const supported = resolvedMode === 'native' && nativeSupported !== false;
+  const resolvedStatus = capabilityStatus ?? fallbackStatus;
+  const runtimeAssessment = deriveRuntimeSupportForStatus(resolvedStatus, runtime);
 
   const normalizedOperation =
     capabilityStatus?.normalizedOperationId ??
@@ -1056,36 +1176,88 @@ export const evaluateAppsScriptSupportForNode = (
     (normalizedOperation && normalizedOperation !== RUNTIME_WILDCARD ? normalizedOperation : undefined);
 
   return {
-    supported,
+    supported: runtimeAssessment.supported,
     kind,
     appId: normalizedAppId,
     appLabel: resolvedAppLabel ?? normalizedAppId,
     operationId: normalizedOperation,
     operationLabel,
-    reason: capabilityStatus?.issue ?? fallbackStatus?.issue,
-    mode: resolvedMode,
-    nativeSupported,
-    fallbackRuntime: capabilityStatus?.fallbackRuntime ?? fallbackStatus?.fallbackRuntime,
+    runtime,
+    reason: runtimeAssessment.supported ? undefined : capabilityStatus?.issue ?? fallbackStatus?.issue,
+    mode: runtimeAssessment.mode,
+    nativeSupported: runtimeAssessment.nativeSupported,
+    fallbackRuntime: runtimeAssessment.fallbackRuntime ?? capabilityStatus?.fallbackRuntime ?? fallbackStatus?.fallbackRuntime,
   };
+};
+
+export const evaluateAppsScriptSupportForNode = (
+  candidate: RuntimeNodeCandidate,
+  options: RuntimeSupportEvaluationOptions = {},
+): RuntimeNodeSupportSummary => {
+  return evaluateRuntimeSupportForNode(candidate, 'appsScript', options);
+};
+
+type RuntimeGraphCandidate =
+  | RuntimeNodeCandidate[]
+  | { nodes?: RuntimeNodeCandidate[] | null }
+  | null
+  | undefined;
+
+const extractRuntimeNodes = (graph: RuntimeGraphCandidate): RuntimeNodeCandidate[] => {
+  if (!graph) {
+    return [];
+  }
+
+  if (Array.isArray(graph)) {
+    return graph.filter((node): node is RuntimeNodeCandidate => Boolean(node));
+  }
+
+  if (typeof graph === 'object' && 'nodes' in graph) {
+    const nodes = (graph as { nodes?: RuntimeNodeCandidate[] | null }).nodes;
+    return Array.isArray(nodes) ? nodes.filter((node): node is RuntimeNodeCandidate => Boolean(node)) : [];
+  }
+
+  return [];
+};
+
+export const canWorkflowRunInRuntime = (
+  graph: RuntimeGraphCandidate,
+  runtime: RuntimeKey,
+  index: RuntimeCapabilityIndex | null | undefined,
+  options: RuntimeSupportEvaluationOptions = {},
+): RuntimeUnsupportedNodeDetection[] => {
+  const nodes = extractRuntimeNodes(graph);
+  if (nodes.length === 0) {
+    return [];
+  }
+
+  const evaluationOptions: RuntimeSupportEvaluationOptions = {
+    ...options,
+    runtimeCapabilityIndex: index ?? options.runtimeCapabilityIndex,
+  };
+
+  const unsupported: RuntimeUnsupportedNodeDetection[] = [];
+
+  for (const node of nodes) {
+    const support = evaluateRuntimeSupportForNode(node, runtime, evaluationOptions);
+    if (!support.supported) {
+      unsupported.push({ node, support });
+    }
+  }
+
+  return unsupported;
 };
 
 export const findAppsScriptUnsupportedNode = (
   nodes: RuntimeNodeCandidate[] | null | undefined,
   options: RuntimeSupportEvaluationOptions = {},
 ): RuntimeUnsupportedNodeDetection | null => {
-  if (!Array.isArray(nodes) || nodes.length === 0) {
-    return null;
-  }
+  const unsupported = canWorkflowRunInRuntime(
+    Array.isArray(nodes) ? nodes : [],
+    'appsScript',
+    options.runtimeCapabilityIndex ?? null,
+    options,
+  );
 
-  for (const node of nodes) {
-    if (!node) {
-      continue;
-    }
-    const support = evaluateAppsScriptSupportForNode(node, options);
-    if (!support.supported) {
-      return { node, support };
-    }
-  }
-
-  return null;
+  return unsupported.length > 0 ? unsupported[0] : null;
 };
