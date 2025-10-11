@@ -77,11 +77,24 @@ export interface AuthOrganization {
 export class AuthService {
   private db: any;
 
-  constructor() {
-    this.db = db;
-    if (!this.db && process.env.NODE_ENV !== 'development') {
-      throw new Error('Database connection not available');
+  constructor(databaseClient: any = db) {
+    if (!databaseClient) {
+      throw new Error(
+        'AuthService requires an initialized database client. Ensure DATABASE_URL is configured before starting the API.'
+      );
     }
+
+    this.db = databaseClient;
+  }
+
+  private requireDatabase() {
+    if (!this.db) {
+      throw new Error(
+        'AuthService database client is unavailable. Ensure DATABASE_URL is configured before invoking authentication operations.'
+      );
+    }
+
+    return this.db;
   }
 
   /**
@@ -121,7 +134,7 @@ export class AuthService {
       const passwordHash = await EncryptionService.hashPassword(request.password);
 
       // Create user
-      const [newUser] = await this.db.insert(users).values({
+      const [newUser] = await this.requireDatabase().insert(users).values({
         email: request.email.toLowerCase(),
         passwordHash,
         name: request.name,
@@ -246,7 +259,7 @@ export class AuthService {
   public async refreshToken(refreshToken: string): Promise<AuthResponse> {
     try {
       // Find session with refresh token
-      const [session] = await this.db
+      const [session] = await this.requireDatabase()
         .select({
           userId: sessions.userId,
           expiresAt: sessions.expiresAt,
@@ -330,7 +343,7 @@ export class AuthService {
       const payload = EncryptionService.verifyJWT(token);
 
       // Check if session is active
-      const [session] = await this.db
+      const [session] = await this.requireDatabase()
         .select({
           id: sessions.id,
           userId: sessions.userId,
@@ -366,7 +379,7 @@ export class AuthService {
       const activeOrganizationId = authState.activeOrganizationId ?? null;
 
       if (session.organizationId !== activeOrganizationId) {
-        await this.db
+        await this.requireDatabase()
           .update(sessions)
           .set({ organizationId: activeOrganizationId, lastUsed: new Date() })
           .where(eq(sessions.id, session.id));
@@ -386,7 +399,7 @@ export class AuthService {
    * Get user by email
    */
   private async getUserByEmail(email: string): Promise<UserRecord | null> {
-    const [user] = await this.db
+    const [user] = await this.requireDatabase()
       .select()
       .from(users)
       .where(eq(users.email, email.toLowerCase()))
@@ -399,7 +412,7 @@ export class AuthService {
    * Get user by ID
    */
   private async getUserRecordById(userId: string): Promise<UserRecord | null> {
-    const [user] = await this.db
+    const [user] = await this.requireDatabase()
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -417,7 +430,7 @@ export class AuthService {
     expiresAt: Date;
   }> {
     // Get user details for JWT payload
-    const [user] = await this.db
+    const [user] = await this.requireDatabase()
       .select({
         email: users.email,
         role: users.role,
@@ -441,7 +454,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Store session
-    await this.db.insert(sessions).values({
+    await this.requireDatabase().insert(sessions).values({
       userId,
       organizationId: organizationId ?? null,
       token,
@@ -457,7 +470,7 @@ export class AuthService {
    * Update last login timestamp
    */
   private async updateLastLogin(userId: string): Promise<void> {
-    await this.db
+    await this.requireDatabase()
       .update(users)
       .set({
         lastLogin: new Date(),
@@ -470,7 +483,7 @@ export class AuthService {
    * Invalidate session
    */
   private async invalidateSession(token: string): Promise<void> {
-    await this.db
+    await this.requireDatabase()
       .update(sessions)
       .set({
         isActive: false,
@@ -482,7 +495,7 @@ export class AuthService {
    * Update session last used timestamp
    */
   private async updateSessionLastUsed(token: string): Promise<void> {
-    await this.db
+    await this.requireDatabase()
       .update(sessions)
       .set({
         lastUsed: new Date(),
@@ -720,7 +733,7 @@ export class AuthService {
     tokens: number = 0,
     organizationId?: string
   ): Promise<void> {
-    await this.db
+    await this.requireDatabase()
       .update(users)
       .set({
         monthlyApiCalls: users.monthlyApiCalls + apiCalls,

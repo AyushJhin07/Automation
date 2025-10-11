@@ -5,6 +5,7 @@ import { env } from '../env';
 import { EncryptionService } from '../services/EncryptionService';
 import { getErrorMessage } from '../types/common';
 import { connectorDefinitions, db } from '../database/schema';
+import { ensureDatabaseReady, getDatabaseStatus } from '../database/status';
 import { ensureConnectionEncryptionColumns } from '../database/startupGuards';
 import { assertQueueIsReady } from '../services/QueueHealthService';
 import { count } from 'drizzle-orm';
@@ -67,6 +68,25 @@ async function ensureConnectorCatalog(): Promise<void> {
   }
 }
 
+async function ensureDatabaseConnectionReady(): Promise<void> {
+  if (process.env.SKIP_DB_VALIDATION === 'true') {
+    return;
+  }
+
+  if (!db) {
+    throw new Error('Database client is not configured. Set DATABASE_URL before starting the API server.');
+  }
+
+  const available = await ensureDatabaseReady();
+  if (!available) {
+    const status = await getDatabaseStatus();
+    const detail = status.error ? ` ${status.error}` : '';
+    throw new Error(`Database readiness check failed.${detail}`);
+  }
+
+  console.log('✅ Startup check: database connectivity verified.');
+}
+
 async function ensureConnectionsEncryptionSchema(): Promise<void> {
   if (process.env.SKIP_DB_VALIDATION === 'true') {
     return;
@@ -88,6 +108,7 @@ function ensureServerUrl(): void {
 
 export async function runStartupChecks(): Promise<void> {
   await ensureEncryptionReady();
+  await ensureDatabaseConnectionReady();
   await ensureConnectorCatalog();
   await ensureConnectionsEncryptionSchema();
   await ensureQueueReady();
