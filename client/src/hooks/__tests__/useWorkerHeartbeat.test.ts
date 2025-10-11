@@ -168,4 +168,38 @@ describe('useWorkerHeartbeat fallback handling', () => {
 
     expect(result.current.environmentWarnings).toHaveLength(3);
   });
+
+  it('treats inline workers as healthy when running with the in-memory queue driver', async () => {
+    authFetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          executionWorker: {
+            started: true,
+            inlineWorkerActive: true,
+            queueDriver: 'inmemory',
+            worker: {
+              id: 'inline-worker',
+              inline: true,
+            },
+            metrics: { queueDepths: {} },
+          },
+          scheduler: {},
+          queue: { status: 'pass', durable: false, message: 'In-memory queue driver active' },
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useWorkerHeartbeat({ poll: false }));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.workers).toHaveLength(1);
+    expect(result.current.workers[0].name).toBe('Inline execution worker');
+    expect(result.current.workers[0].heartbeatAt).toBeUndefined();
+    expect(result.current.summary.hasExecutionWorker).toBe(true);
+    expect(result.current.summary.healthyWorkers).toBe(1);
+  });
 });

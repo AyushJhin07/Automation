@@ -107,6 +107,7 @@ type ExecutionQueueTelemetrySnapshot = {
   started: boolean;
   databaseEnabled: boolean;
   queueDriver: string;
+  inlineWorkerActive: boolean;
   queueHealth: QueueHealthStatus | null;
   worker: {
     id: string | null;
@@ -118,6 +119,7 @@ type ExecutionQueueTelemetrySnapshot = {
     lockRenewTimeMs: number;
     heartbeatIntervalMs: number;
     heartbeatTimeoutMs: number;
+    inline: boolean;
   };
   leases: {
     count: number;
@@ -322,6 +324,9 @@ class ExecutionQueueService {
   public getTelemetrySnapshot(): ExecutionQueueTelemetrySnapshot {
     const queueDepths = getQueueDepthSnapshot();
     const queueHealth = getQueueHealthSnapshot();
+    const queueDriver = getActiveQueueDriver();
+    const inlineWorkerEnabled = this.isInlineWorkerEnabled();
+    const inlineWorkerActive = inlineWorkerEnabled && this.started && Boolean(this.worker);
     const leases: ExecutionLeaseTelemetry[] = Array.from(this.activeLeases.entries()).map(
       ([executionId, entry]) => {
         const leaseMetadata = (entry.metadata.lease ?? {}) as Record<string, any>;
@@ -355,7 +360,8 @@ class ExecutionQueueService {
     return {
       started: this.started,
       databaseEnabled: this.isDbEnabled(),
-      queueDriver: getActiveQueueDriver(),
+      queueDriver,
+      inlineWorkerActive,
       queueHealth,
       worker: {
         id: this.worker?.id ?? null,
@@ -367,6 +373,7 @@ class ExecutionQueueService {
         lockRenewTimeMs: this.lockRenewTimeMs,
         heartbeatIntervalMs: this.heartbeatIntervalMs,
         heartbeatTimeoutMs: this.heartbeatTimeoutMs,
+        inline: inlineWorkerEnabled,
       },
       leases: {
         count: leases.length,

@@ -872,10 +872,10 @@ describe("ProfessionalGraphEditor validation gating", () => {
   });
 
   it('disables the run button when worker telemetry reports no active workers', async () => {
-  workerHeartbeatMock.mockReturnValue({
-    workers: [],
-    environmentWarnings: [],
-    summary: {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [],
+      environmentWarnings: [],
+      summary: {
       totalWorkers: 0,
       healthyWorkers: 0,
       staleWorkers: 0,
@@ -913,5 +913,57 @@ describe("ProfessionalGraphEditor validation gating", () => {
         screen.getByText('Start the execution worker and scheduler processes to run workflows.')
       ).toBeInTheDocument();
     });
+  });
+
+  it('enables workflow actions when inline worker telemetry reports an active worker', async () => {
+    workerHeartbeatMock.mockReturnValue({
+      workers: [
+        {
+          id: 'inline-worker',
+          name: 'Inline execution worker',
+          queueDepth: 0,
+          heartbeatAt: undefined,
+          secondsSinceHeartbeat: null,
+          isHeartbeatStale: false,
+        },
+      ],
+      environmentWarnings: [],
+      summary: {
+        totalWorkers: 1,
+        healthyWorkers: 1,
+        staleWorkers: 0,
+        totalQueueDepth: 0,
+        maxQueueDepth: 0,
+        hasExecutionWorker: true,
+        schedulerHealthy: true,
+        timerHealthy: true,
+        usesPublicHeartbeat: false,
+        queueStatus: null,
+        queueDurable: null,
+        queueMessage: null,
+      },
+      scheduler: null,
+      queue: { inlineWorkerActive: true, queueDriver: 'inmemory', workerStarted: true },
+      source: 'admin',
+      lastUpdated: new Date().toISOString(),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const { default: ProfessionalGraphEditor } = await loadEditor();
+    render(<ProfessionalGraphEditor />);
+
+    const runButton = await findRunButton();
+    const validateButton = await findValidateButton();
+
+    await waitFor(() => {
+      expect(runButton).not.toBeDisabled();
+      expect(validateButton).not.toBeDisabled();
+    });
+
+    expect(
+      screen.queryByText('Start the execution worker and scheduler processes to run workflows.')
+    ).not.toBeInTheDocument();
   });
 });

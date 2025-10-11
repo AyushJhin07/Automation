@@ -254,13 +254,16 @@ const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): Norma
       ? ((rootPayload as Record<string, any>).scheduler as Record<string, any> | null)
       : null;
 
-  const queue =
+  const queueRaw =
     rootPayload &&
     typeof rootPayload === 'object' &&
     !Array.isArray(rootPayload) &&
     'queue' in (rootPayload as Record<string, unknown>)
       ? ((rootPayload as Record<string, any>).queue as Record<string, any> | null)
       : null;
+
+  let queueDetails: Record<string, any> | null =
+    queueRaw && typeof queueRaw === 'object' ? { ...(queueRaw as Record<string, any>) } : null;
 
   const rawWarnings = Array.isArray(executionTelemetry?.environmentWarnings)
     ? executionTelemetry.environmentWarnings
@@ -272,11 +275,33 @@ const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): Norma
 
   let list: WorkerStatus[] = [];
 
+  let inlineWorkerActive = false;
+  let workerStarted = false;
+  let queueDriver: string | null = null;
+
   if (executionTelemetry && typeof executionTelemetry === 'object') {
-    const queueDepths = (executionTelemetry as any)?.metrics?.queueDepths ?? {};
+    const telemetryRecord = executionTelemetry as Record<string, any>;
+    const metrics = telemetryRecord?.metrics ?? {};
+    const queueDepths = metrics?.queueDepths ?? {};
     const totalQueueDepth = computeTotalQueueDepth(queueDepths);
 
-    const heartbeat = (executionTelemetry as any)?.lastObservedHeartbeat;
+    const workerMetadata =
+      telemetryRecord.worker && typeof telemetryRecord.worker === 'object'
+        ? (telemetryRecord.worker as Record<string, any>)
+        : {};
+
+    queueDriver =
+      typeof telemetryRecord.queueDriver === 'string'
+        ? telemetryRecord.queueDriver.toLowerCase()
+        : null;
+    workerStarted = Boolean(telemetryRecord.started);
+
+    const inlineConfigured = Boolean(workerMetadata?.inline);
+    inlineWorkerActive =
+      Boolean(telemetryRecord.inlineWorkerActive) ||
+      (workerStarted && (inlineConfigured || queueDriver === 'inmemory' || queueDriver === 'mock'));
+
+    const heartbeat = telemetryRecord?.lastObservedHeartbeat;
     if (heartbeat && typeof heartbeat.heartbeatAt === 'string') {
       const workerEntry = normalizeWorker(
         {
@@ -301,6 +326,35 @@ const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): Norma
       queueEntry.isHeartbeatStale = true;
       list = [queueEntry];
     }
+
+    if (!list.length && inlineWorkerActive) {
+      const inlineWorkerId =
+        typeof workerMetadata?.id === 'string' && workerMetadata.id.length > 0
+          ? workerMetadata.id
+          : 'execution-worker';
+      const inlineHeartbeatCandidate = (() => {
+        if (typeof workerMetadata?.heartbeatAt === 'string') {
+          return workerMetadata.heartbeatAt;
+        }
+        if (typeof workerMetadata?.lastHeartbeatAt === 'string') {
+          return workerMetadata.lastHeartbeatAt;
+        }
+        const heartbeatRecord = telemetryRecord?.lastObservedHeartbeat;
+        return typeof heartbeatRecord?.heartbeatAt === 'string' ? heartbeatRecord.heartbeatAt : null;
+      })();
+
+      const workerEntry = normalizeWorker(
+        {
+          id: inlineWorkerId,
+          name: 'Inline execution worker',
+          queueDepth: totalQueueDepth,
+          heartbeatAt: inlineHeartbeatCandidate,
+        },
+        0,
+      );
+      workerEntry.queueDepth = totalQueueDepth;
+      list = [workerEntry];
+    }
   }
 
   if (!list.length) {
@@ -320,11 +374,23 @@ const normalizeAdminWorkerStatus = (payload: Record<string, any> | any[]): Norma
     }
   }
 
+  if (queueDetails) {
+    queueDetails.inlineWorkerActive = inlineWorkerActive;
+    queueDetails.queueDriver = queueDriver;
+    queueDetails.workerStarted = workerStarted;
+  } else if (inlineWorkerActive || queueDriver || workerStarted) {
+    queueDetails = {
+      inlineWorkerActive,
+      queueDriver,
+      workerStarted,
+    };
+  }
+
   return {
     workers: list,
     environmentWarnings: normalizedWarnings,
     scheduler,
-    queue,
+    queue: queueDetails ?? queueRaw,
     source: 'admin',
   };
 };
@@ -337,6 +403,11 @@ const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): No
   const queueDepths = (payload as any).queueDepths ?? {};
   const totalQueueDepth = computeTotalQueueDepth(queueDepths);
   const workerPayload = (payload as any).worker ?? {};
+  const queueDriver =
+    typeof (payload as any).queueDriver === 'string'
+      ? String((payload as any).queueDriver).toLowerCase()
+      : null;
+  const workerStarted = Boolean((payload as any).workerStarted ?? (payload as any).started);
   const worker = normalizeWorker(
     {
       id: workerPayload?.id ?? 'execution-worker',
@@ -381,6 +452,11 @@ const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): No
     });
   }
 
+  const inlineWorkerActive =
+    Boolean((payload as any).inlineWorkerActive) ||
+    Boolean(workerPayload?.inline) ||
+    (workerStarted && (queueDriver === 'inmemory' || queueDriver === 'mock'));
+
   const rawQueueHealth = (payload as any).queueHealth ?? null;
   const queueHealth =
     rawQueueHealth && typeof rawQueueHealth === 'object'
@@ -397,6 +473,9 @@ const normalizeQueueHeartbeatPayload = (payload: Record<string, any> | null): No
     queueDepths,
     queueHealth,
     leases: Array.isArray((payload as any).leases) ? (payload as any).leases : [],
+    inlineWorkerActive,
+    queueDriver,
+    workerStarted,
   };
 
   return {
@@ -504,7 +583,14 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
   }, [fetchStatus, poll, intervalMs]);
 
   const summary = useMemo<WorkerHeartbeatSummary>(() => {
-    const queueHealth = queueTelemetry?.queueHealth ?? null;
+    const queueInfo = (queueTelemetry ?? {}) as Record<string, any>;
+    const queueDriver =
+      typeof queueInfo.queueDriver === 'string' ? String(queueInfo.queueDriver).toLowerCase() : null;
+    const inlineWorkerActive =
+      Boolean(queueInfo.inlineWorkerActive) ||
+      (Boolean(queueInfo.workerStarted) && (queueDriver === 'inmemory' || queueDriver === 'mock'));
+
+    const queueHealth = queueInfo.queueHealth ?? null;
     const queueStatus =
       queueHealth && typeof queueHealth.status === 'string'
         ? (queueHealth.status as 'pass' | 'warn' | 'fail')
@@ -524,7 +610,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
         staleWorkers: 0,
         totalQueueDepth: 0,
         maxQueueDepth: 0,
-        hasExecutionWorker: false,
+        hasExecutionWorker: inlineWorkerActive,
         schedulerHealthy,
         timerHealthy,
         usesPublicHeartbeat: source === 'public',
@@ -546,7 +632,7 @@ export function useWorkerHeartbeat(options: UseWorkerHeartbeatOptions = {}): Wor
       staleWorkers,
       totalQueueDepth: totalQueue,
       maxQueueDepth: maxQueue,
-      hasExecutionWorker: healthyWorkers > 0,
+      hasExecutionWorker: healthyWorkers > 0 || inlineWorkerActive,
       schedulerHealthy,
       timerHealthy,
       usesPublicHeartbeat: source === 'public',
