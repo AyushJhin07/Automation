@@ -9,7 +9,6 @@ import {
   OrganizationUsageMetrics,
 } from '../database/schema';
 import { EncryptionService } from './EncryptionService';
-import { JWTPayload } from '../types/common';
 import { organizationService, OrganizationContext } from './OrganizationService';
 import { getPermissionsForRole, Permission } from '../../configs/rbac';
 
@@ -74,14 +73,45 @@ export interface AuthOrganization {
   usage: OrganizationUsageMetrics;
 }
 
-export class AuthService {
-  private db: any;
+class AuthServiceDatabaseUnavailableError extends Error {
+  public readonly code: 'DATABASE_UNAVAILABLE';
+  public readonly statusCode: number;
 
-  constructor() {
-    this.db = db;
-    if (!this.db && process.env.NODE_ENV !== 'development') {
-      throw new Error('Database connection not available');
+  constructor(message = 'Database connection not available. Set DATABASE_URL before starting the server.') {
+    super(message);
+    this.name = 'AuthServiceDatabaseUnavailableError';
+    this.code = 'DATABASE_UNAVAILABLE';
+    this.statusCode = 503;
+  }
+}
+
+type DatabaseClient = typeof db;
+
+export class AuthService {
+  private readonly databaseClient: DatabaseClient | null;
+
+  constructor(databaseClient: DatabaseClient | null = db) {
+    if (!databaseClient) {
+      throw new AuthServiceDatabaseUnavailableError();
     }
+
+    this.databaseClient = databaseClient;
+  }
+
+  private getDb(): DatabaseClient {
+    if (!this.databaseClient) {
+      throw new AuthServiceDatabaseUnavailableError();
+    }
+
+    return this.databaseClient;
+  }
+
+  private handleDatabaseError(error: unknown, fallbackMessage: string): AuthResponse {
+    if (error instanceof AuthServiceDatabaseUnavailableError) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: false, error: fallbackMessage };
   }
 
   /**
@@ -121,7 +151,8 @@ export class AuthService {
       const passwordHash = await EncryptionService.hashPassword(request.password);
 
       // Create user
-      const [newUser] = await this.db.insert(users).values({
+      const database = this.getDb();
+      const [newUser] = await database.insert(users).values({
         email: request.email.toLowerCase(),
         passwordHash,
         name: request.name,
@@ -164,10 +195,7 @@ export class AuthService {
 
     } catch (error) {
       console.error('❌ Registration error:', error);
-      return {
-        success: false,
-        error: 'Registration failed. Please try again.'
-      };
+      return this.handleDatabaseError(error, 'Registration failed. Please try again.');
     }
   }
 
@@ -233,10 +261,7 @@ export class AuthService {
 
     } catch (error) {
       console.error('❌ Login error:', error);
-      return {
-        success: false,
-        error: 'Login failed. Please try again.'
-      };
+      return this.handleDatabaseError(error, 'Login failed. Please try again.');
     }
   }
 
@@ -246,7 +271,8 @@ export class AuthService {
   public async refreshToken(refreshToken: string): Promise<AuthResponse> {
     try {
       // Find session with refresh token
-      const [session] = await this.db
+      const database = this.getDb();
+      const [session] = await database
         .select({
           userId: sessions.userId,
           expiresAt: sessions.expiresAt,
@@ -301,10 +327,7 @@ export class AuthService {
 
     } catch (error) {
       console.error('❌ Token refresh error:', error);
-      return {
-        success: false,
-        error: 'Token refresh failed'
-      };
+      return this.handleDatabaseError(error, 'Token refresh failed');
     }
   }
 
@@ -317,6 +340,9 @@ export class AuthService {
       return true;
     } catch (error) {
       console.error('❌ Logout error:', error);
+      if (error instanceof AuthServiceDatabaseUnavailableError) {
+        throw error;
+      }
       return false;
     }
   }
@@ -330,7 +356,8 @@ export class AuthService {
       const payload = EncryptionService.verifyJWT(token);
 
       // Check if session is active
-      const [session] = await this.db
+      const database = this.getDb();
+      const [session] = await database
         .select({
           id: sessions.id,
           userId: sessions.userId,
@@ -366,7 +393,7 @@ export class AuthService {
       const activeOrganizationId = authState.activeOrganizationId ?? null;
 
       if (session.organizationId !== activeOrganizationId) {
-        await this.db
+        await database
           .update(sessions)
           .set({ organizationId: activeOrganizationId, lastUsed: new Date() })
           .where(eq(sessions.id, session.id));
@@ -378,6 +405,9 @@ export class AuthService {
 
     } catch (error) {
       console.error('❌ Token verification error:', error);
+      if (error instanceof AuthServiceDatabaseUnavailableError) {
+        throw error;
+      }
       return null;
     }
   }
@@ -386,7 +416,8 @@ export class AuthService {
    * Get user by email
    */
   private async getUserByEmail(email: string): Promise<UserRecord | null> {
-    const [user] = await this.db
+    const database = this.getDb();
+    const [user] = await database
       .select()
       .from(users)
       .where(eq(users.email, email.toLowerCase()))
@@ -399,7 +430,8 @@ export class AuthService {
    * Get user by ID
    */
   private async getUserRecordById(userId: string): Promise<UserRecord | null> {
-    const [user] = await this.db
+    const database = this.getDb();
+    const [user] = await database
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -417,7 +449,8 @@ export class AuthService {
     expiresAt: Date;
   }> {
     // Get user details for JWT payload
-    const [user] = await this.db
+    const database = this.getDb();
+    const [user] = await database
       .select({
         email: users.email,
         role: users.role,
@@ -441,7 +474,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Store session
-    await this.db.insert(sessions).values({
+    const database = this.getDb();
+    await database.insert(sessions).values({
       userId,
       organizationId: organizationId ?? null,
       token,
@@ -457,7 +491,8 @@ export class AuthService {
    * Update last login timestamp
    */
   private async updateLastLogin(userId: string): Promise<void> {
-    await this.db
+    const database = this.getDb();
+    await database
       .update(users)
       .set({
         lastLogin: new Date(),
@@ -470,7 +505,8 @@ export class AuthService {
    * Invalidate session
    */
   private async invalidateSession(token: string): Promise<void> {
-    await this.db
+    const database = this.getDb();
+    await database
       .update(sessions)
       .set({
         isActive: false,
@@ -482,7 +518,8 @@ export class AuthService {
    * Update session last used timestamp
    */
   private async updateSessionLastUsed(token: string): Promise<void> {
-    await this.db
+    const database = this.getDb();
+    await database
       .update(sessions)
       .set({
         lastUsed: new Date(),
@@ -491,10 +528,6 @@ export class AuthService {
   }
 
   private async getOrganizationsForUser(user: UserRecord): Promise<OrganizationContext[]> {
-    if (!db) {
-      return [];
-    }
-
     const organizations = await organizationService.listUserOrganizations(user.id);
     if (organizations.length === 0) {
       const created = await organizationService.createOrganizationForUser({
@@ -707,6 +740,9 @@ export class AuthService {
       return { hasQuota: true, quotaExceeded: null, limit, remaining };
     } catch (error) {
       console.error('❌ Failed to check quota:', error);
+      if (error instanceof AuthServiceDatabaseUnavailableError) {
+        throw error;
+      }
       return { hasQuota: false, quotaExceeded: null };
     }
   }
@@ -720,7 +756,9 @@ export class AuthService {
     tokens: number = 0,
     organizationId?: string
   ): Promise<void> {
-    await this.db
+    const database = this.getDb();
+
+    await database
       .update(users)
       .set({
         monthlyApiCalls: users.monthlyApiCalls + apiCalls,

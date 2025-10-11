@@ -67,6 +67,12 @@ async function ensureConnectorCatalog(): Promise<void> {
   }
 }
 
+function assertDatabaseConnection(): void {
+  if (!db) {
+    throw new Error('Database connection not available. Set DATABASE_URL before starting the server.');
+  }
+}
+
 async function ensureConnectionsEncryptionSchema(): Promise<void> {
   if (process.env.SKIP_DB_VALIDATION === 'true') {
     return;
@@ -87,6 +93,7 @@ function ensureServerUrl(): void {
 }
 
 export async function runStartupChecks(): Promise<void> {
+  assertDatabaseConnection();
   await ensureEncryptionReady();
   await ensureConnectorCatalog();
   await ensureConnectionsEncryptionSchema();

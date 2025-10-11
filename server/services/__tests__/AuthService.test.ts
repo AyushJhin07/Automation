@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 
-process.env.NODE_ENV = 'development';
+process.env.NODE_ENV = 'test';
 
-const { AuthService } = await import('../AuthService.js');
-const { users } = await import('../../database/schema.js');
+const { users, setDatabaseClientForTests } = await import('../../database/schema.js');
 
 interface MockUserRecord {
   id: string;
@@ -69,8 +68,11 @@ function mapSelection(record: MockUserRecord, selection?: Record<string, unknown
   return result;
 }
 
-const authService = new AuthService();
-(authService as any).db = mockDb;
+setDatabaseClientForTests(mockDb as any);
+
+const { AuthService } = await import('../AuthService.js');
+
+const authService = new AuthService(mockDb as any);
 (authService as any).getUserByEmail = async (email: string) => {
   return mockUsers.find((user) => user.email === email.toLowerCase()) ?? null;
 };
@@ -104,3 +106,5 @@ assert.equal(login.user?.emailVerified, false, 'login response reflects verifica
 assert.ok(login.token, 'login returns an access token');
 
 console.log('AuthService register/login keep emailVerified defaults intact.');
+
+setDatabaseClientForTests(null as any);
