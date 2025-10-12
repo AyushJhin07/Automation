@@ -44,6 +44,9 @@ var __SECRET_HELPER_OVERRIDES =
     : {};
 var __SECRET_VAULT_EXPORT_CACHE = null;
 var __SECRET_VAULT_EXPORT_PARSED = false;
+var __APPS_SCRIPT_SECRET_PREFIX = 'AS1.';
+var __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES = null;
+var __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES = null;
 
 function __coerceSecretArray(value) {
   if (!value) {
@@ -94,6 +97,175 @@ function __loadVaultExports() {
   }
 
   return __SECRET_VAULT_EXPORT_CACHE;
+}
+
+function __stringToBytes(value) {
+  return Utilities.newBlob(value || '', 'text/plain').getBytes();
+}
+
+function __ensureSecretConstants() {
+  if (!__APPS_SCRIPT_SECRET_STREAM_INFO_BYTES) {
+    __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES = __stringToBytes('apps-script-secret-stream-v1');
+  }
+  if (!__APPS_SCRIPT_SECRET_METADATA_INFO_BYTES) {
+    __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES = __stringToBytes('apps-script-secret-metadata-v1');
+  }
+}
+
+function __concatByteArrays(chunks) {
+  var total = 0;
+  for (var i = 0; i < chunks.length; i++) {
+    var chunk = chunks[i];
+    if (chunk && chunk.length) {
+      total += chunk.length;
+    }
+  }
+  var result = new Array(total);
+  var offset = 0;
+  for (var j = 0; j < chunks.length; j++) {
+    var segment = chunks[j];
+    if (!segment) {
+      continue;
+    }
+    for (var k = 0; k < segment.length; k++) {
+      result[offset++] = segment[k];
+    }
+  }
+  return result;
+}
+
+function __numberToUint32Bytes(value) {
+  return [
+    (value >>> 24) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 8) & 0xff,
+    value & 0xff,
+  ];
+}
+
+function __bytesToHex(bytes) {
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) {
+    var piece = (bytes[i] & 0xff).toString(16);
+    if (piece.length < 2) {
+      piece = '0' + piece;
+    }
+    hex += piece;
+  }
+  return hex;
+}
+
+function __bytesToString(bytes) {
+  return Utilities.newBlob(bytes, 'application/octet-stream').getDataAsString('utf-8');
+}
+
+function __constantTimeEqualsHex(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) {
+    return false;
+  }
+  var result = 0;
+  for (var i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+function __deriveSecretKeystream(sharedKeyBytes, ivBytes, length) {
+  __ensureSecretConstants();
+  var blockSize = 32;
+  var blocks = Math.ceil(length / blockSize);
+  var output = new Array(blocks * blockSize);
+
+  for (var i = 0; i < blocks; i++) {
+    var counterBytes = __numberToUint32Bytes(i);
+    var digest = Utilities.computeHmacSha256(
+      __concatByteArrays([ivBytes, counterBytes, __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES]),
+      sharedKeyBytes
+    );
+    for (var j = 0; j < digest.length; j++) {
+      output[i * blockSize + j] = digest[j];
+    }
+  }
+
+  output.length = length;
+  return output;
+}
+
+function __decodeAppsScriptSecret(value) {
+  if (typeof value !== 'string' || value.indexOf(__APPS_SCRIPT_SECRET_PREFIX) !== 0) {
+    return null;
+  }
+
+  var encoded = value.substring(__APPS_SCRIPT_SECRET_PREFIX.length);
+  var tokenBytes = Utilities.base64Decode(encoded);
+  var tokenJson = __bytesToString(tokenBytes);
+  var token;
+
+  try {
+    token = JSON.parse(tokenJson);
+  } catch (error) {
+    throw new Error('Failed to parse sealed credential token: ' + error);
+  }
+
+  if (!token || typeof token !== 'object' || token.version !== 1) {
+    throw new Error('Unrecognized sealed credential token format.');
+  }
+
+  var now = Date.now();
+  if (typeof token.expiresAt === 'number' && now > token.expiresAt) {
+    throw new Error('Credential token for ' + (token.purpose || 'credential') + ' has expired.');
+  }
+
+  var sharedKeyBytes = Utilities.base64Decode(token.sharedKey);
+  var ivBytes = Utilities.base64Decode(token.iv);
+  var ciphertextBytes = Utilities.base64Decode(token.ciphertext);
+
+  __ensureSecretConstants();
+  var macInput = __concatByteArrays([
+    __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES,
+    ivBytes,
+    ciphertextBytes,
+    __stringToBytes(String(token.issuedAt)),
+    __stringToBytes(String(token.expiresAt)),
+    __stringToBytes(token.purpose || ''),
+  ]);
+
+  var macBytes = Utilities.computeHmacSha256(macInput, sharedKeyBytes);
+  var macHex = __bytesToHex(macBytes);
+  if (!__constantTimeEqualsHex(macHex, token.hmac)) {
+    throw new Error('Credential token integrity check failed for ' + (token.purpose || 'credential') + '.');
+  }
+
+  var keystream = __deriveSecretKeystream(sharedKeyBytes, ivBytes, ciphertextBytes.length);
+  var plaintextBytes = new Array(ciphertextBytes.length);
+  for (var i = 0; i < ciphertextBytes.length; i++) {
+    plaintextBytes[i] = ciphertextBytes[i] ^ keystream[i];
+  }
+
+  var payloadString = __bytesToString(plaintextBytes);
+  var sealedPayload;
+  try {
+    sealedPayload = JSON.parse(payloadString);
+  } catch (error) {
+    throw new Error('Failed to decode sealed credential payload: ' + error);
+  }
+
+  if (
+    !sealedPayload ||
+    typeof sealedPayload !== 'object' ||
+    sealedPayload.issuedAt !== token.issuedAt ||
+    sealedPayload.expiresAt !== token.expiresAt ||
+    (sealedPayload.purpose || null) !== (token.purpose || null)
+  ) {
+    throw new Error('Credential token metadata mismatch for ' + (token.purpose || 'credential') + '.');
+  }
+
+  return {
+    payload: sealedPayload.payload,
+    issuedAt: token.issuedAt,
+    expiresAt: token.expiresAt,
+    purpose: token.purpose || null,
+  };
 }
 
 function getSecret(propertyName, opts) {
@@ -216,6 +388,21 @@ function getSecret(propertyName, opts) {
       resolvedKey: resolvedKey,
       source: source
     });
+  }
+
+  if (typeof value === 'string') {
+    var sealed = __decodeAppsScriptSecret(value);
+    if (sealed) {
+      if (options.logResolved) {
+        logInfo('sealed_secret_validated', {
+          property: key,
+          connector: connectorKey || null,
+          purpose: sealed.purpose,
+          expiresAt: new Date(sealed.expiresAt).toISOString(),
+        });
+      }
+      value = sealed.payload;
+    }
   }
 
   return value;
