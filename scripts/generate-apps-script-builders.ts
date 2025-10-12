@@ -2,13 +2,25 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  pollingTriggerTemplate,
+  restPostActionTemplate,
+  retryableFetchActionTemplate,
+  todoTemplate,
+  webhookReplyTemplate,
+  type PollingTriggerTemplateMetadata,
+  type RestPostTemplateMetadata,
+  type RetryableFetchTemplateMetadata,
+  type TodoTemplateMetadata,
+  type WebhookReplyTemplateMetadata,
+} from '../server/workflow/apps-script-templates.ts';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..');
 
 const CONNECTOR_MANIFEST_PATH = resolve(projectRoot, 'server', 'connector-manifest.json');
 const OUTPUT_PATH = resolve(projectRoot, 'server', 'workflow', 'realOps.generated.ts');
-const BACKLOG_REFERENCE = 'docs/apps-script-rollout/backlog.md';
 
 interface ManifestConnectorEntry {
   id?: string;
@@ -16,9 +28,35 @@ interface ManifestConnectorEntry {
   definitionPath?: string;
 }
 
+interface ConnectorAuthentication {
+  type?: string | null;
+}
+
+interface ConnectorActionDefinition {
+  id?: string | null;
+  method?: string | null;
+  endpoint?: string | null;
+  parameters?: { properties?: Record<string, any> } | null;
+  outputSchema?: Record<string, any> | null;
+  sample?: Record<string, any> | null;
+}
+
+interface ConnectorTriggerDefinition {
+  id?: string | null;
+  type?: string | null;
+  method?: string | null;
+  endpoint?: string | null;
+  dedupe?: { cursor?: string | null } | null;
+  parameters?: { properties?: Record<string, any> } | null;
+  outputSchema?: Record<string, any> | null;
+  sample?: Record<string, any> | null;
+}
+
 interface ConnectorDefinition {
-  actions?: Array<{ id?: string | null }>;
-  triggers?: Array<{ id?: string | null }>;
+  baseUrl?: string | null;
+  authentication?: ConnectorAuthentication | null;
+  actions?: ConnectorActionDefinition[];
+  triggers?: ConnectorTriggerDefinition[];
 }
 
 type OperationType = 'action' | 'trigger';
@@ -67,7 +105,91 @@ function buildFunctionName(type: OperationType, connectorId: string, operationId
   return `${prefix}_${raw}`;
 }
 
-function buildOperationStub(
+const PAGINATION_PARAM_HINTS = [
+  'cursor',
+  'page',
+  'page_size',
+  'pagesize',
+  'page_number',
+  'page_token',
+  'pagetoken',
+  'next_token',
+  'nexttoken',
+  'offset',
+  'starting_after',
+  'ending_before',
+  'limit',
+];
+
+function deriveBaseUrl(connector: ConnectorDefinition): string | null {
+  const candidateKeys = ['baseUrl', 'baseURL', 'apiUrl', 'apiURL', 'restUrl'];
+  for (const key of candidateKeys) {
+    const value = (connector as Record<string, any>)[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function normalizeMethod(method: string | null | undefined): string | null {
+  if (!method || typeof method !== 'string') {
+    return null;
+  }
+  const normalized = method.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function collectKeys(source: unknown, depth = 0, target: Set<string> = new Set()): Set<string> {
+  if (!source || depth > 4) {
+    return target;
+  }
+  if (Array.isArray(source)) {
+    source.forEach(entry => collectKeys(entry, depth + 1, target));
+    return target;
+  }
+  if (typeof source !== 'object') {
+    return target;
+  }
+  for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+    target.add(key);
+    collectKeys(value, depth + 1, target);
+  }
+  return target;
+}
+
+function detectPaginationParam(definition: ConnectorActionDefinition | ConnectorTriggerDefinition): string | null {
+  const parameterKeys = Object.keys(definition?.parameters?.properties ?? {});
+  for (const key of parameterKeys) {
+    const normalized = key.toLowerCase();
+    if (PAGINATION_PARAM_HINTS.includes(normalized)) {
+      return key;
+    }
+  }
+
+  const outputKeys = collectKeys(definition?.outputSchema ?? {});
+  const sampleKeys = collectKeys(definition?.sample ?? {});
+  const combined = new Set<string>([...outputKeys, ...sampleKeys]);
+  for (const key of combined) {
+    const normalized = key.toLowerCase();
+    if (normalized.includes('next_cursor')) {
+      return 'cursor';
+    }
+    if (normalized.includes('nextpagetoken') || normalized.includes('next_page_token')) {
+      return 'pageToken';
+    }
+    if (normalized.includes('nexttoken') || normalized.includes('next_token')) {
+      return 'nextToken';
+    }
+    if (normalized.includes('offset')) {
+      return 'offset';
+    }
+  }
+
+  return null;
+}
+
+function buildTodoOperation(
   type: OperationType,
   connectorId: string,
   operationId: string
@@ -75,21 +197,139 @@ function buildOperationStub(
   const key = buildOperationKey(type, connectorId, operationId);
   const functionName = buildFunctionName(type, connectorId, operationId);
   const backlogTag = `APPS_SCRIPT_BACKLOG#${connectorId}`;
-  const lines = [
-    `function ${functionName}(ctx) {`,
-    `  // TODO(${backlogTag}): Implement ${key} Apps Script handler.`,
-    `  logWarn('apps_script_builder_todo', { connector: '${encodeSingleQuoted(connectorId)}', operation: '${encodeSingleQuoted(key)}' });`,
-    `  throw new Error('TODO[apps-script-backlog]: Implement ${key}. See ${BACKLOG_REFERENCE}.');`,
-    `}`,
-  ];
+  const metadata: TodoTemplateMetadata = {
+    key,
+    functionName,
+    connectorId,
+    operationId,
+    backlogTag,
+  };
 
   return {
     key,
     connectorId,
     operationId,
     type,
-    code: lines.join('\n'),
+    code: todoTemplate(metadata),
   };
+}
+
+function buildActionOperation(
+  connectorId: string,
+  operationId: string,
+  connector: ConnectorDefinition,
+  action: ConnectorActionDefinition
+): GeneratedOperation {
+  const key = buildOperationKey('action', connectorId, operationId);
+  const functionName = buildFunctionName('action', connectorId, operationId);
+  const method = normalizeMethod(action?.method) ?? 'GET';
+  const endpoint = typeof action?.endpoint === 'string' ? action.endpoint.trim() : '';
+  const baseUrl = deriveBaseUrl(connector);
+  const authType = connector.authentication?.type ?? null;
+  const paginationParam = detectPaginationParam(action);
+
+  if (endpoint && baseUrl && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const metadata: RestPostTemplateMetadata = {
+      key,
+      functionName,
+      connectorId,
+      operationId,
+      method,
+      baseUrl,
+      endpoint,
+      authType,
+      hasPagination: false,
+    };
+    return {
+      key,
+      connectorId,
+      operationId,
+      type: 'action',
+      code: restPostActionTemplate(metadata),
+    };
+  }
+
+  if (endpoint && baseUrl) {
+    const metadata: RetryableFetchTemplateMetadata = {
+      key,
+      functionName,
+      connectorId,
+      operationId,
+      method,
+      baseUrl,
+      endpoint,
+      authType,
+      paginationParam,
+      hasPagination: Boolean(paginationParam),
+    };
+    return {
+      key,
+      connectorId,
+      operationId,
+      type: 'action',
+      code: retryableFetchActionTemplate(metadata),
+    };
+  }
+
+  return buildTodoOperation('action', connectorId, operationId);
+}
+
+function buildTriggerOperation(
+  connectorId: string,
+  operationId: string,
+  connector: ConnectorDefinition,
+  trigger: ConnectorTriggerDefinition
+): GeneratedOperation {
+  const key = buildOperationKey('trigger', connectorId, operationId);
+  const functionName = buildFunctionName('trigger', connectorId, operationId);
+  const triggerType = (trigger?.type ?? '').toLowerCase();
+
+  if (triggerType === 'webhook') {
+    const metadata: WebhookReplyTemplateMetadata = {
+      key,
+      functionName,
+      connectorId,
+      operationId,
+    };
+    return {
+      key,
+      connectorId,
+      operationId,
+      type: 'trigger',
+      code: webhookReplyTemplate(metadata),
+    };
+  }
+
+  if (triggerType === 'polling') {
+    const endpoint = typeof trigger?.endpoint === 'string' ? trigger.endpoint.trim() : '';
+    const baseUrl = deriveBaseUrl(connector);
+    if (endpoint && baseUrl) {
+      const authType = connector.authentication?.type ?? null;
+      const paginationParam = detectPaginationParam(trigger);
+      const metadata: PollingTriggerTemplateMetadata = {
+        key,
+        functionName,
+        connectorId,
+        operationId,
+        method: normalizeMethod(trigger?.method) ?? 'GET',
+        baseUrl,
+        endpoint,
+        authType,
+        paginationParam,
+        hasPagination: Boolean(paginationParam),
+        cursorProperty: trigger?.dedupe?.cursor ?? null,
+      };
+      return {
+        key,
+        connectorId,
+        operationId,
+        type: 'trigger',
+        code: pollingTriggerTemplate(metadata),
+      };
+    }
+  }
+
+  return buildTodoOperation('trigger', connectorId, operationId);
 }
 
 async function loadConnectorDefinitions(): Promise<GeneratedOperation[]> {
@@ -121,13 +361,13 @@ async function loadConnectorDefinitions(): Promise<GeneratedOperation[]> {
       if (!operationId) {
         continue;
       }
-      const stub = buildOperationStub('action', connectorId, operationId);
-      if (seenKeys.has(stub.key)) {
-        duplicateKeys.add(stub.key);
+      const generated = buildActionOperation(connectorId, operationId, parsed, action);
+      if (seenKeys.has(generated.key)) {
+        duplicateKeys.add(generated.key);
         continue;
       }
-      operations.push(stub);
-      seenKeys.add(stub.key);
+      operations.push(generated);
+      seenKeys.add(generated.key);
     }
 
     for (const trigger of triggerDefs) {
@@ -135,13 +375,13 @@ async function loadConnectorDefinitions(): Promise<GeneratedOperation[]> {
       if (!operationId) {
         continue;
       }
-      const stub = buildOperationStub('trigger', connectorId, operationId);
-      if (seenKeys.has(stub.key)) {
-        duplicateKeys.add(stub.key);
+      const generated = buildTriggerOperation(connectorId, operationId, parsed, trigger);
+      if (seenKeys.has(generated.key)) {
+        duplicateKeys.add(generated.key);
         continue;
       }
-      operations.push(stub);
-      seenKeys.add(stub.key);
+      operations.push(generated);
+      seenKeys.add(generated.key);
     }
   }
 
