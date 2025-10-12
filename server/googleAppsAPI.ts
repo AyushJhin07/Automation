@@ -1,4 +1,6 @@
 import type { Express, Request, Response } from "express";
+import { runAppsScriptFixtures } from "./workflow/appsScriptDryRunHarness";
+import { healthMonitoringService } from "./services/HealthMonitoringService";
 
 // COMPREHENSIVE GOOGLE APPS SCRIPT FUNCTION IMPLEMENTATIONS
 // Covers ALL Google Workspace services: Gmail, Sheets, Docs, Slides, Calendar, Drive, Contacts, Chat, Meet, Forms
@@ -1506,7 +1508,7 @@ export function registerGoogleAppsRoutes(app: Express): void {
   app.post('/api/automation/test-function', (req: Request, res: Response) => {
     try {
       const { functionId, appType, params } = req.body;
-      
+
       let testScript = '';
       if (appType === 'gmail') {
         testScript = GoogleAppsScriptAPI.generateGmailFunction(functionId, params);
@@ -1538,6 +1540,50 @@ export function registerGoogleAppsRoutes(app: Express): void {
     } catch (error) {
       console.error('Error generating test script:', error);
       res.status(500).json({ error: 'Failed to generate test script' });
+    }
+  });
+
+  app.post('/api/automation/apps-script/dry-run', async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const filters = req.body?.filters ?? req.body?.filterIds ?? req.body?.filter;
+    const fixturesDir = typeof req.body?.fixturesDir === 'string' ? req.body.fixturesDir : undefined;
+    const stopOnError = Boolean(req.body?.stopOnError);
+
+    const filterIds = Array.isArray(filters)
+      ? filters
+      : (typeof filters === 'string' && filters.trim().length > 0)
+        ? [filters.trim()]
+        : undefined;
+
+    try {
+      const summary = await runAppsScriptFixtures({ fixturesDir, filterIds, stopOnError });
+      const duration = Date.now() - startedAt;
+      const hasFailures = summary.failed > 0;
+      healthMonitoringService.recordApiRequest(duration, hasFailures);
+
+      if (hasFailures) {
+        const failing = summary.results.filter(result => !result.success).map(result => result.id);
+        const message = failing.length > 0
+          ? `Apps Script dry run failed for fixtures: ${failing.join(', ')}`
+          : 'Apps Script dry run reported failures';
+        healthMonitoringService.createAlert('error', 'Apps Script dry-run failure', message, {
+          failingFixtures: failing,
+          durationMs: duration,
+        });
+        return res.status(500).json({ success: false, summary });
+      }
+
+      return res.json({ success: true, summary });
+    } catch (error: any) {
+      const duration = Date.now() - startedAt;
+      healthMonitoringService.recordApiRequest(duration, true);
+      const message = error?.message ?? 'Apps Script dry run harness failed';
+      console.error('Error executing Apps Script dry run:', error);
+      healthMonitoringService.createAlert('error', 'Apps Script dry-run exception', message, {
+        error: message,
+        stack: error?.stack,
+      });
+      res.status(500).json({ success: false, error: message });
     }
   });
 }

@@ -1,0 +1,96 @@
+{
+  "id": "shopify-create-customer",
+  "description": "Creates a Shopify customer using Admin REST API credentials.",
+  "graph": {
+    "id": "fixture-shopify-create-customer",
+    "name": "Shopify create customer",
+    "nodes": [
+      {
+        "id": "shopify-action",
+        "type": "action.shopify",
+        "app": "shopify",
+        "name": "Create customer",
+        "op": "action.shopify:create_customer",
+        "params": {
+          "operation": "create_customer",
+          "first_name": "Dana",
+          "last_name": "Scully",
+          "email": "dana@example.com",
+          "phone": "+1-555-0133",
+          "accepts_marketing": true
+        },
+        "data": {
+          "operation": "create_customer",
+          "config": {
+            "operation": "create_customer"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "source": "lead-form"
+    }
+  },
+  "secrets": {
+    "SHOPIFY_API_KEY": "shpsk_test_123",
+    "SHOPIFY_SHOP_DOMAIN": "test-shop"
+  },
+  "http": [
+    {
+      "name": "shopify-create-customer",
+      "request": {
+        "url": "https://test-shop.myshopify.com/admin/api/2023-07/customers.json",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": "shpsk_test_123"
+        },
+        "payload": {
+          "customer": {
+            "first_name": "Dana",
+            "last_name": "Scully",
+            "email": "dana@example.com",
+            "phone": "+1-555-0133",
+            "accepts_marketing": true
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "customer": {
+            "id": 987654321,
+            "email": "dana@example.com",
+            "first_name": "Dana",
+            "last_name": "Scully"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "shopifySuccess": true,
+      "shopifyResult": {
+        "customer": {
+          "id": 987654321
+        }
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "Shopify operation successful: create_customer"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://test-shop.myshopify.com/admin/api/2023-07/customers.json",
+        "method": "POST"
+      }
+    ]
+  }
+}

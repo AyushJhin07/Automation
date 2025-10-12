@@ -1,0 +1,88 @@
+{
+  "id": "salesforce-create-lead",
+  "description": "Creates a Salesforce lead using OAuth credentials and captures the returned ID.",
+  "graph": {
+    "id": "fixture-salesforce-create-lead",
+    "name": "Salesforce create lead",
+    "nodes": [
+      {
+        "id": "salesforce-action",
+        "type": "action.salesforce",
+        "app": "salesforce",
+        "name": "Create new lead",
+        "op": "action.salesforce:create_lead",
+        "params": {
+          "operation": "create_lead"
+        },
+        "data": {
+          "operation": "create_lead",
+          "config": {
+            "operation": "create_lead"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "first_name": "Ada",
+      "last_name": "Lovelace",
+      "email": "ada@example.com",
+      "company": "Analytical Engines",
+      "phone": "+1-555-0100",
+      "leadSource": "Webhook"
+    }
+  },
+  "secrets": {
+    "SALESFORCE_ACCESS_TOKEN": "00Dxx0000000001!AQEAQ",
+    "SALESFORCE_INSTANCE_URL": "https://example.my.salesforce.com"
+  },
+  "http": [
+    {
+      "name": "salesforce-create-lead",
+      "request": {
+        "url": "https://example.my.salesforce.com/services/data/v58.0/sobjects/Lead/",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer 00Dxx0000000001!AQEAQ",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "FirstName": "Ada",
+          "LastName": "Lovelace",
+          "Email": "ada@example.com",
+          "Company": "Analytical Engines",
+          "Phone": "+1-555-0100",
+          "LeadSource": "Webhook",
+          "Status": "Open - Not Contacted",
+          "Description": ""
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00Qxx0000000001EAA"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "salesforceLeadCreated": true,
+      "leadId": "00Qxx0000000001EAA"
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "Created Salesforce Lead"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://example.my.salesforce.com/services/data/v58.0/sobjects/Lead/",
+        "method": "POST"
+      }
+    ]
+  }
+}

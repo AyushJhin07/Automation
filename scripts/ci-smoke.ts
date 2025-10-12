@@ -100,6 +100,7 @@ async function main() {
         GENERIC_EXECUTOR_ENABLED: 'true',
       },
     );
+    await runCommand('npm', ['run', 'smoke:apps-script']);
   } finally {
     devProcess.kill('SIGTERM');
   }
