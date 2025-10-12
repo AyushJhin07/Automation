@@ -63,3 +63,26 @@
 
 - Add the queue heartbeat probe to your deployment pipelines. The CI smoke harness already waits for `GET /api/production/queue/heartbeat` to succeed before exercising the API; reuse the same command in release automation.【F:scripts/ci-smoke.ts†L16-L61】
 - The monitoring runbook documents the exact curl invocation and expected JSON fields—use it as the canonical guardrail before routing external traffic.【F:docs/operations/monitoring.md†L33-L61】
+
+## Apps Script release workflow
+
+The Apps Script runtime uses a staged rollout so deployers can ship new connectors in manageable batches while keeping support and monitoring in lock-step.
+
+1. **Pre-flight planning**
+   - Confirm the upcoming batch by reviewing the [backlog](./apps-script-rollout/backlog.md) and the sprint-specific [tracker](./apps-script-rollout/tracker.md). The tracker notes which connectors are in-flight and which sprint each batch targets—use it as the single source of truth before scheduling a release train.
+   - Assemble a batch of no more than five connectors (or the smaller number defined in the tracker) to keep QA, Script Property propagation, and CS enablement manageable per sprint.
+   - Ensure Script Properties and credential requirements are documented for every connector in the batch by cross-checking the [Script Properties guide](./apps-script-rollout/script-properties.md).
+
+2. **Staged rollout and gating**
+   - Publish the new Apps Script deployment, but limit access to the target batch using the runtime’s batch feature flags. Promote from `internal` → `trusted testers` → `stable` following the sequence in the [monitoring checkpoints runbook](./apps-script-rollout/monitoring.md). Pause between stages to allow telemetry to settle and to confirm the automation smoke tests complete.
+   - After each stage, republish Script Properties so the Apps Script project reflects any new environment variables, OAuth scopes, or runtime toggles introduced by the connectors. Track the timestamp and version in the tracker file so you can reconcile rollout state later.
+   - During the staged rollout, monitor the heartbeat dashboards and Apps Script quota metrics called out in the monitoring runbook. Do not proceed to the next stage until the queue heartbeat, Apps Script execution logs, and error budgets remain green for a full hour.
+
+3. **Cross-functional coordination**
+   - Share the batch scope, launch date, and staging timeline with Support and Customer Success. Reference the escalation pathways and ticket routing concepts defined in [`customer-success/support-infrastructure.ts`](../customer-success/support-infrastructure.ts) so frontline agents know when to escalate Apps Script runtime regressions versus connector-specific bugs.
+   - Provide Support/CS with updated troubleshooting snippets (error codes, quota limits, setup expectations) drawn from the batch’s backlog entries, and ensure they have access to a trusted tester environment to validate customer reports.
+
+4. **Post-release follow-up**
+   - Once the batch graduates to `stable`, update the public connector catalog, changelog, and any customer-facing setup documentation. Note the release number and connector list in the tracker so the next sprint’s planning meeting can audit coverage.
+   - File a release recap in the tracker thread that links back to the backlog entries and includes monitoring highlights, customer feedback, and any follow-up bugs.
+   - Confirm Support/CS received the updated materials and capture any new FAQs in the knowledge base. Reiterate Apps Script-specific escalation paths so agents keep routing runtime incidents through the dedicated Apps Script on-call rotation.
