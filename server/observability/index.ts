@@ -138,6 +138,33 @@ const sandboxQuarantinedGauge = meter.createObservableGauge('sandbox_quarantined
   description: 'Sandboxes quarantined due to repeated policy violations',
 });
 
+const appsScriptDryRunRunCounter = meter.createCounter('apps_script_dry_run_runs_total', {
+  description: 'Counts Apps Script dry-run harness executions by environment and outcome',
+});
+
+const appsScriptDryRunFixtureCounter = meter.createCounter('apps_script_dry_run_fixture_results_total', {
+  description: 'Counts Apps Script dry-run fixture outcomes by connector',
+});
+
+const appsScriptDryRunFixtureDurationHistogram = meter.createHistogram('apps_script_dry_run_fixture_duration_ms', {
+  description: 'Duration of individual Apps Script dry-run fixtures',
+  unit: 'ms',
+});
+
+const appsScriptDryRunLastRunGauge = meter.createObservableGauge('apps_script_dry_run_last_run_timestamp', {
+  description: 'Unix timestamp (seconds) for the most recent Apps Script dry-run harness execution',
+  unit: 's',
+});
+
+const appsScriptDryRunDurationGauge = meter.createObservableGauge('apps_script_dry_run_duration_ms', {
+  description: 'Wall-clock duration of the most recent Apps Script dry-run harness execution',
+  unit: 'ms',
+});
+
+const appsScriptDryRunFailureGauge = meter.createObservableGauge('apps_script_dry_run_failed_fixtures', {
+  description: 'Number of Apps Script dry-run fixtures that failed during the most recent execution',
+});
+
 const webhookDedupeCounter = meter.createCounter('webhook_dedupe_events_total', {
   description: 'Counts webhook deduplication hits and misses',
 });
@@ -199,6 +226,16 @@ const connectorPolicyOverrideCounter = meter.createCounter('connector_rate_polic
   description: 'Counts occasions where connector rate limit policies were overridden',
 });
 
+type AppsScriptDryRunSnapshot = {
+  environment: string;
+  timestampMs: number;
+  durationMs: number;
+  totalFixtures: number;
+  failedFixtures: number;
+};
+
+let latestAppsScriptDryRunSnapshot: AppsScriptDryRunSnapshot | null = null;
+
 type SandboxStateRecord = {
   key: string;
   scope: 'tenant' | 'execution';
@@ -212,6 +249,23 @@ type SandboxStateRecord = {
 const sandboxStates = new Map<string, SandboxStateRecord>();
 
 meter.addBatchObservableCallback((observableResult) => {
+  if (latestAppsScriptDryRunSnapshot) {
+    const snapshot = latestAppsScriptDryRunSnapshot;
+    const baseAttributes = sanitizeAttributes({
+      environment: snapshot.environment,
+    });
+
+    const timestampSeconds = Math.floor(snapshot.timestampMs / 1000);
+    observableResult.observe(appsScriptDryRunLastRunGauge, timestampSeconds, baseAttributes);
+    observableResult.observe(appsScriptDryRunDurationGauge, snapshot.durationMs, baseAttributes);
+
+    const failureAttributes = sanitizeAttributes({
+      environment: snapshot.environment,
+      total_fixtures: snapshot.totalFixtures,
+    });
+    observableResult.observe(appsScriptDryRunFailureGauge, snapshot.failedFixtures, failureAttributes);
+  }
+
   for (const [queueName, counts] of latestQueueDepths.entries()) {
     const { total = 0, ...states } = counts;
     observableResult.observe(queueDepthGauge, total, {
@@ -281,6 +335,9 @@ meter.addBatchObservableCallback((observableResult) => {
     }
   }
 }, [
+  appsScriptDryRunLastRunGauge,
+  appsScriptDryRunDurationGauge,
+  appsScriptDryRunFailureGauge,
   queueDepthGauge,
   connectorRateRemainingGauge,
   connectorRateLimitGauge,
@@ -430,6 +487,52 @@ export function recordConnectorRatePolicyOverride(context: {
   });
 
   connectorPolicyOverrideCounter.add(1, attributes);
+}
+
+export function recordAppsScriptDryRunExecution(context: {
+  environment: string;
+  status: 'success' | 'failure';
+  totalFixtures: number;
+  failedFixtures: number;
+  durationMs: number;
+}): void {
+  const attributes = sanitizeAttributes({
+    environment: context.environment,
+    status: context.status,
+    total_fixtures: context.totalFixtures,
+    failed_fixtures: context.failedFixtures,
+  });
+
+  appsScriptDryRunRunCounter.add(1, attributes);
+
+  latestAppsScriptDryRunSnapshot = {
+    environment: context.environment,
+    timestampMs: Date.now(),
+    durationMs: context.durationMs,
+    totalFixtures: context.totalFixtures,
+    failedFixtures: context.failedFixtures,
+  };
+}
+
+export function recordAppsScriptDryRunFixtureResult(context: {
+  environment: string;
+  fixtureId: string;
+  connectorId?: string;
+  success: boolean;
+  durationMs?: number;
+}): void {
+  const attributes = sanitizeAttributes({
+    environment: context.environment,
+    fixture_id: context.fixtureId,
+    connector_id: context.connectorId ?? 'unknown',
+    result: context.success ? 'success' : 'failure',
+  });
+
+  appsScriptDryRunFixtureCounter.add(1, attributes);
+
+  if (typeof context.durationMs === 'number' && Number.isFinite(context.durationMs)) {
+    appsScriptDryRunFixtureDurationHistogram.record(context.durationMs, attributes);
+  }
 }
 
 export function recordHttpRequestDuration(durationMs: number, attributes: Record<string, unknown>): void {
