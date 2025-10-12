@@ -2,6 +2,8 @@
 
 Product managers must complete this checklist before scheduling a new Apps Script connector batch. Each task links to the owners responsible for validating the preconditions and records the status inside the rollout tracker.
 
+> For escalations during kickoff, reference the [Apps Script rollout team structure](team-structure.md) to identify the accountable runtime, connector, QA, and program management contacts.
+
 ## Sandbox Access
 
 - [ ] **Confirm shared sandbox access is granted.** Ensure the Apps Script project and linked Google Workspace sandbox belong to the rollout squad and are accessible by engineering, QA, and security reviewers. Set `APPS_SCRIPT_SANDBOX_ACCESS=granted` in your environment (or the rollout tracker) once verified.

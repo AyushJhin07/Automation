@@ -22,6 +22,10 @@ This folder captures the source of truth for Apps Script rollout planning. The t
 3. Review the generated CSV and fill in the placeholders:
    - **owner** – DRI for the next Apps Script milestone on that connector.
    - **squad** – team that owns the workstream.
+   - **runtime owner** – primary runtime engineer accountable for unblockers (see [team structure](team-structure.md)).
+   - **connector squad owner** – feature squad point of contact for delivery decisions.
+   - **QA automation owner** – lead responsible for validation and regression coverage.
+   - **program manager** – rollout coordinator who tracks milestones and escalations.
    - **status** – short status summary (for example: `Planning`, `In QA`, `Blocked on API`).
    - **PR link** and **test link** – optional URLs to the latest rollout PR or regression run.
 4. Commit the updated CSV so CI can enforce parity with the connector manifest.
