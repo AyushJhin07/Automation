@@ -8,6 +8,12 @@ enablement sequencing now follows the tiering outlined in the
 backlog when planning wave assignments so squads stay aligned with the latest
 prioritization CSV.
 
+> **Onboarding requirement:** Product managers must complete the
+> [Apps Script rollout kickoff checklist](apps-script-rollout/kickoff-checklist.md)
+> before starting a connector batch. Confirm every item is marked in the rollout
+> tracker so engineering only receives batches with sandbox access, credentials,
+> Script Property standards, and security approvals in place.
+
 > **Distribution:** Shared in #connector-delivery and #qa-smoke on 2025-09-30 so
 > implementation, QA, and support stay aligned on graduation status updates.
 
