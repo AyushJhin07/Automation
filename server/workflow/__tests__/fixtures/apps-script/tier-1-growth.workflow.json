@@ -1,0 +1,85 @@
+{
+  "id": "apps-script-tier-1-growth",
+  "name": "Tier 1 revenue ops handoff",
+  "meta": {
+    "appsScript": {
+      "tier": 1,
+      "description": "Sync edited sheet rows into Airtable and HubSpot with retryable writes",
+      "features": ["polling", "authentication", "retries"]
+    },
+    "automationType": "revenue_ops",
+    "prompt": "When a CSM updates renewal data in Sheets, push the change to Airtable and HubSpot"
+  },
+  "nodes": [
+    {
+      "id": "sheet-trigger",
+      "type": "trigger.sheets",
+      "app": "sheets",
+      "name": "Row edited",
+      "op": "trigger.sheets:onEdit",
+      "params": {
+        "sheetName": "Renewals",
+        "dispatchRow": true
+      },
+      "data": {
+        "operation": "onEdit",
+        "config": {
+          "sheetName": "Renewals",
+          "dispatchRow": true
+        },
+        "metadata": {
+          "outputs": {
+            "row": { "type": "number" },
+            "values": { "type": "object" }
+          }
+        }
+      }
+    },
+    {
+      "id": "airtable-record",
+      "type": "action.airtable",
+      "app": "airtable",
+      "name": "Upsert renewal record",
+      "op": "action.airtable:create_record",
+      "params": {
+        "tableName": "Renewals",
+        "name": "{{values.customer}}",
+        "email": "{{values.owner_email}}",
+        "notes": "ARR {{values.arr}} via Sheets"
+      },
+      "data": {
+        "operation": "create_record",
+        "config": {
+          "tableName": "Renewals",
+          "name": "{{values.customer}}",
+          "email": "{{values.owner_email}}",
+          "notes": "ARR {{values.arr}} via Sheets"
+        }
+      }
+    },
+    {
+      "id": "hubspot-contact",
+      "type": "action.hubspot",
+      "app": "hubspot",
+      "name": "Update CRM contact",
+      "op": "action.hubspot:create_contact",
+      "params": {
+        "firstName": "{{values.owner_first_name}}",
+        "lastName": "{{values.owner_last_name}}",
+        "email": "{{values.owner_email}}"
+      },
+      "data": {
+        "operation": "create_contact",
+        "config": {
+          "firstName": "{{values.owner_first_name}}",
+          "lastName": "{{values.owner_last_name}}",
+          "email": "{{values.owner_email}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "edge-sheet-to-airtable", "from": "sheet-trigger", "to": "airtable-record", "source": "sheet-trigger", "target": "airtable-record" },
+    { "id": "edge-airtable-to-hubspot", "from": "airtable-record", "to": "hubspot-contact", "source": "airtable-record", "target": "hubspot-contact" }
+  ]
+}
