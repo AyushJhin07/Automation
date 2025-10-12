@@ -59,6 +59,7 @@
     "seed:encryption-key": "tsx scripts/seed-encryption-key.ts",
     "observability:check": "tsx scripts/observability-check.ts",
     "report:runtime": "tsx scripts/connector-runtime-status.ts",
+    "prioritize:apps-script": "tsx scripts/apps-script-prioritize-connectors.ts",
     "check:connectors": "tsx scripts/validate-connectors.ts && tsx scripts/validate-connector-ops.ts"
   },
   "dependencies": {
