@@ -1,5 +1,158 @@
 import { CompileResult, WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
 
+function appsScriptHttpHelpers(): string {
+  return `
+var __HTTP_RETRY_DEFAULTS = {
+  maxAttempts: 5,
+  initialDelayMs: 500,
+  backoffFactor: 2,
+  maxDelayMs: 60000
+};
+
+function logStructured(level, event, details) {
+  var payload = {
+    level: level,
+    event: event,
+    details: details || {},
+    timestamp: new Date().toISOString()
+  };
+  var message = '[' + payload.level + '] ' + payload.event + ' ' + JSON.stringify(payload.details);
+  if (level === 'ERROR') {
+    console.error(message);
+  } else if (level === 'WARN') {
+    console.warn(message);
+  } else {
+    console.log(message);
+  }
+}
+
+function logInfo(event, details) {
+  logStructured('INFO', event, details);
+}
+
+function logWarn(event, details) {
+  logStructured('WARN', event, details);
+}
+
+function logError(event, details) {
+  logStructured('ERROR', event, details);
+}
+
+function withRetries(fn, options) {
+  var config = options || {};
+  var maxAttempts = config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
+  var initialDelayMs = config.initialDelayMs || __HTTP_RETRY_DEFAULTS.initialDelayMs;
+  var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;
+  var maxDelayMs = config.maxDelayMs || __HTTP_RETRY_DEFAULTS.maxDelayMs;
+  var attempt = 0;
+  var delay = initialDelayMs;
+
+  while (true) {
+    try {
+      return fn(attempt + 1);
+    } catch (error) {
+      attempt++;
+      var message = error && error.message ? error.message : String(error);
+      if (attempt >= maxAttempts) {
+        logError('http_retry_exhausted', { attempts: attempt, message: message });
+        throw error;
+      }
+      logWarn('http_retry', { attempt: attempt, delayMs: delay, message: message });
+      Utilities.sleep(delay);
+      delay = Math.min(delay * backoffFactor, maxDelayMs);
+    }
+  }
+}
+
+function fetchJson(url, requestOptions) {
+  var options = requestOptions || {};
+  var method = options.method || 'GET';
+  var headers = options.headers || {};
+  var payload = options.payload;
+  var contentType = options.contentType || options['contentType'];
+  var muteHttpExceptions = options.muteHttpExceptions !== undefined ? options.muteHttpExceptions : true;
+  var followRedirects = options.followRedirects;
+  var start = new Date().getTime();
+
+  var fetchOptions = {
+    method: method,
+    headers: headers,
+    muteHttpExceptions: muteHttpExceptions
+  };
+
+  if (typeof payload !== 'undefined') {
+    fetchOptions.payload = payload;
+  }
+
+  if (typeof contentType !== 'undefined') {
+    fetchOptions.contentType = contentType;
+  }
+
+  if (typeof followRedirects !== 'undefined') {
+    fetchOptions.followRedirects = followRedirects;
+  }
+
+  if (options.escape !== undefined) {
+    fetchOptions.escape = options.escape;
+  }
+
+  var response = UrlFetchApp.fetch(url, fetchOptions);
+  var durationMs = new Date().getTime() - start;
+  var status = response.getResponseCode();
+  var text = response.getContentText();
+  var allHeaders = response.getAllHeaders();
+  var success = status >= 200 && status < 300;
+
+  var logDetails = {
+    url: url,
+    method: method,
+    status: status,
+    durationMs: durationMs
+  };
+
+  if (!success) {
+    logDetails.response = text;
+  }
+
+  logStructured(success ? 'INFO' : 'ERROR', success ? 'http_success' : 'http_failure', logDetails);
+
+  var responseContentType = '';
+  if (allHeaders['Content-Type']) {
+    responseContentType = String(allHeaders['Content-Type']).toLowerCase();
+  } else if (allHeaders['content-type']) {
+    responseContentType = String(allHeaders['content-type']).toLowerCase();
+  }
+
+  var body = text;
+  if (responseContentType.indexOf('application/json') !== -1) {
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch (error) {
+      logWarn('http_parse_failure', { url: url, message: error && error.message ? error.message : String(error) });
+    }
+  }
+
+  if (!success) {
+    var err = new Error('Request failed with status ' + status);
+    var errorWithDetails = err;
+    errorWithDetails.status = status;
+    errorWithDetails.body = body;
+    errorWithDetails.text = text;
+    errorWithDetails.headers = allHeaders;
+    throw errorWithDetails;
+  }
+
+  return {
+    ok: success,
+    status: status,
+    headers: allHeaders,
+    body: body,
+    text: text
+  };
+}
+`;
+}
+
 const REF_PLACEHOLDER_PREFIX = '__APPSSCRIPT_REF__';
 
 function encodeRefPlaceholder(nodeId: string, path?: string | null): string {
@@ -10976,6 +11129,8 @@ function buildRealCodeFromGraph(graph: any): string {
     .join('\n');
 
   let body = `
+${appsScriptHttpHelpers()}
+
 var __nodeOutputs = {};
 var __executionFlags = {};
 
@@ -11546,25 +11701,28 @@ function step_appendRow(ctx) {
 function step_sendSlackMessage(ctx) {
   const webhookUrl = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
   if (!webhookUrl) {
-    console.warn('⚠️ Slack webhook URL not configured');
+    logWarn('slack_missing_webhook', { message: 'Slack webhook URL not configured' });
     return ctx;
   }
-  
+
   const message = interpolate('${c.message || 'Automated notification'}', ctx);
   const channel = '${c.channel || '#general'}';
-  
+
   const payload = {
     channel: channel,
     text: message,
     username: 'Apps Script Bot'
   };
-  
-  UrlFetchApp.fetch(webhookUrl, {
+
+  withRetries(() => fetchJson(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(payload)
-  });
-  
+    payload: JSON.stringify(payload),
+    contentType: 'application/json'
+  }));
+
+  logInfo('slack_message_sent', { channel: channel });
+
   return ctx;
 }`,
 
@@ -11573,12 +11731,12 @@ function step_sendSlackMessage(ctx) {
 function step_createSalesforceLead(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('SALESFORCE_ACCESS_TOKEN');
   const instanceUrl = PropertiesService.getScriptProperties().getProperty('SALESFORCE_INSTANCE_URL');
-  
+
   if (!accessToken || !instanceUrl) {
-    console.warn('⚠️ Salesforce credentials not configured');
+    logWarn('salesforce_missing_credentials', { message: 'Salesforce credentials not configured' });
     return ctx;
   }
-  
+
   const leadData = {
     FirstName: interpolate('${c.firstName || '{{first_name}}'}', ctx),
     LastName: interpolate('${c.lastName || '{{last_name}}'}', ctx),
@@ -11586,17 +11744,18 @@ function step_createSalesforceLead(ctx) {
     Company: interpolate('${c.company || '{{company}}'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch(\`\${instanceUrl}/services/data/v52.0/sobjects/Lead\`, {
+  const response = withRetries(() => fetchJson(\`\${instanceUrl}/services/data/v52.0/sobjects/Lead\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(leadData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.salesforceLeadId = result.id;
+    payload: JSON.stringify(leadData),
+    contentType: 'application/json'
+  }));
+
+  ctx.salesforceLeadId = response.body && response.body.id;
+  logInfo('salesforce_create_lead', { leadId: ctx.salesforceLeadId || null });
   return ctx;
 }`,
 
@@ -11604,12 +11763,12 @@ function step_createSalesforceLead(ctx) {
   'action.hubspot:create_contact': (c) => `
 function step_createHubSpotContact(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('HUBSPOT_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ HubSpot API key not configured');
+    logWarn('hubspot_missing_api_key', { message: 'HubSpot API key not configured' });
     return ctx;
   }
-  
+
   const contactData = {
     properties: {
       firstname: interpolate('${c.firstName || '{{first_name}}'}', ctx),
@@ -11618,17 +11777,18 @@ function step_createHubSpotContact(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
+  const response = withRetries(() => fetchJson('https://api.hubapi.com/crm/v3/objects/contacts', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${apiKey}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(contactData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.hubspotContactId = result.id;
+    payload: JSON.stringify(contactData),
+    contentType: 'application/json'
+  }));
+
+  ctx.hubspotContactId = response.body && response.body.id;
+  logInfo('hubspot_create_contact', { contactId: ctx.hubspotContactId || null });
   return ctx;
 }`,
 
@@ -11636,28 +11796,29 @@ function step_createHubSpotContact(ctx) {
   'action.stripe:create_payment': (c) => `
 function step_createStripePayment(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ Stripe API key not configured');
+    logWarn('stripe_missing_api_key', { message: 'Stripe API key not configured' });
     return ctx;
   }
-  
+
   const amount = parseInt('${c.amount || '100'}') * 100; // Convert to cents
   const currency = '${c.currency || 'usd'}';
-  
+
   const payload = \`amount=\${amount}&currency=\${currency}&payment_method_types[]=card\`;
-  
-  const response = UrlFetchApp.fetch('https://api.stripe.com/v1/payment_intents', {
+
+  const response = withRetries(() => fetchJson('https://api.stripe.com/v1/payment_intents', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${apiKey}\`,
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    payload: payload
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.stripePaymentId = result.id;
+    payload: payload,
+    contentType: 'application/x-www-form-urlencoded'
+  }));
+
+  ctx.stripePaymentId = response.body && response.body.id;
+  logInfo('stripe_create_payment_intent', { paymentId: ctx.stripePaymentId || null, amount: amount, currency: currency });
   return ctx;
 }`,
 
@@ -11666,9 +11827,9 @@ function step_createStripePayment(ctx) {
 function step_createShopifyOrder(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('SHOPIFY_ACCESS_TOKEN');
   const shopDomain = PropertiesService.getScriptProperties().getProperty('SHOPIFY_SHOP_DOMAIN');
-  
+
   if (!accessToken || !shopDomain) {
-    console.warn('⚠️ Shopify credentials not configured');
+    logWarn('shopify_missing_credentials', { message: 'Shopify credentials not configured' });
     return ctx;
   }
   
@@ -11685,17 +11846,18 @@ function step_createShopifyOrder(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch(\`https://\${shopDomain}.myshopify.com/admin/api/2024-01/orders.json\`, {
+  const response = withRetries(() => fetchJson(\`https://\${shopDomain}.myshopify.com/admin/api/2024-01/orders.json\`, {
     method: 'POST',
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(orderData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.shopifyOrderId = result.order.id;
+    payload: JSON.stringify(orderData),
+    contentType: 'application/json'
+  }));
+
+  ctx.shopifyOrderId = response.body && response.body.order ? response.body.order.id : null;
+  logInfo('shopify_create_order', { orderId: ctx.shopifyOrderId || null });
   return ctx;
 }`,
 
@@ -11704,9 +11866,9 @@ function step_createShopifyOrder(ctx) {
 function step_createPipedriveDeal(ctx) {
   const apiToken = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_API_TOKEN');
   const companyDomain = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_COMPANY_DOMAIN');
-  
+
   if (!apiToken || !companyDomain) {
-    console.warn('⚠️ Pipedrive credentials not configured');
+    logWarn('pipedrive_missing_credentials', { message: 'Pipedrive credentials not configured' });
     return ctx;
   }
   
@@ -11717,23 +11879,24 @@ function step_createPipedriveDeal(ctx) {
     person_id: interpolate('${c.personId || '{{person_id}}'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch(\`https://\${companyDomain}.pipedrive.com/api/v1/deals?api_token=\${apiToken}\`, {
+  const response = withRetries(() => fetchJson(\`https://\${companyDomain}.pipedrive.com/api/v1/deals?api_token=\${apiToken}\`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(dealData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.pipedriveDealId = result.data.id;
+    payload: JSON.stringify(dealData),
+    contentType: 'application/json'
+  }));
+
+  ctx.pipedriveDealId = response.body && response.body.data ? response.body.data.id : null;
+  logInfo('pipedrive_create_deal', { dealId: ctx.pipedriveDealId || null });
   return ctx;
 }`,
 
   'action.zoho-crm:create_lead': (c) => `
 function step_createZohoLead(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Zoho CRM access token not configured');
+    logWarn('zoho_missing_access_token', { message: 'Zoho CRM access token not configured' });
     return ctx;
   }
   
@@ -11746,17 +11909,18 @@ function step_createZohoLead(ctx) {
     }]
   };
   
-  const response = UrlFetchApp.fetch('https://www.zohoapis.com/crm/v2/Leads', {
+  const response = withRetries(() => fetchJson('https://www.zohoapis.com/crm/v2/Leads', {
     method: 'POST',
     headers: {
       'Authorization': \`Zoho-oauthtoken \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(leadData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.zohoLeadId = result.data[0].details.id;
+    payload: JSON.stringify(leadData),
+    contentType: 'application/json'
+  }));
+
+  ctx.zohoLeadId = response.body && response.body.data ? response.body.data[0].details.id : null;
+  logInfo('zoho_create_lead', { leadId: ctx.zohoLeadId || null });
   return ctx;
 }`,
 
@@ -11764,9 +11928,9 @@ function step_createZohoLead(ctx) {
 function step_createDynamicsContact(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_ACCESS_TOKEN');
   const instanceUrl = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_INSTANCE_URL');
-  
+
   if (!accessToken || !instanceUrl) {
-    console.warn('⚠️ Dynamics 365 credentials not configured');
+    logWarn('dynamics_missing_credentials', { message: 'Dynamics 365 credentials not configured' });
     return ctx;
   }
   
@@ -11776,17 +11940,18 @@ function step_createDynamicsContact(ctx) {
     emailaddress1: interpolate('${c.email || '{{email}}'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch(\`\${instanceUrl}/api/data/v9.2/contacts\`, {
+  const response = withRetries(() => fetchJson(\`\${instanceUrl}/api/data/v9.2/contacts\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(contactData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.dynamicsContactId = result.contactid;
+    payload: JSON.stringify(contactData),
+    contentType: 'application/json'
+  }));
+
+  ctx.dynamicsContactId = response.body && response.body.contactid;
+  logInfo('dynamics_create_contact', { contactId: ctx.dynamicsContactId || null });
   return ctx;
 }`,
 
@@ -11794,9 +11959,9 @@ function step_createDynamicsContact(ctx) {
   'action.microsoft-teams:send_message': (c) => `
 function step_sendTeamsMessage(ctx) {
   const webhookUrl = PropertiesService.getScriptProperties().getProperty('TEAMS_WEBHOOK_URL');
-  
+
   if (!webhookUrl) {
-    console.warn('⚠️ Microsoft Teams webhook URL not configured');
+    logWarn('teams_missing_webhook', { message: 'Microsoft Teams webhook URL not configured' });
     return ctx;
   }
   
@@ -11805,12 +11970,15 @@ function step_sendTeamsMessage(ctx) {
     title: '${c.title || 'Automation Alert'}'
   };
   
-  const response = UrlFetchApp.fetch(webhookUrl, {
+  withRetries(() => fetchJson(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(message)
-  });
-  
+    payload: JSON.stringify(message),
+    contentType: 'application/json'
+  }));
+
+  logInfo('teams_message_sent', {});
+
   return ctx;
 }`,
 
@@ -11819,9 +11987,9 @@ function step_sendTwilioSMS(ctx) {
   const accountSid = PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID');
   const authToken = PropertiesService.getScriptProperties().getProperty('TWILIO_AUTH_TOKEN');
   const fromNumber = PropertiesService.getScriptProperties().getProperty('TWILIO_FROM_NUMBER');
-  
+
   if (!accountSid || !authToken || !fromNumber) {
-    console.warn('⚠️ Twilio credentials not configured');
+    logWarn('twilio_missing_credentials', { message: 'Twilio credentials not configured' });
     return ctx;
   }
   
@@ -11830,17 +11998,18 @@ function step_sendTwilioSMS(ctx) {
   
   const payload = \`From=\${fromNumber}&To=\${to}&Body=\${encodeURIComponent(body)}\`;
   
-  const response = UrlFetchApp.fetch(\`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Messages.json\`, {
+  const response = withRetries(() => fetchJson(\`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Messages.json\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${Utilities.base64Encode(accountSid + ':' + authToken)}\`,
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    payload: payload
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.twilioMessageSid = result.sid;
+    payload: payload,
+    contentType: 'application/x-www-form-urlencoded'
+  }));
+
+  ctx.twilioMessageSid = response.body && response.body.sid;
+  logInfo('twilio_send_sms', { sid: ctx.twilioMessageSid || null });
   return ctx;
 }`,
 
@@ -11875,9 +12044,9 @@ function step_createWooCommerceOrder(ctx) {
   const consumerKey = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_KEY');
   const consumerSecret = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_SECRET');
   const storeUrl = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_STORE_URL');
-  
+
   if (!consumerKey || !consumerSecret || !storeUrl) {
-    console.warn('⚠️ WooCommerce credentials not configured');
+    logWarn('woocommerce_missing_credentials', { message: 'WooCommerce credentials not configured' });
     return ctx;
   }
   
@@ -11897,17 +12066,18 @@ function step_createWooCommerceOrder(ctx) {
   };
   
   const auth = Utilities.base64Encode(consumerKey + ':' + consumerSecret);
-  const response = UrlFetchApp.fetch(\`\${storeUrl}/wp-json/wc/v3/orders\`, {
+  const response = withRetries(() => fetchJson(\`\${storeUrl}/wp-json/wc/v3/orders\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${auth}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(orderData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.wooCommerceOrderId = result.id;
+    payload: JSON.stringify(orderData),
+    contentType: 'application/json'
+  }));
+
+  ctx.wooCommerceOrderId = response.body && response.body.id;
+  logInfo('woocommerce_create_order', { orderId: ctx.wooCommerceOrderId || null });
   return ctx;
 }`,
 
@@ -11915,9 +12085,9 @@ function step_createWooCommerceOrder(ctx) {
 function step_createBigCommerceProduct(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_ACCESS_TOKEN');
   const storeHash = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_STORE_HASH');
-  
+
   if (!accessToken || !storeHash) {
-    console.warn('⚠️ BigCommerce credentials not configured');
+    logWarn('bigcommerce_missing_credentials', { message: 'BigCommerce credentials not configured' });
     return ctx;
   }
   
@@ -11929,18 +12099,19 @@ function step_createBigCommerceProduct(ctx) {
     description: interpolate('${c.description || 'Product description'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch(\`https://api.bigcommerce.com/stores/\${storeHash}/v3/catalog/products\`, {
+  const response = withRetries(() => fetchJson(\`https://api.bigcommerce.com/stores/\${storeHash}/v3/catalog/products\`, {
     method: 'POST',
     headers: {
       'X-Auth-Token': accessToken,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     },
-    payload: JSON.stringify(productData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.bigCommerceProductId = result.data.id;
+    payload: JSON.stringify(productData),
+    contentType: 'application/json'
+  }));
+
+  ctx.bigCommerceProductId = response.body && response.body.data ? response.body.data.id : null;
+  logInfo('bigcommerce_create_product', { productId: ctx.bigCommerceProductId || null });
   return ctx;
 }`,
 
@@ -11948,9 +12119,9 @@ function step_createBigCommerceProduct(ctx) {
 function step_createMagentoCustomer(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('MAGENTO_ACCESS_TOKEN');
   const storeUrl = PropertiesService.getScriptProperties().getProperty('MAGENTO_STORE_URL');
-  
+
   if (!accessToken || !storeUrl) {
-    console.warn('⚠️ Magento credentials not configured');
+    logWarn('magento_missing_credentials', { message: 'Magento credentials not configured' });
     return ctx;
   }
   
@@ -11964,17 +12135,18 @@ function step_createMagentoCustomer(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch(\`\${storeUrl}/rest/V1/customers\`, {
+  const response = withRetries(() => fetchJson(\`\${storeUrl}/rest/V1/customers\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(customerData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.magentoCustomerId = result.id;
+    payload: JSON.stringify(customerData),
+    contentType: 'application/json'
+  }));
+
+  ctx.magentoCustomerId = response.body && response.body.id;
+  logInfo('magento_create_customer', { customerId: ctx.magentoCustomerId || null });
   return ctx;
 }`,
 
@@ -11984,9 +12156,9 @@ function step_createJiraIssue(ctx) {
   const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
   const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
   const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
-  
+
   if (!email || !apiToken || !baseUrl) {
-    console.warn('⚠️ Jira credentials not configured');
+    logWarn('jira_missing_credentials', { message: 'Jira credentials not configured' });
     return ctx;
   }
   
@@ -12000,26 +12172,27 @@ function step_createJiraIssue(ctx) {
   };
   
   const auth = Utilities.base64Encode(email + ':' + apiToken);
-  const response = UrlFetchApp.fetch(\`\${baseUrl}/rest/api/3/issue\`, {
+  const response = withRetries(() => fetchJson(\`\${baseUrl}/rest/api/3/issue\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${auth}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(issueData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.jiraIssueKey = result.key;
+    payload: JSON.stringify(issueData),
+    contentType: 'application/json'
+  }));
+
+  ctx.jiraIssueKey = response.body && response.body.key;
+  logInfo('jira_create_issue', { issueKey: ctx.jiraIssueKey || null });
   return ctx;
 }`,
 
   'action.asana:create_task': (c) => `
 function step_createAsanaTask(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('ASANA_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Asana access token not configured');
+    logWarn('asana_missing_access_token', { message: 'Asana access token not configured' });
     return ctx;
   }
   
@@ -12031,17 +12204,18 @@ function step_createAsanaTask(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch('https://app.asana.com/api/1.0/tasks', {
+  const response = withRetries(() => fetchJson('https://app.asana.com/api/1.0/tasks', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(taskData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.asanaTaskId = result.data.gid;
+    payload: JSON.stringify(taskData),
+    contentType: 'application/json'
+  }));
+
+  ctx.asanaTaskId = response.body && response.body.data ? response.body.data.gid : null;
+  logInfo('asana_create_task', { taskId: ctx.asanaTaskId || null });
   return ctx;
 }`,
 
@@ -12049,9 +12223,9 @@ function step_createAsanaTask(ctx) {
 function step_createTrelloCard(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('TRELLO_API_KEY');
   const token = PropertiesService.getScriptProperties().getProperty('TRELLO_TOKEN');
-  
+
   if (!apiKey || !token) {
-    console.warn('⚠️ Trello credentials not configured');
+    logWarn('trello_missing_credentials', { message: 'Trello credentials not configured' });
     return ctx;
   }
   
@@ -12061,14 +12235,15 @@ function step_createTrelloCard(ctx) {
     idList: '${c.listId || ''}'
   };
   
-  const response = UrlFetchApp.fetch(\`https://api.trello.com/1/cards?key=\${apiKey}&token=\${token}\`, {
+  const response = withRetries(() => fetchJson(\`https://api.trello.com/1/cards?key=\${apiKey}&token=\${token}\`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(cardData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.trelloCardId = result.id;
+    payload: JSON.stringify(cardData),
+    contentType: 'application/json'
+  }));
+
+  ctx.trelloCardId = response.body && response.body.id;
+  logInfo('trello_create_card', { cardId: ctx.trelloCardId || null });
   return ctx;
 }`,
 
@@ -12078,9 +12253,9 @@ function step_addMailchimpSubscriber(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_API_KEY');
   const listId = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_LIST_ID');
   const datacenter = apiKey ? apiKey.split('-')[1] : '';
-  
+
   if (!apiKey || !listId) {
-    console.warn('⚠️ Mailchimp credentials not configured');
+    logWarn('mailchimp_missing_credentials', { message: 'Mailchimp credentials not configured' });
     return ctx;
   }
   
@@ -12093,26 +12268,27 @@ function step_addMailchimpSubscriber(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch(\`https://\${datacenter}.api.mailchimp.com/3.0/lists/\${listId}/members\`, {
+  const response = withRetries(() => fetchJson(\`https://\${datacenter}.api.mailchimp.com/3.0/lists/\${listId}/members\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${Utilities.base64Encode('anystring:' + apiKey)}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(memberData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.mailchimpMemberId = result.id;
+    payload: JSON.stringify(memberData),
+    contentType: 'application/json'
+  }));
+
+  ctx.mailchimpMemberId = response.body && response.body.id;
+  logInfo('mailchimp_add_subscriber', { memberId: ctx.mailchimpMemberId || null });
   return ctx;
 }`,
 
   'action.klaviyo:create_profile': (c) => `
 function step_createKlaviyoProfile(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('KLAVIYO_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ Klaviyo API key not configured');
+    logWarn('klaviyo_missing_api_key', { message: 'Klaviyo API key not configured' });
     return ctx;
   }
   
@@ -12127,27 +12303,28 @@ function step_createKlaviyoProfile(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch('https://a.klaviyo.com/api/profiles', {
+  const response = withRetries(() => fetchJson('https://a.klaviyo.com/api/profiles', {
     method: 'POST',
     headers: {
       'Authorization': \`Klaviyo-API-Key \${apiKey}\`,
       'Content-Type': 'application/json',
       'revision': '2024-10-15'
     },
-    payload: JSON.stringify(profileData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.klaviyoProfileId = result.data.id;
+    payload: JSON.stringify(profileData),
+    contentType: 'application/json'
+  }));
+
+  ctx.klaviyoProfileId = response.body && response.body.data ? response.body.data.id : null;
+  logInfo('klaviyo_create_profile', { profileId: ctx.klaviyoProfileId || null });
   return ctx;
 }`,
 
   'action.sendgrid:send_email': (c) => `
 function step_sendSendGridEmail(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('SENDGRID_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ SendGrid API key not configured');
+    logWarn('sendgrid_missing_api_key', { message: 'SendGrid API key not configured' });
     return ctx;
   }
   
@@ -12163,16 +12340,17 @@ function step_sendSendGridEmail(ctx) {
     }]
   };
   
-  const response = UrlFetchApp.fetch('https://api.sendgrid.com/v3/mail/send', {
+  withRetries(() => fetchJson('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${apiKey}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(emailData)
-  });
-  
-  console.log('📧 SendGrid email sent successfully');
+    payload: JSON.stringify(emailData),
+    contentType: 'application/json'
+  }));
+
+  logInfo('sendgrid_send_email', { to: emailData.personalizations[0].to[0].email });
   return ctx;
 }`,
 
@@ -12180,9 +12358,9 @@ function step_sendSendGridEmail(ctx) {
   'action.notion:create_page': (c) => `
 function step_createNotionPage(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('NOTION_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Notion access token not configured');
+    logWarn('notion_missing_access_token', { message: 'Notion access token not configured' });
     return ctx;
   }
   
@@ -12197,18 +12375,19 @@ function step_createNotionPage(ctx) {
     }
   };
   
-  const response = UrlFetchApp.fetch('https://api.notion.com/v1/pages', {
+  const response = withRetries(() => fetchJson('https://api.notion.com/v1/pages', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json',
       'Notion-Version': '2022-06-28'
     },
-    payload: JSON.stringify(pageData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.notionPageId = result.id;
+    payload: JSON.stringify(pageData),
+    contentType: 'application/json'
+  }));
+
+  ctx.notionPageId = response.body && response.body.id;
+  logInfo('notion_create_page', { pageId: ctx.notionPageId || null });
   return ctx;
 }`,
 
@@ -12216,9 +12395,9 @@ function step_createNotionPage(ctx) {
 function step_createAirtableRecord(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('AIRTABLE_API_KEY');
   const baseId = PropertiesService.getScriptProperties().getProperty('AIRTABLE_BASE_ID');
-  
+
   if (!apiKey || !baseId) {
-    console.warn('⚠️ Airtable credentials not configured');
+    logWarn('airtable_missing_credentials', { message: 'Airtable credentials not configured' });
     return ctx;
   }
   
@@ -12231,17 +12410,18 @@ function step_createAirtableRecord(ctx) {
   };
   
   const tableName = '${c.tableName || 'Table 1'}';
-  const response = UrlFetchApp.fetch(\`https://api.airtable.com/v0/\${baseId}/\${tableName}\`, {
+  const response = withRetries(() => fetchJson(\`https://api.airtable.com/v0/\${baseId}/\${tableName}\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${apiKey}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(recordData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.airtableRecordId = result.id;
+    payload: JSON.stringify(recordData),
+    contentType: 'application/json'
+  }));
+
+  ctx.airtableRecordId = response.body && response.body.id;
+  logInfo('airtable_create_record', { recordId: ctx.airtableRecordId || null });
   return ctx;
 }`,
 
@@ -12292,9 +12472,9 @@ function step_createXeroContact(ctx) {
   'action.github:create_issue': (c) => `
 function step_createGitHubIssue(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('GITHUB_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ GitHub access token not configured');
+    logWarn('github_missing_access_token', { message: 'GitHub access token not configured' });
     return ctx;
   }
   
@@ -12305,18 +12485,19 @@ function step_createGitHubIssue(ctx) {
   };
   
   const repo = '${c.repository || 'owner/repo'}';
-  const response = UrlFetchApp.fetch(\`https://api.github.com/repos/\${repo}/issues\`, {
+  const response = withRetries(() => fetchJson(\`https://api.github.com/repos/\${repo}/issues\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json',
       'Accept': 'application/vnd.github.v3+json'
     },
-    payload: JSON.stringify(issueData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.githubIssueNumber = result.number;
+    payload: JSON.stringify(issueData),
+    contentType: 'application/json'
+  }));
+
+  ctx.githubIssueNumber = response.body && response.body.number;
+  logInfo('github_create_issue', { issueNumber: ctx.githubIssueNumber || null });
   return ctx;
 }`,
 
@@ -12324,9 +12505,9 @@ function step_createGitHubIssue(ctx) {
   'action.typeform:create_form': (c) => `
 function step_createTypeform(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('TYPEFORM_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Typeform access token not configured');
+    logWarn('typeform_missing_access_token', { message: 'Typeform access token not configured' });
     return ctx;
   }
   
@@ -12335,26 +12516,27 @@ function step_createTypeform(ctx) {
     type: '${c.type || 'quiz'}'
   };
   
-  const response = UrlFetchApp.fetch('https://api.typeform.com/forms', {
+  const response = withRetries(() => fetchJson('https://api.typeform.com/forms', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(formData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.typeformId = result.id;
+    payload: JSON.stringify(formData),
+    contentType: 'application/json'
+  }));
+
+  ctx.typeformId = response.body && response.body.id;
+  logInfo('typeform_create_form', { formId: ctx.typeformId || null });
   return ctx;
 }`,
 
   'action.surveymonkey:create_survey': (c) => `
 function step_createSurveyMonkeySurvey(ctx) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('SURVEYMONKEY_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ SurveyMonkey access token not configured');
+    logWarn('surveymonkey_missing_access_token', { message: 'SurveyMonkey access token not configured' });
     return ctx;
   }
   
@@ -12363,17 +12545,18 @@ function step_createSurveyMonkeySurvey(ctx) {
     nickname: interpolate('${c.nickname || 'Auto Survey'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch('https://api.surveymonkey.com/v3/surveys', {
+  const response = withRetries(() => fetchJson('https://api.surveymonkey.com/v3/surveys', {
     method: 'POST',
     headers: {
       'Authorization': \`Bearer \${accessToken}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(surveyData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.surveyMonkeyId = result.id;
+    payload: JSON.stringify(surveyData),
+    contentType: 'application/json'
+  }));
+
+  ctx.surveyMonkeyId = response.body && response.body.id;
+  logInfo('surveymonkey_create_survey', { surveyId: ctx.surveyMonkeyId || null });
   return ctx;
 }`,
 
@@ -12457,9 +12640,9 @@ function step_getAnalyticsReport(ctx) {
   'action.mixpanel:track_event': (c) => `
 function step_trackMixpanelEvent(ctx) {
   const projectToken = PropertiesService.getScriptProperties().getProperty('MIXPANEL_PROJECT_TOKEN');
-  
+
   if (!projectToken) {
-    console.warn('⚠️ Mixpanel project token not configured');
+    logWarn('mixpanel_missing_project_token', { message: 'Mixpanel project token not configured' });
     return ctx;
   }
   
@@ -12473,18 +12656,18 @@ function step_trackMixpanelEvent(ctx) {
   };
   
   const encodedData = Utilities.base64Encode(JSON.stringify(eventData));
-  const response = UrlFetchApp.fetch(\`https://api.mixpanel.com/track?data=\${encodedData}\`);
-  
-  console.log('📈 Mixpanel event tracked:', eventData.event);
+  withRetries(() => fetchJson(\`https://api.mixpanel.com/track?data=\${encodedData}\`, { method: 'GET' }));
+
+  logInfo('mixpanel_track_event', { event: eventData.event });
   return ctx;
 }`,
 
   'action.amplitude:track_event': (c) => `
 function step_trackAmplitudeEvent(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('AMPLITUDE_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ Amplitude API key not configured');
+    logWarn('amplitude_missing_api_key', { message: 'Amplitude API key not configured' });
     return ctx;
   }
   
@@ -12500,13 +12683,14 @@ function step_trackAmplitudeEvent(ctx) {
     }]
   };
   
-  const response = UrlFetchApp.fetch('https://api2.amplitude.com/2/httpapi', {
+  withRetries(() => fetchJson('https://api2.amplitude.com/2/httpapi', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(eventData)
-  });
-  
-  console.log('📊 Amplitude event tracked:', eventData.events[0].event_type);
+    payload: JSON.stringify(eventData),
+    contentType: 'application/json'
+  }));
+
+  logInfo('amplitude_track_event', { eventType: eventData.events[0].event_type });
   return ctx;
 }`,
 
@@ -12536,9 +12720,9 @@ function step_createBambooEmployee(ctx) {
   'action.greenhouse:create_candidate': (c) => `
 function step_createGreenhouseCandidate(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GREENHOUSE_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ Greenhouse API key not configured');
+    logWarn('greenhouse_missing_api_key', { message: 'Greenhouse API key not configured' });
     return ctx;
   }
   
@@ -12551,17 +12735,18 @@ function step_createGreenhouseCandidate(ctx) {
     }]
   };
   
-  const response = UrlFetchApp.fetch('https://harvest.greenhouse.io/v1/candidates', {
+  const response = withRetries(() => fetchJson('https://harvest.greenhouse.io/v1/candidates', {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${Utilities.base64Encode(apiKey + ':')}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(candidateData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.greenhouseCandidateId = result.id;
+    payload: JSON.stringify(candidateData),
+    contentType: 'application/json'
+  }));
+
+  ctx.greenhouseCandidateId = response.body && response.body.id;
+  logInfo('greenhouse_create_candidate', { candidateId: ctx.greenhouseCandidateId || null });
   return ctx;
 }`,
 
@@ -12571,9 +12756,9 @@ function step_createZendeskTicket(ctx) {
   const apiToken = PropertiesService.getScriptProperties().getProperty('ZENDESK_API_TOKEN');
   const email = PropertiesService.getScriptProperties().getProperty('ZENDESK_EMAIL');
   const subdomain = PropertiesService.getScriptProperties().getProperty('ZENDESK_SUBDOMAIN');
-  
+
   if (!apiToken || !email || !subdomain) {
-    console.warn('⚠️ Zendesk credentials not configured');
+    logWarn('zendesk_missing_credentials', { message: 'Zendesk credentials not configured' });
     return ctx;
   }
   
@@ -12587,17 +12772,18 @@ function step_createZendeskTicket(ctx) {
   };
   
   const auth = Utilities.base64Encode(email + '/token:' + apiToken);
-  const response = UrlFetchApp.fetch(\`https://\${subdomain}.zendesk.com/api/v2/tickets.json\`, {
+  const response = withRetries(() => fetchJson(\`https://\${subdomain}.zendesk.com/api/v2/tickets.json\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${auth}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(ticketData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.zendeskTicketId = result.ticket.id;
+    payload: JSON.stringify(ticketData),
+    contentType: 'application/json'
+  }));
+
+  ctx.zendeskTicketId = response.body && response.body.ticket ? response.body.ticket.id : null;
+  logInfo('zendesk_create_ticket', { ticketId: ctx.zendeskTicketId || null });
   return ctx;
 }`,
 
@@ -12605,9 +12791,9 @@ function step_createZendeskTicket(ctx) {
 function step_createFreshdeskTicket(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('FRESHDESK_API_KEY');
   const domain = PropertiesService.getScriptProperties().getProperty('FRESHDESK_DOMAIN');
-  
+
   if (!apiKey || !domain) {
-    console.warn('⚠️ Freshdesk credentials not configured');
+    logWarn('freshdesk_missing_credentials', { message: 'Freshdesk credentials not configured' });
     return ctx;
   }
   
@@ -12619,17 +12805,18 @@ function step_createFreshdeskTicket(ctx) {
     status: parseInt('${c.status || '2'}')
   };
   
-  const response = UrlFetchApp.fetch(\`https://\${domain}.freshdesk.com/api/v2/tickets\`, {
+  const response = withRetries(() => fetchJson(\`https://\${domain}.freshdesk.com/api/v2/tickets\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${Utilities.base64Encode(apiKey + ':X')}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(ticketData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  ctx.freshdeskTicketId = result.id;
+    payload: JSON.stringify(ticketData),
+    contentType: 'application/json'
+  }));
+
+  ctx.freshdeskTicketId = response.body && response.body.id;
+  logInfo('freshdesk_create_ticket', { ticketId: ctx.freshdeskTicketId || null });
   return ctx;
 }`,
 
@@ -12639,21 +12826,21 @@ function step_triggerJenkinsBuild(ctx) {
   const username = PropertiesService.getScriptProperties().getProperty('JENKINS_USERNAME');
   const token = PropertiesService.getScriptProperties().getProperty('JENKINS_TOKEN');
   const baseUrl = PropertiesService.getScriptProperties().getProperty('JENKINS_BASE_URL');
-  
+
   if (!username || !token || !baseUrl) {
-    console.warn('⚠️ Jenkins credentials not configured');
+    logWarn('jenkins_missing_credentials', { message: 'Jenkins credentials not configured' });
     return ctx;
   }
-  
+
   const jobName = '${c.jobName || 'default-job'}';
   const auth = Utilities.base64Encode(username + ':' + token);
-  
-  const response = UrlFetchApp.fetch(\`\${baseUrl}/job/\${jobName}/build\`, {
+
+  withRetries(() => fetchJson(\`\${baseUrl}/job/\${jobName}/build\`, {
     method: 'POST',
     headers: { 'Authorization': \`Basic \${auth}\` }
-  });
-  
-  console.log('🔧 Jenkins build triggered for job:', jobName);
+  }));
+
+  logInfo('jenkins_trigger_build', { job: jobName });
   ctx.jenkinsBuildId = 'jenkins_' + Date.now();
   return ctx;
 }`,
@@ -12662,20 +12849,20 @@ function step_triggerJenkinsBuild(ctx) {
 function step_listDockerRepos(ctx) {
   const username = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_USERNAME');
   const accessToken = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_ACCESS_TOKEN');
-  
+
   if (!username || !accessToken) {
-    console.warn('⚠️ Docker Hub credentials not configured');
+    logWarn('dockerhub_missing_credentials', { message: 'Docker Hub credentials not configured' });
     return ctx;
   }
-  
-  const response = UrlFetchApp.fetch(\`https://hub.docker.com/v2/repositories/\${username}/\`, {
+
+  const response = withRetries(() => fetchJson(\`https://hub.docker.com/v2/repositories/\${username}/\`, {
     method: 'GET',
     headers: { 'Authorization': \`Bearer \${accessToken}\` }
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  console.log('🐳 Docker Hub repositories listed:', result.count);
-  ctx.dockerRepos = result.results;
+  }));
+
+  const count = response.body && response.body.count;
+  logInfo('dockerhub_list_repositories', { count: count || 0 });
+  ctx.dockerRepos = response.body && response.body.results ? response.body.results : [];
   return ctx;
 }`,
 
@@ -12880,9 +13067,9 @@ function step_deleteAnsibleJobTemplate(ctx) {
   'action.datadog:send_metric': (c) => `
 function step_sendDatadogMetric(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ Datadog API key not configured');
+    logWarn('datadog_missing_api_key', { message: 'Datadog API key not configured' });
     return ctx;
   }
   
@@ -12894,16 +13081,17 @@ function step_sendDatadogMetric(ctx) {
     }]
   };
   
-  const response = UrlFetchApp.fetch('https://api.datadoghq.com/api/v1/series', {
+  withRetries(() => fetchJson('https://api.datadoghq.com/api/v1/series', {
     method: 'POST',
     headers: {
       'DD-API-KEY': apiKey,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(metricData)
-  });
-  
-  console.log('📊 Datadog metric sent:', metricData.series[0].metric);
+    payload: JSON.stringify(metricData),
+    contentType: 'application/json'
+  }));
+
+  logInfo('datadog_send_metric', { metric: metricData.series[0].metric });
   return ctx;
 }`,
 
@@ -12911,9 +13099,9 @@ function step_sendDatadogMetric(ctx) {
 function step_sendNewRelicEvent(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('NEWRELIC_API_KEY');
   const accountId = PropertiesService.getScriptProperties().getProperty('NEWRELIC_ACCOUNT_ID');
-  
+
   if (!apiKey || !accountId) {
-    console.warn('⚠️ New Relic credentials not configured');
+    logWarn('newrelic_missing_credentials', { message: 'New Relic credentials not configured' });
     return ctx;
   }
   
@@ -12924,16 +13112,17 @@ function step_sendNewRelicEvent(ctx) {
     message: interpolate('${c.message || 'Automated event'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch(\`https://insights-collector.newrelic.com/v1/accounts/\${accountId}/events\`, {
+  withRetries(() => fetchJson(\`https://insights-collector.newrelic.com/v1/accounts/\${accountId}/events\`, {
     method: 'POST',
     headers: {
       'X-Insert-Key': apiKey,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(eventData)
-  });
-  
-  console.log('📈 New Relic event sent:', eventData.eventType);
+    payload: JSON.stringify(eventData),
+    contentType: 'application/json'
+  }));
+
+  logInfo('newrelic_send_event', { eventType: eventData.eventType });
   return ctx;
 }`,
 
@@ -13119,9 +13308,9 @@ function step_createIntercomUser(ctx) {
   'action.discord:send_message': (c) => `
 function step_sendDiscordMessage(ctx) {
   const webhookUrl = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
-  
+
   if (!webhookUrl) {
-    console.warn('⚠️ Discord webhook URL not configured');
+    logWarn('discord_missing_webhook', { message: 'Discord webhook URL not configured' });
     return ctx;
   }
   
@@ -13130,13 +13319,14 @@ function step_sendDiscordMessage(ctx) {
     username: 'Apps Script Bot'
   };
   
-  const response = UrlFetchApp.fetch(webhookUrl, {
+  withRetries(() => fetchJson(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(messageData)
-  });
-  
-  console.log('💬 Discord message sent');
+    payload: JSON.stringify(messageData),
+    contentType: 'application/json'
+  }));
+
+  logInfo('discord_send_message', {});
   return ctx;
 }`,
 
@@ -13482,23 +13672,24 @@ function step_insertOracleRecord(ctx) {
 function step_sendTelegramMessage(ctx) {
   const botToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN');
   const chatId = PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_ID');
-  
+
   if (!botToken || !chatId) {
-    console.warn('⚠️ Telegram bot credentials not configured');
+    logWarn('telegram_missing_credentials', { message: 'Telegram bot credentials not configured' });
     return ctx;
   }
-  
+
   const message = interpolate('${c.message || 'Automated notification'}', ctx);
-  const response = UrlFetchApp.fetch(\`https://api.telegram.org/bot\${botToken}/sendMessage\`, {
+  withRetries(() => fetchJson(\`https://api.telegram.org/bot\${botToken}/sendMessage\`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     payload: JSON.stringify({
       chat_id: chatId,
       text: message
-    })
-  });
-  
-  console.log('📱 Telegram message sent');
+    }),
+    contentType: 'application/json'
+  }));
+
+  logInfo('telegram_send_message', { chatId: chatId });
   return ctx;
 }`,
 
@@ -13535,25 +13726,26 @@ function step_sendSkypeMessage(ctx) {
   'action.zapier:trigger_webhook': (c) => `
 function step_triggerZapierWebhook(ctx) {
   const webhookUrl = PropertiesService.getScriptProperties().getProperty('ZAPIER_WEBHOOK_URL');
-  
+
   if (!webhookUrl) {
-    console.warn('⚠️ Zapier webhook URL not configured');
+    logWarn('zapier_missing_webhook', { message: 'Zapier webhook URL not configured' });
     return ctx;
   }
-  
+
   const payload = {
     timestamp: Date.now(),
     source: 'apps_script',
     data: ctx
   };
-  
-  const response = UrlFetchApp.fetch(webhookUrl, {
+
+  withRetries(() => fetchJson(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(payload)
-  });
-  
-  console.log('⚡ Zapier webhook triggered');
+    payload: JSON.stringify(payload),
+    contentType: 'application/json'
+  }));
+
+  logInfo('zapier_trigger_webhook', {});
   return ctx;
 }`,
 
@@ -13561,25 +13753,26 @@ function step_triggerZapierWebhook(ctx) {
 function step_triggerIFTTTWebhook(ctx) {
   const key = PropertiesService.getScriptProperties().getProperty('IFTTT_WEBHOOK_KEY');
   const event = '${c.event || 'apps_script_trigger'}';
-  
+
   if (!key) {
-    console.warn('⚠️ IFTTT webhook key not configured');
+    logWarn('ifttt_missing_key', { message: 'IFTTT webhook key not configured' });
     return ctx;
   }
-  
+
   const payload = {
     value1: interpolate('${c.value1 || 'Automated trigger'}', ctx),
     value2: interpolate('${c.value2 || ''}', ctx),
     value3: interpolate('${c.value3 || ''}', ctx)
   };
-  
-  const response = UrlFetchApp.fetch(\`https://maker.ifttt.com/trigger/\${event}/with/key/\${key}\`, {
+
+  withRetries(() => fetchJson(\`https://maker.ifttt.com/trigger/\${event}/with/key/\${key}\`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(payload)
-  });
-  
-  console.log('🔗 IFTTT webhook triggered for event:', event);
+    payload: JSON.stringify(payload),
+    contentType: 'application/json'
+  }));
+
+  logInfo('ifttt_trigger_webhook', { event: event });
   return ctx;
 }`,
 
@@ -13648,9 +13841,9 @@ function step_createActiveCampaignContact(ctx) {
   'action.convertkit:create_subscriber': (c) => `
 function step_createConvertKitSubscriber(ctx) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('CONVERTKIT_API_KEY');
-  
+
   if (!apiKey) {
-    console.warn('⚠️ ConvertKit API key not configured');
+    logWarn('convertkit_missing_api_key', { message: 'ConvertKit API key not configured' });
     return ctx;
   }
   
@@ -13660,15 +13853,17 @@ function step_createConvertKitSubscriber(ctx) {
     first_name: interpolate('${c.firstName || '{{first_name}}'}', ctx)
   };
   
-  const response = UrlFetchApp.fetch('https://api.convertkit.com/v3/subscribers', {
+  const response = withRetries(() => fetchJson('https://api.convertkit.com/v3/subscribers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(subscriberData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  console.log('📧 ConvertKit subscriber created:', subscriberData.email);
-  ctx.convertkitSubscriberId = result.subscription?.subscriber?.id || 'convertkit_' + Date.now();
+    payload: JSON.stringify(subscriberData),
+    contentType: 'application/json'
+  }));
+
+  const subscription = response.body && response.body.subscription;
+  const subscriberId = subscription && subscription.subscriber ? subscription.subscriber.id : null;
+  logInfo('convertkit_create_subscriber', { email: subscriberData.email });
+  ctx.convertkitSubscriberId = subscriberId || 'convertkit_' + Date.now();
   return ctx;
 }`,
 
@@ -14289,9 +14484,9 @@ function step_createWordPressPost(ctx) {
   const username = PropertiesService.getScriptProperties().getProperty('WORDPRESS_USERNAME');
   const password = PropertiesService.getScriptProperties().getProperty('WORDPRESS_PASSWORD');
   const siteUrl = PropertiesService.getScriptProperties().getProperty('WORDPRESS_SITE_URL');
-  
+
   if (!username || !password || !siteUrl) {
-    console.warn('⚠️ WordPress credentials not configured');
+    logWarn('wordpress_missing_credentials', { message: 'WordPress credentials not configured' });
     return ctx;
   }
   
@@ -14302,17 +14497,18 @@ function step_createWordPressPost(ctx) {
   };
   
   const auth = Utilities.base64Encode(username + ':' + password);
-  const response = UrlFetchApp.fetch(\`\${siteUrl}/wp-json/wp/v2/posts\`, {
+  const response = withRetries(() => fetchJson(\`\${siteUrl}/wp-json/wp/v2/posts\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${auth}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(postData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  console.log('📝 WordPress post created:', postData.title);
+    payload: JSON.stringify(postData),
+    contentType: 'application/json'
+  }));
+
+  const result = response.body || {};
+  logInfo('wordpress_create_post', { title: postData.title });
   ctx.wordpressPostId = result.id || 'wordpress_' + Date.now();
   return ctx;
 }`,
@@ -14323,9 +14519,9 @@ function step_createDrupalNode(ctx) {
   const username = PropertiesService.getScriptProperties().getProperty('DRUPAL_USERNAME');
   const password = PropertiesService.getScriptProperties().getProperty('DRUPAL_PASSWORD');
   const siteUrl = PropertiesService.getScriptProperties().getProperty('DRUPAL_SITE_URL');
-  
+
   if (!username || !password || !siteUrl) {
-    console.warn('⚠️ Drupal credentials not configured');
+    logWarn('drupal_missing_credentials', { message: 'Drupal credentials not configured' });
     return ctx;
   }
   
@@ -14340,18 +14536,19 @@ function step_createDrupalNode(ctx) {
   };
   
   const auth = Utilities.base64Encode(username + ':' + password);
-  const response = UrlFetchApp.fetch(\`\${siteUrl}/node?_format=json\`, {
+  const response = withRetries(() => fetchJson(\`\${siteUrl}/node?_format=json\`, {
     method: 'POST',
     headers: {
       'Authorization': \`Basic \${auth}\`,
       'Content-Type': 'application/json'
     },
-    payload: JSON.stringify(nodeData)
-  });
-  
-  const result = JSON.parse(response.getContentText());
-  console.log('🗂️ Drupal node created:', nodeData.title[0].value);
-  ctx.drupalNodeId = result.nid?.[0]?.value || 'drupal_' + Date.now();
+    payload: JSON.stringify(nodeData),
+    contentType: 'application/json'
+  }));
+
+  const result = response.body || {};
+  logInfo('drupal_create_node', { title: nodeData.title[0].value });
+  ctx.drupalNodeId = result.nid && result.nid[0] ? result.nid[0].value : 'drupal_' + Date.now();
   return ctx;
 }`
 };
@@ -14428,4 +14625,4 @@ function ${fn}(ctx) {
 }
 
 // ChatGPT Fix: Export REAL_OPS for accurate counting
-export { REAL_OPS };
+export { REAL_OPS, appsScriptHttpHelpers };
