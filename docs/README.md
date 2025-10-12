@@ -87,6 +87,7 @@ cd automation-platform
 - **[App Catalog](./app-catalog.md)** - All 149 working app integrations
 - **[Deployment Guide](./deployment-guide.md)** - Production deployment instructions
 - **[Architecture Overview](./architecture.md)** - Technical deep dive
+- **[Apps Script command reference](./apps-script-rollout/commands.md)** - CLI checklist for rollout automation
 
 ### **🏢 For Enterprise**
 
