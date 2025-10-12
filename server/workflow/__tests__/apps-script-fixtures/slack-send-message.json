@@ -1,0 +1,83 @@
+{
+  "id": "slack-send-message",
+  "description": "Sends a Slack notification via webhook fallback when no bot token is configured.",
+  "graph": {
+    "id": "fixture-slack-send-message",
+    "name": "Slack send message",
+    "nodes": [
+      {
+        "id": "slack-action",
+        "type": "action.slack",
+        "app": "slack",
+        "name": "Notify incident channel",
+        "op": "action.slack:send_message",
+        "params": {
+          "operation": "send_message",
+          "channel": "#incidents",
+          "text": "Critical incident declared",
+          "username": "Automation Bot"
+        },
+        "data": {
+          "operation": "send_message",
+          "config": {
+            "channel": "#incidents",
+            "text": "Critical incident declared",
+            "username": "Automation Bot",
+            "credentials": {
+              "webhookSecret": "SLACK_WEBHOOK_URL"
+            }
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "incidentId": "INC-1001"
+    }
+  },
+  "secrets": {
+    "SLACK_WEBHOOK_URL": "https://hooks.slack.test/services/T000/B000/INCIDENT"
+  },
+  "http": [
+    {
+      "name": "slack-webhook",
+      "request": {
+        "url": "https://hooks.slack.test/services/T000/B000/INCIDENT",
+        "method": "POST",
+        "payload": {
+          "channel": "#incidents",
+          "text": "Critical incident declared",
+          "username": "Automation Bot",
+          "icon_emoji": ":robot_face:",
+          "attachments": [],
+          "blocks": []
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": "ok"
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "incidentId": "INC-1001",
+      "slackSent": true,
+      "channel": "#incidents"
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "Slack webhook message sent"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://hooks.slack.test/services/T000/B000/INCIDENT",
+        "method": "POST"
+      }
+    ]
+  }
+}
