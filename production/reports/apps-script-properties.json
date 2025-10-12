@@ -1,0 +1,6013 @@
+{
+  "version": 1,
+  "connectors": [
+    {
+      "id": "activecampaign",
+      "name": "activecampaign",
+      "operations": [
+        "action.activecampaign:create_contact"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ACTIVECAMPAIGN_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.activecampaign:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ACTIVECAMPAIGN_API_URL",
+          "optional": false,
+          "operations": [
+            "action.activecampaign:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "adobe-acrobat",
+      "name": "adobe-acrobat",
+      "operations": [
+        "action.adobe-acrobat:create_pdf"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ADOBE_PDF_CLIENT_ID",
+          "optional": false,
+          "operations": [
+            "action.adobe-acrobat:create_pdf"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ADOBE_PDF_CLIENT_SECRET",
+          "optional": false,
+          "operations": [
+            "action.adobe-acrobat:create_pdf"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "adobe-creative",
+      "name": "adobe-creative",
+      "operations": [
+        "action.adobe-creative:create_project"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ADOBE_CREATIVE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.adobe-creative:create_project"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "adobe-sign",
+      "name": "adobe-sign",
+      "operations": [
+        "action.adobe-sign:send_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ADOBE_SIGN_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.adobe-sign:send_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "adobesign",
+      "name": "Adobe Acrobat Sign",
+      "operations": [
+        "action.adobesign:cancel_agreement",
+        "action.adobesign:create_agreement",
+        "action.adobesign:get_agreement",
+        "action.adobesign:send_agreement",
+        "action.adobesign:test_connection"
+      ],
+      "triggers": [
+        "trigger.adobesign:agreement_action_completed",
+        "trigger.adobesign:agreement_workflow_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "adp",
+      "name": "ADP Workforce Now",
+      "operations": [
+        "action.adp:create_worker",
+        "action.adp:get_worker",
+        "action.adp:test_connection",
+        "action.adp:update_worker"
+      ],
+      "triggers": [
+        "trigger.adp:worker_hired"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "adyen",
+      "name": "Adyen",
+      "operations": [
+        "action.adyen:capture_payment",
+        "action.adyen:create_payment",
+        "action.adyen:refund_payment",
+        "action.adyen:test_connection"
+      ],
+      "triggers": [
+        "trigger.adyen:payment_success"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "airtable",
+      "name": "Airtable",
+      "operations": [
+        "action.airtable:create_record",
+        "action.airtable:delete_record",
+        "action.airtable:get_record",
+        "action.airtable:list_records",
+        "action.airtable:test_connection",
+        "action.airtable:update_record"
+      ],
+      "triggers": [
+        "trigger.airtable:record_created",
+        "trigger.airtable:record_updated"
+      ],
+      "properties": [
+        {
+          "name": "AIRTABLE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.airtable:create_record"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "AIRTABLE_BASE_ID",
+          "optional": false,
+          "operations": [
+            "action.airtable:create_record"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "airtable-enhanced",
+      "name": "Airtable Enhanced",
+      "operations": [
+        "action.airtable-enhanced:batch_create",
+        "action.airtable-enhanced:batch_update",
+        "action.airtable-enhanced:create_record",
+        "action.airtable-enhanced:delete_record",
+        "action.airtable-enhanced:get_record",
+        "action.airtable-enhanced:list_records",
+        "action.airtable-enhanced:test_connection",
+        "action.airtable-enhanced:update_record"
+      ],
+      "triggers": [
+        "trigger.airtable-enhanced:record_created",
+        "trigger.airtable-enhanced:record_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "amazon",
+      "name": "amazon",
+      "operations": [
+        "action.amazon:create_product"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "AMAZON_ACCESS_KEY",
+          "optional": false,
+          "operations": [
+            "action.amazon:create_product"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "AMAZON_SECRET_KEY",
+          "optional": false,
+          "operations": [
+            "action.amazon:create_product"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "amplitude",
+      "name": "amplitude",
+      "operations": [
+        "action.amplitude:track_event"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "AMPLITUDE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.amplitude:track_event"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "animoto",
+      "name": "animoto",
+      "operations": [
+        "action.animoto:create_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ANIMOTO_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.animoto:create_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "ansible",
+      "name": "Ansible",
+      "operations": [
+        "action.ansible:add_host",
+        "action.ansible:create_inventory",
+        "action.ansible:delete_job_template",
+        "action.ansible:get_job_status",
+        "action.ansible:launch_job_template",
+        "action.ansible:list_job_templates",
+        "action.ansible:test_connection"
+      ],
+      "triggers": [
+        "trigger.ansible:inventory_updated",
+        "trigger.ansible:job_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "argocd",
+      "name": "Argo CD",
+      "operations": [
+        "action.argocd:create_application",
+        "action.argocd:delete_application",
+        "action.argocd:get_application",
+        "action.argocd:sync_application",
+        "action.argocd:test_connection"
+      ],
+      "triggers": [
+        "trigger.argocd:app_health_changed",
+        "trigger.argocd:app_synced"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "asana",
+      "name": "asana",
+      "operations": [
+        "action.asana:create_task"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ASANA_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.asana:create_task"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "asana-enhanced",
+      "name": "Asana Enhanced",
+      "operations": [
+        "action.asana-enhanced:add_comment",
+        "action.asana-enhanced:add_task_to_project",
+        "action.asana-enhanced:create_project",
+        "action.asana-enhanced:create_subtask",
+        "action.asana-enhanced:create_task",
+        "action.asana-enhanced:get_task",
+        "action.asana-enhanced:list_projects",
+        "action.asana-enhanced:list_tasks",
+        "action.asana-enhanced:list_workspaces",
+        "action.asana-enhanced:test_connection",
+        "action.asana-enhanced:update_project",
+        "action.asana-enhanced:update_task"
+      ],
+      "triggers": [
+        "trigger.asana-enhanced:task_completed",
+        "trigger.asana-enhanced:task_created",
+        "trigger.asana-enhanced:task_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "aws-cloudformation",
+      "name": "AWS CloudFormation",
+      "operations": [
+        "action.aws-cloudformation:create_stack",
+        "action.aws-cloudformation:delete_stack",
+        "action.aws-cloudformation:get_stack_status",
+        "action.aws-cloudformation:test_connection",
+        "action.aws-cloudformation:update_stack"
+      ],
+      "triggers": [
+        "trigger.aws-cloudformation:stack_created",
+        "trigger.aws-cloudformation:stack_failed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "aws-codepipeline",
+      "name": "AWS CodePipeline",
+      "operations": [
+        "action.aws-codepipeline:create_pipeline",
+        "action.aws-codepipeline:get_pipeline_state",
+        "action.aws-codepipeline:start_pipeline",
+        "action.aws-codepipeline:stop_pipeline",
+        "action.aws-codepipeline:test_connection"
+      ],
+      "triggers": [
+        "trigger.aws-codepipeline:pipeline_failed",
+        "trigger.aws-codepipeline:pipeline_started",
+        "trigger.aws-codepipeline:pipeline_succeeded"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "aws-s3",
+      "name": "aws-s3",
+      "operations": [
+        "action.aws-s3:upload_file"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "AWS_ACCESS_KEY_ID",
+          "optional": false,
+          "operations": [
+            "action.aws-s3:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "AWS_S3_BUCKET",
+          "optional": false,
+          "operations": [
+            "action.aws-s3:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "AWS_SECRET_ACCESS_KEY",
+          "optional": false,
+          "operations": [
+            "action.aws-s3:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "azure-devops",
+      "name": "Azure DevOps",
+      "operations": [
+        "action.azure-devops:create_release",
+        "action.azure-devops:create_work_item",
+        "action.azure-devops:get_build_status",
+        "action.azure-devops:test_connection",
+        "action.azure-devops:trigger_build"
+      ],
+      "triggers": [
+        "trigger.azure-devops:build_completed",
+        "trigger.azure-devops:work_item_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "bamboohr",
+      "name": "BambooHR",
+      "operations": [
+        "action.bamboohr:create_employee",
+        "action.bamboohr:get_employee",
+        "action.bamboohr:get_time_off_requests",
+        "action.bamboohr:test_connection",
+        "action.bamboohr:update_employee"
+      ],
+      "triggers": [
+        "trigger.bamboohr:employee_created",
+        "trigger.bamboohr:employee_updated"
+      ],
+      "properties": [
+        {
+          "name": "BAMBOOHR_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.bamboohr:create_employee"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "BAMBOOHR_SUBDOMAIN",
+          "optional": false,
+          "operations": [
+            "action.bamboohr:create_employee"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "BAMBOOHR_SUBDOMAIN"
+      ]
+    },
+    {
+      "id": "basecamp",
+      "name": "Basecamp",
+      "operations": [
+        "action.basecamp:create_message",
+        "action.basecamp:create_project",
+        "action.basecamp:create_todo",
+        "action.basecamp:create_todo_list",
+        "action.basecamp:test_connection",
+        "action.basecamp:upload_file"
+      ],
+      "triggers": [
+        "trigger.basecamp:project_created",
+        "trigger.basecamp:todo_completed"
+      ],
+      "properties": [
+        {
+          "name": "BASECAMP_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.basecamp:create_todo"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "bigcommerce",
+      "name": "BigCommerce",
+      "operations": [
+        "action.bigcommerce:create_order",
+        "action.bigcommerce:create_product",
+        "action.bigcommerce:get_product",
+        "action.bigcommerce:list_products",
+        "action.bigcommerce:test_connection",
+        "action.bigcommerce:update_product"
+      ],
+      "triggers": [
+        "trigger.bigcommerce:order_created",
+        "trigger.bigcommerce:product_updated"
+      ],
+      "properties": [
+        {
+          "name": "BIGCOMMERCE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.bigcommerce:create_product"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "BIGCOMMERCE_STORE_HASH",
+          "optional": false,
+          "operations": [
+            "action.bigcommerce:create_product"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "bigquery",
+      "name": "Google BigQuery",
+      "operations": [
+        "action.bigquery:create_dataset",
+        "action.bigquery:create_table",
+        "action.bigquery:execute_query",
+        "action.bigquery:insert_rows",
+        "action.bigquery:list_datasets",
+        "action.bigquery:list_tables",
+        "action.bigquery:test_connection"
+      ],
+      "triggers": [
+        "trigger.bigquery:job_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "operations": [
+        "action.bitbucket:create_issue",
+        "action.bitbucket:create_pull_request",
+        "action.bitbucket:create_repository",
+        "action.bitbucket:create_webhook",
+        "action.bitbucket:get_repository",
+        "action.bitbucket:list_repositories",
+        "action.bitbucket:test_connection"
+      ],
+      "triggers": [
+        "trigger.bitbucket:pull_request_created",
+        "trigger.bitbucket:push"
+      ],
+      "properties": [
+        {
+          "name": "BITBUCKET_APP_PASSWORD",
+          "optional": false,
+          "operations": [
+            "action.bitbucket:create_repository"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "BITBUCKET_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.bitbucket:create_repository"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "box",
+      "name": "Box",
+      "operations": [
+        "action.box:create_folder",
+        "action.box:create_shared_link",
+        "action.box:download_file",
+        "action.box:get_file_info",
+        "action.box:list_folder_items",
+        "action.box:search",
+        "action.box:test_connection",
+        "action.box:upload_file"
+      ],
+      "triggers": [
+        "trigger.box:file_deleted",
+        "trigger.box:file_uploaded"
+      ],
+      "properties": [
+        {
+          "name": "BOX_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.box:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "braze",
+      "name": "Braze",
+      "operations": [
+        "action.braze:create_campaign",
+        "action.braze:create_user",
+        "action.braze:export_users",
+        "action.braze:send_message",
+        "action.braze:test_connection",
+        "action.braze:track_user_event"
+      ],
+      "triggers": [
+        "trigger.braze:campaign_sent",
+        "trigger.braze:user_event"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "brex",
+      "name": "Brex",
+      "operations": [
+        "action.brex:create_card",
+        "action.brex:get_card",
+        "action.brex:get_transaction",
+        "action.brex:list_cards",
+        "action.brex:list_transactions",
+        "action.brex:list_users",
+        "action.brex:test_connection",
+        "action.brex:update_card"
+      ],
+      "triggers": [
+        "trigger.brex:card_created",
+        "trigger.brex:transaction_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "buffer",
+      "name": "buffer",
+      "operations": [
+        "action.buffer:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "BUFFER_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.buffer:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "caldotcom",
+      "name": "Cal.com",
+      "operations": [
+        "action.caldotcom:cancel_booking",
+        "action.caldotcom:create_booking",
+        "action.caldotcom:get_availability",
+        "action.caldotcom:get_booking",
+        "action.caldotcom:list_bookings",
+        "action.caldotcom:list_event_types",
+        "action.caldotcom:test_connection",
+        "action.caldotcom:update_booking"
+      ],
+      "triggers": [
+        "trigger.caldotcom:booking_cancelled",
+        "trigger.caldotcom:booking_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "calendly",
+      "name": "Calendly",
+      "operations": [
+        "action.calendly:cancel_scheduled_event",
+        "action.calendly:create_event",
+        "action.calendly:get_event_invitees",
+        "action.calendly:get_event_types",
+        "action.calendly:get_scheduled_events",
+        "action.calendly:get_user_info",
+        "action.calendly:test_connection"
+      ],
+      "triggers": [
+        "trigger.calendly:invitee_canceled",
+        "trigger.calendly:invitee_created"
+      ],
+      "properties": [
+        {
+          "name": "CALENDLY_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.calendly:create_event"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "canva",
+      "name": "canva",
+      "operations": [
+        "action.canva:create_design"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "CANVA_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.canva:create_design"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "circleci",
+      "name": "CircleCI",
+      "operations": [
+        "action.circleci:cancel_workflow",
+        "action.circleci:get_jobs",
+        "action.circleci:get_pipeline",
+        "action.circleci:get_pipelines",
+        "action.circleci:get_workflows",
+        "action.circleci:rerun_workflow",
+        "action.circleci:test_connection",
+        "action.circleci:trigger_pipeline"
+      ],
+      "triggers": [
+        "trigger.circleci:job_completed",
+        "trigger.circleci:workflow_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "clickup",
+      "name": "ClickUp",
+      "operations": [
+        "action.clickup:create_comment",
+        "action.clickup:create_task",
+        "action.clickup:delete_task",
+        "action.clickup:get_lists",
+        "action.clickup:get_spaces",
+        "action.clickup:get_task",
+        "action.clickup:get_tasks",
+        "action.clickup:test_connection",
+        "action.clickup:update_task"
+      ],
+      "triggers": [
+        "trigger.clickup:task_created",
+        "trigger.clickup:task_updated"
+      ],
+      "properties": [
+        {
+          "name": "CLICKUP_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.clickup:create_task"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "coda",
+      "name": "Coda",
+      "operations": [
+        "action.coda:create_row",
+        "action.coda:delete_row",
+        "action.coda:get_doc",
+        "action.coda:get_table",
+        "action.coda:list_docs",
+        "action.coda:list_rows",
+        "action.coda:list_tables",
+        "action.coda:test_connection",
+        "action.coda:update_row"
+      ],
+      "triggers": [
+        "trigger.coda:row_created",
+        "trigger.coda:row_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "concur",
+      "name": "SAP Concur",
+      "operations": [
+        "action.concur:create_expense_entry",
+        "action.concur:create_expense_report",
+        "action.concur:get_expense_entries",
+        "action.concur:get_expense_report",
+        "action.concur:get_expense_reports",
+        "action.concur:get_users",
+        "action.concur:test_connection"
+      ],
+      "triggers": [
+        "trigger.concur:expense_report_approved",
+        "trigger.concur:expense_report_submitted"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "confluence",
+      "name": "Atlassian Confluence",
+      "operations": [
+        "action.confluence:add_comment",
+        "action.confluence:create_page",
+        "action.confluence:delete_page",
+        "action.confluence:get_page",
+        "action.confluence:get_spaces",
+        "action.confluence:search_content",
+        "action.confluence:test_connection",
+        "action.confluence:update_page"
+      ],
+      "triggers": [
+        "trigger.confluence:page_created",
+        "trigger.confluence:page_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "constant-contact",
+      "name": "constant-contact",
+      "operations": [
+        "action.constant-contact:create_contact"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "CONSTANT_CONTACT_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.constant-contact:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "convertkit",
+      "name": "convertkit",
+      "operations": [
+        "action.convertkit:create_subscriber"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "CONVERTKIT_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.convertkit:create_subscriber"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "coupa",
+      "name": "Coupa",
+      "operations": [
+        "action.coupa:approve_invoice",
+        "action.coupa:create_purchase_order",
+        "action.coupa:create_supplier",
+        "action.coupa:get_invoices",
+        "action.coupa:get_purchase_order",
+        "action.coupa:get_purchase_orders",
+        "action.coupa:get_suppliers",
+        "action.coupa:test_connection"
+      ],
+      "triggers": [
+        "trigger.coupa:invoice_received",
+        "trigger.coupa:purchase_order_approved"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "creately",
+      "name": "creately",
+      "operations": [
+        "action.creately:create_diagram"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "CREATELY_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.creately:create_diagram"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "databricks",
+      "name": "Databricks",
+      "operations": [
+        "action.databricks:cancel_run",
+        "action.databricks:create_job",
+        "action.databricks:get_cluster",
+        "action.databricks:get_run",
+        "action.databricks:list_clusters",
+        "action.databricks:list_jobs",
+        "action.databricks:start_cluster",
+        "action.databricks:stop_cluster",
+        "action.databricks:submit_run",
+        "action.databricks:test_connection"
+      ],
+      "triggers": [
+        "trigger.databricks:cluster_started",
+        "trigger.databricks:job_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "datadog",
+      "name": "Datadog",
+      "operations": [
+        "action.datadog:create_event",
+        "action.datadog:create_monitor",
+        "action.datadog:get_events",
+        "action.datadog:get_monitors",
+        "action.datadog:query_metrics",
+        "action.datadog:send_metric",
+        "action.datadog:submit_metrics",
+        "action.datadog:test_connection"
+      ],
+      "triggers": [
+        "trigger.datadog:metric_threshold",
+        "trigger.datadog:monitor_alert"
+      ],
+      "properties": [
+        {
+          "name": "DATADOG_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.datadog:send_metric"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "discord",
+      "name": "discord",
+      "operations": [
+        "action.discord:send_message"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "DISCORD_WEBHOOK_URL",
+          "optional": false,
+          "operations": [
+            "action.discord:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "docker-hub",
+      "name": "Docker Hub",
+      "operations": [
+        "action.docker-hub:get_repository",
+        "action.docker-hub:get_tag",
+        "action.docker-hub:list_repositories",
+        "action.docker-hub:list_tags",
+        "action.docker-hub:test_connection"
+      ],
+      "triggers": [
+        "trigger.docker-hub:image_pushed",
+        "trigger.docker-hub:repository_created"
+      ],
+      "properties": [
+        {
+          "name": "DOCKER_HUB_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.docker-hub:list_repositories"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "DOCKER_HUB_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.docker-hub:list_repositories"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "docusign",
+      "name": "DocuSign",
+      "operations": [
+        "action.docusign:create_envelope",
+        "action.docusign:download_document",
+        "action.docusign:get_envelope",
+        "action.docusign:get_envelope_status",
+        "action.docusign:get_recipients",
+        "action.docusign:list_envelopes",
+        "action.docusign:send_envelope",
+        "action.docusign:test_connection",
+        "action.docusign:void_envelope"
+      ],
+      "triggers": [
+        "trigger.docusign:envelope_completed",
+        "trigger.docusign:envelope_sent",
+        "trigger.docusign:recipient_signed"
+      ],
+      "properties": [
+        {
+          "name": "DOCUSIGN_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.docusign:send_envelope"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "DOCUSIGN_ACCOUNT_ID",
+          "optional": false,
+          "operations": [
+            "action.docusign:send_envelope"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "operations": [
+        "action.dropbox:copy_file",
+        "action.dropbox:create_folder",
+        "action.dropbox:create_shared_link",
+        "action.dropbox:delete_file",
+        "action.dropbox:download_file",
+        "action.dropbox:get_metadata",
+        "action.dropbox:list_folder",
+        "action.dropbox:move_file",
+        "action.dropbox:search",
+        "action.dropbox:test_connection",
+        "action.dropbox:upload_file"
+      ],
+      "triggers": [
+        "trigger.dropbox:file_deleted",
+        "trigger.dropbox:file_uploaded"
+      ],
+      "properties": [
+        {
+          "name": "DROPBOX_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.dropbox:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "dropbox-enhanced",
+      "name": "Dropbox Enhanced",
+      "operations": [
+        "action.dropbox-enhanced:copy_file",
+        "action.dropbox-enhanced:create_folder",
+        "action.dropbox-enhanced:create_shared_link",
+        "action.dropbox-enhanced:delete_file",
+        "action.dropbox-enhanced:download_file",
+        "action.dropbox-enhanced:get_metadata",
+        "action.dropbox-enhanced:list_folder",
+        "action.dropbox-enhanced:move_file",
+        "action.dropbox-enhanced:search",
+        "action.dropbox-enhanced:test_connection",
+        "action.dropbox-enhanced:upload_file"
+      ],
+      "triggers": [
+        "trigger.dropbox-enhanced:file_deleted",
+        "trigger.dropbox-enhanced:file_uploaded",
+        "trigger.dropbox-enhanced:folder_shared"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "drupal",
+      "name": "drupal",
+      "operations": [
+        "action.drupal:create_node"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "DRUPAL_PASSWORD",
+          "optional": false,
+          "operations": [
+            "action.drupal:create_node"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "DRUPAL_SITE_URL",
+          "optional": false,
+          "operations": [
+            "action.drupal:create_node"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "DRUPAL_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.drupal:create_node"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "dynamics365",
+      "name": "Microsoft Dynamics 365",
+      "operations": [
+        "action.dynamics365:create_account",
+        "action.dynamics365:create_contact",
+        "action.dynamics365:create_lead",
+        "action.dynamics365:create_opportunity",
+        "action.dynamics365:get_account",
+        "action.dynamics365:list_accounts",
+        "action.dynamics365:test_connection",
+        "action.dynamics365:update_account"
+      ],
+      "triggers": [
+        "trigger.dynamics365:account_created",
+        "trigger.dynamics365:lead_created",
+        "trigger.dynamics365:opportunity_won"
+      ],
+      "properties": [
+        {
+          "name": "DYNAMICS365_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.dynamics365:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "DYNAMICS365_INSTANCE_URL",
+          "optional": false,
+          "operations": [
+            "action.dynamics365:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "DYNAMICS365_INSTANCE_URL"
+      ]
+    },
+    {
+      "id": "ebay",
+      "name": "ebay",
+      "operations": [
+        "action.ebay:create_listing"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "EBAY_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.ebay:create_listing"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "egnyte",
+      "name": "Egnyte",
+      "operations": [
+        "action.egnyte:copy_file",
+        "action.egnyte:create_folder",
+        "action.egnyte:create_link",
+        "action.egnyte:delete_file",
+        "action.egnyte:download_file",
+        "action.egnyte:list_folder",
+        "action.egnyte:move_file",
+        "action.egnyte:search",
+        "action.egnyte:test_connection",
+        "action.egnyte:upload_file"
+      ],
+      "triggers": [
+        "trigger.egnyte:file_deleted",
+        "trigger.egnyte:file_uploaded"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "etsy",
+      "name": "etsy",
+      "operations": [
+        "action.etsy:create_listing"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ETSY_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.etsy:create_listing"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "eversign",
+      "name": "eversign",
+      "operations": [
+        "action.eversign:create_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "EVERSIGN_ACCESS_KEY",
+          "optional": false,
+          "operations": [
+            "action.eversign:create_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "excel-online",
+      "name": "Microsoft Excel Online",
+      "operations": [
+        "action.excel-online:add_row",
+        "action.excel-online:create_chart",
+        "action.excel-online:create_table",
+        "action.excel-online:create_workbook",
+        "action.excel-online:create_worksheet",
+        "action.excel-online:get_range",
+        "action.excel-online:get_workbook",
+        "action.excel-online:list_tables",
+        "action.excel-online:list_worksheets",
+        "action.excel-online:test_connection",
+        "action.excel-online:update_range"
+      ],
+      "triggers": [
+        "trigger.excel-online:table_row_added",
+        "trigger.excel-online:workbook_modified"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "expensify",
+      "name": "Expensify",
+      "operations": [
+        "action.expensify:create_expense",
+        "action.expensify:create_policy_tags",
+        "action.expensify:export_report",
+        "action.expensify:get_expense_report",
+        "action.expensify:get_expense_reports",
+        "action.expensify:get_policies",
+        "action.expensify:test_connection",
+        "action.expensify:upload_receipt"
+      ],
+      "triggers": [
+        "trigger.expensify:expense_created",
+        "trigger.expensify:expense_report_approved",
+        "trigger.expensify:expense_report_submitted"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "facebook",
+      "name": "facebook",
+      "operations": [
+        "action.facebook:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "FACEBOOK_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.facebook:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "facebook-ads",
+      "name": "facebook-ads",
+      "operations": [
+        "action.facebook-ads:create_campaign"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "FACEBOOK_ADS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.facebook-ads:create_campaign"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "FACEBOOK_ADS_ACCOUNT_ID",
+          "optional": false,
+          "operations": [
+            "action.facebook-ads:create_campaign"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "figma",
+      "name": "figma",
+      "operations": [
+        "action.figma:create_file"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "FIGMA_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.figma:create_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "flipboard",
+      "name": "flipboard",
+      "operations": [
+        "action.flipboard:create_magazine"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "FLIPBOARD_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.flipboard:create_magazine"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "freshbooks",
+      "name": "freshbooks",
+      "operations": [
+        "action.freshbooks:create_client"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "FRESHBOOKS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.freshbooks:create_client"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "freshdesk",
+      "name": "Freshdesk",
+      "operations": [
+        "action.freshdesk:create_note",
+        "action.freshdesk:create_reply",
+        "action.freshdesk:create_ticket",
+        "action.freshdesk:get_ticket",
+        "action.freshdesk:list_tickets",
+        "action.freshdesk:search_tickets",
+        "action.freshdesk:test_connection",
+        "action.freshdesk:update_ticket"
+      ],
+      "triggers": [
+        "trigger.freshdesk:ticket_created",
+        "trigger.freshdesk:ticket_updated"
+      ],
+      "properties": [
+        {
+          "name": "FRESHDESK_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.freshdesk:create_ticket"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "FRESHDESK_DOMAIN",
+          "optional": false,
+          "operations": [
+            "action.freshdesk:create_ticket"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "FRESHDESK_DOMAIN"
+      ]
+    },
+    {
+      "id": "ghost",
+      "name": "ghost",
+      "operations": [
+        "action.ghost:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "GHOST_ADMIN_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.ghost:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GHOST_API_URL",
+          "optional": false,
+          "operations": [
+            "action.ghost:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "operations": [
+        "action.github:add_labels_to_issue",
+        "action.github:close_issue",
+        "action.github:create_comment",
+        "action.github:create_issue",
+        "action.github:create_pull_request",
+        "action.github:create_webhook",
+        "action.github:get_issue",
+        "action.github:get_repository",
+        "action.github:list_issues",
+        "action.github:list_pull_requests",
+        "action.github:list_repositories",
+        "action.github:merge_pull_request",
+        "action.github:test_connection",
+        "action.github:update_issue",
+        "action.github:update_pull_request"
+      ],
+      "triggers": [
+        "trigger.github:issue_closed",
+        "trigger.github:issue_opened",
+        "trigger.github:pull_request_merged",
+        "trigger.github:pull_request_opened",
+        "trigger.github:push"
+      ],
+      "properties": [
+        {
+          "name": "GITHUB_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.github:create_issue"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "github-enhanced",
+      "name": "GitHub Enhanced",
+      "operations": [
+        "action.github-enhanced:create_issue",
+        "action.github-enhanced:create_pull_request",
+        "action.github-enhanced:create_repository",
+        "action.github-enhanced:create_webhook",
+        "action.github-enhanced:merge_pull_request",
+        "action.github-enhanced:search_repositories",
+        "action.github-enhanced:test_connection",
+        "action.github-enhanced:update_issue"
+      ],
+      "triggers": [
+        "trigger.github-enhanced:issues",
+        "trigger.github-enhanced:pull_request",
+        "trigger.github-enhanced:push"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "gitlab",
+      "name": "GitLab",
+      "operations": [
+        "action.gitlab:create_issue",
+        "action.gitlab:create_merge_request",
+        "action.gitlab:create_project",
+        "action.gitlab:list_projects",
+        "action.gitlab:test_connection"
+      ],
+      "triggers": [
+        "trigger.gitlab:merge_request_events",
+        "trigger.gitlab:push_events"
+      ],
+      "properties": [
+        {
+          "name": "GITLAB_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.gitlab:create_project"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "operations": [
+        "action.gmail:add_label",
+        "action.gmail:get_email",
+        "action.gmail:mark_as_read",
+        "action.gmail:search_emails",
+        "action.gmail:send_email",
+        "action.gmail:send_reply",
+        "action.gmail:test_connection"
+      ],
+      "triggers": [
+        "trigger.gmail:email_received_from",
+        "trigger.gmail:email_with_attachment",
+        "trigger.gmail:new_email_received"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "gmail-enhanced",
+      "name": "Gmail Enhanced",
+      "operations": [
+        "action.gmail-enhanced:create_draft",
+        "action.gmail-enhanced:create_label",
+        "action.gmail-enhanced:delete_message",
+        "action.gmail-enhanced:get_message",
+        "action.gmail-enhanced:list_labels",
+        "action.gmail-enhanced:list_messages",
+        "action.gmail-enhanced:modify_message",
+        "action.gmail-enhanced:search_messages",
+        "action.gmail-enhanced:send_email",
+        "action.gmail-enhanced:test_connection"
+      ],
+      "triggers": [
+        "trigger.gmail-enhanced:email_starred",
+        "trigger.gmail-enhanced:new_email"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-admin",
+      "name": "Google Admin",
+      "operations": [
+        "action.google-admin:add_group_member",
+        "action.google-admin:create_group",
+        "action.google-admin:create_user",
+        "action.google-admin:delete_user",
+        "action.google-admin:get_user",
+        "action.google-admin:list_users",
+        "action.google-admin:remove_group_member",
+        "action.google-admin:test_connection",
+        "action.google-admin:update_user"
+      ],
+      "triggers": [
+        "trigger.google-admin:user_created",
+        "trigger.google-admin:user_suspended"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-ads",
+      "name": "google-ads",
+      "operations": [
+        "action.google-ads:create_campaign"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "GOOGLE_ADS_CUSTOMER_ID",
+          "optional": false,
+          "operations": [
+            "action.google-ads:create_campaign"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_ADS_DEVELOPER_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-ads:create_campaign"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-analytics",
+      "name": "google-analytics",
+      "operations": [
+        "action.google-analytics:get_report"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "GA_VIEW_ID",
+          "optional": false,
+          "operations": [
+            "action.google-analytics:get_report"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "operations": [
+        "action.google-calendar:create_calendar",
+        "action.google-calendar:create_event",
+        "action.google-calendar:delete_event",
+        "action.google-calendar:get_event",
+        "action.google-calendar:get_freebusy",
+        "action.google-calendar:list_calendars",
+        "action.google-calendar:list_events",
+        "action.google-calendar:quick_add",
+        "action.google-calendar:stop_channel",
+        "action.google-calendar:test_connection",
+        "action.google-calendar:update_calendar",
+        "action.google-calendar:update_event",
+        "action.google-calendar:watch_events"
+      ],
+      "triggers": [
+        "trigger.google-calendar:event_created",
+        "trigger.google-calendar:event_starting_soon",
+        "trigger.google-calendar:event_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-chat",
+      "name": "Google Chat",
+      "operations": [
+        "action.google-chat:create_membership",
+        "action.google-chat:create_space",
+        "action.google-chat:delete_message",
+        "action.google-chat:get_message",
+        "action.google-chat:get_space",
+        "action.google-chat:list_members",
+        "action.google-chat:list_messages",
+        "action.google-chat:list_spaces",
+        "action.google-chat:send_message",
+        "action.google-chat:test_connection",
+        "action.google-chat:update_message"
+      ],
+      "triggers": [
+        "trigger.google-chat:membership_created",
+        "trigger.google-chat:message_created",
+        "trigger.google-chat:space_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-cloud-storage",
+      "name": "google-cloud-storage",
+      "operations": [
+        "action.google-cloud-storage:upload_file"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "GCS_BUCKET",
+          "optional": false,
+          "operations": [
+            "action.google-cloud-storage:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GCS_SERVICE_ACCOUNT_KEY",
+          "optional": false,
+          "operations": [
+            "action.google-cloud-storage:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-contacts",
+      "name": "Google Contacts",
+      "operations": [
+        "action.google-contacts:create_contact",
+        "action.google-contacts:create_contact_group",
+        "action.google-contacts:delete_contact",
+        "action.google-contacts:get_contact",
+        "action.google-contacts:list_contact_groups",
+        "action.google-contacts:list_contacts",
+        "action.google-contacts:search_contacts",
+        "action.google-contacts:test_connection",
+        "action.google-contacts:update_contact"
+      ],
+      "triggers": [
+        "trigger.google-contacts:contact_created",
+        "trigger.google-contacts:contact_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-docs",
+      "name": "Google Docs",
+      "operations": [
+        "action.google-docs:batch_update",
+        "action.google-docs:create_document",
+        "action.google-docs:delete_content_range",
+        "action.google-docs:get_document",
+        "action.google-docs:insert_image",
+        "action.google-docs:insert_table",
+        "action.google-docs:insert_text",
+        "action.google-docs:replace_text",
+        "action.google-docs:test_connection",
+        "action.google-docs:update_text_style"
+      ],
+      "triggers": [
+        "trigger.google-docs:document_created",
+        "trigger.google-docs:document_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "operations": [
+        "action.google-drive:copy_file",
+        "action.google-drive:create_file",
+        "action.google-drive:create_folder",
+        "action.google-drive:delete_file",
+        "action.google-drive:delete_permission",
+        "action.google-drive:download_file",
+        "action.google-drive:get_file",
+        "action.google-drive:get_file_permissions",
+        "action.google-drive:list_files",
+        "action.google-drive:move_file",
+        "action.google-drive:share_file",
+        "action.google-drive:test_connection",
+        "action.google-drive:update_file_metadata",
+        "action.google-drive:update_permission",
+        "action.google-drive:upload_file"
+      ],
+      "triggers": [
+        "trigger.google-drive:file_created",
+        "trigger.google-drive:file_shared",
+        "trigger.google-drive:file_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-forms",
+      "name": "Google Forms",
+      "operations": [
+        "action.google-forms:add_question",
+        "action.google-forms:batch_update",
+        "action.google-forms:create_form",
+        "action.google-forms:delete_item",
+        "action.google-forms:get_form",
+        "action.google-forms:get_response",
+        "action.google-forms:list_responses",
+        "action.google-forms:test_connection",
+        "action.google-forms:update_form_info",
+        "action.google-forms:update_settings"
+      ],
+      "triggers": [
+        "trigger.google-forms:form_created",
+        "trigger.google-forms:form_response"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-meet",
+      "name": "Google Meet",
+      "operations": [
+        "action.google-meet:create_space",
+        "action.google-meet:end_active_conference",
+        "action.google-meet:get_conference_record",
+        "action.google-meet:get_participant",
+        "action.google-meet:get_participant_session",
+        "action.google-meet:get_space",
+        "action.google-meet:list_conference_records",
+        "action.google-meet:list_participant_sessions",
+        "action.google-meet:list_participants",
+        "action.google-meet:test_connection"
+      ],
+      "triggers": [
+        "trigger.google-meet:conference_started",
+        "trigger.google-meet:participant_joined",
+        "trigger.google-meet:space_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-sheets-enhanced",
+      "name": "Google Sheets Enhanced",
+      "operations": [
+        "action.google-sheets-enhanced:append_row",
+        "action.google-sheets-enhanced:clear_range",
+        "action.google-sheets-enhanced:create_sheet",
+        "action.google-sheets-enhanced:delete_sheet",
+        "action.google-sheets-enhanced:duplicate_sheet",
+        "action.google-sheets-enhanced:find_replace",
+        "action.google-sheets-enhanced:format_cells",
+        "action.google-sheets-enhanced:get_values",
+        "action.google-sheets-enhanced:sort_range",
+        "action.google-sheets-enhanced:test_connection",
+        "action.google-sheets-enhanced:update_cell",
+        "action.google-sheets-enhanced:update_range"
+      ],
+      "triggers": [
+        "trigger.google-sheets-enhanced:cell_updated",
+        "trigger.google-sheets-enhanced:row_added"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "google-slides",
+      "name": "Google Slides",
+      "operations": [
+        "action.google-slides:batch_update",
+        "action.google-slides:create_image",
+        "action.google-slides:create_presentation",
+        "action.google-slides:create_shape",
+        "action.google-slides:create_slide",
+        "action.google-slides:delete_object",
+        "action.google-slides:get_presentation",
+        "action.google-slides:insert_text",
+        "action.google-slides:replace_all_text",
+        "action.google-slides:test_connection"
+      ],
+      "triggers": [
+        "trigger.google-slides:presentation_created",
+        "trigger.google-slides:presentation_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "grafana",
+      "name": "Grafana",
+      "operations": [
+        "action.grafana:create_alert_rule",
+        "action.grafana:create_dashboard",
+        "action.grafana:create_datasource",
+        "action.grafana:get_dashboard",
+        "action.grafana:test_connection"
+      ],
+      "triggers": [
+        "trigger.grafana:alert_triggered",
+        "trigger.grafana:dashboard_saved"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "greenhouse",
+      "name": "Greenhouse",
+      "operations": [
+        "action.greenhouse:advance_application",
+        "action.greenhouse:create_candidate",
+        "action.greenhouse:get_application",
+        "action.greenhouse:get_candidate",
+        "action.greenhouse:get_job",
+        "action.greenhouse:list_applications",
+        "action.greenhouse:list_candidates",
+        "action.greenhouse:list_jobs",
+        "action.greenhouse:reject_application",
+        "action.greenhouse:test_connection",
+        "action.greenhouse:unreject_application",
+        "action.greenhouse:update_candidate"
+      ],
+      "triggers": [
+        "trigger.greenhouse:application_hired",
+        "trigger.greenhouse:application_stage_changed",
+        "trigger.greenhouse:candidate_created"
+      ],
+      "properties": [
+        {
+          "name": "GREENHOUSE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.greenhouse:create_candidate"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "guru",
+      "name": "Guru",
+      "operations": [
+        "action.guru:add_team_member",
+        "action.guru:create_card",
+        "action.guru:delete_card",
+        "action.guru:get_analytics",
+        "action.guru:get_card",
+        "action.guru:get_cards",
+        "action.guru:get_collection",
+        "action.guru:get_collections",
+        "action.guru:get_team_members",
+        "action.guru:search_cards",
+        "action.guru:test_connection",
+        "action.guru:update_card"
+      ],
+      "triggers": [
+        "trigger.guru:card_created",
+        "trigger.guru:card_updated",
+        "trigger.guru:card_verified"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "hashicorp-vault",
+      "name": "HashiCorp Vault",
+      "operations": [
+        "action.hashicorp-vault:create_policy",
+        "action.hashicorp-vault:delete_secret",
+        "action.hashicorp-vault:read_secret",
+        "action.hashicorp-vault:test_connection",
+        "action.hashicorp-vault:write_secret"
+      ],
+      "triggers": [
+        "trigger.hashicorp-vault:policy_updated",
+        "trigger.hashicorp-vault:secret_accessed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "hellosign",
+      "name": "HelloSign",
+      "operations": [
+        "action.hellosign:cancel_signature_request",
+        "action.hellosign:create_embedded_signature_request",
+        "action.hellosign:create_template",
+        "action.hellosign:download_files",
+        "action.hellosign:get_account",
+        "action.hellosign:get_embedded_sign_url",
+        "action.hellosign:get_signature_request",
+        "action.hellosign:get_template",
+        "action.hellosign:list_signature_requests",
+        "action.hellosign:remind_signature_request",
+        "action.hellosign:send_signature_request",
+        "action.hellosign:send_with_template",
+        "action.hellosign:test_connection"
+      ],
+      "triggers": [
+        "trigger.hellosign:signature_request_declined",
+        "trigger.hellosign:signature_request_sent",
+        "trigger.hellosign:signature_request_signed"
+      ],
+      "properties": [
+        {
+          "name": "HELLOSIGN_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.hellosign:send_signature_request"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "helm",
+      "name": "Helm",
+      "operations": [
+        "action.helm:install_chart",
+        "action.helm:list_releases",
+        "action.helm:test_connection",
+        "action.helm:uninstall_release",
+        "action.helm:upgrade_release"
+      ],
+      "triggers": [
+        "trigger.helm:release_deployed",
+        "trigger.helm:release_failed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "hootsuite",
+      "name": "hootsuite",
+      "operations": [
+        "action.hootsuite:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "HOOTSUITE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.hootsuite:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "hubspot",
+      "name": "HubSpot",
+      "operations": [
+        "action.hubspot:create_company",
+        "action.hubspot:create_contact",
+        "action.hubspot:create_deal",
+        "action.hubspot:create_note",
+        "action.hubspot:create_ticket",
+        "action.hubspot:get_contact",
+        "action.hubspot:get_deal",
+        "action.hubspot:list_deals",
+        "action.hubspot:search_contacts",
+        "action.hubspot:search_deals",
+        "action.hubspot:send_email",
+        "action.hubspot:test_connection",
+        "action.hubspot:update_contact",
+        "action.hubspot:update_deal",
+        "action.hubspot:update_deal_stage"
+      ],
+      "triggers": [
+        "trigger.hubspot:contact_created",
+        "trigger.hubspot:contact_updated",
+        "trigger.hubspot:deal_created",
+        "trigger.hubspot:deal_stage_changed"
+      ],
+      "properties": [
+        {
+          "name": "HUBSPOT_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.hubspot:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "hubspot-enhanced",
+      "name": "HubSpot Enhanced",
+      "operations": [
+        "action.hubspot-enhanced:bulk_create_contacts",
+        "action.hubspot-enhanced:create_company",
+        "action.hubspot-enhanced:create_contact",
+        "action.hubspot-enhanced:create_deal",
+        "action.hubspot-enhanced:create_note",
+        "action.hubspot-enhanced:create_task",
+        "action.hubspot-enhanced:get_contact",
+        "action.hubspot-enhanced:search_contacts",
+        "action.hubspot-enhanced:test_connection",
+        "action.hubspot-enhanced:update_company",
+        "action.hubspot-enhanced:update_contact",
+        "action.hubspot-enhanced:update_deal"
+      ],
+      "triggers": [
+        "trigger.hubspot-enhanced:company_created",
+        "trigger.hubspot-enhanced:contact_created",
+        "trigger.hubspot-enhanced:contact_updated",
+        "trigger.hubspot-enhanced:deal_stage_changed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "ifttt",
+      "name": "ifttt",
+      "operations": [
+        "action.ifttt:trigger_webhook"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "IFTTT_WEBHOOK_KEY",
+          "optional": false,
+          "operations": [
+            "action.ifttt:trigger_webhook"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "instagram",
+      "name": "instagram",
+      "operations": [
+        "action.instagram:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "INSTAGRAM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.instagram:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "intercom",
+      "name": "Intercom",
+      "operations": [
+        "action.intercom:assign_conversation",
+        "action.intercom:close_conversation",
+        "action.intercom:create_contact",
+        "action.intercom:create_conversation",
+        "action.intercom:create_note",
+        "action.intercom:create_user",
+        "action.intercom:delete_contact",
+        "action.intercom:get_contact",
+        "action.intercom:list_admins",
+        "action.intercom:list_contacts",
+        "action.intercom:reply_conversation",
+        "action.intercom:search_contacts",
+        "action.intercom:test_connection",
+        "action.intercom:update_contact"
+      ],
+      "triggers": [
+        "trigger.intercom:contact_created",
+        "trigger.intercom:conversation_assigned",
+        "trigger.intercom:conversation_created"
+      ],
+      "properties": [
+        {
+          "name": "INTERCOM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.intercom:create_user"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "invision",
+      "name": "invision",
+      "operations": [
+        "action.invision:create_prototype"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "INVISION_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.invision:create_prototype"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "iterable",
+      "name": "Iterable",
+      "operations": [
+        "action.iterable:create_list",
+        "action.iterable:delete_user",
+        "action.iterable:export_data",
+        "action.iterable:get_campaigns",
+        "action.iterable:get_lists",
+        "action.iterable:get_templates",
+        "action.iterable:get_user",
+        "action.iterable:send_email",
+        "action.iterable:subscribe_user",
+        "action.iterable:test_connection",
+        "action.iterable:track_event",
+        "action.iterable:track_purchase",
+        "action.iterable:unsubscribe_user",
+        "action.iterable:update_user"
+      ],
+      "triggers": [
+        "trigger.iterable:email_click",
+        "trigger.iterable:email_open",
+        "trigger.iterable:email_send",
+        "trigger.iterable:user_unsubscribe"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "jenkins",
+      "name": "Jenkins",
+      "operations": [
+        "action.jenkins:cancel_queue_item",
+        "action.jenkins:copy_job",
+        "action.jenkins:create_job",
+        "action.jenkins:delete_job",
+        "action.jenkins:disable_job",
+        "action.jenkins:enable_job",
+        "action.jenkins:get_build_console",
+        "action.jenkins:get_build_status",
+        "action.jenkins:get_job_info",
+        "action.jenkins:get_last_build",
+        "action.jenkins:get_queue",
+        "action.jenkins:list_jobs",
+        "action.jenkins:stop_build",
+        "action.jenkins:test_connection",
+        "action.jenkins:trigger_build",
+        "action.jenkins:update_job"
+      ],
+      "triggers": [
+        "trigger.jenkins:build_completed",
+        "trigger.jenkins:build_failed",
+        "trigger.jenkins:build_started"
+      ],
+      "properties": [
+        {
+          "name": "JENKINS_BASE_URL",
+          "optional": false,
+          "operations": [
+            "action.jenkins:trigger_build"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "JENKINS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.jenkins:trigger_build"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "JENKINS_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.jenkins:trigger_build"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "JENKINS_BASE_URL"
+      ]
+    },
+    {
+      "id": "jira",
+      "name": "Jira",
+      "operations": [
+        "action.jira:add_comment",
+        "action.jira:assign_issue",
+        "action.jira:create_issue",
+        "action.jira:create_project",
+        "action.jira:create_version",
+        "action.jira:get_issue",
+        "action.jira:get_project",
+        "action.jira:list_projects",
+        "action.jira:search_issues",
+        "action.jira:test_connection",
+        "action.jira:transition_issue",
+        "action.jira:update_issue"
+      ],
+      "triggers": [
+        "trigger.jira:comment_added",
+        "trigger.jira:issue_created",
+        "trigger.jira:issue_status_changed",
+        "trigger.jira:issue_updated"
+      ],
+      "properties": [
+        {
+          "name": "JIRA_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.jira:create_issue"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "JIRA_BASE_URL",
+          "optional": false,
+          "operations": [
+            "action.jira:create_issue"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "JIRA_EMAIL",
+          "optional": false,
+          "operations": [
+            "action.jira:create_issue"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "JIRA_BASE_URL"
+      ]
+    },
+    {
+      "id": "jira-service-management",
+      "name": "Jira Service Management",
+      "operations": [
+        "action.jira-service-management:add_attachment",
+        "action.jira-service-management:add_customer_request_comment",
+        "action.jira-service-management:create_customer",
+        "action.jira-service-management:create_customer_request",
+        "action.jira-service-management:get_customer_request",
+        "action.jira-service-management:get_customer_request_comments",
+        "action.jira-service-management:get_customer_requests",
+        "action.jira-service-management:get_organizations",
+        "action.jira-service-management:get_queue",
+        "action.jira-service-management:get_request_types",
+        "action.jira-service-management:get_service_desk",
+        "action.jira-service-management:get_service_desks",
+        "action.jira-service-management:get_sla_information",
+        "action.jira-service-management:test_connection",
+        "action.jira-service-management:transition_customer_request"
+      ],
+      "triggers": [
+        "trigger.jira-service-management:customer_request_commented",
+        "trigger.jira-service-management:customer_request_created",
+        "trigger.jira-service-management:customer_request_status_changed",
+        "trigger.jira-service-management:sla_breached"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "jotform",
+      "name": "JotForm",
+      "operations": [
+        "action.jotform:clone_form",
+        "action.jotform:create_form",
+        "action.jotform:create_report",
+        "action.jotform:delete_form",
+        "action.jotform:delete_submission",
+        "action.jotform:edit_submission",
+        "action.jotform:get_form",
+        "action.jotform:get_form_files",
+        "action.jotform:get_form_properties",
+        "action.jotform:get_form_questions",
+        "action.jotform:get_forms",
+        "action.jotform:get_reports",
+        "action.jotform:get_submission",
+        "action.jotform:get_submissions",
+        "action.jotform:get_user",
+        "action.jotform:test_connection"
+      ],
+      "triggers": [
+        "trigger.jotform:form_created",
+        "trigger.jotform:form_submission"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "klaviyo",
+      "name": "Klaviyo",
+      "operations": [
+        "action.klaviyo:create_event",
+        "action.klaviyo:create_list",
+        "action.klaviyo:create_profile",
+        "action.klaviyo:get_campaigns",
+        "action.klaviyo:get_flows",
+        "action.klaviyo:get_lists",
+        "action.klaviyo:get_profile",
+        "action.klaviyo:list_profiles",
+        "action.klaviyo:subscribe_profiles",
+        "action.klaviyo:test_connection",
+        "action.klaviyo:unsubscribe_profiles",
+        "action.klaviyo:update_profile"
+      ],
+      "triggers": [
+        "trigger.klaviyo:profile_created",
+        "trigger.klaviyo:profile_subscribed",
+        "trigger.klaviyo:profile_unsubscribed"
+      ],
+      "properties": [
+        {
+          "name": "KLAVIYO_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.klaviyo:create_profile"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "kubernetes",
+      "name": "Kubernetes",
+      "operations": [
+        "action.kubernetes:create_deployment",
+        "action.kubernetes:create_service",
+        "action.kubernetes:get_pod_logs",
+        "action.kubernetes:scale_deployment",
+        "action.kubernetes:test_connection"
+      ],
+      "triggers": [
+        "trigger.kubernetes:deployment_updated",
+        "trigger.kubernetes:pod_created"
+      ],
+      "properties": [
+        {
+          "name": "KUBERNETES_API_SERVER",
+          "optional": false,
+          "operations": [
+            "action.kubernetes:create_deployment",
+            "action.kubernetes:create_service"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "KUBERNETES_BEARER_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.kubernetes:create_deployment"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "kustomer",
+      "name": "Kustomer",
+      "operations": [
+        "action.kustomer:create_conversation",
+        "action.kustomer:create_customer",
+        "action.kustomer:create_message",
+        "action.kustomer:create_note",
+        "action.kustomer:get_conversation",
+        "action.kustomer:get_customer",
+        "action.kustomer:get_messages",
+        "action.kustomer:get_teams",
+        "action.kustomer:get_users",
+        "action.kustomer:search_conversations",
+        "action.kustomer:search_customers",
+        "action.kustomer:test_connection",
+        "action.kustomer:update_conversation",
+        "action.kustomer:update_customer"
+      ],
+      "triggers": [
+        "trigger.kustomer:conversation_created",
+        "trigger.kustomer:conversation_updated",
+        "trigger.kustomer:customer_created",
+        "trigger.kustomer:message_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "later",
+      "name": "later",
+      "operations": [
+        "action.later:schedule_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "LATER_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.later:schedule_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "lever",
+      "name": "Lever",
+      "operations": [
+        "action.lever:add_note",
+        "action.lever:advance_opportunity",
+        "action.lever:archive_opportunity",
+        "action.lever:create_opportunity",
+        "action.lever:get_opportunity",
+        "action.lever:get_posting",
+        "action.lever:get_user",
+        "action.lever:list_opportunities",
+        "action.lever:list_postings",
+        "action.lever:list_users",
+        "action.lever:test_connection",
+        "action.lever:update_opportunity"
+      ],
+      "triggers": [
+        "trigger.lever:opportunity_archived",
+        "trigger.lever:opportunity_created",
+        "trigger.lever:opportunity_stage_changed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "linear",
+      "name": "Linear",
+      "operations": [
+        "action.linear:create_comment",
+        "action.linear:create_issue",
+        "action.linear:create_project",
+        "action.linear:get_issue",
+        "action.linear:list_issues",
+        "action.linear:list_labels",
+        "action.linear:list_projects",
+        "action.linear:list_teams",
+        "action.linear:list_users",
+        "action.linear:list_workflow_states",
+        "action.linear:test_connection",
+        "action.linear:update_issue"
+      ],
+      "triggers": [
+        "trigger.linear:issue_completed",
+        "trigger.linear:issue_created",
+        "trigger.linear:issue_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "linkedin",
+      "name": "linkedin",
+      "operations": [
+        "action.linkedin:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "LINKEDIN_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.linkedin:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "llm",
+      "name": "LLM (Large Language Model)",
+      "operations": [
+        "action.llm:chat_completion",
+        "action.llm:generate_text"
+      ],
+      "triggers": [
+        "trigger.llm:text_generated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "looker",
+      "name": "Looker",
+      "operations": [
+        "action.looker:create_query",
+        "action.looker:create_scheduled_plan",
+        "action.looker:get_dashboard",
+        "action.looker:get_look",
+        "action.looker:get_model_explore",
+        "action.looker:get_user",
+        "action.looker:list_dashboards",
+        "action.looker:list_looks",
+        "action.looker:list_models",
+        "action.looker:list_users",
+        "action.looker:run_dashboard",
+        "action.looker:run_look",
+        "action.looker:run_query",
+        "action.looker:test_connection"
+      ],
+      "triggers": [
+        "trigger.looker:alert_triggered",
+        "trigger.looker:scheduled_plan_run"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "loom",
+      "name": "loom",
+      "operations": [
+        "action.loom:create_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "LOOM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.loom:create_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "lucidchart",
+      "name": "lucidchart",
+      "operations": [
+        "action.lucidchart:create_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "LUCIDCHART_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.lucidchart:create_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "luma",
+      "name": "Luma",
+      "operations": [
+        "action.luma:cancel_registration",
+        "action.luma:create_event",
+        "action.luma:create_registration",
+        "action.luma:create_series",
+        "action.luma:delete_event",
+        "action.luma:get_event",
+        "action.luma:get_registrations",
+        "action.luma:get_series",
+        "action.luma:list_events",
+        "action.luma:list_series",
+        "action.luma:send_message",
+        "action.luma:test_connection",
+        "action.luma:update_event"
+      ],
+      "triggers": [
+        "trigger.luma:event_created",
+        "trigger.luma:event_started",
+        "trigger.luma:registration_cancelled",
+        "trigger.luma:registration_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "magento",
+      "name": "Magento",
+      "operations": [
+        "action.magento:create_customer",
+        "action.magento:create_order",
+        "action.magento:create_product",
+        "action.magento:delete_product",
+        "action.magento:get_order",
+        "action.magento:get_product",
+        "action.magento:search_products",
+        "action.magento:test_connection",
+        "action.magento:update_product"
+      ],
+      "triggers": [
+        "trigger.magento:order_created",
+        "trigger.magento:product_created"
+      ],
+      "properties": [
+        {
+          "name": "MAGENTO_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.magento:create_customer"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "MAGENTO_STORE_URL",
+          "optional": false,
+          "operations": [
+            "action.magento:create_customer"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "mailchimp",
+      "name": "Mailchimp",
+      "operations": [
+        "action.mailchimp:add_member",
+        "action.mailchimp:add_subscriber",
+        "action.mailchimp:create_campaign",
+        "action.mailchimp:create_list",
+        "action.mailchimp:delete_member",
+        "action.mailchimp:get_campaign_content",
+        "action.mailchimp:get_campaigns",
+        "action.mailchimp:get_list",
+        "action.mailchimp:get_lists",
+        "action.mailchimp:get_member",
+        "action.mailchimp:get_members",
+        "action.mailchimp:send_campaign",
+        "action.mailchimp:set_campaign_content",
+        "action.mailchimp:test_connection",
+        "action.mailchimp:update_member"
+      ],
+      "triggers": [
+        "trigger.mailchimp:campaign_sent",
+        "trigger.mailchimp:subscriber_added",
+        "trigger.mailchimp:subscriber_unsubscribed",
+        "trigger.mailchimp:subscriber_updated"
+      ],
+      "properties": [
+        {
+          "name": "MAILCHIMP_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.mailchimp:add_subscriber"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "MAILCHIMP_LIST_ID",
+          "optional": false,
+          "operations": [
+            "action.mailchimp:add_subscriber"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "mailchimp-enhanced",
+      "name": "Mailchimp Enhanced",
+      "operations": [
+        "action.mailchimp-enhanced:add_automation_subscriber",
+        "action.mailchimp-enhanced:add_subscriber",
+        "action.mailchimp-enhanced:create_automation",
+        "action.mailchimp-enhanced:create_campaign",
+        "action.mailchimp-enhanced:delete_subscriber",
+        "action.mailchimp-enhanced:get_campaign_reports",
+        "action.mailchimp-enhanced:get_subscriber",
+        "action.mailchimp-enhanced:schedule_campaign",
+        "action.mailchimp-enhanced:send_campaign",
+        "action.mailchimp-enhanced:test_connection",
+        "action.mailchimp-enhanced:update_subscriber"
+      ],
+      "triggers": [
+        "trigger.mailchimp-enhanced:campaign_sent",
+        "trigger.mailchimp-enhanced:subscriber_added",
+        "trigger.mailchimp-enhanced:subscriber_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "mailgun",
+      "name": "Mailgun",
+      "operations": [
+        "action.mailgun:add_member",
+        "action.mailgun:create_mailing_list",
+        "action.mailgun:get_domain",
+        "action.mailgun:get_events",
+        "action.mailgun:get_mailing_list",
+        "action.mailgun:get_member",
+        "action.mailgun:get_stats",
+        "action.mailgun:list_domains",
+        "action.mailgun:list_mailing_lists",
+        "action.mailgun:send_email",
+        "action.mailgun:test_connection",
+        "action.mailgun:validate_email",
+        "action.mailgun:verify_domain"
+      ],
+      "triggers": [
+        "trigger.mailgun:email_bounced",
+        "trigger.mailgun:email_clicked",
+        "trigger.mailgun:email_complained",
+        "trigger.mailgun:email_delivered",
+        "trigger.mailgun:email_opened",
+        "trigger.mailgun:email_unsubscribed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "marketo",
+      "name": "Marketo",
+      "operations": [
+        "action.marketo:add_to_list",
+        "action.marketo:create_campaign",
+        "action.marketo:create_email",
+        "action.marketo:create_lead",
+        "action.marketo:create_program",
+        "action.marketo:delete_lead",
+        "action.marketo:get_campaigns",
+        "action.marketo:get_emails",
+        "action.marketo:get_lead_by_id",
+        "action.marketo:get_leads_by_filter",
+        "action.marketo:get_programs",
+        "action.marketo:remove_from_list",
+        "action.marketo:request_campaign",
+        "action.marketo:send_sample_email",
+        "action.marketo:test_connection",
+        "action.marketo:update_lead"
+      ],
+      "triggers": [
+        "trigger.marketo:email_delivered",
+        "trigger.marketo:email_opened",
+        "trigger.marketo:lead_activity",
+        "trigger.marketo:lead_created",
+        "trigger.marketo:lead_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "medium",
+      "name": "medium",
+      "operations": [
+        "action.medium:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MEDIUM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.medium:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "microsoft-excel",
+      "name": "microsoft-excel",
+      "operations": [
+        "action.microsoft-excel:create_workbook"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MICROSOFT_EXCEL_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.microsoft-excel:create_workbook"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "microsoft-powerpoint",
+      "name": "microsoft-powerpoint",
+      "operations": [
+        "action.microsoft-powerpoint:create_presentation"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MICROSOFT_POWERPOINT_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.microsoft-powerpoint:create_presentation"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "microsoft-teams",
+      "name": "Microsoft Teams",
+      "operations": [
+        "action.microsoft-teams:add_team_member",
+        "action.microsoft-teams:create_channel",
+        "action.microsoft-teams:create_meeting",
+        "action.microsoft-teams:create_team",
+        "action.microsoft-teams:list_channels",
+        "action.microsoft-teams:list_teams",
+        "action.microsoft-teams:send_chat_message",
+        "action.microsoft-teams:send_message",
+        "action.microsoft-teams:test_connection"
+      ],
+      "triggers": [
+        "trigger.microsoft-teams:member_added",
+        "trigger.microsoft-teams:message_posted",
+        "trigger.microsoft-teams:team_created"
+      ],
+      "properties": [
+        {
+          "name": "TEAMS_WEBHOOK_URL",
+          "optional": false,
+          "operations": [
+            "action.microsoft-teams:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "microsoft-todo",
+      "name": "Microsoft To Do",
+      "operations": [
+        "action.microsoft-todo:complete_task",
+        "action.microsoft-todo:create_task",
+        "action.microsoft-todo:create_task_list",
+        "action.microsoft-todo:delete_task",
+        "action.microsoft-todo:get_task_lists",
+        "action.microsoft-todo:get_tasks",
+        "action.microsoft-todo:test_connection",
+        "action.microsoft-todo:update_task"
+      ],
+      "triggers": [
+        "trigger.microsoft-todo:task_completed",
+        "trigger.microsoft-todo:task_created"
+      ],
+      "properties": [
+        {
+          "name": "MICROSOFT_TODO_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.microsoft-todo:create_task"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "microsoft-word",
+      "name": "microsoft-word",
+      "operations": [
+        "action.microsoft-word:create_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MICROSOFT_WORD_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.microsoft-word:create_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "miro",
+      "name": "Miro",
+      "operations": [
+        "action.miro:create_board",
+        "action.miro:create_card",
+        "action.miro:create_shape",
+        "action.miro:create_sticky_note",
+        "action.miro:create_text",
+        "action.miro:delete_board",
+        "action.miro:delete_item",
+        "action.miro:get_board",
+        "action.miro:get_board_items",
+        "action.miro:get_board_members",
+        "action.miro:get_boards",
+        "action.miro:share_board",
+        "action.miro:test_connection",
+        "action.miro:update_board",
+        "action.miro:update_item"
+      ],
+      "triggers": [
+        "trigger.miro:board_created",
+        "trigger.miro:board_updated",
+        "trigger.miro:item_created",
+        "trigger.miro:item_updated"
+      ],
+      "properties": [
+        {
+          "name": "MIRO_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.miro:create_board"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "mixpanel",
+      "name": "Mixpanel",
+      "operations": [
+        "action.mixpanel:alias",
+        "action.mixpanel:engage_profile_append",
+        "action.mixpanel:engage_profile_delete",
+        "action.mixpanel:engage_profile_increment",
+        "action.mixpanel:engage_profile_remove",
+        "action.mixpanel:engage_profile_set",
+        "action.mixpanel:engage_profile_set_once",
+        "action.mixpanel:engage_profile_union",
+        "action.mixpanel:engage_profile_unset",
+        "action.mixpanel:export_events",
+        "action.mixpanel:import_events",
+        "action.mixpanel:query_cohorts",
+        "action.mixpanel:query_funnels",
+        "action.mixpanel:query_insights",
+        "action.mixpanel:test_connection",
+        "action.mixpanel:track_event"
+      ],
+      "triggers": [
+        "trigger.mixpanel:cohort_entered",
+        "trigger.mixpanel:event_tracked",
+        "trigger.mixpanel:funnel_completed",
+        "trigger.mixpanel:profile_updated"
+      ],
+      "properties": [
+        {
+          "name": "MIXPANEL_PROJECT_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.mixpanel:track_event"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "monday",
+      "name": "Monday.com",
+      "operations": [
+        "action.monday:archive_item",
+        "action.monday:create_board",
+        "action.monday:create_column",
+        "action.monday:create_group",
+        "action.monday:create_item",
+        "action.monday:create_update",
+        "action.monday:delete_item",
+        "action.monday:duplicate_item",
+        "action.monday:get_boards",
+        "action.monday:get_items",
+        "action.monday:get_users",
+        "action.monday:get_workspaces",
+        "action.monday:test_connection",
+        "action.monday:update_item"
+      ],
+      "triggers": [
+        "trigger.monday:column_value_changed",
+        "trigger.monday:item_created",
+        "trigger.monday:item_deleted",
+        "trigger.monday:item_updated"
+      ],
+      "properties": [
+        {
+          "name": "MONDAY_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.monday:create_item"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "monday-enhanced",
+      "name": "Monday.com Enhanced",
+      "operations": [
+        "action.monday-enhanced:create_board",
+        "action.monday-enhanced:create_item",
+        "action.monday-enhanced:create_update",
+        "action.monday-enhanced:create_webhook",
+        "action.monday-enhanced:delete_item",
+        "action.monday-enhanced:execute_graphql",
+        "action.monday-enhanced:get_boards",
+        "action.monday-enhanced:get_items",
+        "action.monday-enhanced:get_users",
+        "action.monday-enhanced:get_workspaces",
+        "action.monday-enhanced:test_connection",
+        "action.monday-enhanced:update_item"
+      ],
+      "triggers": [
+        "trigger.monday-enhanced:column_value_changed",
+        "trigger.monday-enhanced:item_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "mongodb",
+      "name": "mongodb",
+      "operations": [
+        "action.mongodb:insert_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MONGODB_CONNECTION_STRING",
+          "optional": false,
+          "operations": [
+            "action.mongodb:insert_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "mysql",
+      "name": "mysql",
+      "operations": [
+        "action.mysql:insert_record"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "MYSQL_CONNECTION_STRING",
+          "optional": false,
+          "operations": [
+            "action.mysql:insert_record"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "navan",
+      "name": "Navan",
+      "operations": [
+        "action.navan:create_expense",
+        "action.navan:create_trip",
+        "action.navan:get_expenses",
+        "action.navan:get_trips",
+        "action.navan:get_users",
+        "action.navan:test_connection"
+      ],
+      "triggers": [
+        "trigger.navan:expense_submitted"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "netsuite",
+      "name": "NetSuite",
+      "operations": [
+        "action.netsuite:create_customer",
+        "action.netsuite:create_sales_order",
+        "action.netsuite:get_customers",
+        "action.netsuite:get_invoices",
+        "action.netsuite:get_items",
+        "action.netsuite:test_connection"
+      ],
+      "triggers": [
+        "trigger.netsuite:customer_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "new-relic",
+      "name": "new-relic",
+      "operations": [
+        "action.new-relic:send_event"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "NEWRELIC_ACCOUNT_ID",
+          "optional": false,
+          "operations": [
+            "action.new-relic:send_event"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "NEWRELIC_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.new-relic:send_event"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "newrelic",
+      "name": "New Relic",
+      "operations": [
+        "action.newrelic:create_alert_policy",
+        "action.newrelic:execute_nrql",
+        "action.newrelic:get_alerts",
+        "action.newrelic:get_application_metrics",
+        "action.newrelic:get_applications",
+        "action.newrelic:get_violations",
+        "action.newrelic:test_connection"
+      ],
+      "triggers": [
+        "trigger.newrelic:alert_triggered"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "nexus",
+      "name": "Sonatype Nexus",
+      "operations": [
+        "action.nexus:delete_component",
+        "action.nexus:list_repositories",
+        "action.nexus:search_components",
+        "action.nexus:test_connection",
+        "action.nexus:upload_component"
+      ],
+      "triggers": [
+        "trigger.nexus:component_uploaded",
+        "trigger.nexus:security_vulnerability"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "operations": [
+        "action.notion:append_block_children",
+        "action.notion:create_database_entry",
+        "action.notion:create_page",
+        "action.notion:get_block_children",
+        "action.notion:get_page",
+        "action.notion:query_database",
+        "action.notion:search",
+        "action.notion:test_connection",
+        "action.notion:update_block",
+        "action.notion:update_page"
+      ],
+      "triggers": [
+        "trigger.notion:database_entry_created",
+        "trigger.notion:page_created",
+        "trigger.notion:page_updated"
+      ],
+      "properties": [
+        {
+          "name": "NOTION_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.notion:create_page"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "notion-enhanced",
+      "name": "Notion Enhanced",
+      "operations": [
+        "action.notion-enhanced:append_block_children",
+        "action.notion-enhanced:create_comment",
+        "action.notion-enhanced:create_database",
+        "action.notion-enhanced:create_page",
+        "action.notion-enhanced:delete_block",
+        "action.notion-enhanced:get_block_children",
+        "action.notion-enhanced:get_comments",
+        "action.notion-enhanced:get_database",
+        "action.notion-enhanced:get_page",
+        "action.notion-enhanced:get_user",
+        "action.notion-enhanced:get_users",
+        "action.notion-enhanced:query_database",
+        "action.notion-enhanced:search",
+        "action.notion-enhanced:test_connection",
+        "action.notion-enhanced:update_block",
+        "action.notion-enhanced:update_database",
+        "action.notion-enhanced:update_page"
+      ],
+      "triggers": [
+        "trigger.notion-enhanced:database_created",
+        "trigger.notion-enhanced:database_updated",
+        "trigger.notion-enhanced:page_created",
+        "trigger.notion-enhanced:page_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "okta",
+      "name": "Okta",
+      "operations": [
+        "action.okta:activate_user",
+        "action.okta:add_user_to_group",
+        "action.okta:create_group",
+        "action.okta:create_user",
+        "action.okta:deactivate_user",
+        "action.okta:expire_password",
+        "action.okta:get_user",
+        "action.okta:list_groups",
+        "action.okta:list_users",
+        "action.okta:remove_user_from_group",
+        "action.okta:reset_password",
+        "action.okta:suspend_user",
+        "action.okta:test_connection",
+        "action.okta:unsuspend_user",
+        "action.okta:update_user"
+      ],
+      "triggers": [
+        "trigger.okta:user_activated",
+        "trigger.okta:user_created",
+        "trigger.okta:user_deactivated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "onedrive",
+      "name": "OneDrive",
+      "operations": [
+        "action.onedrive:create_folder",
+        "action.onedrive:delete_file",
+        "action.onedrive:download_file",
+        "action.onedrive:get_files",
+        "action.onedrive:share_file",
+        "action.onedrive:test_connection",
+        "action.onedrive:upload_file"
+      ],
+      "triggers": [
+        "trigger.onedrive:file_uploaded"
+      ],
+      "properties": [
+        {
+          "name": "ONEDRIVE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.onedrive:upload_file"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "opsgenie",
+      "name": "Opsgenie",
+      "operations": [
+        "action.opsgenie:acknowledge_alert",
+        "action.opsgenie:add_note_to_alert",
+        "action.opsgenie:assign_alert",
+        "action.opsgenie:close_alert",
+        "action.opsgenie:create_alert",
+        "action.opsgenie:get_alert",
+        "action.opsgenie:get_on_calls",
+        "action.opsgenie:get_schedules",
+        "action.opsgenie:get_teams",
+        "action.opsgenie:list_alerts",
+        "action.opsgenie:test_connection"
+      ],
+      "triggers": [
+        "trigger.opsgenie:alert_acknowledged",
+        "trigger.opsgenie:alert_closed",
+        "trigger.opsgenie:alert_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "oracle",
+      "name": "oracle",
+      "operations": [
+        "action.oracle:insert_record"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ORACLE_CONNECTION_STRING",
+          "optional": false,
+          "operations": [
+            "action.oracle:insert_record"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "outlook",
+      "name": "Microsoft Outlook",
+      "operations": [
+        "action.outlook:create_calendar_event",
+        "action.outlook:create_contact",
+        "action.outlook:delete_message",
+        "action.outlook:get_calendar_events",
+        "action.outlook:get_message",
+        "action.outlook:get_messages",
+        "action.outlook:reply_to_message",
+        "action.outlook:send_email",
+        "action.outlook:test_connection"
+      ],
+      "triggers": [
+        "trigger.outlook:calendar_event_created",
+        "trigger.outlook:new_email"
+      ],
+      "properties": [
+        {
+          "name": "OUTLOOK_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.outlook:send_email"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "pagerduty",
+      "name": "PagerDuty",
+      "operations": [
+        "action.pagerduty:acknowledge_incident",
+        "action.pagerduty:create_incident",
+        "action.pagerduty:create_note",
+        "action.pagerduty:get_incident",
+        "action.pagerduty:get_service",
+        "action.pagerduty:get_user",
+        "action.pagerduty:list_incidents",
+        "action.pagerduty:list_services",
+        "action.pagerduty:list_users",
+        "action.pagerduty:resolve_incident",
+        "action.pagerduty:test_connection",
+        "action.pagerduty:update_incident"
+      ],
+      "triggers": [
+        "trigger.pagerduty:incident_acknowledged",
+        "trigger.pagerduty:incident_resolved",
+        "trigger.pagerduty:incident_triggered"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "pandadoc",
+      "name": "pandadoc",
+      "operations": [
+        "action.pandadoc:create_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "PANDADOC_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.pandadoc:create_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "pardot",
+      "name": "Pardot",
+      "operations": [
+        "action.pardot:add_prospect_to_list",
+        "action.pardot:create_prospect",
+        "action.pardot:get_campaigns",
+        "action.pardot:get_lists",
+        "action.pardot:get_prospects",
+        "action.pardot:test_connection",
+        "action.pardot:update_prospect"
+      ],
+      "triggers": [
+        "trigger.pardot:prospect_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "paypal",
+      "name": "PayPal",
+      "operations": [
+        "action.paypal:capture_order",
+        "action.paypal:create_order",
+        "action.paypal:create_payment",
+        "action.paypal:get_order",
+        "action.paypal:get_payment",
+        "action.paypal:list_payments",
+        "action.paypal:refund_capture",
+        "action.paypal:test_connection"
+      ],
+      "triggers": [
+        "trigger.paypal:checkout_order_approved",
+        "trigger.paypal:payment_order_created",
+        "trigger.paypal:payment_sale_completed",
+        "trigger.paypal:payment_sale_refunded"
+      ],
+      "properties": [
+        {
+          "name": "PAYPAL_CLIENT_ID",
+          "optional": false,
+          "operations": [
+            "action.paypal:create_payment"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "PAYPAL_CLIENT_SECRET",
+          "optional": false,
+          "operations": [
+            "action.paypal:create_payment"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "pinterest",
+      "name": "pinterest",
+      "operations": [
+        "action.pinterest:create_pin"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "PINTEREST_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.pinterest:create_pin"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "pipedrive",
+      "name": "Pipedrive",
+      "operations": [
+        "action.pipedrive:create_activity",
+        "action.pipedrive:create_deal",
+        "action.pipedrive:create_organization",
+        "action.pipedrive:create_person",
+        "action.pipedrive:get_activities",
+        "action.pipedrive:get_deals",
+        "action.pipedrive:get_organizations",
+        "action.pipedrive:get_persons",
+        "action.pipedrive:test_connection",
+        "action.pipedrive:update_deal"
+      ],
+      "triggers": [
+        "trigger.pipedrive:deal_created",
+        "trigger.pipedrive:deal_updated"
+      ],
+      "properties": [
+        {
+          "name": "PIPEDRIVE_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.pipedrive:create_deal"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "PIPEDRIVE_COMPANY_DOMAIN",
+          "optional": false,
+          "operations": [
+            "action.pipedrive:create_deal"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "PIPEDRIVE_COMPANY_DOMAIN"
+      ]
+    },
+    {
+      "id": "postgresql",
+      "name": "postgresql",
+      "operations": [
+        "action.postgresql:insert_record"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "POSTGRESQL_CONNECTION_STRING",
+          "optional": false,
+          "operations": [
+            "action.postgresql:insert_record"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "powerbi",
+      "name": "Power BI",
+      "operations": [
+        "action.powerbi:add_rows",
+        "action.powerbi:get_dashboards",
+        "action.powerbi:get_datasets",
+        "action.powerbi:get_refreshes",
+        "action.powerbi:get_reports",
+        "action.powerbi:query_dataset",
+        "action.powerbi:test_connection",
+        "action.powerbi:trigger_refresh"
+      ],
+      "triggers": [
+        "trigger.powerbi:dataset_refresh_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "powerbi-enhanced",
+      "name": "Power BI Enhanced",
+      "operations": [
+        "action.powerbi-enhanced:clone_report",
+        "action.powerbi-enhanced:create_group",
+        "action.powerbi-enhanced:execute_dax",
+        "action.powerbi-enhanced:export_report",
+        "action.powerbi-enhanced:generate_token",
+        "action.powerbi-enhanced:get_dashboard",
+        "action.powerbi-enhanced:get_dashboards",
+        "action.powerbi-enhanced:get_dataflows",
+        "action.powerbi-enhanced:get_dataset",
+        "action.powerbi-enhanced:get_datasets",
+        "action.powerbi-enhanced:get_group",
+        "action.powerbi-enhanced:get_groups",
+        "action.powerbi-enhanced:get_refresh_history",
+        "action.powerbi-enhanced:get_report",
+        "action.powerbi-enhanced:get_reports",
+        "action.powerbi-enhanced:get_tiles",
+        "action.powerbi-enhanced:refresh_dataflow",
+        "action.powerbi-enhanced:refresh_dataset",
+        "action.powerbi-enhanced:test_connection"
+      ],
+      "triggers": [
+        "trigger.powerbi-enhanced:dataflow_refreshed",
+        "trigger.powerbi-enhanced:dataset_refreshed",
+        "trigger.powerbi-enhanced:report_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "powtoon",
+      "name": "powtoon",
+      "operations": [
+        "action.powtoon:create_presentation"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "POWTOON_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.powtoon:create_presentation"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "prezi",
+      "name": "prezi",
+      "operations": [
+        "action.prezi:create_presentation"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "PREZI_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.prezi:create_presentation"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "prometheus",
+      "name": "Prometheus",
+      "operations": [
+        "action.prometheus:get_alerts",
+        "action.prometheus:get_targets",
+        "action.prometheus:query_metrics",
+        "action.prometheus:query_range",
+        "action.prometheus:test_connection"
+      ],
+      "triggers": [
+        "trigger.prometheus:alert_fired",
+        "trigger.prometheus:target_down"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "qualtrics",
+      "name": "Qualtrics",
+      "operations": [
+        "action.qualtrics:create_contact",
+        "action.qualtrics:create_distribution",
+        "action.qualtrics:create_survey",
+        "action.qualtrics:get_contacts",
+        "action.qualtrics:get_responses",
+        "action.qualtrics:get_survey",
+        "action.qualtrics:get_surveys",
+        "action.qualtrics:send_survey",
+        "action.qualtrics:test_connection"
+      ],
+      "triggers": [
+        "trigger.qualtrics:response_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "quickbooks",
+      "name": "QuickBooks",
+      "operations": [
+        "action.quickbooks:create_customer",
+        "action.quickbooks:create_expense",
+        "action.quickbooks:create_invoice",
+        "action.quickbooks:create_item",
+        "action.quickbooks:create_payment",
+        "action.quickbooks:get_accounts",
+        "action.quickbooks:get_company_info",
+        "action.quickbooks:get_customer",
+        "action.quickbooks:get_invoice",
+        "action.quickbooks:get_reports",
+        "action.quickbooks:query_customers",
+        "action.quickbooks:send_invoice",
+        "action.quickbooks:test_connection",
+        "action.quickbooks:update_customer"
+      ],
+      "triggers": [
+        "trigger.quickbooks:customer_created",
+        "trigger.quickbooks:invoice_created",
+        "trigger.quickbooks:payment_received"
+      ],
+      "properties": [
+        {
+          "name": "QUICKBOOKS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.quickbooks:create_customer"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "QUICKBOOKS_COMPANY_ID",
+          "optional": false,
+          "operations": [
+            "action.quickbooks:create_customer"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "ramp",
+      "name": "Ramp",
+      "operations": [
+        "action.ramp:create_user",
+        "action.ramp:get_cards",
+        "action.ramp:get_transactions",
+        "action.ramp:get_users",
+        "action.ramp:test_connection"
+      ],
+      "triggers": [
+        "trigger.ramp:transaction_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "razorpay",
+      "name": "Razorpay",
+      "operations": [
+        "action.razorpay:capture_payment",
+        "action.razorpay:create_order",
+        "action.razorpay:create_refund",
+        "action.razorpay:get_orders",
+        "action.razorpay:get_payments",
+        "action.razorpay:test_connection"
+      ],
+      "triggers": [
+        "trigger.razorpay:payment_captured",
+        "trigger.razorpay:payment_failed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "reddit",
+      "name": "reddit",
+      "operations": [
+        "action.reddit:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "REDDIT_CLIENT_ID",
+          "optional": false,
+          "operations": [
+            "action.reddit:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "REDDIT_CLIENT_SECRET",
+          "optional": false,
+          "operations": [
+            "action.reddit:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "redis",
+      "name": "redis",
+      "operations": [
+        "action.redis:set_key"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "REDIS_CONNECTION_STRING",
+          "optional": false,
+          "operations": [
+            "action.redis:set_key"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "ringcentral",
+      "name": "RingCentral",
+      "operations": [
+        "action.ringcentral:create_meeting",
+        "action.ringcentral:get_account_info",
+        "action.ringcentral:get_call_log",
+        "action.ringcentral:get_extension_info",
+        "action.ringcentral:get_messages",
+        "action.ringcentral:make_call",
+        "action.ringcentral:send_sms",
+        "action.ringcentral:test_connection"
+      ],
+      "triggers": [
+        "trigger.ringcentral:call_started",
+        "trigger.ringcentral:message_received"
+      ],
+      "properties": [
+        {
+          "name": "RINGCENTRAL_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.ringcentral:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sage",
+      "name": "sage",
+      "operations": [
+        "action.sage:create_customer"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SAGE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.sage:create_customer"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sageintacct",
+      "name": "Sage Intacct",
+      "operations": [
+        "action.sageintacct:create_bill",
+        "action.sageintacct:create_customer",
+        "action.sageintacct:create_invoice",
+        "action.sageintacct:get_customers",
+        "action.sageintacct:get_gl_accounts",
+        "action.sageintacct:get_invoices",
+        "action.sageintacct:get_vendors",
+        "action.sageintacct:test_connection"
+      ],
+      "triggers": [
+        "trigger.sageintacct:invoice_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "salesforce",
+      "name": "Salesforce",
+      "operations": [
+        "action.salesforce:create_lead",
+        "action.salesforce:create_record",
+        "action.salesforce:get_record",
+        "action.salesforce:query_records",
+        "action.salesforce:test_connection",
+        "action.salesforce:update_record"
+      ],
+      "triggers": [
+        "trigger.salesforce:record_created"
+      ],
+      "properties": [
+        {
+          "name": "SALESFORCE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.salesforce:create_lead"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "SALESFORCE_INSTANCE_URL",
+          "optional": false,
+          "operations": [
+            "action.salesforce:create_lead"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "SALESFORCE_INSTANCE_URL"
+      ]
+    },
+    {
+      "id": "salesforce-commerce",
+      "name": "salesforce-commerce",
+      "operations": [
+        "action.salesforce-commerce:create_order"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SFCC_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.salesforce-commerce:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "salesforce-enhanced",
+      "name": "Salesforce Enhanced",
+      "operations": [
+        "action.salesforce-enhanced:create_record",
+        "action.salesforce-enhanced:delete_record",
+        "action.salesforce-enhanced:execute_apex",
+        "action.salesforce-enhanced:get_record",
+        "action.salesforce-enhanced:query_records",
+        "action.salesforce-enhanced:test_connection",
+        "action.salesforce-enhanced:update_record",
+        "action.salesforce-enhanced:upsert_record"
+      ],
+      "triggers": [
+        "trigger.salesforce-enhanced:record_created",
+        "trigger.salesforce-enhanced:record_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "sap-ariba",
+      "name": "SAP Ariba",
+      "operations": [
+        "action.sap-ariba:get_analytical_reporting",
+        "action.sap-ariba:get_contract",
+        "action.sap-ariba:get_contracts",
+        "action.sap-ariba:get_invoice",
+        "action.sap-ariba:get_invoices",
+        "action.sap-ariba:get_purchase_order",
+        "action.sap-ariba:get_purchase_orders",
+        "action.sap-ariba:get_requisition",
+        "action.sap-ariba:get_requisitions",
+        "action.sap-ariba:get_sourcing_project",
+        "action.sap-ariba:get_sourcing_projects",
+        "action.sap-ariba:get_supplier",
+        "action.sap-ariba:get_suppliers",
+        "action.sap-ariba:test_connection"
+      ],
+      "triggers": [
+        "trigger.sap-ariba:contract_approved",
+        "trigger.sap-ariba:invoice_received",
+        "trigger.sap-ariba:purchase_order_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "screencast-o-matic",
+      "name": "screencast-o-matic",
+      "operations": [
+        "action.screencast-o-matic:create_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SCREENCAST_O_MATIC_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.screencast-o-matic:create_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sendgrid",
+      "name": "SendGrid",
+      "operations": [
+        "action.sendgrid:create_contact",
+        "action.sendgrid:create_list",
+        "action.sendgrid:get_email_stats",
+        "action.sendgrid:get_lists",
+        "action.sendgrid:send_email",
+        "action.sendgrid:send_test_email",
+        "action.sendgrid:test_connection"
+      ],
+      "triggers": [
+        "trigger.sendgrid:email_clicked",
+        "trigger.sendgrid:email_delivered",
+        "trigger.sendgrid:email_opened"
+      ],
+      "properties": [
+        {
+          "name": "SENDGRID_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.sendgrid:send_email"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sentry",
+      "name": "Sentry",
+      "operations": [
+        "action.sentry:create_project",
+        "action.sentry:create_release",
+        "action.sentry:delete_issue",
+        "action.sentry:finalize_release",
+        "action.sentry:get_event",
+        "action.sentry:get_events",
+        "action.sentry:get_issue",
+        "action.sentry:get_issues",
+        "action.sentry:get_organization",
+        "action.sentry:get_organizations",
+        "action.sentry:get_project",
+        "action.sentry:get_projects",
+        "action.sentry:get_releases",
+        "action.sentry:get_teams",
+        "action.sentry:test_connection",
+        "action.sentry:update_issue",
+        "action.sentry:update_project"
+      ],
+      "triggers": [
+        "trigger.sentry:error_event",
+        "trigger.sentry:issue_created",
+        "trigger.sentry:issue_resolved",
+        "trigger.sentry:release_deployed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "servicenow",
+      "name": "ServiceNow",
+      "operations": [
+        "action.servicenow:create_change_request",
+        "action.servicenow:create_incident",
+        "action.servicenow:get_incidents",
+        "action.servicenow:get_users",
+        "action.servicenow:test_connection",
+        "action.servicenow:update_incident"
+      ],
+      "triggers": [
+        "trigger.servicenow:incident_created",
+        "trigger.servicenow:incident_updated"
+      ],
+      "properties": [
+        {
+          "name": "SERVICENOW_INSTANCE",
+          "optional": false,
+          "operations": [
+            "action.servicenow:create_incident"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "SERVICENOW_PASSWORD",
+          "optional": false,
+          "operations": [
+            "action.servicenow:create_incident"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "SERVICENOW_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.servicenow:create_incident"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sharepoint",
+      "name": "SharePoint",
+      "operations": [
+        "action.sharepoint:create_file",
+        "action.sharepoint:create_folder",
+        "action.sharepoint:create_list_item",
+        "action.sharepoint:delete_file",
+        "action.sharepoint:get_file",
+        "action.sharepoint:get_list_items",
+        "action.sharepoint:get_lists",
+        "action.sharepoint:get_sites",
+        "action.sharepoint:list_files",
+        "action.sharepoint:search_content",
+        "action.sharepoint:share_link",
+        "action.sharepoint:test_connection",
+        "action.sharepoint:update_file",
+        "action.sharepoint:update_list_item"
+      ],
+      "triggers": [
+        "trigger.sharepoint:file_added",
+        "trigger.sharepoint:file_updated",
+        "trigger.sharepoint:list_item_added",
+        "trigger.sharepoint:list_item_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "shopify",
+      "name": "Shopify",
+      "operations": [
+        "action.shopify:create_customer",
+        "action.shopify:create_order",
+        "action.shopify:create_product",
+        "action.shopify:fulfill_order",
+        "action.shopify:get_order",
+        "action.shopify:get_product",
+        "action.shopify:list_orders",
+        "action.shopify:list_products",
+        "action.shopify:test_connection",
+        "action.shopify:update_customer",
+        "action.shopify:update_inventory",
+        "action.shopify:update_order",
+        "action.shopify:update_product"
+      ],
+      "triggers": [
+        "trigger.shopify:customer_created",
+        "trigger.shopify:order_created",
+        "trigger.shopify:order_paid",
+        "trigger.shopify:order_updated",
+        "trigger.shopify:product_created"
+      ],
+      "properties": [
+        {
+          "name": "SHOPIFY_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.shopify:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "SHOPIFY_SHOP_DOMAIN",
+          "optional": false,
+          "operations": [
+            "action.shopify:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "SHOPIFY_SHOP_DOMAIN"
+      ]
+    },
+    {
+      "id": "shopify-enhanced",
+      "name": "Shopify Enhanced",
+      "operations": [
+        "action.shopify-enhanced:adjust_inventory_level",
+        "action.shopify-enhanced:create_customer",
+        "action.shopify-enhanced:create_order",
+        "action.shopify-enhanced:create_product",
+        "action.shopify-enhanced:create_webhook",
+        "action.shopify-enhanced:get_customers",
+        "action.shopify-enhanced:get_inventory_levels",
+        "action.shopify-enhanced:get_orders",
+        "action.shopify-enhanced:get_products",
+        "action.shopify-enhanced:test_connection",
+        "action.shopify-enhanced:update_product"
+      ],
+      "triggers": [
+        "trigger.shopify-enhanced:customer_created",
+        "trigger.shopify-enhanced:order_created",
+        "trigger.shopify-enhanced:product_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "signrequest",
+      "name": "signrequest",
+      "operations": [
+        "action.signrequest:create_signrequest"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SIGNREQUEST_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.signrequest:create_signrequest"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "sketch",
+      "name": "sketch",
+      "operations": [
+        "action.sketch:create_document"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SKETCH_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.sketch:create_document"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "skype",
+      "name": "skype",
+      "operations": [
+        "action.skype:send_message"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SKYPE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.skype:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "slab",
+      "name": "Slab",
+      "operations": [
+        "action.slab:create_post",
+        "action.slab:delete_post",
+        "action.slab:get_post",
+        "action.slab:get_topic",
+        "action.slab:list_topics",
+        "action.slab:search_posts",
+        "action.slab:test_connection",
+        "action.slab:update_post"
+      ],
+      "triggers": [
+        "trigger.slab:post_created",
+        "trigger.slab:post_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "operations": [
+        "action.slack:add_reaction",
+        "action.slack:conversations_history",
+        "action.slack:create_channel",
+        "action.slack:get_channel_info",
+        "action.slack:get_user_info",
+        "action.slack:invite_to_channel",
+        "action.slack:list_channels",
+        "action.slack:list_files",
+        "action.slack:list_users",
+        "action.slack:schedule_message",
+        "action.slack:send_message",
+        "action.slack:test_connection",
+        "action.slack:upload_file"
+      ],
+      "triggers": [
+        "trigger.slack:message_received",
+        "trigger.slack:reaction_added",
+        "trigger.slack:user_joined_channel"
+      ],
+      "properties": [
+        {
+          "name": "SLACK_WEBHOOK_URL",
+          "optional": false,
+          "operations": [
+            "action.slack:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "slack-enhanced",
+      "name": "Slack Enhanced",
+      "operations": [
+        "action.slack-enhanced:add_reaction",
+        "action.slack-enhanced:archive_channel",
+        "action.slack-enhanced:create_channel",
+        "action.slack-enhanced:get_channel_history",
+        "action.slack-enhanced:get_user_info",
+        "action.slack-enhanced:invite_user_to_channel",
+        "action.slack-enhanced:list_channels",
+        "action.slack-enhanced:pin_message",
+        "action.slack-enhanced:schedule_message",
+        "action.slack-enhanced:send_direct_message",
+        "action.slack-enhanced:send_message",
+        "action.slack-enhanced:set_channel_topic",
+        "action.slack-enhanced:test_connection",
+        "action.slack-enhanced:upload_file"
+      ],
+      "triggers": [
+        "trigger.slack-enhanced:new_channel",
+        "trigger.slack-enhanced:new_file",
+        "trigger.slack-enhanced:new_message",
+        "trigger.slack-enhanced:reaction_added"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "slideshare",
+      "name": "slideshare",
+      "operations": [
+        "action.slideshare:upload_presentation"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SLIDESHARE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.slideshare:upload_presentation"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "SLIDESHARE_SHARED_SECRET",
+          "optional": false,
+          "operations": [
+            "action.slideshare:upload_presentation"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "smartsheet",
+      "name": "Smartsheet",
+      "operations": [
+        "action.smartsheet:add_columns",
+        "action.smartsheet:add_rows",
+        "action.smartsheet:create_sheet",
+        "action.smartsheet:create_workspace",
+        "action.smartsheet:delete_rows",
+        "action.smartsheet:get_report",
+        "action.smartsheet:get_reports",
+        "action.smartsheet:get_sheet",
+        "action.smartsheet:get_sheets",
+        "action.smartsheet:get_workspaces",
+        "action.smartsheet:send_sheet",
+        "action.smartsheet:test_connection",
+        "action.smartsheet:update_rows",
+        "action.smartsheet:update_sheet"
+      ],
+      "triggers": [
+        "trigger.smartsheet:row_added",
+        "trigger.smartsheet:row_updated",
+        "trigger.smartsheet:sheet_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "snowflake",
+      "name": "Snowflake",
+      "operations": [
+        "action.snowflake:create_stage",
+        "action.snowflake:create_table",
+        "action.snowflake:create_user",
+        "action.snowflake:create_warehouse",
+        "action.snowflake:describe_table",
+        "action.snowflake:execute_query",
+        "action.snowflake:grant_role",
+        "action.snowflake:insert_data",
+        "action.snowflake:list_databases",
+        "action.snowflake:list_schemas",
+        "action.snowflake:list_tables",
+        "action.snowflake:list_warehouses",
+        "action.snowflake:load_data_from_stage",
+        "action.snowflake:test_connection"
+      ],
+      "triggers": [
+        "trigger.snowflake:data_loaded",
+        "trigger.snowflake:query_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "sonarqube",
+      "name": "SonarQube",
+      "operations": [
+        "action.sonarqube:create_project",
+        "action.sonarqube:get_issues",
+        "action.sonarqube:get_metrics",
+        "action.sonarqube:get_project_status",
+        "action.sonarqube:test_connection"
+      ],
+      "triggers": [
+        "trigger.sonarqube:analysis_completed",
+        "trigger.sonarqube:quality_gate_changed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "sprout-social",
+      "name": "sprout-social",
+      "operations": [
+        "action.sprout-social:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SPROUT_SOCIAL_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.sprout-social:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "square",
+      "name": "Square",
+      "operations": [
+        "action.square:create_customer",
+        "action.square:create_order",
+        "action.square:create_payment",
+        "action.square:create_refund",
+        "action.square:get_customer",
+        "action.square:get_payment",
+        "action.square:list_payments",
+        "action.square:test_connection"
+      ],
+      "triggers": [
+        "trigger.square:order_created",
+        "trigger.square:payment_created"
+      ],
+      "properties": [
+        {
+          "name": "SQUARE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.square:create_payment"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "operations": [
+        "action.stripe:create_customer",
+        "action.stripe:create_payment",
+        "action.stripe:create_payment_intent",
+        "action.stripe:create_refund",
+        "action.stripe:create_subscription",
+        "action.stripe:list_payment_intents",
+        "action.stripe:retrieve_customer",
+        "action.stripe:test_connection",
+        "action.stripe:update_subscription"
+      ],
+      "triggers": [
+        "trigger.stripe:invoice_payment_succeeded",
+        "trigger.stripe:payment_failed",
+        "trigger.stripe:payment_succeeded",
+        "trigger.stripe:subscription_created"
+      ],
+      "properties": [
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "optional": false,
+          "operations": [
+            "action.stripe:create_payment"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "stripe-enhanced",
+      "name": "Stripe Enhanced",
+      "operations": [
+        "action.stripe-enhanced:create_customer",
+        "action.stripe-enhanced:create_invoice",
+        "action.stripe-enhanced:create_payment_intent",
+        "action.stripe-enhanced:create_subscription",
+        "action.stripe-enhanced:test_connection"
+      ],
+      "triggers": [
+        "trigger.stripe-enhanced:customer_created",
+        "trigger.stripe-enhanced:payment_intent_succeeded"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "substack",
+      "name": "substack",
+      "operations": [
+        "action.substack:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "SUBSTACK_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.substack:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "successfactors",
+      "name": "SAP SuccessFactors",
+      "operations": [
+        "action.successfactors:create_employee",
+        "action.successfactors:get_employee",
+        "action.successfactors:list_employees",
+        "action.successfactors:test_connection",
+        "action.successfactors:update_employee"
+      ],
+      "triggers": [
+        "trigger.successfactors:employee_created",
+        "trigger.successfactors:employee_updated"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "surveymonkey",
+      "name": "SurveyMonkey",
+      "operations": [
+        "action.surveymonkey:create_collector",
+        "action.surveymonkey:create_contact",
+        "action.surveymonkey:create_survey",
+        "action.surveymonkey:delete_survey",
+        "action.surveymonkey:get_collector",
+        "action.surveymonkey:get_contact",
+        "action.surveymonkey:get_response_details",
+        "action.surveymonkey:get_survey",
+        "action.surveymonkey:get_survey_responses",
+        "action.surveymonkey:list_collectors",
+        "action.surveymonkey:list_contacts",
+        "action.surveymonkey:list_surveys",
+        "action.surveymonkey:test_connection",
+        "action.surveymonkey:update_survey"
+      ],
+      "triggers": [
+        "trigger.surveymonkey:collector_created",
+        "trigger.surveymonkey:survey_created",
+        "trigger.surveymonkey:survey_response_completed"
+      ],
+      "properties": [
+        {
+          "name": "SURVEYMONKEY_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.surveymonkey:create_survey"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "tableau",
+      "name": "Tableau",
+      "operations": [
+        "action.tableau:create_project",
+        "action.tableau:get_datasource",
+        "action.tableau:get_datasources",
+        "action.tableau:get_projects",
+        "action.tableau:get_sites",
+        "action.tableau:get_users",
+        "action.tableau:get_view",
+        "action.tableau:get_views",
+        "action.tableau:get_workbook",
+        "action.tableau:get_workbooks",
+        "action.tableau:publish_workbook",
+        "action.tableau:query_view_data",
+        "action.tableau:refresh_extract",
+        "action.tableau:sign_in",
+        "action.tableau:test_connection",
+        "action.tableau:update_workbook"
+      ],
+      "triggers": [
+        "trigger.tableau:extract_refreshed",
+        "trigger.tableau:workbook_published"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "talkdesk",
+      "name": "Talkdesk",
+      "operations": [
+        "action.talkdesk:create_call",
+        "action.talkdesk:create_contact",
+        "action.talkdesk:create_ticket",
+        "action.talkdesk:get_agent",
+        "action.talkdesk:get_call",
+        "action.talkdesk:get_contact",
+        "action.talkdesk:get_ticket",
+        "action.talkdesk:list_agents",
+        "action.talkdesk:list_calls",
+        "action.talkdesk:list_contacts",
+        "action.talkdesk:list_tickets",
+        "action.talkdesk:test_connection",
+        "action.talkdesk:update_contact",
+        "action.talkdesk:update_ticket"
+      ],
+      "triggers": [
+        "trigger.talkdesk:call_ended",
+        "trigger.talkdesk:ticket_created",
+        "trigger.talkdesk:ticket_status_changed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "teamwork",
+      "name": "Teamwork",
+      "operations": [
+        "action.teamwork:create_milestone",
+        "action.teamwork:create_project",
+        "action.teamwork:create_task",
+        "action.teamwork:create_time_entry",
+        "action.teamwork:get_project",
+        "action.teamwork:get_task",
+        "action.teamwork:get_time_entry",
+        "action.teamwork:list_milestones",
+        "action.teamwork:list_projects",
+        "action.teamwork:list_tasks",
+        "action.teamwork:list_time_entries",
+        "action.teamwork:test_connection",
+        "action.teamwork:update_project",
+        "action.teamwork:update_task"
+      ],
+      "triggers": [
+        "trigger.teamwork:project_created",
+        "trigger.teamwork:task_completed",
+        "trigger.teamwork:task_created",
+        "trigger.teamwork:time_entry_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "telegram",
+      "name": "telegram",
+      "operations": [
+        "action.telegram:send_message"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "TELEGRAM_BOT_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.telegram:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "TELEGRAM_CHAT_ID",
+          "optional": false,
+          "operations": [
+            "action.telegram:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "terraform-cloud",
+      "name": "Terraform Cloud",
+      "operations": [
+        "action.terraform-cloud:create_workspace",
+        "action.terraform-cloud:get_run_status",
+        "action.terraform-cloud:set_variables",
+        "action.terraform-cloud:test_connection",
+        "action.terraform-cloud:trigger_run"
+      ],
+      "triggers": [
+        "trigger.terraform-cloud:run_completed",
+        "trigger.terraform-cloud:workspace_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "tiktok",
+      "name": "tiktok",
+      "operations": [
+        "action.tiktok:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "TIKTOK_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.tiktok:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "toggl",
+      "name": "Toggl Track",
+      "operations": [
+        "action.toggl:create_client",
+        "action.toggl:create_project",
+        "action.toggl:create_time_entry",
+        "action.toggl:delete_time_entry",
+        "action.toggl:get_current_time_entry",
+        "action.toggl:get_project",
+        "action.toggl:get_time_entry",
+        "action.toggl:get_workspace",
+        "action.toggl:list_clients",
+        "action.toggl:list_projects",
+        "action.toggl:list_time_entries",
+        "action.toggl:list_workspaces",
+        "action.toggl:start_time_entry",
+        "action.toggl:stop_time_entry",
+        "action.toggl:test_connection",
+        "action.toggl:update_project",
+        "action.toggl:update_time_entry"
+      ],
+      "triggers": [
+        "trigger.toggl:project_created",
+        "trigger.toggl:time_entry_created",
+        "trigger.toggl:time_entry_deleted",
+        "trigger.toggl:time_entry_updated"
+      ],
+      "properties": [
+        {
+          "name": "TOGGL_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.toggl:create_time_entry"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "trello",
+      "name": "Trello",
+      "operations": [
+        "action.trello:add_checklist_item",
+        "action.trello:add_comment_to_card",
+        "action.trello:create_board",
+        "action.trello:create_card",
+        "action.trello:create_checklist",
+        "action.trello:create_list",
+        "action.trello:create_webhook",
+        "action.trello:get_board",
+        "action.trello:get_card",
+        "action.trello:get_list",
+        "action.trello:test_connection",
+        "action.trello:update_board",
+        "action.trello:update_card",
+        "action.trello:update_list"
+      ],
+      "triggers": [
+        "trigger.trello:card_created",
+        "trigger.trello:card_moved",
+        "trigger.trello:card_updated",
+        "trigger.trello:list_created"
+      ],
+      "properties": [
+        {
+          "name": "TRELLO_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.trello:create_card"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "TRELLO_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.trello:create_card"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "trello-enhanced",
+      "name": "Trello Enhanced",
+      "operations": [
+        "action.trello-enhanced:add_attachment",
+        "action.trello-enhanced:add_checklist_item",
+        "action.trello-enhanced:create_board",
+        "action.trello-enhanced:create_card",
+        "action.trello-enhanced:create_checklist",
+        "action.trello-enhanced:create_label",
+        "action.trello-enhanced:create_webhook",
+        "action.trello-enhanced:search_cards",
+        "action.trello-enhanced:test_connection"
+      ],
+      "triggers": [
+        "trigger.trello-enhanced:card_created",
+        "trigger.trello-enhanced:card_moved",
+        "trigger.trello-enhanced:checklist_item_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "twilio",
+      "name": "Twilio",
+      "operations": [
+        "action.twilio:buy_phone_number",
+        "action.twilio:get_call",
+        "action.twilio:get_message",
+        "action.twilio:list_calls",
+        "action.twilio:list_messages",
+        "action.twilio:list_phone_numbers",
+        "action.twilio:make_call",
+        "action.twilio:send_mms",
+        "action.twilio:send_sms",
+        "action.twilio:test_connection",
+        "action.twilio:update_call"
+      ],
+      "triggers": [
+        "trigger.twilio:call_status_changed",
+        "trigger.twilio:incoming_call",
+        "trigger.twilio:incoming_sms",
+        "trigger.twilio:message_status_changed"
+      ],
+      "properties": [
+        {
+          "name": "TWILIO_ACCOUNT_SID",
+          "optional": false,
+          "operations": [
+            "action.twilio:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "TWILIO_AUTH_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.twilio:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "TWILIO_FROM_NUMBER",
+          "optional": false,
+          "operations": [
+            "action.twilio:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "twitter",
+      "name": "twitter",
+      "operations": [
+        "action.twitter:create_tweet"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "TWITTER_BEARER_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.twitter:create_tweet"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "typeform",
+      "name": "Typeform",
+      "operations": [
+        "action.typeform:create_form"
+      ],
+      "triggers": [
+        "trigger.typeform:form_created",
+        "trigger.typeform:form_response"
+      ],
+      "properties": [
+        {
+          "name": "TYPEFORM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.typeform:create_form"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "victorops",
+      "name": "VictorOps",
+      "operations": [
+        "action.victorops:ack_incident",
+        "action.victorops:create_incident",
+        "action.victorops:create_maintenance",
+        "action.victorops:get_incident",
+        "action.victorops:get_incidents",
+        "action.victorops:get_on_call",
+        "action.victorops:get_team",
+        "action.victorops:get_teams",
+        "action.victorops:get_user",
+        "action.victorops:get_users",
+        "action.victorops:resolve_incident",
+        "action.victorops:test_connection"
+      ],
+      "triggers": [
+        "trigger.victorops:incident_acked",
+        "trigger.victorops:incident_resolved",
+        "trigger.victorops:incident_triggered"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "vimeo",
+      "name": "vimeo",
+      "operations": [
+        "action.vimeo:upload_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "VIMEO_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.vimeo:upload_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "vonage",
+      "name": "vonage",
+      "operations": [
+        "action.vonage:send_sms"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "VONAGE_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.vonage:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "VONAGE_API_SECRET",
+          "optional": false,
+          "operations": [
+            "action.vonage:send_sms"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "wave",
+      "name": "wave",
+      "operations": [
+        "action.wave:create_invoice"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "WAVE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.wave:create_invoice"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "webex",
+      "name": "Cisco Webex",
+      "operations": [
+        "action.webex:create_meeting",
+        "action.webex:create_room",
+        "action.webex:get_meeting",
+        "action.webex:get_message",
+        "action.webex:get_room",
+        "action.webex:list_meetings",
+        "action.webex:list_messages",
+        "action.webex:list_rooms",
+        "action.webex:send_message",
+        "action.webex:test_connection"
+      ],
+      "triggers": [
+        "trigger.webex:meeting_started",
+        "trigger.webex:message_created",
+        "trigger.webex:room_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "webflow",
+      "name": "Webflow",
+      "operations": [
+        "action.webflow:create_collection_item",
+        "action.webflow:create_item",
+        "action.webflow:create_webhook",
+        "action.webflow:delete_collection_item",
+        "action.webflow:delete_webhook",
+        "action.webflow:get_collection",
+        "action.webflow:get_collection_item",
+        "action.webflow:get_site",
+        "action.webflow:list_collection_items",
+        "action.webflow:list_collections",
+        "action.webflow:list_sites",
+        "action.webflow:list_webhooks",
+        "action.webflow:publish_site",
+        "action.webflow:test_connection",
+        "action.webflow:update_collection_item"
+      ],
+      "triggers": [
+        "trigger.webflow:collection_item_changed",
+        "trigger.webflow:collection_item_created",
+        "trigger.webflow:form_submission",
+        "trigger.webflow:site_published"
+      ],
+      "properties": [
+        {
+          "name": "WEBFLOW_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.webflow:create_item"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "whatsapp",
+      "name": "whatsapp",
+      "operations": [
+        "action.whatsapp:send_message"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "WHATSAPP_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.whatsapp:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WHATSAPP_PHONE_NUMBER_ID",
+          "optional": false,
+          "operations": [
+            "action.whatsapp:send_message"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "wistia",
+      "name": "wistia",
+      "operations": [
+        "action.wistia:upload_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "WISTIA_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.wistia:upload_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "woocommerce",
+      "name": "WooCommerce",
+      "operations": [
+        "action.woocommerce:create_order",
+        "action.woocommerce:create_product",
+        "action.woocommerce:get_order",
+        "action.woocommerce:get_product",
+        "action.woocommerce:list_products",
+        "action.woocommerce:test_connection",
+        "action.woocommerce:update_order",
+        "action.woocommerce:update_product"
+      ],
+      "triggers": [
+        "trigger.woocommerce:order_created",
+        "trigger.woocommerce:product_created"
+      ],
+      "properties": [
+        {
+          "name": "WOOCOMMERCE_CONSUMER_KEY",
+          "optional": false,
+          "operations": [
+            "action.woocommerce:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WOOCOMMERCE_CONSUMER_SECRET",
+          "optional": false,
+          "operations": [
+            "action.woocommerce:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WOOCOMMERCE_STORE_URL",
+          "optional": false,
+          "operations": [
+            "action.woocommerce:create_order"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "wordpress",
+      "name": "wordpress",
+      "operations": [
+        "action.wordpress:create_post"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "WORDPRESS_PASSWORD",
+          "optional": false,
+          "operations": [
+            "action.wordpress:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WORDPRESS_SITE_URL",
+          "optional": false,
+          "operations": [
+            "action.wordpress:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WORDPRESS_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.wordpress:create_post"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "workday",
+      "name": "Workday",
+      "operations": [
+        "action.workday:approve_time_off_request",
+        "action.workday:create_time_off_request",
+        "action.workday:create_worker",
+        "action.workday:deny_time_off_request",
+        "action.workday:get_compensation_data",
+        "action.workday:get_organization_structure",
+        "action.workday:get_time_off_request",
+        "action.workday:get_worker",
+        "action.workday:search_workers",
+        "action.workday:terminate_worker",
+        "action.workday:test_connection",
+        "action.workday:update_compensation",
+        "action.workday:update_worker"
+      ],
+      "triggers": [
+        "trigger.workday:compensation_changed",
+        "trigger.workday:time_off_requested",
+        "trigger.workday:worker_hired",
+        "trigger.workday:worker_terminated"
+      ],
+      "properties": [
+        {
+          "name": "WORKDAY_PASSWORD",
+          "optional": false,
+          "operations": [
+            "action.workday:create_worker"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WORKDAY_USERNAME",
+          "optional": false,
+          "operations": [
+            "action.workday:create_worker"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "workfront",
+      "name": "Adobe Workfront",
+      "operations": [
+        "action.workfront:create_document",
+        "action.workfront:create_issue",
+        "action.workfront:create_project",
+        "action.workfront:create_task",
+        "action.workfront:create_timesheet",
+        "action.workfront:get_project",
+        "action.workfront:get_task",
+        "action.workfront:get_users",
+        "action.workfront:log_time",
+        "action.workfront:search_projects",
+        "action.workfront:test_connection",
+        "action.workfront:update_project",
+        "action.workfront:update_task"
+      ],
+      "triggers": [
+        "trigger.workfront:project_created",
+        "trigger.workfront:task_completed",
+        "trigger.workfront:task_created"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "xero",
+      "name": "Xero",
+      "operations": [
+        "action.xero:create_bank_transaction",
+        "action.xero:create_contact",
+        "action.xero:create_invoice",
+        "action.xero:create_payment",
+        "action.xero:get_accounts",
+        "action.xero:get_contact",
+        "action.xero:get_invoice",
+        "action.xero:get_organizations",
+        "action.xero:get_reports",
+        "action.xero:list_contacts",
+        "action.xero:test_connection",
+        "action.xero:update_contact",
+        "action.xero:update_invoice"
+      ],
+      "triggers": [
+        "trigger.xero:contact_created",
+        "trigger.xero:invoice_created",
+        "trigger.xero:payment_created"
+      ],
+      "properties": [
+        {
+          "name": "XERO_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.xero:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "youtube",
+      "name": "youtube",
+      "operations": [
+        "action.youtube:upload_video"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "YOUTUBE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.youtube:upload_video"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "zapier",
+      "name": "zapier",
+      "operations": [
+        "action.zapier:trigger_webhook"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ZAPIER_WEBHOOK_URL",
+          "optional": false,
+          "operations": [
+            "action.zapier:trigger_webhook"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "zendesk",
+      "name": "Zendesk",
+      "operations": [
+        "action.zendesk:create_ticket",
+        "action.zendesk:create_user",
+        "action.zendesk:create_webhook",
+        "action.zendesk:delete_ticket",
+        "action.zendesk:get_ticket",
+        "action.zendesk:get_user",
+        "action.zendesk:list_ticket_comments",
+        "action.zendesk:list_tickets",
+        "action.zendesk:list_users",
+        "action.zendesk:search_tickets",
+        "action.zendesk:test_connection",
+        "action.zendesk:update_ticket",
+        "action.zendesk:update_user"
+      ],
+      "triggers": [
+        "trigger.zendesk:ticket_created",
+        "trigger.zendesk:ticket_updated",
+        "trigger.zendesk:user_created"
+      ],
+      "properties": [
+        {
+          "name": "ZENDESK_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.zendesk:create_ticket"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZENDESK_EMAIL",
+          "optional": false,
+          "operations": [
+            "action.zendesk:create_ticket"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZENDESK_SUBDOMAIN",
+          "optional": false,
+          "operations": [
+            "action.zendesk:create_ticket"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "ZENDESK_SUBDOMAIN"
+      ]
+    },
+    {
+      "id": "zoho-books",
+      "name": "Zoho Books",
+      "operations": [
+        "action.zoho-books:create_contact",
+        "action.zoho-books:create_customer",
+        "action.zoho-books:create_expense",
+        "action.zoho-books:create_invoice",
+        "action.zoho-books:create_item",
+        "action.zoho-books:get_customer",
+        "action.zoho-books:get_invoice",
+        "action.zoho-books:get_organization",
+        "action.zoho-books:get_reports",
+        "action.zoho-books:list_customers",
+        "action.zoho-books:record_payment",
+        "action.zoho-books:send_invoice",
+        "action.zoho-books:test_connection",
+        "action.zoho-books:update_customer"
+      ],
+      "triggers": [
+        "trigger.zoho-books:expense_created",
+        "trigger.zoho-books:invoice_created",
+        "trigger.zoho-books:payment_received"
+      ],
+      "properties": [
+        {
+          "name": "ZOHO_BOOKS_AUTH_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.zoho-books:create_contact"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "zoho-crm",
+      "name": "Zoho CRM",
+      "operations": [
+        "action.zoho-crm:add_note",
+        "action.zoho-crm:convert_lead",
+        "action.zoho-crm:create_lead",
+        "action.zoho-crm:create_record",
+        "action.zoho-crm:delete_record",
+        "action.zoho-crm:get_record",
+        "action.zoho-crm:list_records",
+        "action.zoho-crm:search_records",
+        "action.zoho-crm:test_connection",
+        "action.zoho-crm:update_record",
+        "action.zoho-crm:upload_attachment"
+      ],
+      "triggers": [
+        "trigger.zoho-crm:lead_converted",
+        "trigger.zoho-crm:record_created",
+        "trigger.zoho-crm:record_updated"
+      ],
+      "properties": [
+        {
+          "name": "ZOHO_CRM_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.zoho-crm:create_lead"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "zoom",
+      "name": "zoom",
+      "operations": [
+        "action.zoom:create_meeting"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "ZOOM_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.zoom:create_meeting"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_API_SECRET",
+          "optional": false,
+          "operations": [
+            "action.zoom:create_meeting"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
+      "id": "zoom-enhanced",
+      "name": "Zoom Enhanced",
+      "operations": [
+        "action.zoom-enhanced:create_meeting",
+        "action.zoom-enhanced:create_webinar",
+        "action.zoom-enhanced:delete_meeting",
+        "action.zoom-enhanced:get_meeting",
+        "action.zoom-enhanced:get_recording",
+        "action.zoom-enhanced:list_meetings",
+        "action.zoom-enhanced:list_recordings",
+        "action.zoom-enhanced:test_connection",
+        "action.zoom-enhanced:update_meeting"
+      ],
+      "triggers": [
+        "trigger.zoom-enhanced:meeting_ended",
+        "trigger.zoom-enhanced:meeting_started",
+        "trigger.zoom-enhanced:recording_completed"
+      ],
+      "properties": [],
+      "environmentProperties": []
+    }
+  ]
+}
