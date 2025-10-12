@@ -1,0 +1,147 @@
+{
+  "id": "apps-script-tier-0-critical",
+  "name": "Tier 0 incident escalation",
+  "meta": {
+    "appsScript": {
+      "tier": 0,
+      "description": "Escalate sev0 incidents from Gmail into Slack and Salesforce with defensive branching",
+      "features": ["polling", "authentication", "retries", "error-handling"]
+    },
+    "automationType": "incident_response",
+    "prompt": "Escalate urgent customer incidents from Gmail into our on-call workflows"
+  },
+  "nodes": [
+    {
+      "id": "incident-trigger",
+      "type": "trigger.gmail",
+      "app": "gmail",
+      "name": "When sev0 email arrives",
+      "op": "trigger.gmail:email_received",
+      "params": {
+        "pollingIntervalMinutes": 2,
+        "search": "label:unread subject:\"sev0\""
+      },
+      "data": {
+        "operation": "email_received",
+        "config": {
+          "pollingIntervalMinutes": 2,
+          "search": "label:unread subject:\"sev0\"",
+          "acknowledgeOnDispatch": true
+        },
+        "metadata": {
+          "outputs": {
+            "email": { "type": "string" },
+            "subject": { "type": "string" },
+            "body": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "id": "slack-escalation",
+      "type": "action.slack",
+      "app": "slack",
+      "name": "Page incident channel",
+      "op": "action.slack:send_message",
+      "params": {
+        "channel": "#sev-zero",
+        "message": "Escalation: {{subject}} from {{email}}"
+      },
+      "data": {
+        "operation": "send_message",
+        "config": {
+          "channel": "#sev-zero",
+          "message": "Escalation: {{subject}} from {{email}}",
+          "credentials": {
+            "webhookSecret": "SLACK_WEBHOOK_URL"
+          }
+        }
+      }
+    },
+    {
+      "id": "salesforce-lead",
+      "type": "action.salesforce",
+      "app": "salesforce",
+      "name": "Create critical lead",
+      "op": "action.salesforce:create_lead",
+      "params": {
+        "firstName": "{{first_name}}",
+        "lastName": "{{last_name}}",
+        "email": "{{email}}",
+        "company": "Escalation Holding"
+      },
+      "data": {
+        "operation": "create_lead",
+        "config": {
+          "firstName": "{{first_name}}",
+          "lastName": "{{last_name}}",
+          "email": "{{email}}",
+          "company": "Escalation Holding"
+        }
+      }
+    },
+    {
+      "id": "lead-check",
+      "type": "condition.branch",
+      "app": "system",
+      "name": "Did Salesforce accept the lead?",
+      "op": "condition.branch:lead_created",
+      "params": {
+        "rule": "!!ctx.salesforceLeadId"
+      },
+      "data": {
+        "operation": "lead_created",
+        "config": {
+          "rule": "!!ctx.salesforceLeadId"
+        }
+      }
+    },
+    {
+      "id": "success-log",
+      "type": "action.sheets",
+      "app": "sheets",
+      "name": "Log resolved incident",
+      "op": "action.sheets:append_row",
+      "params": {
+        "spreadsheetId": "sev-tracker",
+        "sheetName": "Resolved",
+        "rowValues": ["{{subject}}", "{{email}}", "{{salesforceLeadId}}"]
+      },
+      "data": {
+        "operation": "append_row",
+        "config": {
+          "spreadsheetId": "sev-tracker",
+          "sheetName": "Resolved",
+          "rowValues": ["{{subject}}", "{{email}}", "{{salesforceLeadId}}"]
+        }
+      }
+    },
+    {
+      "id": "oncall-email",
+      "type": "action.gmail",
+      "app": "gmail",
+      "name": "Escalate to on-call",
+      "op": "action.gmail:sendEmail",
+      "params": {
+        "to": "oncall@example.com",
+        "subject": "Manual escalation required for {{subject}}",
+        "body": "Salesforce failed to create a lead for {{email}}"
+      },
+      "data": {
+        "operation": "sendEmail",
+        "config": {
+          "to": "oncall@example.com",
+          "subject": "Manual escalation required for {{subject}}",
+          "body": "Salesforce failed to create a lead for {{email}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "edge-incident-to-slack", "from": "incident-trigger", "to": "slack-escalation", "source": "incident-trigger", "target": "slack-escalation" },
+    { "id": "edge-slack-to-salesforce", "from": "slack-escalation", "to": "salesforce-lead", "source": "slack-escalation", "target": "salesforce-lead" },
+    { "id": "edge-salesforce-to-condition", "from": "salesforce-lead", "to": "lead-check", "source": "salesforce-lead", "target": "lead-check" },
+    { "id": "edge-condition-success", "from": "lead-check", "to": "success-log", "source": "lead-check", "target": "success-log", "branchValue": "true", "label": "success" },
+    { "id": "edge-condition-failure", "from": "lead-check", "to": "oncall-email", "source": "lead-check", "target": "oncall-email", "branchValue": "false", "label": "fallback" }
+  ]
+}
