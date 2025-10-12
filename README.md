@@ -146,6 +146,9 @@ Use `npm run report:runtime` to generate a connector runtime support report. The
 
 The command is safe to run locally or in nightly jobs; it only reads connector definitions and runtime metadata.
 
+👉 For a complete Apps Script command reference—including prioritization, backlog, and tracker automation—see
+[`docs/apps-script-rollout/commands.md`](docs/apps-script-rollout/commands.md).
+
 ## OAuth Smoke
 
 `npm run dev:oauth` stores a fake connection using the `connections` envelope-encryption columns. Replace the `provider` field and token payload when testing a real provider.
