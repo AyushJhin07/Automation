@@ -1,4 +1,5 @@
 import { CompileResult, WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
+import { GENERATED_REAL_OPS } from './realOps.generated.js';
 
 function appsScriptHttpHelpers(): string {
   return `
@@ -11787,6 +11788,7 @@ function funcName(n: any) {
 
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
+  ...GENERATED_REAL_OPS,
   'trigger.sheets:onEdit': (c) => `
 function onEdit(e) {
   const sh = e.source.getActiveSheet();
