@@ -17,7 +17,12 @@ import { getErrorMessage } from '../types/common';
 import { ConnectorSimulator } from '../testing/ConnectorSimulator';
 import { connectorFramework } from '../connectors/ConnectorFramework';
 import type { RateLimitRules } from './RateLimiter';
-import type { ConnectorModule, ConnectorOperationContract, ConnectorJSONSchema } from '../../shared/connectors/module';
+import type {
+  ConnectorModule,
+  ConnectorOperationContract,
+  ConnectorJSONSchema,
+  ConnectorAuthContract,
+} from '../../shared/connectors/module';
 
 export interface IntegrationConfig {
   appName: string;
@@ -63,12 +68,45 @@ export interface IntegrationManagerOptions {
   simulatorStrict?: boolean;
 }
 
+export interface CredentialFieldMetadata {
+  key: string;
+  propertyName: string;
+  label?: string;
+  description?: string;
+  type: string;
+  required: boolean;
+  defaultValue?: string | number | boolean | null;
+  originalType?: string;
+  source?: 'definition' | 'schema' | 'metadata' | 'heuristic';
+}
+
+export interface AppsScriptCredentialDescriptor {
+  appId: string;
+  displayName: string;
+  propertyPrefix: string;
+  authType: string;
+  fields: CredentialFieldMetadata[];
+  scopes: string[];
+  metadata?: Record<string, any>;
+}
+
+type RawCredentialField = {
+  key: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  description?: string;
+  defaultValue?: any;
+  source: 'definition' | 'schema' | 'metadata' | 'heuristic';
+};
+
 export class IntegrationManager {
   private clients: Map<string, BaseAPIClient> = new Map();
   private supportedApps = new Set(getImplementedConnectorIds());
   private simulator?: ConnectorSimulator;
   private connectorModules: Map<string, ConnectorModule> = new Map();
   private moduleValidators: Map<string, ValidateFunction> = new Map();
+  private credentialDescriptors: Map<string, AppsScriptCredentialDescriptor> = new Map();
   private readonly moduleSchemaValidator = new Ajv({ allErrors: true, strict: false, coerceTypes: true });
 
   constructor(options: IntegrationManagerOptions = {}) {
@@ -281,7 +319,7 @@ export class IntegrationManager {
 
       this.clients.set(clientKey, client);
       const module = moduleBuild?.module ?? this.createConnectorModule(appKey, client, definition);
-      this.setConnectorModule(clientKey, module);
+      this.setConnectorModule(appKey, clientKey, module, definition);
 
       return {
         success: true,
@@ -653,6 +691,9 @@ export class IntegrationManager {
         removed = true;
       }
     }
+    if (removed) {
+      this.credentialDescriptors.delete(appKey);
+    }
     return removed;
   }
 
@@ -668,6 +709,32 @@ export class IntegrationManager {
       connected: !!client,
       client
     };
+  }
+
+  public getAppsScriptCredentialDescriptor(appId: string): AppsScriptCredentialDescriptor | null {
+    const appKey = this.normalizeAppId(appId);
+    if (!appKey) {
+      return null;
+    }
+
+    const cached = this.credentialDescriptors.get(appKey);
+    if (cached) {
+      return cached;
+    }
+
+    const moduleEntry: ConnectorModule | undefined = this.connectorModules.get(appKey)
+      ?? Array.from(this.connectorModules.entries()).find(([key]) =>
+        key === appKey || key.startsWith(`${appKey}::`)
+      )?.[1];
+
+    const definition = connectorRegistry.getConnectorDefinition(appKey);
+    const descriptor = this.buildAppsScriptCredentialDescriptor(appKey, moduleEntry, definition);
+    if (descriptor) {
+      this.credentialDescriptors.set(appKey, descriptor);
+      return descriptor;
+    }
+
+    return null;
   }
 
   private async getOrCreateConnectorModule(
@@ -694,7 +761,7 @@ export class IntegrationManager {
     }
 
     const module = moduleBuild?.module ?? this.createConnectorModule(appKey, client, definition);
-    this.setConnectorModule(clientKey, module);
+    this.setConnectorModule(appKey, clientKey, module, definition);
     return module;
   }
 
@@ -807,8 +874,447 @@ export class IntegrationManager {
     };
   }
 
-  private setConnectorModule(clientKey: string, module: ConnectorModule): void {
+  private updateCredentialDescriptor(appKey: string, module: ConnectorModule, definition?: any): void {
+    const descriptor = this.buildAppsScriptCredentialDescriptor(appKey, module, definition);
+    if (descriptor) {
+      this.credentialDescriptors.set(appKey, descriptor);
+    } else {
+      this.credentialDescriptors.delete(appKey);
+    }
+  }
+
+  private buildAppsScriptCredentialDescriptor(
+    appKey: string,
+    module?: ConnectorModule | null,
+    definition?: any,
+  ): AppsScriptCredentialDescriptor | null {
+    const normalizedKey = this.normalizeAppId(appKey);
+    if (!normalizedKey) {
+      return null;
+    }
+
+    const authDefinition = definition?.authentication ?? null;
+    const authContract = module?.auth;
+    const authTypeRaw = authContract?.type ?? authDefinition?.type ?? 'custom';
+    const authType =
+      typeof authTypeRaw === 'string' && authTypeRaw.trim()
+        ? authTypeRaw.trim().toLowerCase()
+        : 'custom';
+
+    const propertyPrefix = this.buildScriptPropertyPrefix(
+      definition?.id ?? module?.id ?? normalizedKey,
+    );
+    const displayName =
+      this.coerceString(definition?.name)
+        ?? this.coerceString(module?.name)
+        ?? this.humanizeKey(normalizedKey);
+
+    const rawFields = this.extractCredentialFieldDefinitions({
+      authType,
+      authDefinition,
+      authContract,
+      connectorDefinition: definition,
+    });
+
+    const scopes = this.extractAuthScopes(authDefinition, authContract);
+
+    if (rawFields.length === 0 && scopes.length === 0) {
+      return null;
+    }
+
+    const fieldMap = new Map<string, (CredentialFieldMetadata & { order: number })>();
+    rawFields.forEach((raw, index) => {
+      const propertyName = this.buildScriptPropertyName(propertyPrefix, raw.key);
+      if (!propertyName) {
+        return;
+      }
+      if (fieldMap.has(propertyName)) {
+        return;
+      }
+      const normalizedType = this.normalizeCredentialType(raw.type);
+      const label = raw.label ?? this.humanizeKey(raw.key);
+      const field: CredentialFieldMetadata & { order: number } = {
+        key: raw.key,
+        propertyName,
+        label,
+        description: raw.description,
+        type: normalizedType,
+        required: raw.required === true,
+        defaultValue: raw.defaultValue,
+        originalType: raw.type,
+        source: raw.source,
+        order: index,
+      };
+      if (raw.required === undefined) {
+        field.required = false;
+      }
+      fieldMap.set(propertyName, field);
+    });
+
+    const fields = Array.from(fieldMap.values())
+      .sort((a, b) => a.order - b.order)
+      .map(({ order, ...rest }) => rest);
+
+    if (fields.length === 0 && scopes.length === 0) {
+      return null;
+    }
+
+    return {
+      appId: normalizedKey,
+      displayName,
+      propertyPrefix,
+      authType,
+      fields,
+      scopes,
+      metadata: {
+        authSource: definition ? 'definition' : module ? 'module' : 'inferred',
+      },
+    };
+  }
+
+  private extractCredentialFieldDefinitions(params: {
+    authType: string;
+    authDefinition?: any;
+    authContract?: ConnectorAuthContract | null;
+    connectorDefinition?: any;
+  }): RawCredentialField[] {
+    const { authType, authDefinition, authContract } = params;
+
+    const fromDefinition = this.normalizeAuthFieldArray(authDefinition?.fields, 'definition');
+    if (fromDefinition.length > 0) {
+      return fromDefinition;
+    }
+
+    const fromConfig = this.normalizeAuthFieldArray(authDefinition?.config?.fields, 'definition');
+    if (fromConfig.length > 0) {
+      return fromConfig;
+    }
+
+    const fromMetadata = this.normalizeAuthFieldArray(authContract?.metadata?.fields, 'metadata');
+    if (fromMetadata.length > 0) {
+      return fromMetadata;
+    }
+
+    const fromSchema = this.extractFieldsFromSchema(authContract?.schema);
+    if (fromSchema.length > 0) {
+      return fromSchema;
+    }
+
+    return this.buildHeuristicFields(authType, authDefinition, authContract ?? undefined);
+  }
+
+  private normalizeAuthFieldArray(
+    value: any,
+    source: RawCredentialField['source'],
+  ): RawCredentialField[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const fields: RawCredentialField[] = [];
+    for (const entry of value) {
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const key = this.coerceString((entry as any).key ?? (entry as any).name ?? (entry as any).id);
+      if (!key) {
+        continue;
+      }
+      fields.push({
+        key,
+        label: this.coerceString((entry as any).label) ?? undefined,
+        type: this.coerceString((entry as any).type) ?? undefined,
+        required: this.coerceBoolean((entry as any).required),
+        description: this.coerceString((entry as any).description) ?? undefined,
+        defaultValue: (entry as any).default ?? (entry as any).defaultValue,
+        source,
+      });
+    }
+    return fields;
+  }
+
+  private extractFieldsFromSchema(schema: ConnectorJSONSchema | undefined): RawCredentialField[] {
+    if (!schema || typeof schema !== 'object') {
+      return [];
+    }
+    const properties = (schema as any).properties;
+    if (!properties || typeof properties !== 'object') {
+      return [];
+    }
+    const requiredKeys = new Set<string>(
+      Array.isArray((schema as any).required)
+        ? (schema as any).required.map((item: any) => String(item))
+        : [],
+    );
+    const fields: RawCredentialField[] = [];
+    for (const [key, value] of Object.entries(properties)) {
+      if (!value || typeof value !== 'object') {
+        continue;
+      }
+      const fieldType =
+        this.coerceString((value as any).type) ?? this.coerceString((value as any).format) ?? undefined;
+      fields.push({
+        key,
+        label: this.coerceString((value as any).title) ?? undefined,
+        type: fieldType,
+        required: requiredKeys.has(key),
+        description: this.coerceString((value as any).description) ?? undefined,
+        defaultValue: (value as any).default,
+        source: 'schema',
+      });
+    }
+    return fields;
+  }
+
+  private buildHeuristicFields(
+    authType: string,
+    authDefinition?: any,
+    authContract?: ConnectorAuthContract,
+  ): RawCredentialField[] {
+    const normalizedType = authType ? authType.toLowerCase() : 'custom';
+    const fields: RawCredentialField[] = [];
+    const pushField = (key: string, overrides: Partial<RawCredentialField> = {}) => {
+      const normalizedKey = this.coerceString(key);
+      if (!normalizedKey) {
+        return;
+      }
+      fields.push({
+        key: normalizedKey,
+        label: overrides.label ?? this.humanizeKey(normalizedKey),
+        type: overrides.type ?? 'string',
+        required: overrides.required ?? true,
+        description: overrides.description,
+        defaultValue: overrides.defaultValue,
+        source: 'heuristic',
+      });
+    };
+
+    switch (normalizedType) {
+      case 'oauth2':
+        pushField('access_token', { type: 'secret', label: 'Access Token', required: true });
+        pushField('refresh_token', { type: 'secret', label: 'Refresh Token', required: false });
+        if (this.isClientCredentialRequired(authDefinition, authContract, 'clientIdRequired')) {
+          pushField('client_id', { type: 'string', label: 'Client ID', required: true });
+        }
+        if (this.isClientCredentialRequired(authDefinition, authContract, 'clientSecretRequired')) {
+          pushField('client_secret', { type: 'secret', label: 'Client Secret', required: true });
+        }
+        break;
+      case 'api_key':
+        pushField('api_key', { type: 'secret', label: 'API Key', required: true });
+        break;
+      case 'basic':
+      case 'basic_auth':
+        pushField('username', { type: 'string', label: 'Username', required: true });
+        pushField('password', { type: 'secret', label: 'Password', required: true });
+        break;
+      case 'bearer':
+      case 'bearer_token':
+        pushField('access_token', { type: 'secret', label: 'Access Token', required: true });
+        break;
+      case 'personal_access_token':
+        pushField('personal_access_token', { type: 'secret', label: 'Personal Access Token', required: true });
+        break;
+      case 'aws_credentials':
+        pushField('access_key_id', { type: 'string', label: 'Access Key ID', required: true });
+        pushField('secret_access_key', { type: 'secret', label: 'Secret Access Key', required: true });
+        pushField('region', { type: 'string', label: 'AWS Region', required: true });
+        break;
+      case 'kubeconfig':
+        pushField('kubeconfig', { type: 'secret', label: 'Kubeconfig', required: true });
+        break;
+      case 'vault_token':
+        pushField('vault_token', { type: 'secret', label: 'Vault Token', required: true });
+        break;
+      default:
+        break;
+    }
+
+    return fields;
+  }
+
+  private isClientCredentialRequired(
+    authDefinition: any,
+    authContract: ConnectorAuthContract | undefined,
+    property: 'clientIdRequired' | 'clientSecretRequired',
+  ): boolean {
+    if (authDefinition && property in authDefinition) {
+      const result = this.coerceBoolean(authDefinition[property]);
+      if (typeof result === 'boolean') {
+        return result;
+      }
+    }
+    if (authDefinition?.config && property in authDefinition.config) {
+      const result = this.coerceBoolean(authDefinition.config[property]);
+      if (typeof result === 'boolean') {
+        return result;
+      }
+    }
+    if (authContract?.metadata && property in authContract.metadata) {
+      const result = this.coerceBoolean((authContract.metadata as any)[property]);
+      if (typeof result === 'boolean') {
+        return result;
+      }
+    }
+    return false;
+  }
+
+  private buildScriptPropertyPrefix(appId: string): string {
+    const raw = this.coerceString(appId) ?? 'CONNECTOR';
+    const normalized = raw
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_|_$/g, '')
+      .toUpperCase();
+    return normalized || 'CONNECTOR';
+  }
+
+  private buildScriptPropertyName(prefix: string, key: string): string {
+    const normalizedKey = this.coerceString(key);
+    if (!normalizedKey) {
+      return prefix;
+    }
+    const suffix = normalizedKey
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_|_$/g, '')
+      .toUpperCase();
+    if (!suffix) {
+      return prefix;
+    }
+    return `${prefix}_${suffix}`;
+  }
+
+  private normalizeCredentialType(type?: string): string {
+    const normalized = this.coerceString(type)?.toLowerCase();
+    switch (normalized) {
+      case undefined:
+      case null:
+      case '':
+      case 'text':
+      case 'string':
+        return 'string';
+      case 'password':
+      case 'secret':
+      case 'token':
+      case 'access_token':
+      case 'refresh_token':
+        return 'secret';
+      case 'boolean':
+      case 'checkbox':
+        return 'boolean';
+      case 'number':
+      case 'integer':
+        return 'number';
+      case 'json':
+      case 'object':
+        return 'json';
+      default:
+        return normalized ?? 'string';
+    }
+  }
+
+  private extractAuthScopes(authDefinition?: any, authContract?: ConnectorAuthContract | null): string[] {
+    const sources = [
+      authDefinition?.scopes,
+      authDefinition?.scope,
+      authDefinition?.config?.scopes,
+      authDefinition?.config?.scope,
+      authDefinition?.metadata?.scopes,
+      authContract?.metadata?.scopes,
+    ];
+    const scopes = new Set<string>();
+    for (const source of sources) {
+      if (Array.isArray(source)) {
+        for (const value of source) {
+          const scope = this.coerceString(value);
+          if (scope) {
+            scopes.add(scope);
+          }
+        }
+      } else {
+        const scope = this.coerceString(source);
+        if (scope) {
+          scopes.add(scope);
+        }
+      }
+    }
+    return Array.from(scopes);
+  }
+
+  private humanizeKey(value: string): string {
+    const raw = this.coerceString(value);
+    if (!raw) {
+      return '';
+    }
+    return raw
+      .replace(/[-_]+/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+  }
+
+  private coerceString(value: unknown): string | undefined {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(value);
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    }
+    if (value && typeof value === 'object') {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toISOString();
+      }
+      if ('toString' in value && typeof (value as any).toString === 'function') {
+        const str = String(value).trim();
+        return str ? str : undefined;
+      }
+    }
+    return undefined;
+  }
+
+  private coerceBoolean(value: unknown): boolean | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) {
+        return undefined;
+      }
+      return value !== 0;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (['true', '1', 'yes', 'y'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'n'].includes(normalized)) {
+        return false;
+      }
+    }
+    return undefined;
+  }
+
+  private setConnectorModule(
+    appKey: string,
+    clientKey: string,
+    module: ConnectorModule,
+    definition?: any,
+  ): void {
+    const normalizedAppKey = this.normalizeAppId(appKey);
     this.connectorModules.set(clientKey, module);
+    this.updateCredentialDescriptor(normalizedAppKey, module, definition);
     this.purgeValidatorsForModule(clientKey);
   }
 
@@ -1026,6 +1532,8 @@ export type { BaseAPIClient } from './BaseAPIClient';
 export interface APIClientProvider {
   getAPIClient: (appName: string, credentials?: APICredentials, additionalConfig?: Record<string, any>) => BaseAPIClient | undefined;
 }
+
+export type { AppsScriptCredentialDescriptor, CredentialFieldMetadata };
 
 // Backwards-compatible instance method for direct API client access
 (IntegrationManager as any).prototype.getAPIClient = function(this: IntegrationManager, appName: string, credentials?: APICredentials, additionalConfig?: Record<string, any>) {

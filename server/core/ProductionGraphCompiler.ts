@@ -1,5 +1,10 @@
 import { simpleGraphValidator, type ValidatorOptions } from './SimpleGraphValidator';
 import { compilerTemplates, NodeData } from './CompilerTemplates';
+import {
+  integrationManager,
+  type AppsScriptCredentialDescriptor,
+  type CredentialFieldMetadata,
+} from '../integrations/IntegrationManager';
 
 export interface CompilerOptions {
   projectName?: string;
@@ -1558,25 +1563,125 @@ Run \`executeWorkflow({})\` to test the workflow manually.
   }
 
   private generateRequiredProperties(graph: any): string {
-    const properties = [];
-    
-    // Scan nodes for required properties
-    graph.nodes.forEach(node => {
-      if (node.type === 'action.http.request') {
-        if (node.data.authType === 'bearer') {
-          properties.push(`${node.data.tokenProperty || 'API_TOKEN'}: Your bearer token`);
-        }
-        if (node.data.authType === 'apikey') {
-          properties.push(`${node.data.apiKeyProperty || 'API_KEY'}: Your API key`);
-        }
+    const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
+    const descriptors: AppsScriptCredentialDescriptor[] = [];
+    const seenRaw = new Set<string>();
+    const seenNormalized = new Set<string>();
+
+    for (const node of nodes) {
+      const rawAppId = this.coerceAppIdFromNode(node);
+      if (!rawAppId || seenRaw.has(rawAppId)) {
+        continue;
       }
-    });
-    
-    if (properties.length === 0) {
+      seenRaw.add(rawAppId);
+
+      const descriptor = integrationManager.getAppsScriptCredentialDescriptor(rawAppId);
+      if (!descriptor) {
+        continue;
+      }
+
+      if (seenNormalized.has(descriptor.appId) || descriptor.fields.length === 0) {
+        seenNormalized.add(descriptor.appId);
+        continue;
+      }
+
+      descriptors.push(descriptor);
+      seenNormalized.add(descriptor.appId);
+    }
+
+    if (descriptors.length === 0) {
       return '(No additional properties required)';
     }
-    
-    return properties.map(prop => `- ${prop}`).join('\n');
+
+    descriptors.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    return descriptors
+      .map(descriptor => this.formatCredentialDescriptor(descriptor))
+      .join('\n');
+  }
+
+  private formatCredentialDescriptor(descriptor: AppsScriptCredentialDescriptor): string {
+    const lines: string[] = [];
+    const label = descriptor.displayName || this.formatConnectorLabel(descriptor.appId);
+    const scopeSuffix = descriptor.scopes.length > 0
+      ? ` — OAuth scopes: ${descriptor.scopes.join(', ')}`
+      : '';
+    lines.push(`- ${label}${scopeSuffix}`);
+    descriptor.fields.forEach(field => {
+      lines.push(this.formatCredentialField(field));
+    });
+    return lines.join('\n');
+  }
+
+  private formatCredentialField(field: CredentialFieldMetadata): string {
+    const annotations: string[] = [];
+    if (field.type) {
+      annotations.push(this.describeCredentialFieldType(field.type));
+    }
+    annotations.push(field.required ? 'required' : 'optional');
+    if (field.defaultValue !== undefined) {
+      annotations.push(`default: ${field.defaultValue}`);
+    }
+    const meta = annotations.length ? ` (${annotations.join(', ')})` : '';
+    const description = field.description ?? field.label;
+    const descriptionSuffix = description ? ` — ${description}` : '';
+    return `  - \`${field.propertyName}\`${meta}${descriptionSuffix}`;
+  }
+
+  private describeCredentialFieldType(type: string): string {
+    const normalized = (type || '').toLowerCase();
+    switch (normalized) {
+      case 'secret':
+        return 'secret';
+      case 'boolean':
+        return 'boolean';
+      case 'number':
+        return 'number';
+      case 'json':
+        return 'json';
+      default:
+        return normalized || 'string';
+    }
+  }
+
+  private formatConnectorLabel(appId: string): string {
+    return (appId || '')
+      .split(/[-_]/g)
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+  }
+
+  private coerceAppIdFromNode(node: any): string | undefined {
+    if (!node || typeof node !== 'object') {
+      return undefined;
+    }
+
+    if (typeof node.type === 'string') {
+      const parts = node.type.split('.');
+      if (parts.length >= 2) {
+        const category = parts[0];
+        if (category === 'action' || category === 'trigger') {
+          const appId = parts[1];
+          if (appId) {
+            return appId;
+          }
+        }
+      }
+    }
+
+    const data = node.data ?? {};
+    if (typeof data.appId === 'string' && data.appId.trim()) {
+      return data.appId;
+    }
+    if (typeof data.app === 'string' && data.app.trim()) {
+      return data.app;
+    }
+    if (typeof node.appId === 'string' && node.appId.trim()) {
+      return node.appId;
+    }
+
+    return undefined;
   }
 
   /**
