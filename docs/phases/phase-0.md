@@ -5,6 +5,7 @@ Checklist (maintained as we progress)
 - [ ] Inventory connectors (count, categories, availability, enhanced/standard pairs)
 - [ ] Generate machine-readable report (JSON) and human summary (Markdown)
 - [ ] Define coverage levels (Bronze/Silver/Gold) with acceptance criteria
+- [ ] PM confirms [Apps Script rollout kickoff checklist](../apps-script-rollout/kickoff-checklist.md) is complete before scheduling a new connector batch
 - [x] Propose Batch 1 candidates (see production/reports/batch1-proposal.md)
 - [x] Align UI labels for availability (Stable/Experimental/Coming Soon)
   - API now exposes `statusLabel`, `hasImplementation`, `availability`, `hasWebhooks`

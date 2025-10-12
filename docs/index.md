@@ -4,6 +4,8 @@
   - docs/phases/phase-0.md
   - docs/phases/coverage-levels.md
   - docs/phases/phase-0-risks.md
+  - docs/apps-script-rollout/kickoff-checklist.md
+  - docs/apps-script-rollout/rollout-tracker.md
 - Phase 1
   - docs/phases/phase-1.md
   - docs/phases/phase-1-usage.md

@@ -59,7 +59,8 @@
     "seed:encryption-key": "tsx scripts/seed-encryption-key.ts",
     "observability:check": "tsx scripts/observability-check.ts",
     "report:runtime": "tsx scripts/connector-runtime-status.ts",
-    "check:connectors": "tsx scripts/validate-connectors.ts && tsx scripts/validate-connector-ops.ts"
+    "check:connectors": "tsx scripts/validate-connectors.ts && tsx scripts/validate-connector-ops.ts",
+    "apps-script:checklist": "tsx scripts/print-apps-script-checklist.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.676.0",
