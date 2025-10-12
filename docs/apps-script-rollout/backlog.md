@@ -2,6 +2,8 @@
 
 This backlog translates the [Apps Script prioritization report](../../production/reports/apps-script-prioritization.csv) into actionable rollout work. Each connector listed in `server/connector-manifest.json` inherits its tier from the prioritization CSV so Apps Script enablement stays aligned with the scoring model. Columns highlight total operation counts, runtime readiness, and planning placeholders for squad ownership and sprint targeting.
 
+> Need an unblocker? Review the [Apps Script rollout team structure](team-structure.md) to find the accountable contact for runtime, connector, QA, or program management questions.
+
 ## Tier 0 — Launch-critical connectors
 
 _No connectors in this tier yet._
