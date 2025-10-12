@@ -609,7 +609,56 @@ export class HealthMonitoringService {
     try {
       // In a real implementation, you'd send to Slack, email, etc.
       console.log(`📧 Sending alert notification: ${alert.title}`);
-      
+
+      if (alert.metadata?.pageQaSupport) {
+        const trackerUrl = (alert.metadata?.trackerUrl as string | undefined) ?? process.env.APPS_SCRIPT_ROLLOUT_TRACKER_URL;
+        const failedFixtures = Array.isArray(alert.metadata?.failedFixtures)
+          ? (alert.metadata.failedFixtures as string[])
+          : [];
+        const environment = (alert.metadata?.environment as string | undefined)
+          ?? process.env.APPS_SCRIPT_DRY_RUN_ENVIRONMENT
+          ?? 'staging';
+
+        const lines = [
+          `:rotating_light: ${alert.title}`,
+          `Environment: ${environment}`,
+          alert.message,
+        ];
+
+        if (failedFixtures.length > 0) {
+          lines.push(`Failing fixtures: ${failedFixtures.join(', ')}`);
+        }
+
+        if (trackerUrl) {
+          lines.push(`Tracker: ${trackerUrl}`);
+        }
+
+        const payload = { text: lines.join('\n') };
+        const destinations: Array<{ label: string; url?: string | null }> = [
+          { label: 'QA', url: process.env.APPS_SCRIPT_QA_ALERT_WEBHOOK },
+          { label: 'Support', url: process.env.APPS_SCRIPT_SUPPORT_ALERT_WEBHOOK },
+        ];
+
+        const resolvedDestinations = destinations
+          .map(destination => {
+            if (typeof destination.url !== 'string') {
+              return null;
+            }
+            const trimmed = destination.url.trim();
+            if (!trimmed) {
+              return null;
+            }
+            return { label: destination.label, url: trimmed };
+          })
+          .filter((destination): destination is { label: string; url: string } => destination !== null);
+
+        await Promise.all(
+          resolvedDestinations.map(destination =>
+            this.dispatchAlertWebhook(destination.url, payload, destination.label)
+          ),
+        );
+      }
+
       // Example: Send email notification
       const adminEmail = process.env.ADMIN_EMAIL;
       if (adminEmail) {
@@ -619,6 +668,25 @@ export class HealthMonitoringService {
 
     } catch (error) {
       console.error('Failed to send alert notification:', error);
+    }
+  }
+
+  private async dispatchAlertWebhook(url: string, payload: Record<string, unknown>, channelLabel: string): Promise<void> {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => undefined);
+        throw new Error(`Webhook responded with ${response.status}${body ? `: ${body}` : ''}`);
+      }
+
+      console.log(`📨 Alert delivered to ${channelLabel} webhook.`);
+    } catch (error) {
+      console.error(`Failed to dispatch alert webhook to ${channelLabel}:`, error);
     }
   }
 
