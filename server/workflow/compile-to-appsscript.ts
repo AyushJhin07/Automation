@@ -38,6 +38,189 @@ function logError(event, details) {
   logStructured('ERROR', event, details);
 }
 
+var __SECRET_HELPER_OVERRIDES =
+  typeof SECRET_HELPER_OVERRIDES !== 'undefined' && SECRET_HELPER_OVERRIDES
+    ? SECRET_HELPER_OVERRIDES
+    : {};
+var __SECRET_VAULT_EXPORT_CACHE = null;
+var __SECRET_VAULT_EXPORT_PARSED = false;
+
+function __coerceSecretArray(value) {
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.filter(function (item) {
+      return typeof item === 'string' && item.trim().length > 0;
+    });
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function __loadVaultExports() {
+  if (__SECRET_VAULT_EXPORT_PARSED) {
+    return __SECRET_VAULT_EXPORT_CACHE;
+  }
+  __SECRET_VAULT_EXPORT_PARSED = true;
+
+  var scriptProps = PropertiesService.getScriptProperties();
+  var raw =
+    scriptProps.getProperty('__VAULT_EXPORTS__') ||
+    scriptProps.getProperty('VAULT_EXPORTS_JSON') ||
+    scriptProps.getProperty('VAULT_EXPORTS');
+
+  if (!raw) {
+    __SECRET_VAULT_EXPORT_CACHE = {};
+    return __SECRET_VAULT_EXPORT_CACHE;
+  }
+
+  try {
+    var parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.secrets && typeof parsed.secrets === 'object') {
+        __SECRET_VAULT_EXPORT_CACHE = parsed.secrets;
+      } else {
+        __SECRET_VAULT_EXPORT_CACHE = parsed;
+      }
+    } else {
+      __SECRET_VAULT_EXPORT_CACHE = {};
+    }
+  } catch (error) {
+    logWarn('vault_exports_parse_failed', { message: error && error.message ? error.message : String(error) });
+    __SECRET_VAULT_EXPORT_CACHE = {};
+  }
+
+  return __SECRET_VAULT_EXPORT_CACHE;
+}
+
+function getSecret(propertyName, opts) {
+  var options = opts || {};
+  var key = typeof propertyName === 'string' ? propertyName.trim() : '';
+
+  if (!key) {
+    throw new Error('getSecret requires a propertyName');
+  }
+
+  var connectorKey = options.connectorKey || options.connector || null;
+  if (!connectorKey) {
+    var normalizedKey = key.replace(/^_+/, '');
+    var underscoreIndex = normalizedKey.indexOf('_');
+    if (underscoreIndex > 0) {
+      connectorKey = normalizedKey.substring(0, underscoreIndex).toLowerCase();
+    }
+  }
+  var candidates = [];
+  var seen = {};
+
+  function pushCandidate(name) {
+    if (!name || typeof name !== 'string') {
+      return;
+    }
+    var trimmed = name.trim();
+    if (!trimmed || seen[trimmed]) {
+      return;
+    }
+    seen[trimmed] = true;
+    candidates.push(trimmed);
+  }
+
+  pushCandidate(key);
+
+  var defaultOverrides = (__SECRET_HELPER_OVERRIDES.defaults && __SECRET_HELPER_OVERRIDES.defaults[key]) || null;
+  var connectorOverrides =
+    (connectorKey &&
+      __SECRET_HELPER_OVERRIDES.connectors &&
+      __SECRET_HELPER_OVERRIDES.connectors[connectorKey] &&
+      __SECRET_HELPER_OVERRIDES.connectors[connectorKey][key]) ||
+    null;
+
+  __coerceSecretArray(defaultOverrides && defaultOverrides.aliases).forEach(pushCandidate);
+  __coerceSecretArray(connectorOverrides && connectorOverrides.aliases).forEach(pushCandidate);
+  __coerceSecretArray(options.aliases || options.alias).forEach(pushCandidate);
+
+  if (defaultOverrides && defaultOverrides.mapTo) {
+    pushCandidate(defaultOverrides.mapTo);
+  }
+  if (connectorOverrides && connectorOverrides.mapTo) {
+    pushCandidate(connectorOverrides.mapTo);
+  }
+  if (options.mapTo) {
+    pushCandidate(options.mapTo);
+  }
+
+  var scriptProps = PropertiesService.getScriptProperties();
+  var resolvedKey = null;
+  var value = null;
+  var source = null;
+
+  for (var i = 0; i < candidates.length; i++) {
+    var candidate = candidates[i];
+    var candidateValue = scriptProps.getProperty(candidate);
+    if (candidateValue !== null && candidateValue !== undefined && String(candidateValue).trim() !== '') {
+      resolvedKey = candidate;
+      value = candidateValue;
+      source = 'script_properties';
+      break;
+    }
+  }
+
+  if (value === null) {
+    var vaultSecrets = __loadVaultExports();
+    if (vaultSecrets && typeof vaultSecrets === 'object') {
+      for (var j = 0; j < candidates.length; j++) {
+        var vaultKey = candidates[j];
+        if (vaultSecrets.hasOwnProperty(vaultKey) && vaultSecrets[vaultKey] !== undefined && vaultSecrets[vaultKey] !== null) {
+          resolvedKey = vaultKey;
+          value = String(vaultSecrets[vaultKey]);
+          source = 'vault_exports';
+          break;
+        }
+      }
+    }
+  }
+
+  if (value === null && defaultOverrides && defaultOverrides.defaultValue !== undefined) {
+    value = defaultOverrides.defaultValue;
+    source = 'default_override';
+    resolvedKey = key;
+  }
+
+  if (value === null && connectorOverrides && connectorOverrides.defaultValue !== undefined) {
+    value = connectorOverrides.defaultValue;
+    source = 'connector_override';
+    resolvedKey = key;
+  }
+
+  if (value === null && options.defaultValue !== undefined) {
+    value = options.defaultValue;
+    source = 'default_option';
+    resolvedKey = key;
+  }
+
+  if (value === null || value === undefined || String(value).trim() === '') {
+    logError('secret_missing', {
+      property: key,
+      connectorKey: connectorKey || null,
+      triedKeys: candidates
+    });
+    throw new Error('Missing required secret "' + key + '"');
+  }
+
+  if (options.logResolved) {
+    logInfo('secret_resolved', {
+      property: key,
+      connectorKey: connectorKey || null,
+      resolvedKey: resolvedKey,
+      source: source
+    });
+  }
+
+  return value;
+}
+
 function withRetries(fn, options) {
   var config = options || {};
   var maxAttempts = config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
@@ -1390,8 +1573,8 @@ function ${functionName}(inputData, params) {
   console.log('💬 Executing Slack: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const botToken = PropertiesService.getScriptProperties().getProperty('SLACK_BOT_TOKEN');
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
+  const botToken = getSecret('SLACK_BOT_TOKEN');
+  const webhookUrl = getSecret('SLACK_WEBHOOK_URL');
   
   try {
     switch (operation) {
@@ -1773,7 +1956,7 @@ function ${functionName}(inputData, params) {
   console.log('☁️ Executing Dropbox: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const dropboxToken = PropertiesService.getScriptProperties().getProperty('DROPBOX_ACCESS_TOKEN');
+  const dropboxToken = getSecret('DROPBOX_ACCESS_TOKEN');
   
   if (!dropboxToken) {
     console.warn('⚠️ Dropbox access token not configured, skipping operation');
@@ -2777,7 +2960,7 @@ async function ${functionName}(inputData, params) {
     }
     
     // Store in PropertiesService for audit trail
-    const logs = PropertiesService.getScriptProperties().getProperty('WORKFLOW_LOGS') || '[]';
+    const logs = getSecret('WORKFLOW_LOGS', { defaultValue: '[]' });
     const logArray = JSON.parse(logs);
     logArray.push(logEntry);
     
@@ -2809,8 +2992,8 @@ function generateShopifyActionFunction(functionName: string, node: WorkflowNode)
 function ${functionName}(inputData, params) {
   console.log('🛍️ Executing Shopify action: ${node.name || 'Shopify Operation'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SHOPIFY_API_KEY');
-  const shopDomain = PropertiesService.getScriptProperties().getProperty('SHOPIFY_SHOP_DOMAIN');
+  const apiKey = getSecret('SHOPIFY_API_KEY');
+  const shopDomain = getSecret('SHOPIFY_SHOP_DOMAIN');
   const apiVersion = '2023-07';
   
   if (!apiKey || !shopDomain) {
@@ -2894,8 +3077,8 @@ function ${functionName}(inputData, params) {
   console.log('☁️ Executing Salesforce: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SALESFORCE_ACCESS_TOKEN');
-  const instanceUrl = PropertiesService.getScriptProperties().getProperty('SALESFORCE_INSTANCE_URL');
+  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN');
+  const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL');
   
   if (!accessToken || !instanceUrl) {
     console.warn('⚠️ Salesforce credentials not configured');
@@ -3188,9 +3371,9 @@ function ${functionName}(inputData, params) {
   console.log('🎯 Executing Jira: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
-  const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
-  const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
+  const baseUrl = getSecret('JIRA_BASE_URL');
+  const email = getSecret('JIRA_EMAIL');
+  const apiToken = getSecret('JIRA_API_TOKEN');
   
   if (!baseUrl || !email || !apiToken) {
     console.warn('⚠️ Jira credentials not configured');
@@ -3787,7 +3970,7 @@ function ${functionName}(inputData, params) {
   console.log('📧 Executing Mailchimp: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_API_KEY');
+  const apiKey = getSecret('MAILCHIMP_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Mailchimp API key not configured');
@@ -3919,7 +4102,7 @@ function ${functionName}(inputData, params) {
   console.log('🎯 Executing HubSpot: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('HUBSPOT_ACCESS_TOKEN');
+  const accessToken = getSecret('HUBSPOT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ HubSpot access token not configured');
@@ -4056,8 +4239,8 @@ function ${functionName}(inputData, params) {
   console.log('💼 Executing Pipedrive: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiToken = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_API_TOKEN');
-  const companyDomain = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_COMPANY_DOMAIN');
+  const apiToken = getSecret('PIPEDRIVE_API_TOKEN');
+  const companyDomain = getSecret('PIPEDRIVE_COMPANY_DOMAIN');
   
   if (!apiToken || !companyDomain) {
     console.warn('⚠️ Pipedrive credentials not configured');
@@ -4320,8 +4503,8 @@ function ${functionName}(inputData, params) {
   console.log('🏢 Executing Zoho CRM: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ACCESS_TOKEN');
-  const orgId = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ORG_ID');
+  const accessToken = getSecret('ZOHO_CRM_ACCESS_TOKEN');
+  const orgId = getSecret('ZOHO_CRM_ORG_ID');
   
   if (!accessToken) {
     console.warn('⚠️ Zoho CRM access token not configured');
@@ -4503,8 +4686,8 @@ function ${functionName}(inputData, params) {
   console.log('🏬 Executing Microsoft Dynamics 365: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_ACCESS_TOKEN');
-  const instanceUrl = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_INSTANCE_URL');
+  const accessToken = getSecret('DYNAMICS365_ACCESS_TOKEN');
+  const instanceUrl = getSecret('DYNAMICS365_INSTANCE_URL');
   
   if (!accessToken || !instanceUrl) {
     console.warn('⚠️ Dynamics 365 credentials not configured');
@@ -4884,7 +5067,7 @@ function ${functionName}(inputData, params) {
   console.log('👥 Executing Microsoft Teams: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_TEAMS_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_TEAMS_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft Teams access token not configured');
@@ -5070,7 +5253,7 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Stripe: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  const apiKey = getSecret('STRIPE_SECRET_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Stripe secret key not configured');
@@ -5240,9 +5423,9 @@ function ${functionName}(inputData, params) {
   console.log('📱 Executing Twilio: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accountSid = PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID');
-  const authToken = PropertiesService.getScriptProperties().getProperty('TWILIO_AUTH_TOKEN');
-  const fromNumber = PropertiesService.getScriptProperties().getProperty('TWILIO_FROM_NUMBER');
+  const accountSid = getSecret('TWILIO_ACCOUNT_SID');
+  const authToken = getSecret('TWILIO_AUTH_TOKEN');
+  const fromNumber = getSecret('TWILIO_FROM_NUMBER');
   
   if (!accountSid || !authToken) {
     console.warn('⚠️ Twilio credentials not configured');
@@ -5376,9 +5559,9 @@ function ${functionName}(inputData, params) {
   console.log('💰 Executing PayPal: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const clientId = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_SECRET');
-  const sandbox = PropertiesService.getScriptProperties().getProperty('PAYPAL_SANDBOX') === 'true';
+  const clientId = getSecret('PAYPAL_CLIENT_ID');
+  const clientSecret = getSecret('PAYPAL_CLIENT_SECRET');
+  const sandbox = getSecret('PAYPAL_SANDBOX') === 'true';
   
   if (!clientId || !clientSecret) {
     console.warn('⚠️ PayPal credentials not configured');
@@ -5506,7 +5689,7 @@ function ${functionName}(inputData, params) {
   console.log('🎥 Executing Zoom Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ZOOM_ACCESS_TOKEN');
+  const accessToken = getSecret('ZOOM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Zoom access token not configured');
@@ -5625,7 +5808,7 @@ function ${functionName}(inputData, params) {
   console.log('💬 Executing Google Chat: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_CHAT_ACCESS_TOKEN');
+  const accessToken = getSecret('GOOGLE_CHAT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Google Chat access token not configured');
@@ -5721,7 +5904,7 @@ function ${functionName}(inputData, params) {
   console.log('📹 Executing Google Meet: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_MEET_ACCESS_TOKEN');
+  const accessToken = getSecret('GOOGLE_MEET_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Google Meet access token not configured');
@@ -5805,8 +5988,8 @@ function ${functionName}(inputData, params) {
   console.log('☎️ Executing RingCentral: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_ACCESS_TOKEN');
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_SERVER_URL') || 'https://platform.ringcentral.com';
+  const accessToken = getSecret('RINGCENTRAL_ACCESS_TOKEN');
+  const serverUrl = getSecret('RINGCENTRAL_SERVER_URL', { defaultValue: 'https://platform.ringcentral.com' });
   
   if (!accessToken) {
     console.warn('⚠️ RingCentral access token not configured');
@@ -5847,7 +6030,7 @@ function handleSendRingCentralSMS(baseUrl, accessToken, params, inputData) {
   const extensionId = params.extensionId || '~';
   const to = params.to || params.phone || inputData.phone;
   const text = params.text || params.message || inputData.message || 'Message from automation';
-  const from = params.from || PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_FROM_NUMBER');
+  const from = params.from || getSecret('RINGCENTRAL_FROM_NUMBER');
   
   if (!to || !from) {
     throw new Error('To and From phone numbers are required');
@@ -5909,7 +6092,7 @@ function ${functionName}(inputData, params) {
   console.log('🏢 Executing Cisco Webex: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('WEBEX_ACCESS_TOKEN');
+  const accessToken = getSecret('WEBEX_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Webex access token not configured');
@@ -5999,8 +6182,8 @@ function ${functionName}(inputData, params) {
   console.log('🛍️ Executing BigCommerce: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_ACCESS_TOKEN');
-  const storeHash = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_STORE_HASH');
+  const accessToken = getSecret('BIGCOMMERCE_ACCESS_TOKEN');
+  const storeHash = getSecret('BIGCOMMERCE_STORE_HASH');
   
   if (!accessToken || !storeHash) {
     console.warn('⚠️ BigCommerce credentials not configured');
@@ -6102,9 +6285,9 @@ function ${functionName}(inputData, params) {
   console.log('🛍️ Executing WooCommerce: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const consumerKey = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_KEY');
-  const consumerSecret = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_SECRET');
-  const siteUrl = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_SITE_URL');
+  const consumerKey = getSecret('WOOCOMMERCE_CONSUMER_KEY');
+  const consumerSecret = getSecret('WOOCOMMERCE_CONSUMER_SECRET');
+  const siteUrl = getSecret('WOOCOMMERCE_SITE_URL');
   
   if (!consumerKey || !consumerSecret || !siteUrl) {
     console.warn('⚠️ WooCommerce credentials not configured');
@@ -6203,8 +6386,8 @@ function ${functionName}(inputData, params) {
   console.log('🛍️ Executing Magento: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MAGENTO_ACCESS_TOKEN');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('MAGENTO_BASE_URL');
+  const accessToken = getSecret('MAGENTO_ACCESS_TOKEN');
+  const baseUrl = getSecret('MAGENTO_BASE_URL');
   
   if (!accessToken || !baseUrl) {
     console.warn('⚠️ Magento credentials not configured');
@@ -6269,9 +6452,9 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Square: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SQUARE_ACCESS_TOKEN');
-  const applicationId = PropertiesService.getScriptProperties().getProperty('SQUARE_APPLICATION_ID');
-  const environment = PropertiesService.getScriptProperties().getProperty('SQUARE_ENVIRONMENT') || 'sandbox';
+  const accessToken = getSecret('SQUARE_ACCESS_TOKEN');
+  const applicationId = getSecret('SQUARE_APPLICATION_ID');
+  const environment = getSecret('SQUARE_ENVIRONMENT', { defaultValue: 'sandbox' });
   
   if (!accessToken || !applicationId) {
     console.warn('⚠️ Square credentials not configured');
@@ -6377,7 +6560,7 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Stripe Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  const apiKey = getSecret('STRIPE_SECRET_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Stripe Enhanced secret key not configured');
@@ -6490,7 +6673,7 @@ function ${functionName}(inputData, params) {
   console.log('📋 Executing Asana Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ASANA_ACCESS_TOKEN');
+  const accessToken = getSecret('ASANA_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Asana access token not configured');
@@ -6696,8 +6879,8 @@ function ${functionName}(inputData, params) {
   console.log('📌 Executing Trello Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = PropertiesService.getScriptProperties().getProperty('TRELLO_API_KEY');
-  const token = PropertiesService.getScriptProperties().getProperty('TRELLO_TOKEN');
+  const apiKey = getSecret('TRELLO_API_KEY');
+  const token = getSecret('TRELLO_TOKEN');
   
   if (!apiKey || !token) {
     console.warn('⚠️ Trello credentials not configured');
@@ -6848,7 +7031,7 @@ function ${functionName}(inputData, params) {
   console.log('🎯 Executing ClickUp: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('CLICKUP_ACCESS_TOKEN');
+  const accessToken = getSecret('CLICKUP_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ ClickUp access token not configured');
@@ -6952,7 +7135,7 @@ function ${functionName}(inputData, params) {
   console.log('📝 Executing Notion Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = PropertiesService.getScriptProperties().getProperty('NOTION_ACCESS_TOKEN');
+  const accessToken = getSecret('NOTION_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Notion access token not configured');
@@ -7104,8 +7287,8 @@ function generateAirtableEnhancedFunction(functionName: string, node: WorkflowNo
 function ${functionName}(inputData, params) {
   console.log('🗃️ Executing Airtable Enhanced: ${params.operation || ''}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('AIRTABLE_API_KEY');
-  const baseId = params.base_id || PropertiesService.getScriptProperties().getProperty('AIRTABLE_BASE_ID');
+  const apiKey = getSecret('AIRTABLE_API_KEY');
+  const baseId = params.base_id || getSecret('AIRTABLE_BASE_ID');
   
     console.warn('⚠️ Airtable credentials not configured');
     return { ...inputData, airtableSkipped: true, error: 'Missing credentials' };
@@ -7135,8 +7318,8 @@ function generateQuickBooksFunction(functionName: string, node: WorkflowNode): s
 function ${functionName}(inputData, params) {
   console.log('💼 Executing QuickBooks: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('QUICKBOOKS_ACCESS_TOKEN');
-  const companyId = PropertiesService.getScriptProperties().getProperty('QUICKBOOKS_COMPANY_ID');
+  const accessToken = getSecret('QUICKBOOKS_ACCESS_TOKEN');
+  const companyId = getSecret('QUICKBOOKS_COMPANY_ID');
   
   if (!accessToken || !companyId) {
     console.warn('⚠️ QuickBooks credentials not configured');
@@ -7166,8 +7349,8 @@ function generateXeroFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('🏢 Executing Xero: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('XERO_ACCESS_TOKEN');
-  const tenantId = PropertiesService.getScriptProperties().getProperty('XERO_TENANT_ID');
+  const accessToken = getSecret('XERO_ACCESS_TOKEN');
+  const tenantId = getSecret('XERO_TENANT_ID');
   
   if (!accessToken || !tenantId) {
     console.warn('⚠️ Xero credentials not configured');
@@ -7197,7 +7380,7 @@ function generateGitHubEnhancedFunction(functionName: string, node: WorkflowNode
 function ${functionName}(inputData, params) {
   console.log('🐙 Executing GitHub Enhanced: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GITHUB_ACCESS_TOKEN');
+  const accessToken = getSecret('GITHUB_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ GitHub access token not configured');
@@ -7227,8 +7410,8 @@ function generateBasecampFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('⛺ Executing Basecamp: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BASECAMP_ACCESS_TOKEN');
-  const accountId = PropertiesService.getScriptProperties().getProperty('BASECAMP_ACCOUNT_ID');
+  const accessToken = getSecret('BASECAMP_ACCESS_TOKEN');
+  const accountId = getSecret('BASECAMP_ACCOUNT_ID');
   
   if (!accessToken || !accountId) {
     console.warn('⚠️ Basecamp credentials not configured');
@@ -7258,7 +7441,7 @@ function generateSurveyMonkeyFunction(functionName: string, node: WorkflowNode):
 function ${functionName}(inputData, params) {
   console.log('📊 Executing SurveyMonkey: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SURVEYMONKEY_ACCESS_TOKEN');
+  const accessToken = getSecret('SURVEYMONKEY_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ SurveyMonkey access token not configured');
@@ -7288,7 +7471,7 @@ function generateTypeformFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📝 Executing Typeform: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('TYPEFORM_ACCESS_TOKEN');
+  const accessToken = getSecret('TYPEFORM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Typeform access token not configured');
@@ -7318,7 +7501,7 @@ function generateTogglFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('⏱️ Executing Toggl: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('TOGGL_ACCESS_TOKEN');
+  const accessToken = getSecret('TOGGL_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Toggl access token not configured');
@@ -7348,7 +7531,7 @@ function generateWebflowFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🌊 Executing Webflow: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('WEBFLOW_ACCESS_TOKEN');
+  const accessToken = getSecret('WEBFLOW_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Webflow access token not configured');
@@ -7377,7 +7560,7 @@ function generateMixpanelFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Mixpanel: ${params.operation || '${operation}'}');
   
-  const projectToken = PropertiesService.getScriptProperties().getProperty('MIXPANEL_PROJECT_TOKEN');
+  const projectToken = getSecret('MIXPANEL_PROJECT_TOKEN');
   
   if (!projectToken) {
     console.warn('⚠️ Mixpanel project token not configured');
@@ -7407,7 +7590,7 @@ function generateGitLabFunction(functionName: string, node: WorkflowNode): strin
 function ${functionName}(inputData, params) {
   console.log('🦊 Executing GitLab: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GITLAB_ACCESS_TOKEN');
+  const accessToken = getSecret('GITLAB_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ GitLab access token not configured');
@@ -7437,8 +7620,8 @@ function generateBitbucketFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('🪣 Executing Bitbucket: ${params.operation || '${operation}'}');
   
-  const username = PropertiesService.getScriptProperties().getProperty('BITBUCKET_USERNAME');
-  const appPassword = PropertiesService.getScriptProperties().getProperty('BITBUCKET_APP_PASSWORD');
+  const username = getSecret('BITBUCKET_USERNAME');
+  const appPassword = getSecret('BITBUCKET_APP_PASSWORD');
   
   if (!username || !appPassword) {
     console.warn('⚠️ Bitbucket credentials not configured');
@@ -7468,7 +7651,7 @@ function generateCircleCIFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🔄 Executing CircleCI: ${params.operation || '${operation}'}');
   
-  const apiToken = PropertiesService.getScriptProperties().getProperty('CIRCLECI_API_TOKEN');
+  const apiToken = getSecret('CIRCLECI_API_TOKEN');
   
   if (!apiToken) {
     console.warn('⚠️ CircleCI API token not configured');
@@ -7498,8 +7681,8 @@ function generateBambooHRFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🎋 Executing BambooHR: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('BAMBOOHR_API_KEY');
-  const subdomain = PropertiesService.getScriptProperties().getProperty('BAMBOOHR_SUBDOMAIN');
+  const apiKey = getSecret('BAMBOOHR_API_KEY');
+  const subdomain = getSecret('BAMBOOHR_SUBDOMAIN');
   
   if (!apiKey || !subdomain) {
     console.warn('⚠️ BambooHR credentials not configured');
@@ -7529,7 +7712,7 @@ function generateGreenhouseFunction(functionName: string, node: WorkflowNode): s
 function ${functionName}(inputData, params) {
   console.log('🌱 Executing Greenhouse: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GREENHOUSE_API_KEY');
+  const apiKey = getSecret('GREENHOUSE_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Greenhouse API key not configured');
@@ -7559,8 +7742,8 @@ function generateFreshdeskFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('🎫 Executing Freshdesk: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('FRESHDESK_API_KEY');
-  const domain = PropertiesService.getScriptProperties().getProperty('FRESHDESK_DOMAIN');
+  const apiKey = getSecret('FRESHDESK_API_KEY');
+  const domain = getSecret('FRESHDESK_DOMAIN');
   
   if (!apiKey || !domain) {
     console.warn('⚠️ Freshdesk credentials not configured');
@@ -7590,9 +7773,9 @@ function generateZendeskFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🎫 Executing Zendesk: ${params.operation || '${operation}'}');
   
-  const email = PropertiesService.getScriptProperties().getProperty('ZENDESK_EMAIL');
-  const apiToken = PropertiesService.getScriptProperties().getProperty('ZENDESK_API_TOKEN');
-  const subdomain = PropertiesService.getScriptProperties().getProperty('ZENDESK_SUBDOMAIN');
+  const email = getSecret('ZENDESK_EMAIL');
+  const apiToken = getSecret('ZENDESK_API_TOKEN');
+  const subdomain = getSecret('ZENDESK_SUBDOMAIN');
   
   if (!email || !apiToken || !subdomain) {
     console.warn('⚠️ Zendesk credentials not configured');
@@ -7622,7 +7805,7 @@ function generateCalendlyFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📅 Executing Calendly: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('CALENDLY_ACCESS_TOKEN');
+  const accessToken = getSecret('CALENDLY_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Calendly access token not configured');
@@ -7650,10 +7833,9 @@ function generateDocuSignFunction(functionName: string, node: WorkflowNode): str
 
   return `
 function ${esc(functionName)}(inputData, params) {
-  const scriptProps = PropertiesService.getScriptProperties();
-  const accessToken = params.accessToken || scriptProps.getProperty('DOCUSIGN_ACCESS_TOKEN');
-  const accountId = params.accountId || scriptProps.getProperty('DOCUSIGN_ACCOUNT_ID');
-  const baseUri = (params.baseUri || scriptProps.getProperty('DOCUSIGN_BASE_URI') || 'https://na3.docusign.net/restapi').replace(/\/$/, '');
+  const accessToken = params.accessToken || getSecret('DOCUSIGN_ACCESS_TOKEN');
+  const accountId = params.accountId || getSecret('DOCUSIGN_ACCOUNT_ID');
+  const baseUri = (params.baseUri || getSecret('DOCUSIGN_BASE_URI', { defaultValue: 'https://na3.docusign.net/restapi' })).replace(/\/$/, '');
 
   if (!accessToken || !accountId) {
     console.warn('⚠️ DocuSign credentials not configured');
@@ -7761,9 +7943,8 @@ function generateOktaFunction(functionName: string, node: WorkflowNode): string 
 
   return `
 function ${esc(functionName)}(inputData, params) {
-  const props = PropertiesService.getScriptProperties();
-  const apiToken = params.apiToken || props.getProperty('OKTA_API_TOKEN');
-  const domainValue = (params.domain || props.getProperty('OKTA_DOMAIN') || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const apiToken = params.apiToken || getSecret('OKTA_API_TOKEN');
+  const domainValue = (params.domain || getSecret('OKTA_DOMAIN', { defaultValue: '' })).replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   if (!apiToken || !domainValue) {
     console.warn('⚠️ Okta credentials not configured');
@@ -7910,9 +8091,8 @@ function generateGoogleAdminFunction(functionName: string, node: WorkflowNode): 
 
   return `
 function ${functionName}(inputData, params) {
-  const props = PropertiesService.getScriptProperties();
-  const accessToken = params.accessToken || props.getProperty('GOOGLE_ADMIN_ACCESS_TOKEN');
-  const customerId = params.customer || props.getProperty('GOOGLE_ADMIN_CUSTOMER_ID') || 'my_customer';
+  const accessToken = params.accessToken || getSecret('GOOGLE_ADMIN_ACCESS_TOKEN');
+  const customerId = params.customer || getSecret('GOOGLE_ADMIN_CUSTOMER_ID', { defaultValue: 'my_customer' });
 
   if (!accessToken) {
     console.warn('⚠️ Google Admin access token not configured');
@@ -8040,8 +8220,7 @@ function generateHelloSignFunction(functionName: string, node: WorkflowNode): st
 
   return `
 function ${functionName}(inputData, params) {
-  const props = PropertiesService.getScriptProperties();
-  const apiKey = params.apiKey || props.getProperty('HELLOSIGN_API_KEY');
+  const apiKey = params.apiKey || getSecret('HELLOSIGN_API_KEY');
 
   if (!apiKey) {
     console.warn('⚠️ HelloSign API key not configured');
@@ -8209,9 +8388,8 @@ function generateAdobeSignFunction(functionName: string, node: WorkflowNode): st
 
   return `
 function ${functionName}(inputData, params) {
-  const props = PropertiesService.getScriptProperties();
-  const accessToken = params.accessToken || props.getProperty('ADOBESIGN_ACCESS_TOKEN');
-  const baseUrl = (params.baseUrl || props.getProperty('ADOBESIGN_BASE_URL') || 'https://api.na1.echosign.com/api/rest/v6').replace(/\/$/, '');
+  const accessToken = params.accessToken || getSecret('ADOBESIGN_ACCESS_TOKEN');
+  const baseUrl = (params.baseUrl || getSecret('ADOBESIGN_BASE_URL', { defaultValue: 'https://api.na1.echosign.com/api/rest/v6' })).replace(/\/$/, '');
 
   if (!accessToken) {
     console.warn('⚠️ Adobe Sign access token not configured');
@@ -8298,9 +8476,8 @@ function generateEgnyteFunction(functionName: string, node: WorkflowNode): strin
 
   return `
 function ${functionName}(inputData, params) {
-  const props = PropertiesService.getScriptProperties();
-  const accessToken = params.accessToken || props.getProperty('EGNYTE_ACCESS_TOKEN');
-  const domainValue = (params.domain || props.getProperty('EGNYTE_DOMAIN') || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const accessToken = params.accessToken || getSecret('EGNYTE_ACCESS_TOKEN');
+  const domainValue = (params.domain || getSecret('EGNYTE_DOMAIN', { defaultValue: '' })).replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   if (!accessToken || !domainValue) {
     console.warn('⚠️ Egnyte credentials not configured');
@@ -8441,7 +8618,7 @@ function generateMondayEnhancedFunction(functionName: string, node: WorkflowNode
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Monday.com Enhanced: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('MONDAY_API_KEY');
+  const apiKey = getSecret('MONDAY_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Monday.com API key not configured');
@@ -8471,7 +8648,7 @@ function generateCodaFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('📋 Executing Coda: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CODA_API_KEY');
+  const apiKey = getSecret('CODA_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Coda API key not configured');
@@ -8501,7 +8678,7 @@ function generateBrexFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('💳 Executing Brex: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('BREX_API_KEY');
+  const apiKey = getSecret('BREX_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Brex API key not configured');
@@ -8531,8 +8708,8 @@ function generateExpensifyFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('💰 Executing Expensify: ${params.operation || '${operation}'}');
   
-  const userID = PropertiesService.getScriptProperties().getProperty('EXPENSIFY_USER_ID');
-  const userSecret = PropertiesService.getScriptProperties().getProperty('EXPENSIFY_USER_SECRET');
+  const userID = getSecret('EXPENSIFY_USER_ID');
+  const userSecret = getSecret('EXPENSIFY_USER_SECRET');
   
   if (!userID || !userSecret) {
     console.warn('⚠️ Expensify credentials not configured');
@@ -8562,11 +8739,11 @@ function generateNetSuiteFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🏢 Executing NetSuite: ${params.operation || '${operation}'}');
   
-  const consumerKey = PropertiesService.getScriptProperties().getProperty('NETSUITE_CONSUMER_KEY');
-  const consumerSecret = PropertiesService.getScriptProperties().getProperty('NETSUITE_CONSUMER_SECRET');
-  const tokenId = PropertiesService.getScriptProperties().getProperty('NETSUITE_TOKEN_ID');
-  const tokenSecret = PropertiesService.getScriptProperties().getProperty('NETSUITE_TOKEN_SECRET');
-  const accountId = PropertiesService.getScriptProperties().getProperty('NETSUITE_ACCOUNT_ID');
+  const consumerKey = getSecret('NETSUITE_CONSUMER_KEY');
+  const consumerSecret = getSecret('NETSUITE_CONSUMER_SECRET');
+  const tokenId = getSecret('NETSUITE_TOKEN_ID');
+  const tokenSecret = getSecret('NETSUITE_TOKEN_SECRET');
+  const accountId = getSecret('NETSUITE_ACCOUNT_ID');
   
   if (!consumerKey || !consumerSecret || !tokenId || !tokenSecret || !accountId) {
     console.warn('⚠️ NetSuite credentials not configured');
@@ -8595,7 +8772,7 @@ function generateExcelOnlineFunction(functionName: string, node: WorkflowNode): 
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Excel Online: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft access token not configured');
@@ -8625,7 +8802,7 @@ function generateMicrosoftTodoFunction(functionName: string, node: WorkflowNode)
 function ${functionName}(inputData, params) {
   console.log('✅ Executing Microsoft To Do: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft access token not configured');
@@ -8655,7 +8832,7 @@ function generateOneDriveFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('☁️ Executing OneDrive: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft access token not configured');
@@ -8685,7 +8862,7 @@ function generateOutlookFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('📧 Executing Outlook: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft access token not configured');
@@ -8715,7 +8892,7 @@ function generateSharePointFunction(functionName: string, node: WorkflowNode): s
 function ${functionName}(inputData, params) {
   console.log('🔗 Executing SharePoint: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft access token not configured');
@@ -8745,8 +8922,8 @@ function generateDatadogFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🐕 Executing Datadog: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
-  const appKey = PropertiesService.getScriptProperties().getProperty('DATADOG_APP_KEY');
+  const apiKey = getSecret('DATADOG_API_KEY');
+  const appKey = getSecret('DATADOG_APP_KEY');
   
   if (!apiKey || !appKey) {
     console.warn('⚠️ Datadog credentials not configured');
@@ -8776,7 +8953,7 @@ function generateSlackFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('💬 Executing Slack: ${params.operation || '${operation}'}');
   
-  const botToken = PropertiesService.getScriptProperties().getProperty('SLACK_BOT_TOKEN');
+  const botToken = getSecret('SLACK_BOT_TOKEN');
   
   if (!botToken) {
     console.warn('⚠️ Slack bot token not configured');
@@ -8806,8 +8983,8 @@ function generateTrelloFunction(functionName: string, node: WorkflowNode): strin
 function ${functionName}(inputData, params) {
   console.log('📌 Executing Trello: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('TRELLO_API_KEY');
-  const token = PropertiesService.getScriptProperties().getProperty('TRELLO_TOKEN');
+  const apiKey = getSecret('TRELLO_API_KEY');
+  const token = getSecret('TRELLO_TOKEN');
   
   if (!apiKey || !token) {
     console.warn('⚠️ Trello credentials not configured');
@@ -8837,8 +9014,8 @@ function generateZoomFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('🎥 Executing Zoom: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('ZOOM_API_KEY');
-  const apiSecret = PropertiesService.getScriptProperties().getProperty('ZOOM_API_SECRET');
+  const apiKey = getSecret('ZOOM_API_KEY');
+  const apiSecret = getSecret('ZOOM_API_SECRET');
   
   if (!apiKey || !apiSecret) {
     console.warn('⚠️ Zoom credentials not configured');
@@ -8867,7 +9044,7 @@ function generateIterableFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📧 Executing Iterable: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('ITERABLE_API_KEY');
+  const apiKey = getSecret('ITERABLE_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Iterable API key not configured');
@@ -8959,7 +9136,7 @@ function generateKlaviyoFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('💌 Executing Klaviyo: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('KLAVIYO_API_KEY');
+  const apiKey = getSecret('KLAVIYO_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Klaviyo API key not configured');
@@ -9032,8 +9209,8 @@ function generateMailgunFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('📮 Executing Mailgun: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('MAILGUN_API_KEY');
-  const domain = PropertiesService.getScriptProperties().getProperty('MAILGUN_DOMAIN');
+  const apiKey = getSecret('MAILGUN_API_KEY');
+  const domain = getSecret('MAILGUN_DOMAIN');
   
   if (!apiKey || !domain) {
     console.warn('⚠️ Mailgun credentials not configured');
@@ -9102,9 +9279,9 @@ function generateMarketoFunction(functionName: string, node: WorkflowNode): stri
 function ${esc(functionName)}(inputData, params) {
   console.log('🎯 Executing Marketo: ${params.operation || '${operation}'}');
   
-  const clientId = PropertiesService.getScriptProperties().getProperty('MARKETO_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('MARKETO_CLIENT_SECRET');
-  const munchkinId = PropertiesService.getScriptProperties().getProperty('MARKETO_MUNCHKIN_ID');
+  const clientId = getSecret('MARKETO_CLIENT_ID');
+  const clientSecret = getSecret('MARKETO_CLIENT_SECRET');
+  const munchkinId = getSecret('MARKETO_MUNCHKIN_ID');
   
   if (!clientId || !clientSecret || !munchkinId) {
     console.warn('⚠️ Marketo credentials not configured');
@@ -9148,8 +9325,8 @@ function generatePardotFunction(functionName: string, node: WorkflowNode): strin
 function ${functionName}(inputData, params) {
   console.log('🎯 Executing Pardot: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('PARDOT_API_KEY');
-  const businessUnitId = PropertiesService.getScriptProperties().getProperty('PARDOT_BUSINESS_UNIT_ID');
+  const apiKey = getSecret('PARDOT_API_KEY');
+  const businessUnitId = getSecret('PARDOT_BUSINESS_UNIT_ID');
   
   if (!apiKey || !businessUnitId) {
     console.warn('⚠️ Pardot credentials not configured');
@@ -9179,7 +9356,7 @@ function generateSendGridFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📬 Executing SendGrid: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SENDGRID_API_KEY');
+  const apiKey = getSecret('SENDGRID_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ SendGrid API key not configured');
@@ -9253,9 +9430,9 @@ function generateJenkinsFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🔧 Executing Jenkins: ' + (params.operation || '${operation}'));
   
-  const username = PropertiesService.getScriptProperties().getProperty('JENKINS_USERNAME');
-  const token = PropertiesService.getScriptProperties().getProperty('JENKINS_TOKEN');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('JENKINS_BASE_URL');
+  const username = getSecret('JENKINS_USERNAME');
+  const token = getSecret('JENKINS_TOKEN');
+  const baseUrl = getSecret('JENKINS_BASE_URL');
   
   if (!username || !token || !baseUrl) {
     console.warn('⚠️ Jenkins credentials not configured');
@@ -9307,9 +9484,9 @@ function generateLookerFunction(functionName: string, node: WorkflowNode): strin
 function ${functionName}(inputData, params) {
   console.log('👁️ Executing Looker: ${params.operation || '${operation}'}');
   
-  const clientId = PropertiesService.getScriptProperties().getProperty('LOOKER_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('LOOKER_CLIENT_SECRET');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('LOOKER_BASE_URL');
+  const clientId = getSecret('LOOKER_CLIENT_ID');
+  const clientSecret = getSecret('LOOKER_CLIENT_SECRET');
+  const baseUrl = getSecret('LOOKER_BASE_URL');
   
   if (!clientId || !clientSecret || !baseUrl) {
     console.warn('⚠️ Looker credentials not configured');
@@ -9339,7 +9516,7 @@ function generatePowerBIFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Power BI: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('POWERBI_ACCESS_TOKEN');
+  const accessToken = getSecret('POWERBI_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Power BI access token not configured');
@@ -9378,8 +9555,8 @@ function generateSlabFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('📝 Executing Slab: ${params.operation || '${operation}'}');
   
-  const apiToken = PropertiesService.getScriptProperties().getProperty('SLAB_API_TOKEN');
-  const teamId = PropertiesService.getScriptProperties().getProperty('SLAB_TEAM_ID');
+  const apiToken = getSecret('SLAB_API_TOKEN');
+  const teamId = getSecret('SLAB_TEAM_ID');
   
   if (!apiToken || !teamId) {
     console.warn('⚠️ Slab credentials not configured');
@@ -9408,7 +9585,7 @@ function generateJotFormFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('📋 Executing JotForm: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('JOTFORM_API_KEY');
+  const apiKey = getSecret('JOTFORM_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ JotForm API key not configured');
@@ -9443,8 +9620,8 @@ function generateQualtricsFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Qualtrics: ${params.operation || '${operation}'}');
   
-  const apiToken = PropertiesService.getScriptProperties().getProperty('QUALTRICS_API_TOKEN');
-  const dataCenter = PropertiesService.getScriptProperties().getProperty('QUALTRICS_DATA_CENTER');
+  const apiToken = getSecret('QUALTRICS_API_TOKEN');
+  const dataCenter = getSecret('QUALTRICS_DATA_CENTER');
   
   if (!apiToken || !dataCenter) {
     console.warn('⚠️ Qualtrics credentials not configured');
@@ -9474,7 +9651,7 @@ function generateKustomerFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🎧 Executing Kustomer: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('KUSTOMER_API_KEY');
+  const apiKey = getSecret('KUSTOMER_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Kustomer API key not configured');
@@ -9504,7 +9681,7 @@ function generateLeverFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('🎯 Executing Lever: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('LEVER_API_KEY');
+  const apiKey = getSecret('LEVER_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Lever API key not configured');
@@ -9534,7 +9711,7 @@ function generateMiroFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('🎨 Executing Miro: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MIRO_ACCESS_TOKEN');
+  const accessToken = getSecret('MIRO_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Miro access token not configured');
@@ -9573,7 +9750,7 @@ function generateLumaFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('🎪 Executing Luma: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('LUMA_API_KEY');
+  const apiKey = getSecret('LUMA_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Luma API key not configured');
@@ -9602,8 +9779,8 @@ function generateNewRelicFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📈 Executing New Relic: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('NEWRELIC_API_KEY');
-  const accountId = PropertiesService.getScriptProperties().getProperty('NEWRELIC_ACCOUNT_ID');
+  const apiKey = getSecret('NEWRELIC_API_KEY');
+  const accountId = getSecret('NEWRELIC_ACCOUNT_ID');
   
   if (!apiKey || !accountId) {
     console.warn('⚠️ New Relic credentials not configured');
@@ -9642,7 +9819,7 @@ function generateOpsGenieFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🚨 Executing OpsGenie: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('OPSGENIE_API_KEY');
+  const apiKey = getSecret('OPSGENIE_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ OpsGenie API key not configured');
@@ -9705,8 +9882,8 @@ function generatePagerDutyFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('📟 Executing PagerDuty: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('PAGERDUTY_API_KEY');
-  const userEmail = PropertiesService.getScriptProperties().getProperty('PAGERDUTY_USER_EMAIL');
+  const apiKey = getSecret('PAGERDUTY_API_KEY');
+  const userEmail = getSecret('PAGERDUTY_USER_EMAIL');
   
   if (!apiKey || !userEmail) {
     console.warn('⚠️ PagerDuty credentials not configured');
@@ -9745,8 +9922,8 @@ function generateRampFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('💳 Executing Ramp: ${params.operation || '${operation}'}');
   
-  const clientId = PropertiesService.getScriptProperties().getProperty('RAMP_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('RAMP_CLIENT_SECRET');
+  const clientId = getSecret('RAMP_CLIENT_ID');
+  const clientSecret = getSecret('RAMP_CLIENT_SECRET');
   
   if (!clientId || !clientSecret) {
     console.warn('⚠️ Ramp credentials not configured');
@@ -9776,8 +9953,8 @@ function generateRazorpayFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('💰 Executing Razorpay: ${params.operation || '${operation}'}');
   
-  const keyId = PropertiesService.getScriptProperties().getProperty('RAZORPAY_KEY_ID');
-  const keySecret = PropertiesService.getScriptProperties().getProperty('RAZORPAY_KEY_SECRET');
+  const keyId = getSecret('RAZORPAY_KEY_ID');
+  const keySecret = getSecret('RAZORPAY_KEY_SECRET');
   
   if (!keyId || !keySecret) {
     console.warn('⚠️ Razorpay credentials not configured');
@@ -9816,9 +9993,9 @@ function generateSageIntacctFunction(functionName: string, node: WorkflowNode): 
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Sage Intacct: ${params.operation || '${operation}'}');
   
-  const username = PropertiesService.getScriptProperties().getProperty('SAGEINTACCT_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('SAGEINTACCT_PASSWORD');
-  const companyId = PropertiesService.getScriptProperties().getProperty('SAGEINTACCT_COMPANY_ID');
+  const username = getSecret('SAGEINTACCT_USERNAME');
+  const password = getSecret('SAGEINTACCT_PASSWORD');
+  const companyId = getSecret('SAGEINTACCT_COMPANY_ID');
   
   if (!username || !password || !companyId) {
     console.warn('⚠️ Sage Intacct credentials not configured');
@@ -9847,9 +10024,9 @@ function generateSAPAribaFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('🏢 Executing SAP Ariba: ${params.operation || '${operation}'}');
   
-  const username = PropertiesService.getScriptProperties().getProperty('SAP_ARIBA_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('SAP_ARIBA_PASSWORD');
-  const realm = PropertiesService.getScriptProperties().getProperty('SAP_ARIBA_REALM');
+  const username = getSecret('SAP_ARIBA_USERNAME');
+  const password = getSecret('SAP_ARIBA_PASSWORD');
+  const realm = getSecret('SAP_ARIBA_REALM');
   
   if (!username || !password || !realm) {
     console.warn('⚠️ SAP Ariba credentials not configured');
@@ -9879,8 +10056,8 @@ function generateShopifyFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🛍️ Executing Shopify: ${params.operation || '${operation}'}');
   
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SHOPIFY_ACCESS_TOKEN');
-  const shopDomain = PropertiesService.getScriptProperties().getProperty('SHOPIFY_SHOP_DOMAIN');
+  const accessToken = getSecret('SHOPIFY_ACCESS_TOKEN');
+  const shopDomain = getSecret('SHOPIFY_SHOP_DOMAIN');
   
   if (!accessToken || !shopDomain) {
     console.warn('⚠️ Shopify credentials not configured');
@@ -9961,7 +10138,7 @@ function generateNavanFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('✈️ Executing Navan: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('NAVAN_API_KEY');
+  const apiKey = getSecret('NAVAN_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Navan API key not configured');
@@ -9991,7 +10168,7 @@ function generateLLMFunction(functionName: string, node: WorkflowNode): string {
 function ${functionName}(inputData, params) {
   console.log('🤖 Executing LLM: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('LLM_API_KEY');
+  const apiKey = getSecret('LLM_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ LLM API key not configured');
@@ -10021,8 +10198,8 @@ function generateZohoBooksFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('📚 Executing Zoho Books: ${params.operation || '${operation}'}');
   
-  const authToken = PropertiesService.getScriptProperties().getProperty('ZOHO_BOOKS_AUTH_TOKEN');
-  const organizationId = PropertiesService.getScriptProperties().getProperty('ZOHO_BOOKS_ORGANIZATION_ID');
+  const authToken = getSecret('ZOHO_BOOKS_AUTH_TOKEN');
+  const organizationId = getSecret('ZOHO_BOOKS_ORGANIZATION_ID');
   
   if (!authToken || !organizationId) {
     console.warn('⚠️ Zoho Books credentials not configured');
@@ -10060,8 +10237,8 @@ function generateDockerHubFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('🐳 Executing Docker Hub: ${params.operation || '${operation}'}');
   
-  const username = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_USERNAME');
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_ACCESS_TOKEN');
+  const username = getSecret('DOCKER_HUB_USERNAME');
+  const accessToken = getSecret('DOCKER_HUB_ACCESS_TOKEN');
   
   if (!username || !accessToken) {
     console.warn('⚠️ Docker Hub credentials not configured');
@@ -10137,9 +10314,9 @@ function generateKubernetesFunction(functionName: string, node: WorkflowNode): s
 function ${functionName}(inputData, params) {
   console.log('☸️ Executing Kubernetes: ${params.operation || '${operation}'}');
   
-  const apiServer = PropertiesService.getScriptProperties().getProperty('KUBERNETES_API_SERVER');
-  const bearerToken = PropertiesService.getScriptProperties().getProperty('KUBERNETES_BEARER_TOKEN');
-  const namespace = params.namespace || PropertiesService.getScriptProperties().getProperty('KUBERNETES_NAMESPACE') || 'default';
+  const apiServer = getSecret('KUBERNETES_API_SERVER');
+  const bearerToken = getSecret('KUBERNETES_BEARER_TOKEN');
+  const namespace = params.namespace || getSecret('KUBERNETES_NAMESPACE', { defaultValue: 'default' });
   
   if (!apiServer || !bearerToken) {
     console.warn('⚠️ Kubernetes credentials not configured');
@@ -10248,8 +10425,8 @@ function generateTerraformCloudFunction(functionName: string, node: WorkflowNode
 function ${functionName}(inputData, params) {
   console.log('🏗️ Executing Terraform Cloud: ${params.operation || '${operation}'}');
   
-  const apiToken = PropertiesService.getScriptProperties().getProperty('TERRAFORM_CLOUD_API_TOKEN');
-  const organization = PropertiesService.getScriptProperties().getProperty('TERRAFORM_CLOUD_ORGANIZATION');
+  const apiToken = getSecret('TERRAFORM_CLOUD_API_TOKEN');
+  const organization = getSecret('TERRAFORM_CLOUD_ORGANIZATION');
   
   if (!apiToken || !organization) {
     console.warn('⚠️ Terraform Cloud credentials not configured');
@@ -10326,9 +10503,9 @@ function generateAWSCodePipelineFunction(functionName: string, node: WorkflowNod
 function ${esc(functionName)}(inputData, params) {
   console.log('🚀 Executing AWS CodePipeline: ${params.operation || '${operation}'}');
   
-  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
-  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
-  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  const accessKeyId = getSecret('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = getSecret('AWS_SECRET_ACCESS_KEY');
+  const region = getSecret('AWS_REGION', { defaultValue: 'us-east-1' });
   
   if (!accessKeyId || !secretAccessKey) {
     console.warn('⚠️ AWS CodePipeline credentials not configured');
@@ -10371,9 +10548,9 @@ function generateAzureDevOpsFunction(functionName: string, node: WorkflowNode): 
 function ${functionName}(inputData, params) {
   console.log('🔷 Executing Azure DevOps: ${params.operation || '${operation}'}');
   
-  const organization = PropertiesService.getScriptProperties().getProperty('AZURE_DEVOPS_ORGANIZATION');
-  const personalAccessToken = PropertiesService.getScriptProperties().getProperty('AZURE_DEVOPS_PAT');
-  const project = PropertiesService.getScriptProperties().getProperty('AZURE_DEVOPS_PROJECT');
+  const organization = getSecret('AZURE_DEVOPS_ORGANIZATION');
+  const personalAccessToken = getSecret('AZURE_DEVOPS_PAT');
+  const project = getSecret('AZURE_DEVOPS_PROJECT');
   
   if (!organization || !personalAccessToken || !project) {
     console.warn('⚠️ Azure DevOps credentials not configured');
@@ -10471,8 +10648,8 @@ function generateAnsibleFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🔧 Executing Ansible: ${params.operation || '${operation}'}');
   
-  const apiToken = PropertiesService.getScriptProperties().getProperty('ANSIBLE_API_TOKEN');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('ANSIBLE_BASE_URL');
+  const apiToken = getSecret('ANSIBLE_API_TOKEN');
+  const baseUrl = getSecret('ANSIBLE_BASE_URL');
   
   if (!apiToken || !baseUrl) {
     console.warn('⚠️ Ansible credentials not configured');
@@ -10536,9 +10713,9 @@ function generatePrometheusFunction(functionName: string, node: WorkflowNode): s
 function ${esc(functionName)}(inputData, params) {
   console.log('🔥 Executing Prometheus: ${params.operation || '${operation}'}');
   
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_SERVER_URL');
-  const username = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('PROMETHEUS_PASSWORD');
+  const serverUrl = getSecret('PROMETHEUS_SERVER_URL');
+  const username = getSecret('PROMETHEUS_USERNAME');
+  const password = getSecret('PROMETHEUS_PASSWORD');
   
   if (!serverUrl) {
     console.warn('⚠️ Prometheus server URL not configured');
@@ -10596,8 +10773,8 @@ function generateGrafanaFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('📊 Executing Grafana: ${params.operation || '${operation}'}');
   
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GRAFANA_API_KEY');
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('GRAFANA_SERVER_URL');
+  const apiKey = getSecret('GRAFANA_API_KEY');
+  const serverUrl = getSecret('GRAFANA_SERVER_URL');
   
   if (!apiKey || !serverUrl) {
     console.warn('⚠️ Grafana credentials not configured');
@@ -10669,8 +10846,8 @@ function generateHashiCorpVaultFunction(functionName: string, node: WorkflowNode
 function ${functionName}(inputData, params) {
   console.log('🔐 Executing HashiCorp Vault: ${params.operation || '${operation}'}');
   
-  const vaultUrl = PropertiesService.getScriptProperties().getProperty('VAULT_URL');
-  const vaultToken = PropertiesService.getScriptProperties().getProperty('VAULT_TOKEN');
+  const vaultUrl = getSecret('VAULT_URL');
+  const vaultToken = getSecret('VAULT_TOKEN');
   
   if (!vaultUrl || !vaultToken) {
     console.warn('⚠️ HashiCorp Vault credentials not configured');
@@ -10751,8 +10928,8 @@ function generateHelmFunction(functionName: string, node: WorkflowNode): string 
 function ${functionName}(inputData, params) {
   console.log('⛵ Executing Helm: ${params.operation || '${operation}'}');
   
-  const kubeconfig = PropertiesService.getScriptProperties().getProperty('HELM_KUBECONFIG');
-  const namespace = params.namespace || PropertiesService.getScriptProperties().getProperty('HELM_NAMESPACE') || 'default';
+  const kubeconfig = getSecret('HELM_KUBECONFIG');
+  const namespace = params.namespace || getSecret('HELM_NAMESPACE', { defaultValue: 'default' });
   
   if (!kubeconfig) {
     console.warn('⚠️ Helm kubeconfig not configured');
@@ -10796,9 +10973,9 @@ function generateAWSCloudFormationFunction(functionName: string, node: WorkflowN
 function ${esc(functionName)}(inputData, params) {
   console.log('☁️ Executing AWS CloudFormation: ${params.operation || '${operation}'}');
   
-  const accessKeyId = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
-  const secretAccessKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
-  const region = PropertiesService.getScriptProperties().getProperty('AWS_REGION') || 'us-east-1';
+  const accessKeyId = getSecret('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = getSecret('AWS_SECRET_ACCESS_KEY');
+  const region = getSecret('AWS_REGION', { defaultValue: 'us-east-1' });
   
   if (!accessKeyId || !secretAccessKey) {
     console.warn('⚠️ AWS CloudFormation credentials not configured');
@@ -10842,8 +11019,8 @@ function generateArgoCDFunction(functionName: string, node: WorkflowNode): strin
 function ${functionName}(inputData, params) {
   console.log('🔄 Executing Argo CD: ${params.operation || '${operation}'}');
   
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('ARGOCD_SERVER_URL');
-  const authToken = PropertiesService.getScriptProperties().getProperty('ARGOCD_AUTH_TOKEN');
+  const serverUrl = getSecret('ARGOCD_SERVER_URL');
+  const authToken = getSecret('ARGOCD_AUTH_TOKEN');
   
   if (!serverUrl || !authToken) {
     console.warn('⚠️ Argo CD credentials not configured');
@@ -10909,8 +11086,8 @@ function generateSonarQubeFunction(functionName: string, node: WorkflowNode): st
 function ${functionName}(inputData, params) {
   console.log('🔍 Executing SonarQube: ${params.operation || '${operation}'}');
   
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('SONARQUBE_SERVER_URL');
-  const token = PropertiesService.getScriptProperties().getProperty('SONARQUBE_TOKEN');
+  const serverUrl = getSecret('SONARQUBE_SERVER_URL');
+  const token = getSecret('SONARQUBE_TOKEN');
   
   if (!serverUrl || !token) {
     console.warn('⚠️ SonarQube credentials not configured');
@@ -10970,9 +11147,9 @@ function generateNexusFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('📦 Executing Sonatype Nexus: ${params.operation || '${operation}'}');
   
-  const serverUrl = PropertiesService.getScriptProperties().getProperty('NEXUS_SERVER_URL');
-  const username = PropertiesService.getScriptProperties().getProperty('NEXUS_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('NEXUS_PASSWORD');
+  const serverUrl = getSecret('NEXUS_SERVER_URL');
+  const username = getSecret('NEXUS_USERNAME');
+  const password = getSecret('NEXUS_PASSWORD');
   
   if (!serverUrl || !username || !password) {
     console.warn('⚠️ Sonatype Nexus credentials not configured');
@@ -11699,7 +11876,7 @@ function step_appendRow(ctx) {
   // Slack - Communication
   'action.slack:send_message': (c) => `
 function step_sendSlackMessage(ctx) {
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
+  const webhookUrl = getSecret('SLACK_WEBHOOK_URL');
   if (!webhookUrl) {
     logWarn('slack_missing_webhook', { message: 'Slack webhook URL not configured' });
     return ctx;
@@ -11729,8 +11906,8 @@ function step_sendSlackMessage(ctx) {
   // Salesforce - CRM
   'action.salesforce:create_lead': (c) => `
 function step_createSalesforceLead(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SALESFORCE_ACCESS_TOKEN');
-  const instanceUrl = PropertiesService.getScriptProperties().getProperty('SALESFORCE_INSTANCE_URL');
+  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN');
+  const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL');
 
   if (!accessToken || !instanceUrl) {
     logWarn('salesforce_missing_credentials', { message: 'Salesforce credentials not configured' });
@@ -11762,7 +11939,7 @@ function step_createSalesforceLead(ctx) {
   // HubSpot - CRM  
   'action.hubspot:create_contact': (c) => `
 function step_createHubSpotContact(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('HUBSPOT_API_KEY');
+  const apiKey = getSecret('HUBSPOT_API_KEY');
 
   if (!apiKey) {
     logWarn('hubspot_missing_api_key', { message: 'HubSpot API key not configured' });
@@ -11795,7 +11972,7 @@ function step_createHubSpotContact(ctx) {
   // Stripe - Payments
   'action.stripe:create_payment': (c) => `
 function step_createStripePayment(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('STRIPE_SECRET_KEY');
+  const apiKey = getSecret('STRIPE_SECRET_KEY');
 
   if (!apiKey) {
     logWarn('stripe_missing_api_key', { message: 'Stripe API key not configured' });
@@ -11825,8 +12002,8 @@ function step_createStripePayment(ctx) {
   // Shopify - E-commerce
   'action.shopify:create_order': (c) => `
 function step_createShopifyOrder(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SHOPIFY_ACCESS_TOKEN');
-  const shopDomain = PropertiesService.getScriptProperties().getProperty('SHOPIFY_SHOP_DOMAIN');
+  const accessToken = getSecret('SHOPIFY_ACCESS_TOKEN');
+  const shopDomain = getSecret('SHOPIFY_SHOP_DOMAIN');
 
   if (!accessToken || !shopDomain) {
     logWarn('shopify_missing_credentials', { message: 'Shopify credentials not configured' });
@@ -11864,8 +12041,8 @@ function step_createShopifyOrder(ctx) {
   // BATCH 1: CRM Applications
   'action.pipedrive:create_deal': (c) => `
 function step_createPipedriveDeal(ctx) {
-  const apiToken = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_API_TOKEN');
-  const companyDomain = PropertiesService.getScriptProperties().getProperty('PIPEDRIVE_COMPANY_DOMAIN');
+  const apiToken = getSecret('PIPEDRIVE_API_TOKEN');
+  const companyDomain = getSecret('PIPEDRIVE_COMPANY_DOMAIN');
 
   if (!apiToken || !companyDomain) {
     logWarn('pipedrive_missing_credentials', { message: 'Pipedrive credentials not configured' });
@@ -11893,7 +12070,7 @@ function step_createPipedriveDeal(ctx) {
 
   'action.zoho-crm:create_lead': (c) => `
 function step_createZohoLead(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ZOHO_CRM_ACCESS_TOKEN');
+  const accessToken = getSecret('ZOHO_CRM_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('zoho_missing_access_token', { message: 'Zoho CRM access token not configured' });
@@ -11926,8 +12103,8 @@ function step_createZohoLead(ctx) {
 
   'action.dynamics365:create_contact': (c) => `
 function step_createDynamicsContact(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_ACCESS_TOKEN');
-  const instanceUrl = PropertiesService.getScriptProperties().getProperty('DYNAMICS365_INSTANCE_URL');
+  const accessToken = getSecret('DYNAMICS365_ACCESS_TOKEN');
+  const instanceUrl = getSecret('DYNAMICS365_INSTANCE_URL');
 
   if (!accessToken || !instanceUrl) {
     logWarn('dynamics_missing_credentials', { message: 'Dynamics 365 credentials not configured' });
@@ -11958,7 +12135,7 @@ function step_createDynamicsContact(ctx) {
   // BATCH 2: Communication Applications
   'action.microsoft-teams:send_message': (c) => `
 function step_sendTeamsMessage(ctx) {
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('TEAMS_WEBHOOK_URL');
+  const webhookUrl = getSecret('TEAMS_WEBHOOK_URL');
 
   if (!webhookUrl) {
     logWarn('teams_missing_webhook', { message: 'Microsoft Teams webhook URL not configured' });
@@ -11984,9 +12161,9 @@ function step_sendTeamsMessage(ctx) {
 
   'action.twilio:send_sms': (c) => `
 function step_sendTwilioSMS(ctx) {
-  const accountSid = PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID');
-  const authToken = PropertiesService.getScriptProperties().getProperty('TWILIO_AUTH_TOKEN');
-  const fromNumber = PropertiesService.getScriptProperties().getProperty('TWILIO_FROM_NUMBER');
+  const accountSid = getSecret('TWILIO_ACCOUNT_SID');
+  const authToken = getSecret('TWILIO_AUTH_TOKEN');
+  const fromNumber = getSecret('TWILIO_FROM_NUMBER');
 
   if (!accountSid || !authToken || !fromNumber) {
     logWarn('twilio_missing_credentials', { message: 'Twilio credentials not configured' });
@@ -12015,8 +12192,8 @@ function step_sendTwilioSMS(ctx) {
 
   'action.zoom:create_meeting': (c) => `
 function step_createZoomMeeting(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('ZOOM_API_KEY');
-  const apiSecret = PropertiesService.getScriptProperties().getProperty('ZOOM_API_SECRET');
+  const apiKey = getSecret('ZOOM_API_KEY');
+  const apiSecret = getSecret('ZOOM_API_SECRET');
   
   if (!apiKey || !apiSecret) {
     console.warn('⚠️ Zoom credentials not configured');
@@ -12041,9 +12218,9 @@ function step_createZoomMeeting(ctx) {
   // BATCH 3: E-commerce Applications
   'action.woocommerce:create_order': (c) => `
 function step_createWooCommerceOrder(ctx) {
-  const consumerKey = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_KEY');
-  const consumerSecret = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_CONSUMER_SECRET');
-  const storeUrl = PropertiesService.getScriptProperties().getProperty('WOOCOMMERCE_STORE_URL');
+  const consumerKey = getSecret('WOOCOMMERCE_CONSUMER_KEY');
+  const consumerSecret = getSecret('WOOCOMMERCE_CONSUMER_SECRET');
+  const storeUrl = getSecret('WOOCOMMERCE_STORE_URL');
 
   if (!consumerKey || !consumerSecret || !storeUrl) {
     logWarn('woocommerce_missing_credentials', { message: 'WooCommerce credentials not configured' });
@@ -12083,8 +12260,8 @@ function step_createWooCommerceOrder(ctx) {
 
   'action.bigcommerce:create_product': (c) => `
 function step_createBigCommerceProduct(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_ACCESS_TOKEN');
-  const storeHash = PropertiesService.getScriptProperties().getProperty('BIGCOMMERCE_STORE_HASH');
+  const accessToken = getSecret('BIGCOMMERCE_ACCESS_TOKEN');
+  const storeHash = getSecret('BIGCOMMERCE_STORE_HASH');
 
   if (!accessToken || !storeHash) {
     logWarn('bigcommerce_missing_credentials', { message: 'BigCommerce credentials not configured' });
@@ -12117,8 +12294,8 @@ function step_createBigCommerceProduct(ctx) {
 
   'action.magento:create_customer': (c) => `
 function step_createMagentoCustomer(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MAGENTO_ACCESS_TOKEN');
-  const storeUrl = PropertiesService.getScriptProperties().getProperty('MAGENTO_STORE_URL');
+  const accessToken = getSecret('MAGENTO_ACCESS_TOKEN');
+  const storeUrl = getSecret('MAGENTO_STORE_URL');
 
   if (!accessToken || !storeUrl) {
     logWarn('magento_missing_credentials', { message: 'Magento credentials not configured' });
@@ -12153,9 +12330,9 @@ function step_createMagentoCustomer(ctx) {
   // BATCH 4: Project Management Applications
   'action.jira:create_issue': (c) => `
 function step_createJiraIssue(ctx) {
-  const email = PropertiesService.getScriptProperties().getProperty('JIRA_EMAIL');
-  const apiToken = PropertiesService.getScriptProperties().getProperty('JIRA_API_TOKEN');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('JIRA_BASE_URL');
+  const email = getSecret('JIRA_EMAIL');
+  const apiToken = getSecret('JIRA_API_TOKEN');
+  const baseUrl = getSecret('JIRA_BASE_URL');
 
   if (!email || !apiToken || !baseUrl) {
     logWarn('jira_missing_credentials', { message: 'Jira credentials not configured' });
@@ -12189,7 +12366,7 @@ function step_createJiraIssue(ctx) {
 
   'action.asana:create_task': (c) => `
 function step_createAsanaTask(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ASANA_ACCESS_TOKEN');
+  const accessToken = getSecret('ASANA_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('asana_missing_access_token', { message: 'Asana access token not configured' });
@@ -12221,8 +12398,8 @@ function step_createAsanaTask(ctx) {
 
   'action.trello:create_card': (c) => `
 function step_createTrelloCard(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('TRELLO_API_KEY');
-  const token = PropertiesService.getScriptProperties().getProperty('TRELLO_TOKEN');
+  const apiKey = getSecret('TRELLO_API_KEY');
+  const token = getSecret('TRELLO_TOKEN');
 
   if (!apiKey || !token) {
     logWarn('trello_missing_credentials', { message: 'Trello credentials not configured' });
@@ -12250,8 +12427,8 @@ function step_createTrelloCard(ctx) {
   // BATCH 5: Marketing Applications
   'action.mailchimp:add_subscriber': (c) => `
 function step_addMailchimpSubscriber(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_API_KEY');
-  const listId = PropertiesService.getScriptProperties().getProperty('MAILCHIMP_LIST_ID');
+  const apiKey = getSecret('MAILCHIMP_API_KEY');
+  const listId = getSecret('MAILCHIMP_LIST_ID');
   const datacenter = apiKey ? apiKey.split('-')[1] : '';
 
   if (!apiKey || !listId) {
@@ -12285,7 +12462,7 @@ function step_addMailchimpSubscriber(ctx) {
 
   'action.klaviyo:create_profile': (c) => `
 function step_createKlaviyoProfile(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('KLAVIYO_API_KEY');
+  const apiKey = getSecret('KLAVIYO_API_KEY');
 
   if (!apiKey) {
     logWarn('klaviyo_missing_api_key', { message: 'Klaviyo API key not configured' });
@@ -12321,7 +12498,7 @@ function step_createKlaviyoProfile(ctx) {
 
   'action.sendgrid:send_email': (c) => `
 function step_sendSendGridEmail(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SENDGRID_API_KEY');
+  const apiKey = getSecret('SENDGRID_API_KEY');
 
   if (!apiKey) {
     logWarn('sendgrid_missing_api_key', { message: 'SendGrid API key not configured' });
@@ -12357,7 +12534,7 @@ function step_sendSendGridEmail(ctx) {
   // BATCH 6: Productivity Applications
   'action.notion:create_page': (c) => `
 function step_createNotionPage(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('NOTION_ACCESS_TOKEN');
+  const accessToken = getSecret('NOTION_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('notion_missing_access_token', { message: 'Notion access token not configured' });
@@ -12393,8 +12570,8 @@ function step_createNotionPage(ctx) {
 
   'action.airtable:create_record': (c) => `
 function step_createAirtableRecord(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('AIRTABLE_API_KEY');
-  const baseId = PropertiesService.getScriptProperties().getProperty('AIRTABLE_BASE_ID');
+  const apiKey = getSecret('AIRTABLE_API_KEY');
+  const baseId = getSecret('AIRTABLE_BASE_ID');
 
   if (!apiKey || !baseId) {
     logWarn('airtable_missing_credentials', { message: 'Airtable credentials not configured' });
@@ -12428,8 +12605,8 @@ function step_createAirtableRecord(ctx) {
   // BATCH 7: Finance & Accounting Applications
   'action.quickbooks:create_customer': (c) => `
 function step_createQuickBooksCustomer(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('QUICKBOOKS_ACCESS_TOKEN');
-  const companyId = PropertiesService.getScriptProperties().getProperty('QUICKBOOKS_COMPANY_ID');
+  const accessToken = getSecret('QUICKBOOKS_ACCESS_TOKEN');
+  const companyId = getSecret('QUICKBOOKS_COMPANY_ID');
   
   if (!accessToken || !companyId) {
     console.warn('⚠️ QuickBooks credentials not configured');
@@ -12450,7 +12627,7 @@ function step_createQuickBooksCustomer(ctx) {
 
   'action.xero:create_contact': (c) => `
 function step_createXeroContact(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('XERO_ACCESS_TOKEN');
+  const accessToken = getSecret('XERO_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Xero access token not configured');
@@ -12471,7 +12648,7 @@ function step_createXeroContact(ctx) {
   // BATCH 8: Developer Tools
   'action.github:create_issue': (c) => `
 function step_createGitHubIssue(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GITHUB_ACCESS_TOKEN');
+  const accessToken = getSecret('GITHUB_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('github_missing_access_token', { message: 'GitHub access token not configured' });
@@ -12504,7 +12681,7 @@ function step_createGitHubIssue(ctx) {
   // BATCH 9: Forms & Surveys
   'action.typeform:create_form': (c) => `
 function step_createTypeform(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('TYPEFORM_ACCESS_TOKEN');
+  const accessToken = getSecret('TYPEFORM_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('typeform_missing_access_token', { message: 'Typeform access token not configured' });
@@ -12533,7 +12710,7 @@ function step_createTypeform(ctx) {
 
   'action.surveymonkey:create_survey': (c) => `
 function step_createSurveyMonkeySurvey(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SURVEYMONKEY_ACCESS_TOKEN');
+  const accessToken = getSecret('SURVEYMONKEY_ACCESS_TOKEN');
 
   if (!accessToken) {
     logWarn('surveymonkey_missing_access_token', { message: 'SurveyMonkey access token not configured' });
@@ -12563,7 +12740,7 @@ function step_createSurveyMonkeySurvey(ctx) {
   // BATCH 10: Calendar & Scheduling
   'action.calendly:create_event': (c) => `
 function step_createCalendlyEvent(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('CALENDLY_ACCESS_TOKEN');
+  const accessToken = getSecret('CALENDLY_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Calendly access token not configured');
@@ -12578,7 +12755,7 @@ function step_createCalendlyEvent(ctx) {
   // PHASE 1: Storage & Cloud Applications
   'action.dropbox:upload_file': (c) => `
 function step_uploadDropboxFile(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DROPBOX_ACCESS_TOKEN');
+  const accessToken = getSecret('DROPBOX_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Dropbox access token not configured');
@@ -12606,7 +12783,7 @@ function step_createDriveFolder(ctx) {
 
   'action.box:upload_file': (c) => `
 function step_uploadBoxFile(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BOX_ACCESS_TOKEN');
+  const accessToken = getSecret('BOX_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Box access token not configured');
@@ -12621,7 +12798,7 @@ function step_uploadBoxFile(ctx) {
   // PHASE 2: Analytics & Data Applications
   'action.google-analytics:get_report': (c) => `
 function step_getAnalyticsReport(ctx) {
-  const viewId = PropertiesService.getScriptProperties().getProperty('GA_VIEW_ID');
+  const viewId = getSecret('GA_VIEW_ID');
   
   if (!viewId) {
     console.warn('⚠️ Google Analytics view ID not configured');
@@ -12639,7 +12816,7 @@ function step_getAnalyticsReport(ctx) {
 
   'action.mixpanel:track_event': (c) => `
 function step_trackMixpanelEvent(ctx) {
-  const projectToken = PropertiesService.getScriptProperties().getProperty('MIXPANEL_PROJECT_TOKEN');
+  const projectToken = getSecret('MIXPANEL_PROJECT_TOKEN');
 
   if (!projectToken) {
     logWarn('mixpanel_missing_project_token', { message: 'Mixpanel project token not configured' });
@@ -12664,7 +12841,7 @@ function step_trackMixpanelEvent(ctx) {
 
   'action.amplitude:track_event': (c) => `
 function step_trackAmplitudeEvent(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('AMPLITUDE_API_KEY');
+  const apiKey = getSecret('AMPLITUDE_API_KEY');
 
   if (!apiKey) {
     logWarn('amplitude_missing_api_key', { message: 'Amplitude API key not configured' });
@@ -12697,8 +12874,8 @@ function step_trackAmplitudeEvent(ctx) {
   // PHASE 3: HR & Recruitment Applications
   'action.bamboohr:create_employee': (c) => `
 function step_createBambooEmployee(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('BAMBOOHR_API_KEY');
-  const subdomain = PropertiesService.getScriptProperties().getProperty('BAMBOOHR_SUBDOMAIN');
+  const apiKey = getSecret('BAMBOOHR_API_KEY');
+  const subdomain = getSecret('BAMBOOHR_SUBDOMAIN');
   
   if (!apiKey || !subdomain) {
     console.warn('⚠️ BambooHR credentials not configured');
@@ -12719,7 +12896,7 @@ function step_createBambooEmployee(ctx) {
 
   'action.greenhouse:create_candidate': (c) => `
 function step_createGreenhouseCandidate(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GREENHOUSE_API_KEY');
+  const apiKey = getSecret('GREENHOUSE_API_KEY');
 
   if (!apiKey) {
     logWarn('greenhouse_missing_api_key', { message: 'Greenhouse API key not configured' });
@@ -12753,9 +12930,9 @@ function step_createGreenhouseCandidate(ctx) {
   // PHASE 4: Customer Support Applications
   'action.zendesk:create_ticket': (c) => `
 function step_createZendeskTicket(ctx) {
-  const apiToken = PropertiesService.getScriptProperties().getProperty('ZENDESK_API_TOKEN');
-  const email = PropertiesService.getScriptProperties().getProperty('ZENDESK_EMAIL');
-  const subdomain = PropertiesService.getScriptProperties().getProperty('ZENDESK_SUBDOMAIN');
+  const apiToken = getSecret('ZENDESK_API_TOKEN');
+  const email = getSecret('ZENDESK_EMAIL');
+  const subdomain = getSecret('ZENDESK_SUBDOMAIN');
 
   if (!apiToken || !email || !subdomain) {
     logWarn('zendesk_missing_credentials', { message: 'Zendesk credentials not configured' });
@@ -12789,8 +12966,8 @@ function step_createZendeskTicket(ctx) {
 
   'action.freshdesk:create_ticket': (c) => `
 function step_createFreshdeskTicket(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('FRESHDESK_API_KEY');
-  const domain = PropertiesService.getScriptProperties().getProperty('FRESHDESK_DOMAIN');
+  const apiKey = getSecret('FRESHDESK_API_KEY');
+  const domain = getSecret('FRESHDESK_DOMAIN');
 
   if (!apiKey || !domain) {
     logWarn('freshdesk_missing_credentials', { message: 'Freshdesk credentials not configured' });
@@ -12823,9 +13000,9 @@ function step_createFreshdeskTicket(ctx) {
   // PHASE 5: DevOps & Development Applications  
   'action.jenkins:trigger_build': (c) => `
 function step_triggerJenkinsBuild(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('JENKINS_USERNAME');
-  const token = PropertiesService.getScriptProperties().getProperty('JENKINS_TOKEN');
-  const baseUrl = PropertiesService.getScriptProperties().getProperty('JENKINS_BASE_URL');
+  const username = getSecret('JENKINS_USERNAME');
+  const token = getSecret('JENKINS_TOKEN');
+  const baseUrl = getSecret('JENKINS_BASE_URL');
 
   if (!username || !token || !baseUrl) {
     logWarn('jenkins_missing_credentials', { message: 'Jenkins credentials not configured' });
@@ -12847,8 +13024,8 @@ function step_triggerJenkinsBuild(ctx) {
 
   'action.docker-hub:list_repositories': (c) => `
 function step_listDockerRepos(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_USERNAME');
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DOCKER_HUB_ACCESS_TOKEN');
+  const username = getSecret('DOCKER_HUB_USERNAME');
+  const accessToken = getSecret('DOCKER_HUB_ACCESS_TOKEN');
 
   if (!username || !accessToken) {
     logWarn('dockerhub_missing_credentials', { message: 'Docker Hub credentials not configured' });
@@ -12868,8 +13045,8 @@ function step_listDockerRepos(ctx) {
 
   'action.kubernetes:create_deployment': (c) => `
 function step_createK8sDeployment(ctx) {
-  const apiServer = PropertiesService.getScriptProperties().getProperty('KUBERNETES_API_SERVER');
-  const bearerToken = PropertiesService.getScriptProperties().getProperty('KUBERNETES_BEARER_TOKEN');
+  const apiServer = getSecret('KUBERNETES_API_SERVER');
+  const bearerToken = getSecret('KUBERNETES_BEARER_TOKEN');
 
   if (!apiServer || !bearerToken) {
     console.warn('⚠️ Kubernetes credentials not configured');
@@ -12883,7 +13060,7 @@ function step_createK8sDeployment(ctx) {
 
   'action.kubernetes:create_service': (c) => `
 function step_createK8sService(ctx) {
-  const apiServer = PropertiesService.getScriptProperties().getProperty('KUBERNETES_API_SERVER');
+  const apiServer = getSecret('KUBERNETES_API_SERVER');
   if (!apiServer) {
     console.warn('⚠️ Kubernetes API server not configured');
     return ctx;
@@ -13066,7 +13243,7 @@ function step_deleteAnsibleJobTemplate(ctx) {
   // PHASE 6: Security & Monitoring Applications
   'action.datadog:send_metric': (c) => `
 function step_sendDatadogMetric(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('DATADOG_API_KEY');
+  const apiKey = getSecret('DATADOG_API_KEY');
 
   if (!apiKey) {
     logWarn('datadog_missing_api_key', { message: 'Datadog API key not configured' });
@@ -13097,8 +13274,8 @@ function step_sendDatadogMetric(ctx) {
 
   'action.new-relic:send_event': (c) => `
 function step_sendNewRelicEvent(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('NEWRELIC_API_KEY');
-  const accountId = PropertiesService.getScriptProperties().getProperty('NEWRELIC_ACCOUNT_ID');
+  const apiKey = getSecret('NEWRELIC_API_KEY');
+  const accountId = getSecret('NEWRELIC_ACCOUNT_ID');
 
   if (!apiKey || !accountId) {
     logWarn('newrelic_missing_credentials', { message: 'New Relic credentials not configured' });
@@ -13129,8 +13306,8 @@ function step_sendNewRelicEvent(ctx) {
   // PHASE 7: Document Management Applications
   'action.docusign:send_envelope': (c) => `
 function step_sendDocuSignEnvelope(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('DOCUSIGN_ACCESS_TOKEN');
-  const accountId = PropertiesService.getScriptProperties().getProperty('DOCUSIGN_ACCOUNT_ID');
+  const accessToken = getSecret('DOCUSIGN_ACCESS_TOKEN');
+  const accountId = getSecret('DOCUSIGN_ACCOUNT_ID');
   
   if (!accessToken || !accountId) {
     console.warn('⚠️ DocuSign credentials not configured');
@@ -13179,7 +13356,7 @@ function step_createGoogleSlides(ctx) {
   // PHASE 8: Additional Essential Business Apps
   'action.monday:create_item': (c) => `
 function step_createMondayItem(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('MONDAY_API_KEY');
+  const apiKey = getSecret('MONDAY_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Monday.com API key not configured');
@@ -13193,7 +13370,7 @@ function step_createMondayItem(ctx) {
 
   'action.clickup:create_task': (c) => `
 function step_createClickUpTask(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CLICKUP_API_KEY');
+  const apiKey = getSecret('CLICKUP_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ ClickUp API key not configured');
@@ -13207,7 +13384,7 @@ function step_createClickUpTask(ctx) {
 
   'action.basecamp:create_todo': (c) => `
 function step_createBasecampTodo(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BASECAMP_ACCESS_TOKEN');
+  const accessToken = getSecret('BASECAMP_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Basecamp access token not configured');
@@ -13221,7 +13398,7 @@ function step_createBasecampTodo(ctx) {
 
   'action.toggl:create_time_entry': (c) => `
 function step_createTogglEntry(ctx) {
-  const apiToken = PropertiesService.getScriptProperties().getProperty('TOGGL_API_TOKEN');
+  const apiToken = getSecret('TOGGL_API_TOKEN');
   
   if (!apiToken) {
     console.warn('⚠️ Toggl API token not configured');
@@ -13235,7 +13412,7 @@ function step_createTogglEntry(ctx) {
 
   'action.webflow:create_item': (c) => `
 function step_createWebflowItem(ctx) {
-  const apiToken = PropertiesService.getScriptProperties().getProperty('WEBFLOW_API_TOKEN');
+  const apiToken = getSecret('WEBFLOW_API_TOKEN');
   
   if (!apiToken) {
     console.warn('⚠️ Webflow API token not configured');
@@ -13250,7 +13427,7 @@ function step_createWebflowItem(ctx) {
   // Microsoft Office Suite
   'action.outlook:send_email': (c) => `
 function step_sendOutlookEmail(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('OUTLOOK_ACCESS_TOKEN');
+  const accessToken = getSecret('OUTLOOK_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Outlook access token not configured');
@@ -13264,7 +13441,7 @@ function step_sendOutlookEmail(ctx) {
 
   'action.microsoft-todo:create_task': (c) => `
 function step_createMicrosoftTodoTask(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_TODO_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_TODO_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft To Do access token not configured');
@@ -13278,7 +13455,7 @@ function step_createMicrosoftTodoTask(ctx) {
 
   'action.onedrive:upload_file': (c) => `
 function step_uploadOneDriveFile(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ONEDRIVE_ACCESS_TOKEN');
+  const accessToken = getSecret('ONEDRIVE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ OneDrive access token not configured');
@@ -13293,7 +13470,7 @@ function step_uploadOneDriveFile(ctx) {
   // Additional Popular Business Apps
   'action.intercom:create_user': (c) => `
 function step_createIntercomUser(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('INTERCOM_ACCESS_TOKEN');
+  const accessToken = getSecret('INTERCOM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Intercom access token not configured');
@@ -13307,7 +13484,7 @@ function step_createIntercomUser(ctx) {
 
   'action.discord:send_message': (c) => `
 function step_sendDiscordMessage(ctx) {
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
+  const webhookUrl = getSecret('DISCORD_WEBHOOK_URL');
 
   if (!webhookUrl) {
     logWarn('discord_missing_webhook', { message: 'Discord webhook URL not configured' });
@@ -13333,8 +13510,8 @@ function step_sendDiscordMessage(ctx) {
   // PHASE 9: E-commerce & Payment Applications
   'action.paypal:create_payment': (c) => `
 function step_createPayPalPayment(ctx) {
-  const clientId = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('PAYPAL_CLIENT_SECRET');
+  const clientId = getSecret('PAYPAL_CLIENT_ID');
+  const clientSecret = getSecret('PAYPAL_CLIENT_SECRET');
   
   if (!clientId || !clientSecret) {
     console.warn('⚠️ PayPal credentials not configured');
@@ -13348,7 +13525,7 @@ function step_createPayPalPayment(ctx) {
 
   'action.square:create_payment': (c) => `
 function step_createSquarePayment(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SQUARE_ACCESS_TOKEN');
+  const accessToken = getSecret('SQUARE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Square access token not configured');
@@ -13362,7 +13539,7 @@ function step_createSquarePayment(ctx) {
 
   'action.etsy:create_listing': (c) => `
 function step_createEtsyListing(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ETSY_ACCESS_TOKEN');
+  const accessToken = getSecret('ETSY_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Etsy access token not configured');
@@ -13376,8 +13553,8 @@ function step_createEtsyListing(ctx) {
 
   'action.amazon:create_product': (c) => `
 function step_createAmazonProduct(ctx) {
-  const accessKey = PropertiesService.getScriptProperties().getProperty('AMAZON_ACCESS_KEY');
-  const secretKey = PropertiesService.getScriptProperties().getProperty('AMAZON_SECRET_KEY');
+  const accessKey = getSecret('AMAZON_ACCESS_KEY');
+  const secretKey = getSecret('AMAZON_SECRET_KEY');
   
   if (!accessKey || !secretKey) {
     console.warn('⚠️ Amazon credentials not configured');
@@ -13391,7 +13568,7 @@ function step_createAmazonProduct(ctx) {
 
   'action.ebay:create_listing': (c) => `
 function step_createEbayListing(ctx) {
-  const token = PropertiesService.getScriptProperties().getProperty('EBAY_ACCESS_TOKEN');
+  const token = getSecret('EBAY_ACCESS_TOKEN');
   
   if (!token) {
     console.warn('⚠️ eBay access token not configured');
@@ -13406,7 +13583,7 @@ function step_createEbayListing(ctx) {
   // PHASE 10: Social Media & Content Applications
   'action.facebook:create_post': (c) => `
 function step_createFacebookPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('FACEBOOK_ACCESS_TOKEN');
+  const accessToken = getSecret('FACEBOOK_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Facebook access token not configured');
@@ -13425,7 +13602,7 @@ function step_createFacebookPost(ctx) {
 
   'action.twitter:create_tweet': (c) => `
 function step_createTweet(ctx) {
-  const bearerToken = PropertiesService.getScriptProperties().getProperty('TWITTER_BEARER_TOKEN');
+  const bearerToken = getSecret('TWITTER_BEARER_TOKEN');
   
   if (!bearerToken) {
     console.warn('⚠️ Twitter bearer token not configured');
@@ -13439,7 +13616,7 @@ function step_createTweet(ctx) {
 
   'action.instagram:create_post': (c) => `
 function step_createInstagramPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('INSTAGRAM_ACCESS_TOKEN');
+  const accessToken = getSecret('INSTAGRAM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Instagram access token not configured');
@@ -13453,7 +13630,7 @@ function step_createInstagramPost(ctx) {
 
   'action.linkedin:create_post': (c) => `
 function step_createLinkedInPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('LINKEDIN_ACCESS_TOKEN');
+  const accessToken = getSecret('LINKEDIN_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ LinkedIn access token not configured');
@@ -13467,7 +13644,7 @@ function step_createLinkedInPost(ctx) {
 
   'action.youtube:upload_video': (c) => `
 function step_uploadYouTubeVideo(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('YOUTUBE_ACCESS_TOKEN');
+  const accessToken = getSecret('YOUTUBE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ YouTube access token not configured');
@@ -13481,7 +13658,7 @@ function step_uploadYouTubeVideo(ctx) {
 
   'action.tiktok:create_post': (c) => `
 function step_createTikTokPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('TIKTOK_ACCESS_TOKEN');
+  const accessToken = getSecret('TIKTOK_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ TikTok access token not configured');
@@ -13496,7 +13673,7 @@ function step_createTikTokPost(ctx) {
   // PHASE 11: Finance & Accounting Applications
   'action.wave:create_invoice': (c) => `
 function step_createWaveInvoice(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('WAVE_ACCESS_TOKEN');
+  const accessToken = getSecret('WAVE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Wave access token not configured');
@@ -13510,7 +13687,7 @@ function step_createWaveInvoice(ctx) {
 
   'action.freshbooks:create_client': (c) => `
 function step_createFreshBooksClient(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('FRESHBOOKS_ACCESS_TOKEN');
+  const accessToken = getSecret('FRESHBOOKS_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ FreshBooks access token not configured');
@@ -13524,7 +13701,7 @@ function step_createFreshBooksClient(ctx) {
 
   'action.sage:create_customer': (c) => `
 function step_createSageCustomer(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SAGE_API_KEY');
+  const apiKey = getSecret('SAGE_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Sage API key not configured');
@@ -13538,7 +13715,7 @@ function step_createSageCustomer(ctx) {
 
   'action.zoho-books:create_contact': (c) => `
 function step_createZohoBooksContact(ctx) {
-  const authToken = PropertiesService.getScriptProperties().getProperty('ZOHO_BOOKS_AUTH_TOKEN');
+  const authToken = getSecret('ZOHO_BOOKS_AUTH_TOKEN');
   
   if (!authToken) {
     console.warn('⚠️ Zoho Books auth token not configured');
@@ -13553,7 +13730,7 @@ function step_createZohoBooksContact(ctx) {
   // PHASE 12: Database & Backend Applications
   'action.mysql:insert_record': (c) => `
 function step_insertMySQLRecord(ctx) {
-  const connectionString = PropertiesService.getScriptProperties().getProperty('MYSQL_CONNECTION_STRING');
+  const connectionString = getSecret('MYSQL_CONNECTION_STRING');
   
   if (!connectionString) {
     console.warn('⚠️ MySQL connection not configured');
@@ -13567,7 +13744,7 @@ function step_insertMySQLRecord(ctx) {
 
   'action.postgresql:insert_record': (c) => `
 function step_insertPostgreSQLRecord(ctx) {
-  const connectionString = PropertiesService.getScriptProperties().getProperty('POSTGRESQL_CONNECTION_STRING');
+  const connectionString = getSecret('POSTGRESQL_CONNECTION_STRING');
   
   if (!connectionString) {
     console.warn('⚠️ PostgreSQL connection not configured');
@@ -13581,7 +13758,7 @@ function step_insertPostgreSQLRecord(ctx) {
 
   'action.mongodb:insert_document': (c) => `
 function step_insertMongoDocument(ctx) {
-  const connectionString = PropertiesService.getScriptProperties().getProperty('MONGODB_CONNECTION_STRING');
+  const connectionString = getSecret('MONGODB_CONNECTION_STRING');
   
   if (!connectionString) {
     console.warn('⚠️ MongoDB connection not configured');
@@ -13595,7 +13772,7 @@ function step_insertMongoDocument(ctx) {
 
   'action.redis:set_key': (c) => `
 function step_setRedisKey(ctx) {
-  const connectionString = PropertiesService.getScriptProperties().getProperty('REDIS_CONNECTION_STRING');
+  const connectionString = getSecret('REDIS_CONNECTION_STRING');
   
   if (!connectionString) {
     console.warn('⚠️ Redis connection not configured');
@@ -13610,7 +13787,7 @@ function step_setRedisKey(ctx) {
   // PHASE 13: Specialized Industry Applications
   'action.salesforce-commerce:create_order': (c) => `
 function step_createSalesforceCommerceOrder(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SFCC_ACCESS_TOKEN');
+  const accessToken = getSecret('SFCC_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Salesforce Commerce Cloud access token not configured');
@@ -13624,9 +13801,9 @@ function step_createSalesforceCommerceOrder(ctx) {
 
   'action.servicenow:create_incident': (c) => `
 function step_createServiceNowIncident(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('SERVICENOW_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('SERVICENOW_PASSWORD');
-  const instance = PropertiesService.getScriptProperties().getProperty('SERVICENOW_INSTANCE');
+  const username = getSecret('SERVICENOW_USERNAME');
+  const password = getSecret('SERVICENOW_PASSWORD');
+  const instance = getSecret('SERVICENOW_INSTANCE');
   
   if (!username || !password || !instance) {
     console.warn('⚠️ ServiceNow credentials not configured');
@@ -13640,8 +13817,8 @@ function step_createServiceNowIncident(ctx) {
 
   'action.workday:create_worker': (c) => `
 function step_createWorkdayWorker(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('WORKDAY_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('WORKDAY_PASSWORD');
+  const username = getSecret('WORKDAY_USERNAME');
+  const password = getSecret('WORKDAY_PASSWORD');
   
   if (!username || !password) {
     console.warn('⚠️ Workday credentials not configured');
@@ -13655,7 +13832,7 @@ function step_createWorkdayWorker(ctx) {
 
   'action.oracle:insert_record': (c) => `
 function step_insertOracleRecord(ctx) {
-  const connectionString = PropertiesService.getScriptProperties().getProperty('ORACLE_CONNECTION_STRING');
+  const connectionString = getSecret('ORACLE_CONNECTION_STRING');
   
   if (!connectionString) {
     console.warn('⚠️ Oracle connection not configured');
@@ -13670,8 +13847,8 @@ function step_insertOracleRecord(ctx) {
   // PHASE 14: Final Batch - Communication & Collaboration
   'action.telegram:send_message': (c) => `
 function step_sendTelegramMessage(ctx) {
-  const botToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN');
-  const chatId = PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_ID');
+  const botToken = getSecret('TELEGRAM_BOT_TOKEN');
+  const chatId = getSecret('TELEGRAM_CHAT_ID');
 
   if (!botToken || !chatId) {
     logWarn('telegram_missing_credentials', { message: 'Telegram bot credentials not configured' });
@@ -13695,8 +13872,8 @@ function step_sendTelegramMessage(ctx) {
 
   'action.whatsapp:send_message': (c) => `
 function step_sendWhatsAppMessage(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('WHATSAPP_ACCESS_TOKEN');
-  const phoneNumberId = PropertiesService.getScriptProperties().getProperty('WHATSAPP_PHONE_NUMBER_ID');
+  const accessToken = getSecret('WHATSAPP_ACCESS_TOKEN');
+  const phoneNumberId = getSecret('WHATSAPP_PHONE_NUMBER_ID');
   
   if (!accessToken || !phoneNumberId) {
     console.warn('⚠️ WhatsApp Business API credentials not configured');
@@ -13710,7 +13887,7 @@ function step_sendWhatsAppMessage(ctx) {
 
   'action.skype:send_message': (c) => `
 function step_sendSkypeMessage(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SKYPE_ACCESS_TOKEN');
+  const accessToken = getSecret('SKYPE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Skype access token not configured');
@@ -13725,7 +13902,7 @@ function step_sendSkypeMessage(ctx) {
   // Additional Productivity & Workflow Apps
   'action.zapier:trigger_webhook': (c) => `
 function step_triggerZapierWebhook(ctx) {
-  const webhookUrl = PropertiesService.getScriptProperties().getProperty('ZAPIER_WEBHOOK_URL');
+  const webhookUrl = getSecret('ZAPIER_WEBHOOK_URL');
 
   if (!webhookUrl) {
     logWarn('zapier_missing_webhook', { message: 'Zapier webhook URL not configured' });
@@ -13751,7 +13928,7 @@ function step_triggerZapierWebhook(ctx) {
 
   'action.ifttt:trigger_webhook': (c) => `
 function step_triggerIFTTTWebhook(ctx) {
-  const key = PropertiesService.getScriptProperties().getProperty('IFTTT_WEBHOOK_KEY');
+  const key = getSecret('IFTTT_WEBHOOK_KEY');
   const event = '${c.event || 'apps_script_trigger'}';
 
   if (!key) {
@@ -13779,9 +13956,9 @@ function step_triggerIFTTTWebhook(ctx) {
   // Cloud Storage & File Management
   'action.aws-s3:upload_file': (c) => `
 function step_uploadS3File(ctx) {
-  const accessKey = PropertiesService.getScriptProperties().getProperty('AWS_ACCESS_KEY_ID');
-  const secretKey = PropertiesService.getScriptProperties().getProperty('AWS_SECRET_ACCESS_KEY');
-  const bucket = PropertiesService.getScriptProperties().getProperty('AWS_S3_BUCKET');
+  const accessKey = getSecret('AWS_ACCESS_KEY_ID');
+  const secretKey = getSecret('AWS_SECRET_ACCESS_KEY');
+  const bucket = getSecret('AWS_S3_BUCKET');
   
   if (!accessKey || !secretKey || !bucket) {
     console.warn('⚠️ AWS S3 credentials not configured');
@@ -13795,8 +13972,8 @@ function step_uploadS3File(ctx) {
 
   'action.google-cloud-storage:upload_file': (c) => `
 function step_uploadGCSFile(ctx) {
-  const serviceAccountKey = PropertiesService.getScriptProperties().getProperty('GCS_SERVICE_ACCOUNT_KEY');
-  const bucket = PropertiesService.getScriptProperties().getProperty('GCS_BUCKET');
+  const serviceAccountKey = getSecret('GCS_SERVICE_ACCOUNT_KEY');
+  const bucket = getSecret('GCS_BUCKET');
   
   if (!serviceAccountKey || !bucket) {
     console.warn('⚠️ Google Cloud Storage credentials not configured');
@@ -13811,7 +13988,7 @@ function step_uploadGCSFile(ctx) {
   // Final Business Applications
   'action.constant-contact:create_contact': (c) => `
 function step_createConstantContact(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('CONSTANT_CONTACT_ACCESS_TOKEN');
+  const accessToken = getSecret('CONSTANT_CONTACT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Constant Contact access token not configured');
@@ -13825,8 +14002,8 @@ function step_createConstantContact(ctx) {
 
   'action.activecampaign:create_contact': (c) => `
 function step_createActiveCampaignContact(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('ACTIVECAMPAIGN_API_KEY');
-  const apiUrl = PropertiesService.getScriptProperties().getProperty('ACTIVECAMPAIGN_API_URL');
+  const apiKey = getSecret('ACTIVECAMPAIGN_API_KEY');
+  const apiUrl = getSecret('ACTIVECAMPAIGN_API_URL');
   
   if (!apiKey || !apiUrl) {
     console.warn('⚠️ ActiveCampaign credentials not configured');
@@ -13840,7 +14017,7 @@ function step_createActiveCampaignContact(ctx) {
 
   'action.convertkit:create_subscriber': (c) => `
 function step_createConvertKitSubscriber(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CONVERTKIT_API_KEY');
+  const apiKey = getSecret('CONVERTKIT_API_KEY');
 
   if (!apiKey) {
     logWarn('convertkit_missing_api_key', { message: 'ConvertKit API key not configured' });
@@ -13870,7 +14047,7 @@ function step_createConvertKitSubscriber(ctx) {
   // FINAL PUSH: Remaining Critical Business Apps
   'action.microsoft-excel:create_workbook': (c) => `
 function step_createExcelWorkbook(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_EXCEL_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_EXCEL_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft Excel access token not configured');
@@ -13884,7 +14061,7 @@ function step_createExcelWorkbook(ctx) {
 
   'action.microsoft-word:create_document': (c) => `
 function step_createWordDocument(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_WORD_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_WORD_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft Word access token not configured');
@@ -13898,7 +14075,7 @@ function step_createWordDocument(ctx) {
 
   'action.microsoft-powerpoint:create_presentation': (c) => `
 function step_createPowerPointPresentation(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MICROSOFT_POWERPOINT_ACCESS_TOKEN');
+  const accessToken = getSecret('MICROSOFT_POWERPOINT_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Microsoft PowerPoint access token not configured');
@@ -13912,7 +14089,7 @@ function step_createPowerPointPresentation(ctx) {
 
   'action.adobe-sign:send_document': (c) => `
 function step_sendAdobeSignDocument(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ADOBE_SIGN_ACCESS_TOKEN');
+  const accessToken = getSecret('ADOBE_SIGN_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Adobe Sign access token not configured');
@@ -13926,7 +14103,7 @@ function step_sendAdobeSignDocument(ctx) {
 
   'action.pandadoc:create_document': (c) => `
 function step_createPandaDocDocument(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('PANDADOC_API_KEY');
+  const apiKey = getSecret('PANDADOC_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ PandaDoc API key not configured');
@@ -13940,7 +14117,7 @@ function step_createPandaDocDocument(ctx) {
 
   'action.hellosign:send_signature_request': (c) => `
 function step_sendHelloSignRequest(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('HELLOSIGN_API_KEY');
+  const apiKey = getSecret('HELLOSIGN_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ HelloSign API key not configured');
@@ -13954,7 +14131,7 @@ function step_sendHelloSignRequest(ctx) {
 
   'action.eversign:create_document': (c) => `
 function step_createEversignDocument(ctx) {
-  const accessKey = PropertiesService.getScriptProperties().getProperty('EVERSIGN_ACCESS_KEY');
+  const accessKey = getSecret('EVERSIGN_ACCESS_KEY');
   
   if (!accessKey) {
     console.warn('⚠️ Eversign access key not configured');
@@ -13968,7 +14145,7 @@ function step_createEversignDocument(ctx) {
 
   'action.signrequest:create_signrequest': (c) => `
 function step_createSignRequest(ctx) {
-  const token = PropertiesService.getScriptProperties().getProperty('SIGNREQUEST_TOKEN');
+  const token = getSecret('SIGNREQUEST_TOKEN');
   
   if (!token) {
     console.warn('⚠️ SignRequest token not configured');
@@ -13982,8 +14159,8 @@ function step_createSignRequest(ctx) {
 
   'action.adobe-acrobat:create_pdf': (c) => `
 function step_createAdobePDF(ctx) {
-  const clientId = PropertiesService.getScriptProperties().getProperty('ADOBE_PDF_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('ADOBE_PDF_CLIENT_SECRET');
+  const clientId = getSecret('ADOBE_PDF_CLIENT_ID');
+  const clientSecret = getSecret('ADOBE_PDF_CLIENT_SECRET');
   
   if (!clientId || !clientSecret) {
     console.warn('⚠️ Adobe PDF Services credentials not configured');
@@ -13998,8 +14175,8 @@ function step_createAdobePDF(ctx) {
   // Additional Marketing & Analytics
   'action.google-ads:create_campaign': (c) => `
 function step_createGoogleAdsCampaign(ctx) {
-  const customerId = PropertiesService.getScriptProperties().getProperty('GOOGLE_ADS_CUSTOMER_ID');
-  const developerToken = PropertiesService.getScriptProperties().getProperty('GOOGLE_ADS_DEVELOPER_TOKEN');
+  const customerId = getSecret('GOOGLE_ADS_CUSTOMER_ID');
+  const developerToken = getSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
   
   if (!customerId || !developerToken) {
     console.warn('⚠️ Google Ads credentials not configured');
@@ -14013,8 +14190,8 @@ function step_createGoogleAdsCampaign(ctx) {
 
   'action.facebook-ads:create_campaign': (c) => `
 function step_createFacebookAdsCampaign(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('FACEBOOK_ADS_ACCESS_TOKEN');
-  const accountId = PropertiesService.getScriptProperties().getProperty('FACEBOOK_ADS_ACCOUNT_ID');
+  const accessToken = getSecret('FACEBOOK_ADS_ACCESS_TOKEN');
+  const accountId = getSecret('FACEBOOK_ADS_ACCOUNT_ID');
   
   if (!accessToken || !accountId) {
     console.warn('⚠️ Facebook Ads credentials not configured');
@@ -14029,7 +14206,7 @@ function step_createFacebookAdsCampaign(ctx) {
   // Additional Communication Tools
   'action.ringcentral:send_sms': (c) => `
 function step_sendRingCentralSMS(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('RINGCENTRAL_ACCESS_TOKEN');
+  const accessToken = getSecret('RINGCENTRAL_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ RingCentral access token not configured');
@@ -14043,8 +14220,8 @@ function step_sendRingCentralSMS(ctx) {
 
   'action.vonage:send_sms': (c) => `
 function step_sendVonageSMS(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('VONAGE_API_KEY');
-  const apiSecret = PropertiesService.getScriptProperties().getProperty('VONAGE_API_SECRET');
+  const apiKey = getSecret('VONAGE_API_KEY');
+  const apiSecret = getSecret('VONAGE_API_SECRET');
   
   if (!apiKey || !apiSecret) {
     console.warn('⚠️ Vonage credentials not configured');
@@ -14059,8 +14236,8 @@ function step_sendVonageSMS(ctx) {
   // Additional Development Tools
   'action.bitbucket:create_repository': (c) => `
 function step_createBitbucketRepo(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('BITBUCKET_USERNAME');
-  const appPassword = PropertiesService.getScriptProperties().getProperty('BITBUCKET_APP_PASSWORD');
+  const username = getSecret('BITBUCKET_USERNAME');
+  const appPassword = getSecret('BITBUCKET_APP_PASSWORD');
   
   if (!username || !appPassword) {
     console.warn('⚠️ Bitbucket credentials not configured');
@@ -14074,7 +14251,7 @@ function step_createBitbucketRepo(ctx) {
 
   'action.gitlab:create_project': (c) => `
 function step_createGitLabProject(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('GITLAB_ACCESS_TOKEN');
+  const accessToken = getSecret('GITLAB_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ GitLab access token not configured');
@@ -14089,7 +14266,7 @@ function step_createGitLabProject(ctx) {
   // FINAL 30 APPS: Complete remaining applications for 100% coverage
   'action.buffer:create_post': (c) => `
 function step_createBufferPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('BUFFER_ACCESS_TOKEN');
+  const accessToken = getSecret('BUFFER_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Buffer access token not configured');
@@ -14103,7 +14280,7 @@ function step_createBufferPost(ctx) {
 
   'action.hootsuite:create_post': (c) => `
 function step_createHootsuitePost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('HOOTSUITE_ACCESS_TOKEN');
+  const accessToken = getSecret('HOOTSUITE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Hootsuite access token not configured');
@@ -14117,7 +14294,7 @@ function step_createHootsuitePost(ctx) {
 
   'action.sprout-social:create_post': (c) => `
 function step_createSproutSocialPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('SPROUT_SOCIAL_ACCESS_TOKEN');
+  const accessToken = getSecret('SPROUT_SOCIAL_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Sprout Social access token not configured');
@@ -14131,7 +14308,7 @@ function step_createSproutSocialPost(ctx) {
 
   'action.later:schedule_post': (c) => `
 function step_scheduleLaterPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('LATER_ACCESS_TOKEN');
+  const accessToken = getSecret('LATER_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Later access token not configured');
@@ -14145,7 +14322,7 @@ function step_scheduleLaterPost(ctx) {
 
   'action.canva:create_design': (c) => `
 function step_createCanvaDesign(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CANVA_API_KEY');
+  const apiKey = getSecret('CANVA_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Canva API key not configured');
@@ -14159,7 +14336,7 @@ function step_createCanvaDesign(ctx) {
 
   'action.figma:create_file': (c) => `
 function step_createFigmaFile(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('FIGMA_ACCESS_TOKEN');
+  const accessToken = getSecret('FIGMA_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Figma access token not configured');
@@ -14173,7 +14350,7 @@ function step_createFigmaFile(ctx) {
 
   'action.adobe-creative:create_project': (c) => `
 function step_createAdobeCreativeProject(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('ADOBE_CREATIVE_ACCESS_TOKEN');
+  const accessToken = getSecret('ADOBE_CREATIVE_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Adobe Creative access token not configured');
@@ -14187,7 +14364,7 @@ function step_createAdobeCreativeProject(ctx) {
 
   'action.sketch:create_document': (c) => `
 function step_createSketchDocument(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SKETCH_API_KEY');
+  const apiKey = getSecret('SKETCH_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Sketch API key not configured');
@@ -14201,7 +14378,7 @@ function step_createSketchDocument(ctx) {
 
   'action.invision:create_prototype': (c) => `
 function step_createInvisionPrototype(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('INVISION_ACCESS_TOKEN');
+  const accessToken = getSecret('INVISION_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ InVision access token not configured');
@@ -14215,7 +14392,7 @@ function step_createInvisionPrototype(ctx) {
 
   'action.miro:create_board': (c) => `
 function step_createMiroBoard(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MIRO_ACCESS_TOKEN');
+  const accessToken = getSecret('MIRO_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Miro access token not configured');
@@ -14229,7 +14406,7 @@ function step_createMiroBoard(ctx) {
 
   'action.lucidchart:create_document': (c) => `
 function step_createLucidchartDocument(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('LUCIDCHART_ACCESS_TOKEN');
+  const accessToken = getSecret('LUCIDCHART_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Lucidchart access token not configured');
@@ -14251,7 +14428,7 @@ function step_createDrawIODiagram(ctx) {
 
   'action.creately:create_diagram': (c) => `
 function step_createCreatelyDiagram(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CREATELY_API_KEY');
+  const apiKey = getSecret('CREATELY_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Creately API key not configured');
@@ -14265,7 +14442,7 @@ function step_createCreatelyDiagram(ctx) {
 
   'action.vimeo:upload_video': (c) => `
 function step_uploadVimeoVideo(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('VIMEO_ACCESS_TOKEN');
+  const accessToken = getSecret('VIMEO_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Vimeo access token not configured');
@@ -14279,7 +14456,7 @@ function step_uploadVimeoVideo(ctx) {
 
   'action.wistia:upload_video': (c) => `
 function step_uploadWistiaVideo(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('WISTIA_API_KEY');
+  const apiKey = getSecret('WISTIA_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Wistia API key not configured');
@@ -14293,7 +14470,7 @@ function step_uploadWistiaVideo(ctx) {
 
   'action.loom:create_video': (c) => `
 function step_createLoomVideo(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('LOOM_ACCESS_TOKEN');
+  const accessToken = getSecret('LOOM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Loom access token not configured');
@@ -14307,7 +14484,7 @@ function step_createLoomVideo(ctx) {
 
   'action.screencast-o-matic:create_video': (c) => `
 function step_createScreencastOMatic(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SCREENCAST_O_MATIC_API_KEY');
+  const apiKey = getSecret('SCREENCAST_O_MATIC_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Screencast-O-Matic API key not configured');
@@ -14329,7 +14506,7 @@ function step_createCamtasiaProject(ctx) {
 
   'action.animoto:create_video': (c) => `
 function step_createAnimotoVideo(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('ANIMOTO_API_KEY');
+  const apiKey = getSecret('ANIMOTO_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Animoto API key not configured');
@@ -14343,7 +14520,7 @@ function step_createAnimotoVideo(ctx) {
 
   'action.powtoon:create_presentation': (c) => `
 function step_createPowtoonPresentation(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('POWTOON_API_KEY');
+  const apiKey = getSecret('POWTOON_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Powtoon API key not configured');
@@ -14358,7 +14535,7 @@ function step_createPowtoonPresentation(ctx) {
   // FINAL 10 APPS: Complete the last remaining applications
   'action.prezi:create_presentation': (c) => `
 function step_createPreziPresentation(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('PREZI_ACCESS_TOKEN');
+  const accessToken = getSecret('PREZI_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Prezi access token not configured');
@@ -14372,8 +14549,8 @@ function step_createPreziPresentation(ctx) {
 
   'action.slideshare:upload_presentation': (c) => `
 function step_uploadSlideSharePresentation(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SLIDESHARE_API_KEY');
-  const sharedSecret = PropertiesService.getScriptProperties().getProperty('SLIDESHARE_SHARED_SECRET');
+  const apiKey = getSecret('SLIDESHARE_API_KEY');
+  const sharedSecret = getSecret('SLIDESHARE_SHARED_SECRET');
   
   if (!apiKey || !sharedSecret) {
     console.warn('⚠️ SlideShare credentials not configured');
@@ -14395,7 +14572,7 @@ function step_uploadSpeakerDeckPresentation(ctx) {
 
   'action.flipboard:create_magazine': (c) => `
 function step_createFlipboardMagazine(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('FLIPBOARD_ACCESS_TOKEN');
+  const accessToken = getSecret('FLIPBOARD_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Flipboard access token not configured');
@@ -14409,7 +14586,7 @@ function step_createFlipboardMagazine(ctx) {
 
   'action.pinterest:create_pin': (c) => `
 function step_createPinterestPin(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('PINTEREST_ACCESS_TOKEN');
+  const accessToken = getSecret('PINTEREST_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Pinterest access token not configured');
@@ -14423,8 +14600,8 @@ function step_createPinterestPin(ctx) {
 
   'action.reddit:create_post': (c) => `
 function step_createRedditPost(ctx) {
-  const clientId = PropertiesService.getScriptProperties().getProperty('REDDIT_CLIENT_ID');
-  const clientSecret = PropertiesService.getScriptProperties().getProperty('REDDIT_CLIENT_SECRET');
+  const clientId = getSecret('REDDIT_CLIENT_ID');
+  const clientSecret = getSecret('REDDIT_CLIENT_SECRET');
   
   if (!clientId || !clientSecret) {
     console.warn('⚠️ Reddit credentials not configured');
@@ -14438,7 +14615,7 @@ function step_createRedditPost(ctx) {
 
   'action.medium:create_post': (c) => `
 function step_createMediumPost(ctx) {
-  const accessToken = PropertiesService.getScriptProperties().getProperty('MEDIUM_ACCESS_TOKEN');
+  const accessToken = getSecret('MEDIUM_ACCESS_TOKEN');
   
   if (!accessToken) {
     console.warn('⚠️ Medium access token not configured');
@@ -14452,7 +14629,7 @@ function step_createMediumPost(ctx) {
 
   'action.substack:create_post': (c) => `
 function step_createSubstackPost(ctx) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('SUBSTACK_API_KEY');
+  const apiKey = getSecret('SUBSTACK_API_KEY');
   
   if (!apiKey) {
     console.warn('⚠️ Substack API key not configured');
@@ -14466,8 +14643,8 @@ function step_createSubstackPost(ctx) {
 
   'action.ghost:create_post': (c) => `
 function step_createGhostPost(ctx) {
-  const adminApiKey = PropertiesService.getScriptProperties().getProperty('GHOST_ADMIN_API_KEY');
-  const apiUrl = PropertiesService.getScriptProperties().getProperty('GHOST_API_URL');
+  const adminApiKey = getSecret('GHOST_ADMIN_API_KEY');
+  const apiUrl = getSecret('GHOST_API_URL');
   
   if (!adminApiKey || !apiUrl) {
     console.warn('⚠️ Ghost credentials not configured');
@@ -14481,9 +14658,9 @@ function step_createGhostPost(ctx) {
 
   'action.wordpress:create_post': (c) => `
 function step_createWordPressPost(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('WORDPRESS_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('WORDPRESS_PASSWORD');
-  const siteUrl = PropertiesService.getScriptProperties().getProperty('WORDPRESS_SITE_URL');
+  const username = getSecret('WORDPRESS_USERNAME');
+  const password = getSecret('WORDPRESS_PASSWORD');
+  const siteUrl = getSecret('WORDPRESS_SITE_URL');
 
   if (!username || !password || !siteUrl) {
     logWarn('wordpress_missing_credentials', { message: 'WordPress credentials not configured' });
@@ -14516,9 +14693,9 @@ function step_createWordPressPost(ctx) {
   // APP #149: Final application to complete 100% coverage
   'action.drupal:create_node': (c) => `
 function step_createDrupalNode(ctx) {
-  const username = PropertiesService.getScriptProperties().getProperty('DRUPAL_USERNAME');
-  const password = PropertiesService.getScriptProperties().getProperty('DRUPAL_PASSWORD');
-  const siteUrl = PropertiesService.getScriptProperties().getProperty('DRUPAL_SITE_URL');
+  const username = getSecret('DRUPAL_USERNAME');
+  const password = getSecret('DRUPAL_PASSWORD');
+  const siteUrl = getSecret('DRUPAL_SITE_URL');
 
   if (!username || !password || !siteUrl) {
     logWarn('drupal_missing_credentials', { message: 'Drupal credentials not configured' });
