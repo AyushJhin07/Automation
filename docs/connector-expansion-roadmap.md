@@ -2,7 +2,11 @@
 
 This document converts the multi-wave rollout strategy into actionable work streams
 so the team can begin executing every phase in parallel. Use it as the canonical
-checklist that ties implementation work, QA, and rollout together.
+checklist that ties implementation work, QA, and rollout together. Apps Script
+enablement sequencing now follows the tiering outlined in the
+[Apps Script rollout backlog](apps-script-rollout/backlog.md); reference that
+backlog when planning wave assignments so squads stay aligned with the latest
+prioritization CSV.
 
 > **Distribution:** Shared in #connector-delivery and #qa-smoke on 2025-09-30 so
 > implementation, QA, and support stay aligned on graduation status updates.

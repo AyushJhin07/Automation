@@ -39,3 +39,6 @@ jobs:
 
       - name: Validate connector schemas
         run: npm run check:connectors
+
+      - name: Verify Apps Script backlog sync
+        run: npm run check:apps-script-backlog

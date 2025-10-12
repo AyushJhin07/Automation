@@ -4,34 +4,26 @@ This utility assembles connector inventory details, adoption analytics, and go-t
 
 ## Overview
 
-The script merges three layers of data:
+The script merges two layers of data today:
 
 1. **Inventory metadata** – sourced from `production/reports/connector-inventory.json` and `server/connector-manifest.json`.
 2. **Analytics impact signals** – curated benchmarks exposed by `analytics/business-intelligence.ts`.
-3. **Operational exports** – optional CRM, usage, and support CSVs that you can upload at runtime.
+
+Support for uploading CRM, usage, and support CSV exports will return in a follow-up pass. For now the embedded analytics keep the prioritization ranking deterministic across environments.
 
 It produces:
 
 - A scored ranking saved to `production/reports/apps-script-prioritization.csv`.
 - A console summary grouped by Tier 0/1/2 with high-level metrics per connector.
+- `npm run update:apps-script-backlog` to translate the CSV into the customer-facing backlog table.
 
 ## Running the script
 
 Install dependencies (if you have not already), then execute:
 
 ```bash
-npm run prioritize:apps-script -- \
-  --crm ~/Downloads/crm-connectors.csv \
-  --usage ~/Downloads/usage-metrics.csv \
-  --support ~/Downloads/support-load.csv \
-  --weight-usage 1.5 \
-  --weight-revenue 1 \
-  --weight-support 0.5
+npm run prioritize:apps-script
 ```
-
-- `--crm`, `--usage`, and `--support` accept CSV exports. The files are copied into `analytics/inputs/` for traceability before processing.
-- Weight flags let you emphasize usage, revenue, or support load when computing the composite score. All weights default to `1`.
-- You can omit any of the CSV flags; the script will fall back to analytics benchmarks for missing connectors.
 
 ## Expected CSV columns
 
