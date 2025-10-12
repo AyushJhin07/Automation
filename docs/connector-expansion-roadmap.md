@@ -7,6 +7,12 @@ checklist that ties implementation work, QA, and rollout together.
 > **Distribution:** Shared in #connector-delivery and #qa-smoke on 2025-09-30 so
 > implementation, QA, and support stay aligned on graduation status updates.
 
+Apps Script enablement now follows the dedicated [rollout backlog](apps-script-rollout/backlog.md),
+which groups every connector into Tier 0/1/2 and captures the owning squad plus
+target sprint for enablement. Phase milestones in this roadmap should reference
+that backlog for source-of-truth prioritization; when backlog tiers change the
+execution waves here inherit the updated ordering automatically.
+
 ## Phase 0 – Platform Readiness
 
 ### Objectives

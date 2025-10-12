@@ -1,0 +1,150 @@
+connector_id,tier,planned_squad_owner,target_sprint
+adobesign,2,Apps Script Enablement,Backlog
+adp,2,Apps Script Enablement,Backlog
+adyen,2,Apps Script Enablement,Backlog
+airtable,2,Apps Script Enablement,Backlog
+airtable-enhanced,2,Apps Script Enablement,Backlog
+ansible,2,Apps Script Enablement,Backlog
+argocd,2,Apps Script Enablement,Backlog
+asana-enhanced,2,Apps Script Enablement,Backlog
+aws-cloudformation,2,Apps Script Enablement,Backlog
+aws-codepipeline,2,Apps Script Enablement,Backlog
+azure-devops,2,Apps Script Enablement,Backlog
+bamboohr,2,Apps Script Enablement,Backlog
+basecamp,2,Apps Script Enablement,Backlog
+bigcommerce,2,Apps Script Enablement,Backlog
+bigquery,2,Apps Script Enablement,Backlog
+bitbucket,2,Apps Script Enablement,Backlog
+box,2,Apps Script Enablement,Backlog
+braze,2,Apps Script Enablement,Backlog
+brex,2,Apps Script Enablement,Backlog
+caldotcom,2,Apps Script Enablement,Backlog
+calendly,2,Apps Script Enablement,Backlog
+circleci,2,Apps Script Enablement,Backlog
+clickup,2,Apps Script Enablement,Backlog
+coda,2,Apps Script Enablement,Backlog
+concur,2,Apps Script Enablement,Backlog
+confluence,2,Apps Script Enablement,Backlog
+coupa,2,Apps Script Enablement,Backlog
+databricks,2,Apps Script Enablement,Backlog
+datadog,2,Apps Script Enablement,Backlog
+docker-hub,2,Apps Script Enablement,Backlog
+docusign,2,Apps Script Enablement,Backlog
+dropbox,2,Apps Script Enablement,Backlog
+dropbox-enhanced,2,Apps Script Enablement,Backlog
+dynamics365,2,Apps Script Enablement,Backlog
+egnyte,2,Apps Script Enablement,Backlog
+excel-online,2,Apps Script Enablement,Backlog
+expensify,2,Apps Script Enablement,Backlog
+freshdesk,2,Apps Script Enablement,Backlog
+github,2,Apps Script Enablement,Backlog
+github-enhanced,2,Apps Script Enablement,Backlog
+gitlab,2,Apps Script Enablement,Backlog
+gmail,0,Workspace Platform,2025.05
+gmail-enhanced,2,Apps Script Enablement,Backlog
+google-admin,2,Apps Script Enablement,Backlog
+google-calendar,0,Workspace Platform,2025.06
+google-chat,2,Apps Script Enablement,Backlog
+google-contacts,2,Apps Script Enablement,Backlog
+google-docs,0,Workspace Platform,2025.06
+google-drive,0,Workspace Platform,2025.06
+google-forms,0,Workspace Platform,2025.07
+google-meet,2,Apps Script Enablement,Backlog
+google-sheets-enhanced,0,Workspace Platform,2025.05
+google-slides,2,Apps Script Enablement,Backlog
+grafana,2,Apps Script Enablement,Backlog
+greenhouse,2,Apps Script Enablement,Backlog
+guru,2,Apps Script Enablement,Backlog
+hashicorp-vault,2,Apps Script Enablement,Backlog
+hellosign,2,Apps Script Enablement,Backlog
+helm,2,Apps Script Enablement,Backlog
+hubspot,1,Revenue Automation,2025.08
+hubspot-enhanced,2,Apps Script Enablement,Backlog
+intercom,2,Apps Script Enablement,Backlog
+iterable,2,Apps Script Enablement,Backlog
+jenkins,2,Apps Script Enablement,Backlog
+jira,2,Apps Script Enablement,Backlog
+jira-service-management,2,Apps Script Enablement,Backlog
+jotform,2,Apps Script Enablement,Backlog
+klaviyo,2,Apps Script Enablement,Backlog
+kubernetes,2,Apps Script Enablement,Backlog
+kustomer,2,Apps Script Enablement,Backlog
+lever,2,Apps Script Enablement,Backlog
+linear,2,Apps Script Enablement,Backlog
+llm,2,Apps Script Enablement,Backlog
+looker,2,Apps Script Enablement,Backlog
+luma,2,Apps Script Enablement,Backlog
+magento,2,Apps Script Enablement,Backlog
+mailchimp,2,Apps Script Enablement,Backlog
+mailchimp-enhanced,2,Apps Script Enablement,Backlog
+mailgun,2,Apps Script Enablement,Backlog
+marketo,2,Apps Script Enablement,Backlog
+microsoft-teams,1,Collaboration Core,2025.08
+microsoft-todo,2,Apps Script Enablement,Backlog
+miro,2,Apps Script Enablement,Backlog
+mixpanel,2,Apps Script Enablement,Backlog
+monday,2,Apps Script Enablement,Backlog
+monday-enhanced,2,Apps Script Enablement,Backlog
+navan,2,Apps Script Enablement,Backlog
+netsuite,2,Apps Script Enablement,Backlog
+newrelic,2,Apps Script Enablement,Backlog
+nexus,2,Apps Script Enablement,Backlog
+notion,1,Knowledge Workflows,2025.10
+notion-enhanced,2,Apps Script Enablement,Backlog
+okta,2,Apps Script Enablement,Backlog
+onedrive,1,Collaboration Core,2025.09
+opsgenie,2,Apps Script Enablement,Backlog
+outlook,1,Collaboration Core,2025.08
+pagerduty,2,Apps Script Enablement,Backlog
+pardot,2,Apps Script Enablement,Backlog
+paypal,2,Apps Script Enablement,Backlog
+pipedrive,2,Apps Script Enablement,Backlog
+powerbi,2,Apps Script Enablement,Backlog
+powerbi-enhanced,2,Apps Script Enablement,Backlog
+prometheus,2,Apps Script Enablement,Backlog
+qualtrics,2,Apps Script Enablement,Backlog
+quickbooks,1,Finance Automations,2025.09
+ramp,2,Apps Script Enablement,Backlog
+razorpay,2,Apps Script Enablement,Backlog
+ringcentral,2,Apps Script Enablement,Backlog
+sageintacct,2,Apps Script Enablement,Backlog
+salesforce,2,Apps Script Enablement,Backlog
+salesforce-enhanced,0,Revenue Automation,2025.07
+sap-ariba,2,Apps Script Enablement,Backlog
+sendgrid,2,Apps Script Enablement,Backlog
+sentry,2,Apps Script Enablement,Backlog
+servicenow,2,Apps Script Enablement,Backlog
+sharepoint,2,Apps Script Enablement,Backlog
+shopify,1,Commerce Integrations,2025.10
+shopify-enhanced,2,Apps Script Enablement,Backlog
+slab,2,Apps Script Enablement,Backlog
+slack,0,Collaboration Core,2025.05
+slack-enhanced,2,Apps Script Enablement,Backlog
+smartsheet,2,Apps Script Enablement,Backlog
+snowflake,2,Apps Script Enablement,Backlog
+sonarqube,2,Apps Script Enablement,Backlog
+square,2,Apps Script Enablement,Backlog
+stripe,1,Finance Automations,2025.10
+stripe-enhanced,1,Finance Automations,2025.10
+successfactors,2,Apps Script Enablement,Backlog
+surveymonkey,2,Apps Script Enablement,Backlog
+tableau,2,Apps Script Enablement,Backlog
+talkdesk,2,Apps Script Enablement,Backlog
+teamwork,2,Apps Script Enablement,Backlog
+terraform-cloud,2,Apps Script Enablement,Backlog
+toggl,2,Apps Script Enablement,Backlog
+trello,1,Productivity Enablement,2025.09
+trello-enhanced,2,Apps Script Enablement,Backlog
+twilio,2,Apps Script Enablement,Backlog
+typeform,2,Apps Script Enablement,Backlog
+victorops,2,Apps Script Enablement,Backlog
+webex,2,Apps Script Enablement,Backlog
+webflow,2,Apps Script Enablement,Backlog
+woocommerce,2,Apps Script Enablement,Backlog
+workday,2,Apps Script Enablement,Backlog
+workfront,2,Apps Script Enablement,Backlog
+xero,2,Apps Script Enablement,Backlog
+zendesk,1,Support Ops,2025.09
+zoho-books,2,Apps Script Enablement,Backlog
+zoho-crm,2,Apps Script Enablement,Backlog
+zoom-enhanced,2,Apps Script Enablement,Backlog
