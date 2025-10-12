@@ -107,9 +107,11 @@ import {
   buildRuntimeCapabilityIndex,
   getRuntimeCapabilityStatus,
   getRuntimeCapabilities,
+  getRuntimeEnvironmentInfo,
   mergeWithFallbackCapabilities,
   type RuntimeCapabilityMap,
   type RuntimeCapabilityIndex,
+  type RuntimeEnvironmentInfo,
 } from '@/services/runtimeCapabilitiesService';
 import { enqueueExecution, ExecutionEnqueueError } from '@/services/executions';
 import { useQueueHealth } from '@/hooks/useQueueHealth';
@@ -2177,6 +2179,10 @@ const GraphEditorContent = () => {
   );
   const [runtimeCapabilitiesLoading, setRuntimeCapabilitiesLoading] = useState(true);
   const [, setRuntimeCapabilitiesError] = useState<string | null>(null);
+  const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironmentInfo>(() =>
+    getRuntimeEnvironmentInfo(),
+  );
+  const connectorSimulatorEnabled = runtimeEnvironment.connectorSimulatorEnabled;
   const runtimeCapabilityIndex = useMemo(
     () => buildRuntimeCapabilityIndex(runtimeCapabilities, connectorDefinitions ?? null),
     [runtimeCapabilities, connectorDefinitions],
@@ -2367,6 +2373,7 @@ const GraphEditorContent = () => {
       setRuntimeCapabilitiesLoading(true);
       const capabilities = await getRuntimeCapabilities();
       setRuntimeCapabilities(mergeWithFallbackCapabilities(capabilities));
+       setRuntimeEnvironment(getRuntimeEnvironmentInfo());
       setRuntimeCapabilitiesError(null);
     } catch (error: any) {
       console.error('Failed to load runtime capabilities:', error);
@@ -2394,7 +2401,7 @@ const GraphEditorContent = () => {
   }, []);
 
   const nodeRequiresConnection = useCallback((node: any) => {
-    if (!node) return false;
+    if (!node || connectorSimulatorEnabled) return false;
     const role = String(node.type || node?.data?.role || '').toLowerCase();
     if (role.includes('trigger') || role.includes('transform')) {
       return false;
@@ -2404,7 +2411,7 @@ const GraphEditorContent = () => {
     const connectionId = data.connectionId || data.auth?.connectionId || params.connectionId;
     const hasInlineCredentials = Boolean(data.credentials || params.credentials);
     return !connectionId && !hasInlineCredentials;
-  }, []);
+  }, [connectorSimulatorEnabled]);
 
   const nodeConfigurationErrors = useMemo(
     () => collectNodeConfigurationErrors(nodes as any[], { nodeRequiresConnection }),
@@ -2563,6 +2570,11 @@ const GraphEditorContent = () => {
   }, [getNodeRuntimeSupport, nodes, runtimeCapabilitiesLoading]);
 
   const ensureSupportedNodes = useCallback(() => {
+    if (connectorSimulatorEnabled) {
+      setRunBanner(null);
+      return true;
+    }
+
     if (runtimeCapabilitiesLoading) {
       return true;
     }
@@ -2591,7 +2603,7 @@ const GraphEditorContent = () => {
     }
 
     return true;
-  }, [findUnsupportedNode, runtimeCapabilitiesLoading, setRunBanner]);
+  }, [connectorSimulatorEnabled, findUnsupportedNode, runtimeCapabilitiesLoading, setRunBanner]);
 
   useEffect(() => {
     if (!catalogLoading && !runtimeCapabilitiesLoading) {

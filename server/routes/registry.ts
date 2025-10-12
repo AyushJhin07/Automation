@@ -4,6 +4,7 @@ import { ConnectorRegistry } from '../ConnectorRegistry';
 import { getRuntimeCapabilities } from '../runtime/registry.js';
 import { enabledRuntimes, getRuntimeFlagSummaries } from '../runtime/capabilities.js';
 import { getErrorMessage } from '../types/common';
+import { env } from '../env.js';
 
 const router = Router();
 
@@ -13,6 +14,11 @@ router.get('/api/registry/capabilities', (_req, res) => {
     capabilities: getRuntimeCapabilities(),
     runtimes: enabledRuntimes(),
     runtimeFlags: getRuntimeFlagSummaries(),
+    environment: {
+      connectorSimulatorEnabled: env.CONNECTOR_SIMULATOR_ENABLED,
+      genericExecutorEnabled: env.GENERIC_EXECUTOR_ENABLED,
+      nodeEnv: env.NODE_ENV,
+    },
   });
 });
 

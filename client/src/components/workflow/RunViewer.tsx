@@ -219,10 +219,6 @@ export const RunViewer: React.FC<RunViewerProps> = ({
 
   // Load executions
   useEffect(() => {
-    loadExecutions();
-  }, [loadExecutions]);
-
-  useEffect(() => {
     const loadDuplicateEvents = async () => {
       if (!selectedExecution) {
         setDuplicateEvents([]);
@@ -499,6 +495,7 @@ export const RunViewer: React.FC<RunViewerProps> = ({
 
       const response = await authFetch(`/api/executions?${params}`);
       const data = await parseJsonSafe(response);
+      console.debug('RunViewer executions response', data);
 
       if (!response.ok) {
         const message = (data as any)?.error || 'Failed to load executions';
@@ -526,6 +523,10 @@ export const RunViewer: React.FC<RunViewerProps> = ({
       setLoading(false);
     }
   }, [authFetch, handleAuthorizationError, initialExecutionId, initialWorkflowId, parseJsonSafe, statusFilter]);
+
+  useEffect(() => {
+    loadExecutions();
+  }, [loadExecutions]);
 
   const selectedNodeDetail = selectedNode ? nodeDetails[selectedNode.nodeId] ?? null : null;
   const inspectorOutput = selectedNodeDetail?.output ?? selectedNode?.output ?? null;

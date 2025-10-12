@@ -3,9 +3,11 @@ import {
   buildRuntimeCapabilityIndex,
   createFallbackRuntimeCapabilities,
   getRuntimeCapabilities,
+  getRuntimeEnvironmentInfo,
   mergeWithFallbackCapabilities,
   type RuntimeCapabilityIndex,
   type RuntimeCapabilityMap,
+  type RuntimeEnvironmentInfo,
 } from '@/services/runtimeCapabilitiesService';
 import { useConnectorDefinitions } from './useConnectorDefinitions';
 
@@ -15,6 +17,7 @@ interface UseRuntimeCapabilityIndexResult {
   loading: boolean;
   error: string | null;
   refresh: (forceRefresh?: boolean) => Promise<void>;
+  environment: RuntimeEnvironmentInfo;
 }
 
 export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => {
@@ -23,6 +26,7 @@ export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => 
   const [capabilities, setCapabilities] = useState<RuntimeCapabilityMap>(() => createFallbackRuntimeCapabilities());
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [environment, setEnvironment] = useState<RuntimeEnvironmentInfo>(() => getRuntimeEnvironmentInfo());
 
   const refresh = useCallback(async (forceRefresh = false) => {
     setLoading(true);
@@ -30,6 +34,7 @@ export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => 
     try {
       const loaded = await getRuntimeCapabilities(forceRefresh);
       setCapabilities(mergeWithFallbackCapabilities(loaded));
+      setEnvironment(getRuntimeEnvironmentInfo());
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setCapabilities(createFallbackRuntimeCapabilities());
@@ -57,5 +62,6 @@ export const useRuntimeCapabilityIndex = (): UseRuntimeCapabilityIndexResult => 
     loading: combinedLoading,
     error: combinedError,
     refresh,
+    environment,
   };
 };

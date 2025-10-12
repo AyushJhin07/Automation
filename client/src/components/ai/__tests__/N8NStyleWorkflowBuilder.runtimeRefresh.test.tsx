@@ -77,6 +77,10 @@ vi.mock('@/hooks/useRuntimeCapabilityIndex', () => {
         loading,
         error: null,
         refresh,
+        environment: {
+          connectorSimulatorEnabled: false,
+          genericExecutorEnabled: false,
+        },
       };
     },
   };

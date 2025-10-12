@@ -356,8 +356,10 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
     capabilities: runtimeCapabilities,
     index: runtimeCapabilityIndex,
     loading: runtimeCapabilitiesLoading,
+    environment: runtimeEnvironment,
     refresh: refreshRuntimeCapabilities,
   } = useRuntimeCapabilityIndex();
+  const connectorSimulatorEnabled = runtimeEnvironment.connectorSimulatorEnabled;
   const forceRefreshRuntimeCapabilities = useCallback(
     () => refreshRuntimeCapabilities(true),
     [refreshRuntimeCapabilities],
@@ -858,7 +860,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
 
   const nodeRequiresConnection = useCallback(
     (node: Node): boolean => {
-      if (!node) {
+      if (!node || connectorSimulatorEnabled) {
         return false;
       }
       const role = String(node.type || (node.data as any)?.role || '').toLowerCase();
@@ -871,7 +873,7 @@ export const N8NStyleWorkflowBuilder: React.FC = () => {
       const hasInlineCredentials = Boolean(data.credentials || params.credentials);
       return !connectionId && !hasInlineCredentials;
     },
-    []
+    [connectorSimulatorEnabled]
   );
 
   const nodeConfigurationErrors = useMemo(

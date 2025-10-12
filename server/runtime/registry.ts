@@ -13,8 +13,8 @@ interface GenericConnectorOperation {
   type: 'action' | 'trigger';
   app: string;
   operation: string;
-  endpoint: string;
-  method: string;
+  endpoint: string | null;
+  method: string | null;
   runtimes: RuntimeIdentifier[];
   fallbackRuntimes: RuntimeIdentifier[];
 }
@@ -425,6 +425,7 @@ function injectBuiltinRuntimeEntries(
 
 const runtimeRegistry = buildRegistry();
 injectBuiltinRuntimeEntries(runtimeRegistry, RUNTIME_HANDLER_KEYS);
+registerConnectorDefinitionCapabilities();
 
 let genericRuntimeRegistryCache: Record<string, RuntimeAppOperations> | null = null;
 let mergedRuntimeRegistryCache: Record<string, RuntimeAppOperations> | null = null;
@@ -636,19 +637,39 @@ function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
         const actions = Array.isArray(parsed.actions) ? parsed.actions : [];
         const triggers = Array.isArray(parsed.triggers) ? parsed.triggers : [];
 
-        for (const action of actions) {
-          const operationId = typeof action?.id === 'string' ? action.id.trim() : '';
-          const endpoint = typeof action?.endpoint === 'string' ? action.endpoint.trim() : '';
-          const method = typeof action?.method === 'string' ? action.method.trim() : '';
-          if (!operationId || !endpoint || !method) {
-            continue;
+        const appendOperation = (
+          type: 'action' | 'trigger',
+          source: Record<string, unknown> | null | undefined,
+        ) => {
+          if (!source || typeof source !== 'object') {
+            return;
           }
-          const runtimeMetadata =
-            action && typeof action === 'object'
-              ? deriveRuntimeMetadata(action as Record<string, unknown>)
-              : { native: [], fallback: [] };
+
+          const operationIdRaw = (source as { id?: unknown }).id;
+          const operationId =
+            typeof operationIdRaw === 'string' ? operationIdRaw.trim() : '';
+          if (!operationId) {
+            return;
+          }
+
+          const runtimeMetadata = deriveRuntimeMetadata(source);
+          if (
+            runtimeMetadata.native.length === 0 &&
+            runtimeMetadata.fallback.length === 0
+          ) {
+            // Skip purely declarative operations that lack runtime metadata.
+            return;
+          }
+
+          const endpointRaw = (source as { endpoint?: unknown }).endpoint;
+          const methodRaw = (source as { method?: unknown }).method;
+          const endpoint =
+            typeof endpointRaw === 'string' ? endpointRaw.trim() : null;
+          const method =
+            typeof methodRaw === 'string' ? methodRaw.trim() : null;
+
           operations.push({
-            type: 'action',
+            type,
             app: connectorId,
             operation: operationId,
             endpoint,
@@ -656,28 +677,14 @@ function loadConnectorDefinitionOperations(): GenericConnectorOperation[] {
             runtimes: runtimeMetadata.native,
             fallbackRuntimes: runtimeMetadata.fallback,
           });
+        };
+
+        for (const action of actions) {
+          appendOperation('action', action as Record<string, unknown>);
         }
 
         for (const trigger of triggers) {
-          const operationId = typeof trigger?.id === 'string' ? trigger.id.trim() : '';
-          const endpoint = typeof trigger?.endpoint === 'string' ? trigger.endpoint.trim() : '';
-          const method = typeof trigger?.method === 'string' ? trigger.method.trim() : '';
-          if (!operationId || !endpoint || !method) {
-            continue;
-          }
-          const runtimeMetadata =
-            trigger && typeof trigger === 'object'
-              ? deriveRuntimeMetadata(trigger as Record<string, unknown>)
-              : { native: [], fallback: [] };
-          operations.push({
-            type: 'trigger',
-            app: connectorId,
-            operation: operationId,
-            endpoint,
-            method,
-            runtimes: runtimeMetadata.native,
-            fallbackRuntimes: runtimeMetadata.fallback,
-          });
+          appendOperation('trigger', trigger as Record<string, unknown>);
         }
       } catch (error) {
         console.warn(
@@ -727,6 +734,18 @@ function buildGenericRuntimeRegistry(): Record<string, RuntimeAppOperations> {
   }
 
   return registry;
+}
+
+function registerConnectorDefinitionCapabilities(): void {
+  for (const operation of loadConnectorDefinitionOperations()) {
+    for (const runtime of operation.runtimes) {
+      recordRuntimeCapability(operation.type, operation.app, operation.operation, runtime, 'native');
+    }
+
+    for (const runtime of operation.fallbackRuntimes) {
+      recordRuntimeCapability(operation.type, operation.app, operation.operation, runtime, 'fallback');
+    }
+  }
 }
 
 function ensureGenericRuntimeRegistry(): Record<string, RuntimeAppOperations> {

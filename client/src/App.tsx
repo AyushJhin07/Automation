@@ -26,6 +26,7 @@ import WorkflowBuilder from "./pages/WorkflowBuilder";
 import GraphEditor from "./pages/GraphEditor";
 import OAuthCallback from "./pages/OAuthCallback";
 import RunExplorer from "./pages/RunExplorer";
+import RunViewerPage from "./pages/RunViewerPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/usage" element={<AdminUsage />} />
             <Route path="/runs" element={<RunExplorer />} />
+            <Route path="/runs/:executionId" element={<RunViewerPage />} />
             <Route path="/pre-built-apps" element={<PreBuiltApps />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/contact" element={<Contact />} />

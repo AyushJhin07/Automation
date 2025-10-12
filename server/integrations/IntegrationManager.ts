@@ -327,6 +327,25 @@ export class IntegrationManager {
             executionTime: Date.now() - startTime,
           };
         }
+
+        if (
+          params.credentials &&
+          typeof params.credentials === 'object' &&
+          '__connectorSimulator' in params.credentials
+        ) {
+          return {
+            success: true,
+            data: {
+              app: params.appName,
+              functionId: params.functionId,
+              simulator: true,
+            },
+            error: undefined,
+            appName: params.appName,
+            functionId: params.functionId,
+            executionTime: Date.now() - startTime,
+          };
+        }
       }
 
       // Check if app is supported; if not, try generic executor when enabled

@@ -40,6 +40,10 @@ vi.mock('@/hooks/useRuntimeCapabilityIndex', () => ({
     loading: false,
     error: null,
     refresh: vi.fn(),
+    environment: {
+      connectorSimulatorEnabled: false,
+      genericExecutorEnabled: false,
+    },
   }),
 }));
 
@@ -378,4 +382,3 @@ describe('N8NStyleWorkflowBuilder toolbar gating', () => {
     });
   });
 });
-

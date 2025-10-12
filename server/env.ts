@@ -142,7 +142,30 @@ for (const key of [...requiredVariables, ...trackedOptionalSecrets]) {
   }
 }
 
+const inferLocalServerContext = (): boolean => {
+  const url = (process.env.SERVER_PUBLIC_URL ?? '').toLowerCase();
+  if (!url) {
+    return false;
+  }
+  return url.includes('localhost') || url.includes('127.0.0.1');
+};
+
 // Export environment variables for easy access
+const CONNECTOR_SIMULATOR_ENABLED = (() => {
+  const raw = process.env.CONNECTOR_SIMULATOR_ENABLED;
+  if (raw !== undefined) {
+    const normalized = raw.trim().toLowerCase();
+    return ['true', '1', 'yes', 'on'].includes(normalized);
+  }
+  if (isDevelopmentEnvironment) {
+    return true;
+  }
+  if (inferLocalServerContext()) {
+    return true;
+  }
+  return false;
+})();
+
 const CONNECTOR_SIMULATOR_FIXTURES_DIR = process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR
   ? resolve(process.cwd(), process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR)
   : resolve(process.cwd(), 'server', 'testing', 'fixtures');
@@ -161,7 +184,7 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || '',
   ENABLE_LLM_FEATURES: process.env.ENABLE_LLM_FEATURES === 'true',
   GENERIC_EXECUTOR_ENABLED: process.env.GENERIC_EXECUTOR_ENABLED === 'true',
-  CONNECTOR_SIMULATOR_ENABLED: process.env.CONNECTOR_SIMULATOR_ENABLED === 'true',
+  CONNECTOR_SIMULATOR_ENABLED,
   ALLOW_PLAINTEXT_TOKENS_IN_DEV: process.env.ALLOW_PLAINTEXT_TOKENS_IN_DEV === 'true',
   CONNECTOR_SIMULATOR_FIXTURES_DIR,
   QUEUE_REDIS_HOST: process.env.QUEUE_REDIS_HOST || '127.0.0.1',
@@ -197,7 +220,7 @@ export const env = {
 
 export const FLAGS = {
   GENERIC_EXECUTOR_ENABLED: (process.env.GENERIC_EXECUTOR_ENABLED === 'true'),
-  CONNECTOR_SIMULATOR_ENABLED: (process.env.CONNECTOR_SIMULATOR_ENABLED === 'true'),
+  CONNECTOR_SIMULATOR_ENABLED,
   ALLOW_PLAINTEXT_TOKENS_IN_DEV: (process.env.ALLOW_PLAINTEXT_TOKENS_IN_DEV === 'true'),
   ENABLE_DEV_IGNORE_QUEUE,
 } as const;

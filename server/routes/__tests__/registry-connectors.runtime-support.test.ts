@@ -4,8 +4,10 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 const { ConnectorRegistry } = await import('../../ConnectorRegistry.ts');
+const runtimeRegistryModule = await import('../../runtime/registry.ts');
 const registryRouterModule = await import('../registry.ts');
 const registryRouter = registryRouterModule.default;
+const { resolveRuntime } = runtimeRegistryModule;
 
 const registry = ConnectorRegistry.getInstance();
 await registry.init();
@@ -42,16 +44,52 @@ try {
     assert.equal(typeof triggerSupport?.nodeJs, 'boolean', 'triggers should include nodeJs runtime flag');
   }
 
-  const nodeSupported = connectors.some(connector => {
-    const actionHasNode = Array.isArray(connector.actions)
-      ? connector.actions.some((action: any) => action?.runtimeSupport?.nodeJs === true)
-      : false;
-    const triggerHasNode = Array.isArray(connector.triggers)
-      ? connector.triggers.some((trigger: any) => trigger?.runtimeSupport?.nodeJs === true)
-      : false;
-    return actionHasNode || triggerHasNode;
-  });
-  assert.ok(nodeSupported, 'registry connectors should report at least one node-capable operation');
+  let connectorsWithRuntime = 0;
+
+  for (const connector of connectors) {
+    const verify = (collection: any[], kind: 'action' | 'trigger') => {
+      if (!Array.isArray(collection)) {
+        return;
+      }
+      for (const entry of collection) {
+        const runtime = resolveRuntime({
+          kind,
+          appId: connector.id,
+          operationId: entry.id,
+        });
+
+        const expectedNode =
+          runtime.enabledNativeRuntimes.includes('node') ||
+          runtime.enabledFallbackRuntimes.includes('node');
+        const expectedAppsScript =
+          runtime.enabledNativeRuntimes.includes('appsScript') ||
+          runtime.enabledFallbackRuntimes.includes('appsScript');
+
+        if (expectedNode || expectedAppsScript) {
+          connectorsWithRuntime += 1;
+        }
+
+        assert.equal(
+          entry.runtimeSupport?.nodeJs,
+          expectedNode,
+          `${connector.id}.${entry.id} node runtime flag should match resolver`,
+        );
+        assert.equal(
+          entry.runtimeSupport?.appsScript,
+          expectedAppsScript,
+          `${connector.id}.${entry.id} appsScript runtime flag should match resolver`,
+        );
+      }
+    };
+
+    verify(connector.actions, 'action');
+    verify(connector.triggers, 'trigger');
+  }
+
+  assert.ok(
+    connectorsWithRuntime > 0,
+    'Expected at least one connector operation with runtime support',
+  );
 
   console.log('Registry connectors endpoint exposes runtime support metadata for actions and triggers.');
 } catch (error) {

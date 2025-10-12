@@ -58,6 +58,11 @@ export interface RuntimeCapabilityCheckResult {
   normalizedOperationId?: string;
 }
 
+export interface RuntimeEnvironmentInfo {
+  connectorSimulatorEnabled: boolean;
+  genericExecutorEnabled: boolean;
+}
+
 const CACHE_DURATION_MS = 60 * 1000;
 
 const DEFAULT_FALLBACK_RUNTIME: RuntimeKey = 'node';
@@ -65,6 +70,12 @@ const DEFAULT_FALLBACK_RUNTIME: RuntimeKey = 'node';
 let cachedCapabilities: RuntimeCapabilityMap | null = null;
 let cacheExpiresAt = 0;
 let inFlightRequest: Promise<RuntimeCapabilityMap> | null = null;
+let latestEnvironmentInfo: RuntimeEnvironmentInfo = {
+  connectorSimulatorEnabled: false,
+  genericExecutorEnabled: false,
+};
+
+export const getRuntimeEnvironmentInfo = (): RuntimeEnvironmentInfo => latestEnvironmentInfo;
 
 const RUNTIME_KEY_SET = new Set<RuntimeKey>(ALL_RUNTIMES);
 
@@ -580,6 +591,11 @@ const fetchRuntimeCapabilities = async (): Promise<RuntimeCapabilityMap> => {
   }
 
   const payload = await response.json().catch(() => ({}));
+  const environment = (payload?.environment ?? payload?.env ?? {}) as Record<string, any>;
+  latestEnvironmentInfo = {
+    connectorSimulatorEnabled: Boolean(environment.connectorSimulatorEnabled),
+    genericExecutorEnabled: Boolean(environment.genericExecutorEnabled),
+  };
   const capabilities =
     payload?.capabilities ?? payload?.data?.capabilities ?? payload?.data ?? payload?.results ?? payload;
 

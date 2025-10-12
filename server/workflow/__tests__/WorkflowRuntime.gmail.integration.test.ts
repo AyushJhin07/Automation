@@ -34,9 +34,106 @@ process.env.CONNECTOR_SIMULATOR_FIXTURES_DIR =
 try {
   const { connectionService } = await import('../../services/ConnectionService.js');
   const { WorkflowRuntimeService } = await import('../WorkflowRuntimeService.js');
+  const { db, users, organizations } = await import('../../database/schema.js');
 
-  const userId = 'gmail-workflow-user';
-  const organizationId = 'gmail-workflow-org';
+  const userId = '00000000-0000-0000-0000-000000000001';
+  const organizationId = '00000000-0000-0000-0000-000000000002';
+
+  const nowIso = new Date().toISOString();
+  const billing = {
+    customerId: 'simulated-customer',
+    subscriptionId: 'simulated-subscription',
+    currentPeriodStart: nowIso,
+    currentPeriodEnd: nowIso,
+    usage: {
+      workflowExecutions: 0,
+      apiCalls: 0,
+      storageUsed: 0,
+      usersActive: 1,
+      llmTokens: 0,
+      llmCostUSD: 0,
+      concurrentExecutions: 0,
+      executionsInCurrentWindow: 0,
+    },
+    limits: {
+      maxWorkflows: 100,
+      maxExecutions: 10000,
+      maxUsers: 10,
+      maxStorage: 1024,
+      maxConcurrentExecutions: 5,
+      maxExecutionsPerMinute: 60,
+      connectorConcurrency: {},
+    },
+  } satisfies typeof organizations.$inferInsert['billing'];
+
+  const features = {
+    ssoEnabled: false,
+    auditLogging: false,
+    customBranding: false,
+    advancedAnalytics: false,
+    prioritySupport: false,
+    customIntegrations: false,
+    onPremiseDeployment: false,
+    dedicatedInfrastructure: false,
+  } satisfies typeof organizations.$inferInsert['features'];
+
+  const security = {
+    ipWhitelist: [],
+    allowedDomains: [],
+    allowedIpRanges: [],
+    mfaRequired: false,
+    sessionTimeout: 3600,
+    passwordPolicy: {
+      minLength: 8,
+      requireSpecialChars: false,
+      requireNumbers: false,
+      requireUppercase: false,
+    },
+    apiKeyRotationDays: 90,
+  } satisfies typeof organizations.$inferInsert['security'];
+
+  const branding = {
+    companyName: 'Gmail Integration Org',
+    supportEmail: 'support@example.com',
+    logoUrl: null,
+    primaryColor: null,
+    customDomain: null,
+  } satisfies typeof organizations.$inferInsert['branding'];
+
+  const compliance = {
+    gdprEnabled: false,
+    hipaaCompliant: false,
+    soc2Type2: false,
+    dataResidency: 'us',
+    retentionPolicyDays: 30,
+  } satisfies typeof organizations.$inferInsert['compliance'];
+
+  await db
+    .insert(users)
+    .values({
+      id: userId,
+      email: 'gmail.integration@example.invalid',
+      passwordHash: 'not-used',
+      name: 'Gmail Integration Tester',
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(organizations)
+    .values({
+      id: organizationId,
+      name: 'Gmail Integration Org',
+      subdomain: 'gmail-integration',
+      plan: 'enterprise',
+      status: 'active',
+      region: 'us',
+      billing,
+      features,
+      security,
+      branding,
+      compliance,
+    })
+    .onConflictDoNothing();
 
   const connectionId = await connectionService.storeConnection(
     userId,

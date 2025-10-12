@@ -15,4 +15,5 @@ logs/
 
 .data/
 configs/connector-smoke.config.json
-
+.tmp/
+dump.rdb

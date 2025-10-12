@@ -100,7 +100,7 @@ interface ConnectorCredentialResolution {
   credentials: APICredentials;
   connectionId?: string;
   additionalConfig?: Record<string, any>;
-  source: 'inline' | 'connection';
+  source: 'inline' | 'connection' | 'simulation';
 }
 
 interface DelayNodeResult {
@@ -905,6 +905,16 @@ export class WorkflowRuntime {
     }
 
     if (!connectionId) {
+      if (env.CONNECTOR_SIMULATOR_ENABLED) {
+        const additionalConfig = this.extractAdditionalConfig(node, resolvedParams);
+        const simulatedCredentials = { __connectorSimulator: true } as APICredentials;
+        return {
+          credentials: simulatedCredentials,
+          connectionId: undefined,
+          additionalConfig,
+          source: 'simulation',
+        };
+      }
       const label = (node as any)?.label ?? node.id;
       throw new Error(`No connection configured for node "${label}"`);
     }
