@@ -56,3 +56,13 @@ The real Apps Script builder now selects templates from `server/workflow/apps-sc
 - **Knowledge management (Notion enhanced)** – webhook triggers are marked with `type: "webhook"`. The webhook reply template handles payload parsing, dispatches into the workflow, and returns the `ContentService` JSON confirmation expected by Notion.
 
 Review `server/workflow/apps-script-templates.ts` for the exact template implementations and add new helpers there whenever a connector family needs bespoke scaffolding.
+
+## QA Log Template
+
+Use the following Markdown table when recording manual QA runs. Attach a copy of the table to the connector tracker row and link it in the rollout PR description.
+
+| Scenario | Preconditions | Tester | Result | Notes |
+| --- | --- | --- | --- | --- |
+| Example: OAuth reconnect flow | Connector configured with expired refresh token | A. Rivera | ✅ Pass | Token refresh prompt surfaced and completed. |
+
+Add or duplicate rows until all test scenarios defined in the rollout tracker are covered.

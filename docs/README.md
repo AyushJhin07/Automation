@@ -88,6 +88,7 @@ cd automation-platform
 - **[Deployment Guide](./deployment-guide.md)** - Production deployment instructions
 - **[Architecture Overview](./architecture.md)** - Technical deep dive
 - **[Apps Script command reference](./apps-script-rollout/commands.md)** - CLI checklist for rollout automation
+- **[Apps Script Rollout Spec](./apps-script-rollout/spec.md)** - Goals, KPIs, and DoD checklists for connector graduation
 
 ### **🏢 For Enterprise**
 
