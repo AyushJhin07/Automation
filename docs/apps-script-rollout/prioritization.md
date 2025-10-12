@@ -42,3 +42,13 @@ Alternate header aliases such as `revenue`, `pipeline`, `executions`, or `ticket
 The generated CSV contains one row per connector with the merged metrics, calculated scores, assigned tier, and source attribution. Review the console output for a human-readable digest of Tier 0/1/2 priorities plus ARR, usage, and support context.
 
 Use the CSV to align Apps Script rollout sequencing, and update the CRM/usage/support exports to refresh the prioritization as new data arrives.
+
+## Regenerating the runtime coverage CSV
+
+Every rollout PR should refresh the Apps Script runtime coverage export so the tracker sheet stays accurate:
+
+1. Run `npm run report:runtime -- --output production/reports/apps-script-runtime-coverage.csv` after applying the rollout changes locally. This writes the operation-level dataset plus per-connector summaries consumed by the tracker.
+2. Commit the updated `production/reports/apps-script-runtime-coverage.csv` alongside the rollout PR so reviewers can confirm the diff.
+3. Upload the CSV to the shared tracker sheet (replace the existing data on the runtime coverage tab) once the PR merges.
+
+Regenerating the file every time keeps the rollout dashboard synchronized with the source of truth in the repository.

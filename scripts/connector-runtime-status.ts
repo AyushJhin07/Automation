@@ -1,7 +1,12 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { parseArgs } from 'node:util';
+
 import { connectorRegistry } from '../server/ConnectorRegistry.js';
 import {
   getRuntimeCapabilities,
   type RuntimeCapabilityOperationSummary,
+  type RuntimeCapabilitySummary,
 } from '../server/runtime/registry.js';
 
 type RuntimeTotals = {
@@ -14,7 +19,64 @@ type RuntimeTotals = {
   appsScriptDisabled: number;
 };
 
-const totals: RuntimeTotals = {
+type RuntimeSupportCategory = 'both' | 'node' | 'appsScript' | 'neither';
+
+type RuntimeSupportSummary = {
+  summary: string;
+  category: RuntimeSupportCategory;
+  nodeAvailable: boolean;
+  nodeEnabled: boolean;
+  appsScriptAvailable: boolean;
+  appsScriptEnabled: boolean;
+};
+
+type ConnectorSummaryCounts = {
+  totalOperations: number;
+  appsScriptAvailable: number;
+  appsScriptEnabled: number;
+  appsScriptDisabled: number;
+};
+
+type OperationReport = {
+  detail: RuntimeCapabilityOperationSummary;
+  evaluation: RuntimeSupportSummary;
+};
+
+type ConnectorReport = {
+  app: string;
+  normalizedAppId: string;
+  operations: OperationReport[];
+  summary: ConnectorSummaryCounts;
+};
+
+export type CoverageReport = {
+  csv: string;
+  rows: string[][];
+  totals: RuntimeTotals;
+  apps: ConnectorReport[];
+};
+
+const DEFAULT_OUTPUT_PATH = 'production/reports/apps-script-runtime-coverage.csv';
+
+const CSV_HEADERS = [
+  'type',
+  'connector',
+  'normalized_connector',
+  'operation',
+  'normalized_operation',
+  'kind',
+  'node_available',
+  'node_enabled',
+  'apps_script_available',
+  'apps_script_enabled',
+  'apps_script_disabled',
+  'total_operations',
+  'apps_script_available_count',
+  'apps_script_enabled_count',
+  'apps_script_disabled_count',
+];
+
+const createEmptyTotals = (): RuntimeTotals => ({
   operations: 0,
   nodeSupported: 0,
   appsScriptSupported: 0,
@@ -22,11 +84,32 @@ const totals: RuntimeTotals = {
   neitherRuntime: 0,
   nodeDisabled: 0,
   appsScriptDisabled: 0,
+});
+
+const formatBoolean = (value: boolean): string => (value ? 'TRUE' : 'FALSE');
+
+const escapeCsvValue = (value: string): string => {
+  if (value === '') {
+    return '';
+  }
+  const needsQuoting = /[",\n]/u.test(value);
+  if (!needsQuoting) {
+    return value;
+  }
+  return `"${value.replace(/"/gu, '""')}"`;
+};
+
+const serializeCoverageRows = (rows: string[][]): string => {
+  const lines = [CSV_HEADERS, ...rows].map(columns =>
+    columns.map(column => escapeCsvValue(column)).join(','),
+  );
+  return `${lines.join('\n')}\n`;
 };
 
 const describeRuntimeSupport = (
   detail: RuntimeCapabilityOperationSummary,
-): { summary: string; category: 'both' | 'node' | 'appsScript' | 'neither' } => {
+  totals: RuntimeTotals,
+): RuntimeSupportSummary => {
   const includesRuntime = (runtime: 'node' | 'appsScript'): boolean =>
     detail.nativeRuntimes.includes(runtime) || detail.fallbackRuntimes.includes(runtime);
 
@@ -57,7 +140,7 @@ const describeRuntimeSupport = (
     parts.push('Apps Script ❌');
   }
 
-  let category: 'both' | 'node' | 'appsScript' | 'neither' = 'neither';
+  let category: RuntimeSupportCategory = 'neither';
   if (nodeEnabled && appsScriptEnabled) {
     category = 'both';
   } else if (nodeEnabled) {
@@ -93,18 +176,22 @@ const describeRuntimeSupport = (
       break;
   }
 
-  return { summary: parts.join(' | '), category };
+  return {
+    summary: parts.join(' | '),
+    category,
+    nodeAvailable,
+    nodeEnabled,
+    appsScriptAvailable,
+    appsScriptEnabled,
+  };
 };
 
-const run = async (): Promise<void> => {
-  process.env.NODE_ENV ??= 'development';
-
-  await connectorRegistry.init();
-
-  const capabilities = getRuntimeCapabilities();
-
-  console.log('🔌 Connector Runtime Support Report');
-  console.log('===================================');
+const buildConnectorReport = (
+  capabilities: RuntimeCapabilitySummary[],
+): { rows: string[][]; totals: RuntimeTotals; apps: ConnectorReport[] } => {
+  const totals = createEmptyTotals();
+  const rows: string[][] = [];
+  const apps: ConnectorReport[] = [];
 
   for (const app of capabilities) {
     const operations: RuntimeCapabilityOperationSummary[] = [
@@ -121,35 +208,153 @@ const run = async (): Promise<void> => {
       continue;
     }
 
-    console.log(`\n${app.app} (${operations.length} operations)`);
+    const connectorSummary: ConnectorSummaryCounts = {
+      totalOperations: operations.length,
+      appsScriptAvailable: 0,
+      appsScriptEnabled: 0,
+      appsScriptDisabled: 0,
+    };
+
+    const operationReports: OperationReport[] = [];
 
     for (const op of operations) {
       totals.operations += 1;
-      const { summary } = describeRuntimeSupport(op);
-      console.log(`  [${op.kind}] ${op.id}: ${summary}`);
+      const evaluation = describeRuntimeSupport(op, totals);
+      operationReports.push({ detail: op, evaluation });
+
+      if (evaluation.appsScriptAvailable) {
+        connectorSummary.appsScriptAvailable += 1;
+      }
+      if (evaluation.appsScriptEnabled) {
+        connectorSummary.appsScriptEnabled += 1;
+      } else if (evaluation.appsScriptAvailable) {
+        connectorSummary.appsScriptDisabled += 1;
+      }
+
+      rows.push([
+        'operation',
+        app.app,
+        app.normalizedAppId,
+        op.id,
+        op.normalizedId,
+        op.kind,
+        formatBoolean(evaluation.nodeAvailable),
+        formatBoolean(evaluation.nodeEnabled),
+        formatBoolean(evaluation.appsScriptAvailable),
+        formatBoolean(evaluation.appsScriptEnabled),
+        formatBoolean(evaluation.appsScriptAvailable && !evaluation.appsScriptEnabled),
+        '',
+        '',
+        '',
+        '',
+      ]);
+    }
+
+    rows.push([
+      'connector_summary',
+      app.app,
+      app.normalizedAppId,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      String(connectorSummary.totalOperations),
+      String(connectorSummary.appsScriptAvailable),
+      String(connectorSummary.appsScriptEnabled),
+      String(connectorSummary.appsScriptDisabled),
+    ]);
+
+    apps.push({
+      app: app.app,
+      normalizedAppId: app.normalizedAppId,
+      operations: operationReports,
+      summary: connectorSummary,
+    });
+  }
+
+  return { rows, totals, apps };
+};
+
+export const buildCoverageReport = (capabilities: RuntimeCapabilitySummary[]): CoverageReport => {
+  const { rows, totals, apps } = buildConnectorReport(capabilities);
+  const csv = serializeCoverageRows(rows);
+  return { csv, rows, totals, apps };
+};
+
+type CliOptions = {
+  output: string;
+};
+
+const parseCliOptions = (argv: string[]): CliOptions => {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      output: { type: 'string', short: 'o' },
+    },
+  });
+
+  return {
+    output: typeof values.output === 'string' && values.output.trim() !== ''
+      ? values.output
+      : DEFAULT_OUTPUT_PATH,
+  };
+};
+
+const ensureDirectory = async (filePath: string): Promise<void> => {
+  const directory = dirname(filePath);
+  await mkdir(directory, { recursive: true });
+};
+
+const run = async (): Promise<void> => {
+  process.env.NODE_ENV ??= 'development';
+
+  const options = parseCliOptions(process.argv.slice(2));
+
+  await connectorRegistry.init();
+
+  const capabilities = getRuntimeCapabilities();
+  const report = buildCoverageReport(capabilities);
+
+  console.log('🔌 Connector Runtime Support Report');
+  console.log('===================================');
+
+  for (const appReport of report.apps) {
+    console.log(`\n${appReport.app} (${appReport.summary.totalOperations} operations)`);
+    for (const operation of appReport.operations) {
+      console.log(`  [${operation.detail.kind}] ${operation.detail.id}: ${operation.evaluation.summary}`);
     }
   }
 
   console.log('\nSummary');
   console.log('-------');
-  console.log(`Total operations: ${totals.operations}`);
-  console.log(`Node.js enabled: ${totals.nodeSupported}`);
-  console.log(`Apps Script enabled: ${totals.appsScriptSupported}`);
-  console.log(`Both runtimes enabled: ${totals.bothRuntimes}`);
-  console.log(`Neither runtime enabled: ${totals.neitherRuntime}`);
-  if (totals.nodeDisabled > 0 || totals.appsScriptDisabled > 0) {
+  console.log(`Total operations: ${report.totals.operations}`);
+  console.log(`Node.js enabled: ${report.totals.nodeSupported}`);
+  console.log(`Apps Script enabled: ${report.totals.appsScriptSupported}`);
+  console.log(`Both runtimes enabled: ${report.totals.bothRuntimes}`);
+  console.log(`Neither runtime enabled: ${report.totals.neitherRuntime}`);
+  if (report.totals.nodeDisabled > 0 || report.totals.appsScriptDisabled > 0) {
     console.log('\nRuntimes available but disabled by flag:');
-    if (totals.nodeDisabled > 0) {
-      console.log(`  Node.js disabled operations: ${totals.nodeDisabled}`);
+    if (report.totals.nodeDisabled > 0) {
+      console.log(`  Node.js disabled operations: ${report.totals.nodeDisabled}`);
     }
-    if (totals.appsScriptDisabled > 0) {
-      console.log(`  Apps Script disabled operations: ${totals.appsScriptDisabled}`);
+    if (report.totals.appsScriptDisabled > 0) {
+      console.log(`  Apps Script disabled operations: ${report.totals.appsScriptDisabled}`);
     }
   }
+
+  await ensureDirectory(options.output);
+  await writeFile(options.output, report.csv, 'utf8');
+  console.log(`\nSaved Apps Script runtime coverage CSV to ${options.output}`);
 };
 
-run().catch(error => {
-  console.error('Failed to generate runtime support report.');
-  console.error(error);
-  process.exitCode = 1;
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  run().catch(error => {
+    console.error('Failed to generate runtime support report.');
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
