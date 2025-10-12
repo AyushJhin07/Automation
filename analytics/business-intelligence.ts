@@ -949,4 +949,172 @@ export class ReportingService {
   }
 }
 
+export interface ConnectorImpactMetric {
+  connectorId: string;
+  usage: {
+    monthlyExecutions: number;
+    activeWorkflows: number;
+    activeOrganizations: number;
+    adoptionTrend: 'increasing' | 'stable' | 'decreasing';
+  };
+  revenue: {
+    annualRecurringRevenue: number;
+    pipelineInfluence: number;
+    expansionOpportunities: number;
+  };
+  support: {
+    monthlyTickets: number;
+    escalations: number;
+    avgResolutionHours: number;
+  };
+  notes?: string;
+}
+
+export const connectorImpactMetrics: ConnectorImpactMetric[] = [
+  {
+    connectorId: 'airtable',
+    usage: {
+      monthlyExecutions: 12800,
+      activeWorkflows: 920,
+      activeOrganizations: 180,
+      adoptionTrend: 'increasing'
+    },
+    revenue: {
+      annualRecurringRevenue: 1450000,
+      pipelineInfluence: 870000,
+      expansionOpportunities: 6
+    },
+    support: {
+      monthlyTickets: 18,
+      escalations: 2,
+      avgResolutionHours: 11.5
+    },
+    notes: 'Top performer for marketing ops and RevOps teams.'
+  },
+  {
+    connectorId: 'asana',
+    usage: {
+      monthlyExecutions: 8600,
+      activeWorkflows: 540,
+      activeOrganizations: 124,
+      adoptionTrend: 'increasing'
+    },
+    revenue: {
+      annualRecurringRevenue: 890000,
+      pipelineInfluence: 610000,
+      expansionOpportunities: 4
+    },
+    support: {
+      monthlyTickets: 24,
+      escalations: 3,
+      avgResolutionHours: 14.2
+    },
+    notes: 'Strong pull from program management teams expanding automation coverage.'
+  },
+  {
+    connectorId: 'jira',
+    usage: {
+      monthlyExecutions: 15600,
+      activeWorkflows: 1140,
+      activeOrganizations: 204,
+      adoptionTrend: 'increasing'
+    },
+    revenue: {
+      annualRecurringRevenue: 1720000,
+      pipelineInfluence: 960000,
+      expansionOpportunities: 9
+    },
+    support: {
+      monthlyTickets: 31,
+      escalations: 4,
+      avgResolutionHours: 16.8
+    },
+    notes: 'Critical for enterprise IT workflows with high ARR influence.'
+  },
+  {
+    connectorId: 'salesforce',
+    usage: {
+      monthlyExecutions: 21800,
+      activeWorkflows: 1380,
+      activeOrganizations: 238,
+      adoptionTrend: 'increasing'
+    },
+    revenue: {
+      annualRecurringRevenue: 2480000,
+      pipelineInfluence: 1350000,
+      expansionOpportunities: 11
+    },
+    support: {
+      monthlyTickets: 42,
+      escalations: 7,
+      avgResolutionHours: 18.4
+    },
+    notes: 'Flagship CRM integration with sustained enterprise growth.'
+  },
+  {
+    connectorId: 'slack',
+    usage: {
+      monthlyExecutions: 17400,
+      activeWorkflows: 1010,
+      activeOrganizations: 212,
+      adoptionTrend: 'stable'
+    },
+    revenue: {
+      annualRecurringRevenue: 1380000,
+      pipelineInfluence: 760000,
+      expansionOpportunities: 5
+    },
+    support: {
+      monthlyTickets: 15,
+      escalations: 1,
+      avgResolutionHours: 9.6
+    },
+    notes: 'High engagement from internal communications automation.'
+  },
+  {
+    connectorId: 'hubspot',
+    usage: {
+      monthlyExecutions: 9400,
+      activeWorkflows: 620,
+      activeOrganizations: 156,
+      adoptionTrend: 'increasing'
+    },
+    revenue: {
+      annualRecurringRevenue: 1120000,
+      pipelineInfluence: 680000,
+      expansionOpportunities: 7
+    },
+    support: {
+      monthlyTickets: 22,
+      escalations: 2,
+      avgResolutionHours: 12.1
+    },
+    notes: 'Strong co-selling motions with marketing automation teams.'
+  },
+  {
+    connectorId: 'zendesk',
+    usage: {
+      monthlyExecutions: 7200,
+      activeWorkflows: 480,
+      activeOrganizations: 132,
+      adoptionTrend: 'stable'
+    },
+    revenue: {
+      annualRecurringRevenue: 760000,
+      pipelineInfluence: 540000,
+      expansionOpportunities: 3
+    },
+    support: {
+      monthlyTickets: 35,
+      escalations: 5,
+      avgResolutionHours: 19.3
+    },
+    notes: 'Key support workflow with elevated support load to monitor.'
+  }
+];
+
+export function getConnectorImpactMetrics(): ConnectorImpactMetric[] {
+  return connectorImpactMetrics;
+}
+
 export default AdvancedAnalyticsService;
