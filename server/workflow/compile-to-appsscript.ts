@@ -1,5 +1,94 @@
 import { CompileResult, WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
+import webhookCapabilityReport from '../../production/reports/webhook-capability.json' assert { type: 'json' };
 import { GENERATED_REAL_OPS } from './realOps.generated.js';
+
+type WebhookCapabilityRecord = {
+  id: string;
+  name: string;
+  webhookCapable: boolean;
+};
+
+type WebhookConnector = {
+  id: string;
+  name: string;
+  normalizedId: string;
+};
+
+const WEBHOOK_CAPABLE_CONNECTORS: Map<string, WebhookConnector> = new Map(
+  (webhookCapabilityReport as WebhookCapabilityRecord[])
+    .filter(record => record?.webhookCapable)
+    .map(record => {
+      const normalizedId = record.id.toLowerCase();
+      return [normalizedId, { id: record.id, name: record.name, normalizedId }];
+    })
+);
+
+function normalizeConnectorId(value?: string | null): string | null {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length ? trimmed : null;
+}
+
+function deriveConnectorFromNode(node: WorkflowNode): WebhookConnector | null {
+  const candidates = new Set<string>();
+
+  const addCandidate = (value?: string | null) => {
+    const normalized = normalizeConnectorId(value ?? undefined);
+    if (normalized) {
+      candidates.add(normalized);
+    }
+  };
+
+  addCandidate((node as any)?.app);
+  addCandidate((node.data as any)?.app);
+
+  if (typeof node.type === 'string') {
+    const parts = node.type.split('.');
+    if (parts.length > 1) {
+      addCandidate(parts[1]);
+    }
+  }
+
+  if (typeof node.op === 'string') {
+    const [prefix] = node.op.split(':');
+    if (prefix) {
+      const opParts = prefix.split('.');
+      addCandidate(opParts[opParts.length - 1]);
+    }
+  }
+
+  for (const candidate of candidates) {
+    const connector = WEBHOOK_CAPABLE_CONNECTORS.get(candidate);
+    if (connector) {
+      return connector;
+    }
+  }
+
+  return null;
+}
+
+function getWebhookConnectorsFromGraph(graph: WorkflowGraph): WebhookConnector[] {
+  const connectors = new Map<string, WebhookConnector>();
+
+  for (const node of graph.nodes) {
+    const connector = deriveConnectorFromNode(node);
+    if (connector) {
+      connectors.set(connector.normalizedId, connector);
+    }
+  }
+
+  return Array.from(connectors.values());
+}
+
+function pascalCaseFromId(value: string): string {
+  return value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join('');
+}
 
 function appsScriptHttpHelpers(): string {
   return `
@@ -37,6 +126,260 @@ function logWarn(event, details) {
 
 function logError(event, details) {
   logStructured('ERROR', event, details);
+}
+
+var __TRIGGER_REGISTRY_KEY = '__studio_trigger_registry__';
+
+function __loadTriggerRegistry() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(__TRIGGER_REGISTRY_KEY);
+    if (!raw) {
+      return {};
+    }
+    var parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
+  } catch (error) {
+    logWarn('trigger_registry_parse_failed', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+  return {};
+}
+
+function __saveTriggerRegistry(registry) {
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      __TRIGGER_REGISTRY_KEY,
+      JSON.stringify(registry || {})
+    );
+  } catch (error) {
+    logError('trigger_registry_save_failed', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
+function __findTriggerById(triggerId) {
+  if (!triggerId) {
+    return null;
+  }
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    var trigger = triggers[i];
+    if (!trigger) {
+      continue;
+    }
+    if (typeof trigger.getUniqueId === 'function' && trigger.getUniqueId() === triggerId) {
+      return trigger;
+    }
+  }
+  return null;
+}
+
+function __ensureTrigger(triggerKey, handler, type, builderFn, description) {
+  var registry = __loadTriggerRegistry();
+  var entry = registry[triggerKey];
+  if (entry) {
+    var existing = __findTriggerById(entry.id);
+    if (existing) {
+      logInfo('trigger_exists', { key: triggerKey, handler: handler, type: type });
+      return { key: triggerKey, triggerId: entry.id, handler: handler, type: type };
+    }
+    logWarn('trigger_missing_recreating', { key: triggerKey, handler: handler, type: type });
+  }
+
+  try {
+    var trigger = builderFn();
+    var triggerId = trigger && typeof trigger.getUniqueId === 'function' ? trigger.getUniqueId() : null;
+    registry[triggerKey] = {
+      id: triggerId,
+      handler: handler,
+      type: type,
+      description: description || null,
+      updatedAt: new Date().toISOString()
+    };
+    __saveTriggerRegistry(registry);
+    logInfo('trigger_created', { key: triggerKey, handler: handler, type: type, description: description || null });
+    return { key: triggerKey, triggerId: triggerId, handler: handler, type: type };
+  } catch (error) {
+    logError('trigger_create_failed', {
+      key: triggerKey,
+      handler: handler,
+      type: type,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+function __createEphemeralTrigger(triggerKey, handler, type, builderFn, description) {
+  try {
+    var trigger = builderFn();
+    var triggerId = trigger && typeof trigger.getUniqueId === 'function' ? trigger.getUniqueId() : null;
+    logInfo('trigger_created', {
+      key: triggerKey,
+      handler: handler,
+      type: type,
+      ephemeral: true,
+      description: description || null
+    });
+    return { key: triggerKey, triggerId: triggerId, handler: handler, type: type };
+  } catch (error) {
+    logError('trigger_create_failed', {
+      key: triggerKey,
+      handler: handler,
+      type: type,
+      ephemeral: true,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+function syncTriggerRegistry(activeKeys) {
+  var registry = __loadTriggerRegistry();
+  var keep = {};
+  if (Array.isArray(activeKeys)) {
+    for (var i = 0; i < activeKeys.length; i++) {
+      keep[activeKeys[i]] = true;
+    }
+  }
+  var triggers = ScriptApp.getProjectTriggers();
+  var changed = false;
+
+  for (var key in registry) {
+    if (!keep[key]) {
+      var entry = registry[key];
+      var triggerId = entry && entry.id;
+      if (triggerId) {
+        for (var j = 0; j < triggers.length; j++) {
+          var trigger = triggers[j];
+          if (trigger && typeof trigger.getUniqueId === 'function' && trigger.getUniqueId() === triggerId) {
+            ScriptApp.deleteTrigger(trigger);
+            break;
+          }
+        }
+      }
+      delete registry[key];
+      changed = true;
+      logInfo('trigger_removed', { key: key });
+    }
+  }
+
+  if (changed) {
+    __saveTriggerRegistry(registry);
+  }
+}
+
+function clearTriggerByKey(triggerKey) {
+  if (!triggerKey) {
+    return;
+  }
+  var registry = __loadTriggerRegistry();
+  var entry = registry[triggerKey];
+  if (!entry) {
+    return;
+  }
+  var triggerId = entry.id;
+  var trigger = triggerId ? __findTriggerById(triggerId) : null;
+  if (trigger) {
+    ScriptApp.deleteTrigger(trigger);
+  }
+  delete registry[triggerKey];
+  __saveTriggerRegistry(registry);
+  logInfo('trigger_cleared', { key: triggerKey });
+}
+
+function buildTimeTrigger(config) {
+  config = config || {};
+  var handler = config.handler || 'main';
+  var triggerKey = config.key || handler + ':' + (config.frequency || 'time');
+  var description = config.description || null;
+
+  function builder() {
+    var timeBuilder = ScriptApp.newTrigger(handler).timeBased();
+    if (config.runAt) {
+      return timeBuilder.at(new Date(config.runAt)).create();
+    }
+    if (config.everyMinutes) {
+      timeBuilder.everyMinutes(Number(config.everyMinutes) || 1);
+    } else if (config.everyHours) {
+      timeBuilder.everyHours(Number(config.everyHours) || 1);
+    } else if (config.everyDays) {
+      timeBuilder.everyDays(Number(config.everyDays) || 1);
+    } else if (config.everyWeeks) {
+      timeBuilder.everyWeeks(Number(config.everyWeeks) || 1);
+    }
+    if (typeof config.atHour === 'number' && typeof timeBuilder.atHour === 'function') {
+      timeBuilder.atHour(config.atHour);
+    }
+    if (typeof config.nearMinute === 'number' && typeof timeBuilder.nearMinute === 'function') {
+      timeBuilder.nearMinute(config.nearMinute);
+    }
+    if (typeof config.onMonthDay === 'number' && typeof timeBuilder.onMonthDay === 'function') {
+      timeBuilder.onMonthDay(config.onMonthDay);
+    }
+    if (config.onWeekDay) {
+      var weekDay = config.onWeekDay;
+      if (typeof weekDay === 'string') {
+        weekDay = ScriptApp.WeekDay[weekDay] || ScriptApp.WeekDay.MONDAY;
+      }
+      if (weekDay) {
+        timeBuilder.onWeekDay(weekDay);
+      }
+    }
+    return timeBuilder.create();
+  }
+
+  if (config.ephemeral) {
+    return __createEphemeralTrigger(triggerKey, handler, 'time', builder, description);
+  }
+
+  return __ensureTrigger(triggerKey, handler, 'time', builder, description);
+}
+
+function buildPollingWrapper(triggerKey, executor) {
+  var stats = { processed: 0 };
+  logInfo('trigger_poll_start', { key: triggerKey });
+  var runtime = {
+    dispatch: function (payload) {
+      try {
+        main(payload || {});
+        stats.processed += 1;
+      } catch (error) {
+        logError('trigger_dispatch_failed', {
+          key: triggerKey,
+          message: error && error.message ? error.message : String(error)
+        });
+        throw error;
+      }
+    },
+    summary: function (partial) {
+      if (!partial || typeof partial !== 'object') {
+        return;
+      }
+      for (var key in partial) {
+        stats[key] = partial[key];
+      }
+    }
+  };
+
+  try {
+    var result = executor(runtime);
+    if (result && typeof result === 'object') {
+      runtime.summary(result);
+    }
+    logInfo('trigger_poll_success', { key: triggerKey, stats: stats });
+    return stats;
+  } catch (error) {
+    logError('trigger_poll_error', {
+      key: triggerKey,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
 }
 
 var __SECRET_HELPER_OVERRIDES =
@@ -875,6 +1218,43 @@ function emitManifest(graph: WorkflowGraph): string {
 
 const esc = (s: string) => s.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 
+function generateWebhookStubs(graph: WorkflowGraph): string {
+  const connectors = getWebhookConnectorsFromGraph(graph);
+  if (!connectors.length) {
+    return '';
+  }
+
+  return connectors
+    .map(connector => {
+      const pascal = pascalCaseFromId(connector.id);
+      const connectorId = esc(connector.id);
+      const connectorName = esc(connector.name || connector.id);
+      return `
+function register${pascal}Webhook(callbackUrl, options) {
+  logInfo('webhook_register_stub', { connector: '${connectorId}', name: '${connectorName}', callbackUrl: callbackUrl || null });
+  return {
+    status: 'stub',
+    connector: '${connectorId}',
+    name: '${connectorName}',
+    callbackUrl: callbackUrl || null,
+    options: options || null
+  };
+}
+
+function unregister${pascal}Webhook(webhookId) {
+  logInfo('webhook_unregister_stub', { connector: '${connectorId}', name: '${connectorName}', webhookId: webhookId || null });
+  return {
+    status: 'stub',
+    connector: '${connectorId}',
+    name: '${connectorName}',
+    webhookId: webhookId || null
+  };
+}
+`;
+    })
+    .join('\n');
+}
+
 function emitCode(graph: WorkflowGraph): string {
   console.log(`🔧 Walking graph with ${graph.nodes.length} nodes and ${graph.edges.length} edges`);
 
@@ -909,6 +1289,11 @@ function emitCode(graph: WorkflowGraph): string {
   // Generate trigger setup if needed
   if (preparedTriggerNodes.some(t => t.op?.includes('time') || t.op?.includes('schedule'))) {
     codeBlocks.push(generateTriggerSetup(preparedTriggerNodes));
+  }
+
+  const webhookStubBlock = generateWebhookStubs(graph);
+  if (webhookStubBlock) {
+    codeBlocks.push(webhookStubBlock);
   }
 
   // Generate helper functions for each node type
@@ -994,36 +1379,100 @@ function buildExecutionOrder(graph: WorkflowGraph): string[] {
 }
 
 function generateTriggerSetup(triggerNodes: WorkflowNode[]): string {
+  const timeTriggers = triggerNodes.filter(trigger => {
+    const op = String(trigger.op || '').toLowerCase();
+    return op.includes('time') || op.includes('schedule');
+  });
+
+  const lines = timeTriggers
+    .map((trigger, index) => {
+      const params: Record<string, any> = (trigger.params as any) ?? (trigger.data as any)?.config ?? {};
+
+      const rawFrequency = params.frequency;
+      let frequency = typeof rawFrequency === 'string'
+        ? rawFrequency
+        : typeof rawFrequency === 'object' && rawFrequency
+          ? (rawFrequency.value || rawFrequency.type || rawFrequency.unit || rawFrequency.frequency)
+          : undefined;
+      if (!frequency && typeof params.unit === 'string') {
+        frequency = params.unit;
+      }
+      const normalizedFrequency = String(frequency || 'daily').toLowerCase();
+
+      const timeValue = typeof params.time === 'string'
+        ? params.time
+        : typeof params.at === 'string'
+          ? params.at
+          : '09:00';
+      const [rawHour, rawMinute] = String(timeValue).split(':');
+      const parsedHour = Number(rawHour);
+      const parsedMinute = Number(rawMinute);
+      const safeHour = Number.isFinite(parsedHour) ? Math.min(Math.max(Math.round(parsedHour), 0), 23) : 9;
+      const safeMinute = Number.isFinite(parsedMinute) ? Math.min(Math.max(Math.round(parsedMinute), 0), 59) : 0;
+      const scheduleTime = `${safeHour.toString().padStart(2, '0')}:${safeMinute.toString().padStart(2, '0')}`;
+
+      const triggerKeyBaseRaw = trigger.id != null ? String(trigger.id) : `trigger_${index}`;
+      const triggerKeyBase = triggerKeyBaseRaw.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      let keySuffix = '';
+      const configEntries: string[] = [
+        `handler: 'main'`,
+        `frequency: '${normalizedFrequency}'`,
+        `description: '${esc(`${normalizedFrequency} schedule${scheduleTime ? ' @ ' + scheduleTime : ''}`)}'`
+      ];
+
+      if (normalizedFrequency === 'daily') {
+        const everyDays = Math.max(1, Number(params.everyDays ?? params.interval ?? 1) || 1);
+        keySuffix = `:${scheduleTime.replace(':', '')}`;
+        configEntries.push(`everyDays: ${everyDays}`);
+        configEntries.push(`atHour: ${safeHour}`);
+        configEntries.push(`nearMinute: ${safeMinute}`);
+      } else if (normalizedFrequency === 'hourly') {
+        const interval = Math.max(1, Number(params.everyHours ?? params.interval ?? params.every ?? 1) || 1);
+        keySuffix = `:h${interval}`;
+        configEntries.push(`everyHours: ${interval}`);
+        if (Number.isFinite(parsedMinute)) {
+          configEntries.push(`nearMinute: ${safeMinute}`);
+        }
+      } else if (normalizedFrequency === 'weekly') {
+        const rawWeekDay = params.weekDay || params.dayOfWeek || params.day || params.weekday || 'MONDAY';
+        const weekDay = typeof rawWeekDay === 'string' ? rawWeekDay.toUpperCase() : 'MONDAY';
+        const everyWeeks = Math.max(1, Number(params.everyWeeks ?? params.interval ?? 1) || 1);
+        keySuffix = `:${weekDay}`;
+        configEntries.push(`everyWeeks: ${everyWeeks}`);
+        configEntries.push(`onWeekDay: '${weekDay}'`);
+        configEntries.push(`atHour: ${safeHour}`);
+        configEntries.push(`nearMinute: ${safeMinute}`);
+      } else {
+        keySuffix = `:${scheduleTime.replace(':', '')}`;
+        configEntries.push(`everyDays: 1`);
+        configEntries.push(`atHour: ${safeHour}`);
+        configEntries.push(`nearMinute: ${safeMinute}`);
+      }
+
+      const triggerKey = `time:${triggerKeyBase}:${normalizedFrequency}${keySuffix}`;
+      configEntries.splice(1, 0, `key: '${triggerKey}'`);
+
+      const config = `{
+    ${configEntries.join(',\n    ')}
+  }`;
+      return `  track(buildTimeTrigger(${config}));`;
+    })
+    .filter(Boolean);
+
+  const actions = lines.length
+    ? `${lines.join('\n')}\n`
+    : "  logInfo('trigger_setup_skipped', { reason: 'no_recurring_time_triggers' });\n";
+
   return `
 function setupTriggers() {
-  // Remove existing triggers
-  ScriptApp.getProjectTriggers().forEach(tr => {
-    if (tr.getHandlerFunction() === 'main') ScriptApp.deleteTrigger(tr);
-  });
-  
-  // Create new triggers based on workflow configuration
-${triggerNodes.filter(t => t.op.includes('time') || t.op.includes('schedule')).map(trigger => {
-  const params = trigger.params;
-  if (params.frequency === 'daily') {
-    return `  ScriptApp.newTrigger('main')
-    .timeBased()
-    .everyDays(1)
-    .atHour(9)
-    .create();`;
-  } else if (params.frequency === 'hourly') {
-    return `  ScriptApp.newTrigger('main')
-    .timeBased()
-    .everyHours(1)
-    .create();`;
-  } else if (params.frequency === 'weekly') {
-    return `  ScriptApp.newTrigger('main')
-    .timeBased()
-    .everyWeeks(1)
-    .onWeekDay(ScriptApp.WeekDay.MONDAY)
-    .create();`;
+  var activeKeys = [];
+  function track(entry) {
+    if (entry && entry.key) {
+      activeKeys.push(entry.key);
+    }
   }
-  return '';
-}).filter(Boolean).join('\n')}
+${actions}  syncTriggerRegistry(activeKeys);
 }`;
 }
 
@@ -11398,19 +11847,27 @@ const opKey = (n: any) => `${n.type}:${n.data?.operation}`;
 const OPS: Record<string, (c: any) => string> = {
   'trigger.gmail:email_received': (c) => `
 function onNewEmail() {
-  const query = '${c.query || 'is:unread'}';
-  const threads = GmailApp.search(query, 0, 10);
-  threads.forEach(thread => {
-    const messages = thread.getMessages();
-    messages.forEach(message => {
-      const ctx = {
-        from: message.getFrom(),
-        subject: message.getSubject(),
-        body: message.getPlainBody(),
-        thread: thread
-      };
-      main(ctx);
+  return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
+    const query = '${esc(c.query || 'is:unread')}';
+    const threads = GmailApp.search(query, 0, 10);
+    let dispatched = 0;
+
+    threads.forEach(thread => {
+      const messages = thread.getMessages();
+      messages.forEach(message => {
+        const ctx = {
+          from: message.getFrom(),
+          subject: message.getSubject(),
+          body: message.getPlainBody(),
+          thread: thread
+        };
+        runtime.dispatch(ctx);
+        dispatched += 1;
+      });
     });
+
+    runtime.summary({ threads: threads.length, messages: dispatched, query: query });
+    return { threads: threads.length, messages: dispatched, query: query };
   });
 }`,
 
@@ -11791,10 +12248,26 @@ const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
   'trigger.sheets:onEdit': (c) => `
 function onEdit(e) {
-  const sh = e.source.getActiveSheet();
-  if ('${c.sheetName || 'Sheet1'}' && sh.getName() !== '${c.sheetName || 'Sheet1'}') return;
-  const row = e.range.getRow();
-  main({ row });
+  return buildPollingWrapper('trigger.sheets:onEdit', function (runtime) {
+    if (!e || !e.source) {
+      runtime.summary({ skipped: true, reason: 'missing_event' });
+      return { skipped: true, reason: 'missing_event' };
+    }
+
+    const targetSheetName = '${esc(c.sheetName || 'Sheet1')}';
+    const sheet = e.source.getActiveSheet();
+    const activeSheetName = sheet ? sheet.getName() : null;
+
+    if (targetSheetName && sheet && activeSheetName !== targetSheetName) {
+      runtime.summary({ skipped: true, reason: 'sheet_mismatch', sheet: activeSheetName });
+      return { skipped: true, reason: 'sheet_mismatch', sheet: activeSheetName };
+    }
+
+    const row = e.range.getRow();
+    runtime.summary({ sheet: activeSheetName || targetSheetName, row: row });
+    runtime.dispatch({ row: row, sheet: activeSheetName || targetSheetName });
+    return { rowsDispatched: 1, row: row, sheet: activeSheetName || targetSheetName };
+  });
 }`,
 
   'action.sheets:getRow': (c) => `
@@ -11877,9 +12350,16 @@ function step_searchEmails(ctx) {
 
   'trigger.time:schedule': (c) => `
 function scheduledTrigger() {
-  console.log('⏰ Time-based trigger executed every ${c.frequency || 15} ${c.unit || 'minutes'}');
-  const ctx = {};
-  main(ctx);
+  return buildPollingWrapper('trigger.time:schedule', function (runtime) {
+    var frequency = '${esc(c.frequency || 15)}';
+    var unit = '${esc(c.unit || 'minutes')}';
+    var triggerTime = new Date().toISOString();
+
+    logInfo('time_trigger_fired', { frequency: frequency, unit: unit, triggerTime: triggerTime });
+    runtime.summary({ frequency: frequency, unit: unit, triggerTime: triggerTime });
+    runtime.dispatch({ triggerTime: triggerTime, frequency: frequency, unit: unit });
+    return { dispatched: 1, triggerTime: triggerTime, frequency: frequency, unit: unit };
+  });
 }`,
 
   'action.sheets:updateCell': (c) => `
@@ -11919,72 +12399,80 @@ function step_updateCell(ctx) {
 function step_delay(ctx) {
   // P0 CRITICAL FIX: Don't use Utilities.sleep for long delays (Apps Script 6min limit)
   const hours = ${c.hours || 24};
-  
+
   if (hours > 0.1) { // More than 6 minutes
-    console.log('⏰ Setting up delayed trigger for ' + hours + ' hours');
-    
-    // Store context for delayed execution
     const contextKey = 'delayed_context_' + Utilities.getUuid();
-    PropertiesService.getScriptProperties().setProperty(contextKey, JSON.stringify(ctx));
-    
-    // Create time-based trigger for delayed execution
+    const scriptProps = PropertiesService.getScriptProperties();
+    scriptProps.setProperty(contextKey, JSON.stringify(ctx));
+
     const triggerTime = new Date(Date.now() + (hours * 60 * 60 * 1000));
-    ScriptApp.newTrigger('executeDelayedContext')
-      .timeBased()
-      .at(triggerTime)
-      .create();
-    
-    // Store trigger context
-    PropertiesService.getScriptProperties().setProperty('trigger_context', contextKey);
-    
-    console.log('✅ Delayed trigger set for: ' + triggerTime.toISOString());
+    buildTimeTrigger({
+      handler: 'executeDelayedContext',
+      key: 'delay:' + contextKey,
+      runAt: triggerTime.toISOString(),
+      description: 'delayed_execution_' + hours + '_hours',
+      ephemeral: true
+    });
+
+    scriptProps.setProperty('trigger_context', contextKey);
+    logInfo('delay_trigger_scheduled', { contextKey: contextKey, triggerTime: triggerTime.toISOString(), hours: hours });
     return ctx;
   } else {
     // CRITICAL FIX: NEVER use Utilities.sleep - always use triggers for safety
-    console.log('⏰ Using safe trigger even for short delays');
-    
-    // Use trigger for ALL delays to avoid any timeout issues
+    logInfo('delay_trigger_short', { hours: hours });
+
     const contextKey = 'delayed_context_' + Utilities.getUuid();
-    PropertiesService.getScriptProperties().setProperty(contextKey, JSON.stringify(ctx));
-    
-    // Minimum delay is 1 minute for Apps Script triggers
+    const scriptProps = PropertiesService.getScriptProperties();
+    scriptProps.setProperty(contextKey, JSON.stringify(ctx));
+
     const delayMs = Math.max(hours * 60 * 60 * 1000, 60000);
     const triggerTime = new Date(Date.now() + delayMs);
-    
-    ScriptApp.newTrigger('executeDelayedContext')
-      .timeBased()
-      .at(triggerTime)
-      .create();
-    
-    PropertiesService.getScriptProperties().setProperties({
+
+    buildTimeTrigger({
+      handler: 'executeDelayedContext',
+      key: 'delay:' + contextKey,
+      runAt: triggerTime.toISOString(),
+      description: 'delayed_execution_short_' + delayMs,
+      ephemeral: true
+    });
+
+    scriptProps.setProperties({
       'trigger_context': contextKey,
       'short_delay_trigger': 'true'
     });
-    
-    console.log('✅ Safe short delay trigger set for: ' + triggerTime.toISOString());
+
+    logInfo('delay_trigger_scheduled', { contextKey: contextKey, triggerTime: triggerTime.toISOString(), delayMs: delayMs });
     return ctx;
   }
 }
 
 // Handler for delayed execution
 function executeDelayedContext() {
-  const contextKey = PropertiesService.getScriptProperties().getProperty('trigger_context');
-  if (contextKey) {
-    const savedContext = PropertiesService.getScriptProperties().getProperty(contextKey);
-    if (savedContext) {
-      const ctx = JSON.parse(savedContext);
-      
-      // Continue workflow from where it left off
-      console.log('⏰ Executing delayed workflow continuation...');
-      
-      // Clean up
-      PropertiesService.getScriptProperties().deleteProperty(contextKey);
-      PropertiesService.getScriptProperties().deleteProperty('trigger_context');
-      
-      // Execute remaining steps (this would need to be customized per workflow)
-      return ctx;
+  return buildPollingWrapper('action.time:delay.execute', function (runtime) {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const contextKey = scriptProps.getProperty('trigger_context');
+
+    if (!contextKey) {
+      runtime.summary({ skipped: true, reason: 'missing_trigger_context' });
+      return { skipped: true, reason: 'missing_trigger_context' };
     }
-  }
+
+    const savedContext = scriptProps.getProperty(contextKey);
+    if (!savedContext) {
+      scriptProps.deleteProperty('trigger_context');
+      runtime.summary({ skipped: true, reason: 'missing_saved_context', contextKey: contextKey });
+      return { skipped: true, reason: 'missing_saved_context', contextKey: contextKey };
+    }
+
+    const ctx = JSON.parse(savedContext);
+    scriptProps.deleteProperty(contextKey);
+    scriptProps.deleteProperty('trigger_context');
+    scriptProps.deleteProperty('short_delay_trigger');
+
+    logInfo('delay_trigger_execute', { contextKey: contextKey });
+    runtime.dispatch(ctx);
+    return { resumed: true, contextKey: contextKey };
+  });
 }`,
 
   'action.gmail:send_reply': (c) => `
