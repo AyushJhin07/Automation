@@ -37,3 +37,22 @@ When generating new trigger templates:
 4. Prefer `logInfo`/`logWarn`/`logError` for structured messages instead of raw `console` calls.
 
 Following these patterns ensures recurring schedules, polling triggers, and ad-hoc delay triggers are self-healing (no duplicate triggers), observable, and aligned with the rest of the generated runtime.
+
+## Template selection rules
+
+The real Apps Script builder now selects templates from `server/workflow/apps-script-templates.ts` instead of inlining string literals. The generator inspects each connector definition and chooses a template based on the operation metadata:
+
+- **REST POST template** – used for actions whose connector definition declares an `endpoint`, a non-GET HTTP `method`, and a `baseUrl`. The template injects auth headers from `authentication.type` (`oauth2` → bearer tokens, `apiKey` → bearer + `X-API-Key`, `basic` → base64 credentials) and posts a JSON payload assembled from the node context.
+- **Retryable fetch template** – applied to actions with `method: GET` (or missing). Pagination hints are derived from request parameters (`cursor`, `page`, `limit`, etc.) and response samples (`next_cursor`, `nextPageToken`, …). When a cursor is detected the template loops with an exponential-backoff fetch until the API stops returning a next token.
+- **Polling trigger template** – available when a trigger has `type: "polling"`, an `endpoint`, and the connector exposes a `baseUrl`. Cursor fields from `trigger.dedupe.cursor` and pagination hints are passed through so the generated handler persists state in Script Properties and continues paging on the next run.
+- **Webhook reply template** – assigned to triggers with `type: "webhook"`. The template parses the incoming request body, dispatches it to `main`, and returns a JSON acknowledgement.
+- Operations missing enough metadata fall back to the `todoTemplate`, which keeps the backlog warnings intact.
+
+### Connector family examples
+
+- **CRM (Salesforce, HubSpot enhanced)** – CRUD endpoints advertise `method: "POST"` or `"PATCH"` plus OAuth 2.0 auth. The generator emits the REST POST template so credentials are pulled from `SALESFORCE_ACCESS_TOKEN`/`INSTANCE_URL` style secrets automatically.
+- **Communications (Slack, Gmail list operations)** – read-only endpoints surface `method: "GET"` with pagination hints such as `next_cursor`. The retryable fetch template is chosen, giving Apps Script loops that respect Slack’s cursor-based pagination while logging request batches.
+- **Analytics (Power BI)** – dataset polling triggers declare `type: "polling"` and a cursor field in `dedupe.cursor`. When an endpoint is provided the polling trigger template is selected, wiring the cursor into Script Properties so repeated runs keep advancing.
+- **Knowledge management (Notion enhanced)** – webhook triggers are marked with `type: "webhook"`. The webhook reply template handles payload parsing, dispatches into the workflow, and returns the `ContentService` JSON confirmation expected by Notion.
+
+Review `server/workflow/apps-script-templates.ts` for the exact template implementations and add new helpers there whenever a connector family needs bespoke scaffolding.
