@@ -13,6 +13,150 @@ var __HTTP_RETRY_DEFAULTS = {
   maxDelayMs: 60000
 };
 
+var __LOG_TRANSPORT_RESOLVED = false;
+var __LOG_TRANSPORT_TARGET = null;
+
+function mask(value, seen) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!seen) {
+    seen = [];
+  }
+  var type = typeof value;
+  if (type === 'string') {
+    return value.length ? '[masked]' : '';
+  }
+  if (type === 'number' || type === 'boolean') {
+    return '[masked]';
+  }
+  if (type === 'object') {
+    for (var i = 0; i < seen.length; i++) {
+      if (seen[i] === value) {
+        return '[masked]';
+      }
+    }
+    seen.push(value);
+    if (Array.isArray && Array.isArray(value)) {
+      var maskedArray = [];
+      for (var j = 0; j < value.length; j++) {
+        maskedArray[j] = mask(value[j], seen);
+      }
+      seen.pop();
+      return maskedArray;
+    }
+    if (Object.prototype.toString.call(value) === '[object Date]') {
+      seen.pop();
+      return '[masked]';
+    }
+    var maskedObject = {};
+    for (var key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        maskedObject[key] = mask(value[key], seen);
+      }
+    }
+    seen.pop();
+    return maskedObject;
+  }
+  return '[masked]';
+}
+
+function __extractConnectorTag(details) {
+  if (!details || typeof details !== 'object') {
+    return null;
+  }
+  var candidateKeys = ['connector', 'connectorId', 'app', 'sourceConnector', 'targetConnector'];
+  for (var i = 0; i < candidateKeys.length; i++) {
+    var key = candidateKeys[i];
+    var value = details[key];
+    if (typeof value === 'string' && value) {
+      return value;
+    }
+  }
+  if (Array.isArray && Array.isArray(details.connectors) && details.connectors.length > 0) {
+    var first = details.connectors[0];
+    if (typeof first === 'string' && first) {
+      return first;
+    }
+    if (first && typeof first === 'object') {
+      if (typeof first.id === 'string' && first.id) {
+        return first.id;
+      }
+      if (typeof first.normalizedId === 'string' && first.normalizedId) {
+        return first.normalizedId;
+      }
+    }
+  }
+  return null;
+}
+
+function __resolveLogTransport() {
+  if (__LOG_TRANSPORT_RESOLVED) {
+    return __LOG_TRANSPORT_TARGET;
+  }
+  __LOG_TRANSPORT_RESOLVED = true;
+  var candidate = null;
+  try {
+    if (typeof CENTRAL_LOG_TRANSPORT !== 'undefined' && CENTRAL_LOG_TRANSPORT) {
+      candidate = CENTRAL_LOG_TRANSPORT;
+    } else if (typeof LOG_TRANSPORT_URL !== 'undefined' && LOG_TRANSPORT_URL) {
+      candidate = { url: LOG_TRANSPORT_URL };
+    } else if (typeof APPS_SCRIPT_LOG_TRANSPORT !== 'undefined' && APPS_SCRIPT_LOG_TRANSPORT) {
+      candidate = APPS_SCRIPT_LOG_TRANSPORT;
+    }
+  } catch (error) {
+    // Ignore global resolution errors.
+  }
+  if (!candidate && typeof PropertiesService !== 'undefined' && PropertiesService && typeof PropertiesService.getScriptProperties === 'function') {
+    try {
+      var props = PropertiesService.getScriptProperties();
+      var urlCandidates = [
+        'CENTRAL_LOG_TRANSPORT_URL',
+        'APPS_SCRIPT_LOG_TRANSPORT_URL',
+        'CENTRAL_LOGGING_ENDPOINT',
+        'LOG_TRANSPORT_URL',
+        'LOGGING_ENDPOINT'
+      ];
+      for (var i = 0; i < urlCandidates.length; i++) {
+        var urlValue = props.getProperty(urlCandidates[i]);
+        if (urlValue) {
+          candidate = { url: urlValue };
+          break;
+        }
+      }
+      if (!candidate) {
+        var objectCandidates = ['CENTRAL_LOG_TRANSPORT', 'APPS_SCRIPT_LOG_TRANSPORT'];
+        for (var j = 0; j < objectCandidates.length; j++) {
+          var raw = props.getProperty(objectCandidates[j]);
+          if (!raw) {
+            continue;
+          }
+          try {
+            var parsed = JSON.parse(raw);
+            if (parsed && parsed.url) {
+              candidate = parsed;
+              break;
+            }
+          } catch (parseError) {
+            // Ignore parse failures, fall back to console transport.
+          }
+        }
+      }
+    } catch (propertyError) {
+      // Ignore property access errors.
+    }
+  }
+  if (candidate && typeof candidate === 'string') {
+    candidate = { url: candidate };
+  }
+  if (candidate && candidate.url) {
+    __LOG_TRANSPORT_TARGET = candidate;
+  } else {
+    __LOG_TRANSPORT_TARGET = null;
+  }
+  return __LOG_TRANSPORT_TARGET;
+}
+
 function __normalizeHeaders(headers) {
   var normalized = {};
   if (!headers) {
@@ -99,6 +243,47 @@ function logStructured(level, event, details) {
   } else {
     console.log(message);
   }
+
+  try {
+    var transport = __resolveLogTransport();
+    if (transport && transport.url && typeof UrlFetchApp !== 'undefined' && UrlFetchApp && typeof UrlFetchApp.fetch === 'function') {
+      var metadata = null;
+      if (typeof __WORKFLOW_LOG_METADATA !== 'undefined' && __WORKFLOW_LOG_METADATA) {
+        metadata = __WORKFLOW_LOG_METADATA;
+      }
+      var connectorTag = __extractConnectorTag(payload.details);
+      var tags = {
+        event: event,
+        connector: connectorTag,
+        workflowId: metadata && metadata.workflowId ? metadata.workflowId : null
+      };
+      var transportPayload = {
+        timestamp: payload.timestamp,
+        level: payload.level,
+        event: payload.event,
+        details: payload.details,
+        tags: tags,
+        workflow: metadata
+      };
+      var method = transport.method ? String(transport.method).toUpperCase() : 'POST';
+      var fetchOptions = {
+        method: method,
+        contentType: 'application/json',
+        muteHttpExceptions: true,
+        payload: JSON.stringify(transportPayload)
+      };
+      if (transport.headers) {
+        fetchOptions.headers = transport.headers;
+      }
+      UrlFetchApp.fetch(transport.url, fetchOptions);
+    }
+  } catch (transportError) {
+    try {
+      console.warn('logStructured transport failed: ' + (transportError && transportError.message ? transportError.message : transportError));
+    } catch (consoleError) {
+      // Swallow console failures.
+    }
+  }
 }
 
 function logInfo(event, details) {
@@ -112,6 +297,11 @@ function logWarn(event, details) {
 function logError(event, details) {
   logStructured('ERROR', event, details);
 }
+
+logStructured.mask = mask;
+logInfo.mask = mask;
+logWarn.mask = mask;
+logError.mask = mask;
 
 var __TRIGGER_REGISTRY_KEY = '__studio_trigger_registry__';
 
