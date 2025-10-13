@@ -2051,7 +2051,27 @@
         "trigger.google-docs:document_created",
         "trigger.google-docs:document_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_DOCS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-docs:batch_update",
+            "action.google-docs:create_document",
+            "action.google-docs:delete_content_range",
+            "action.google-docs:get_document",
+            "action.google-docs:insert_image",
+            "action.google-docs:insert_table",
+            "action.google-docs:insert_text",
+            "action.google-docs:replace_text",
+            "action.google-docs:test_connection",
+            "action.google-docs:update_text_style"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

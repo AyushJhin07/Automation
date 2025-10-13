@@ -1445,6 +1445,12 @@ var __CONNECTOR_OAUTH_TOKEN_METADATA = {
     description: 'access token',
     aliases: ['apps_script__google_admin__access_token']
   },
+  'google-docs': {
+    displayName: 'Google Docs',
+    property: 'GOOGLE_DOCS_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__google_docs__access_token']
+  },
   'google-drive': {
     displayName: 'Google Drive',
     property: 'GOOGLE_DRIVE_ACCESS_TOKEN',
@@ -8994,6 +9000,678 @@ function ${functionName}(inputData, params) {
 var __zoomEnhancedHelpers;
 `;
 }
+
+function buildGoogleDocsOperation(operation: string, config: any): string {
+  const functionName = `step_action_google_docs_${operation.replace(/[^a-z0-9]+/gi, '_')}`;
+  const handlerName = `googleDocsHandle${pascalCaseFromId(operation)}`;
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const scopesLiteral = JSON.stringify([
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+  ]);
+
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const resolved = googleDocsResolveParams(config, ctx);
+  const params = Object.assign({}, resolved, ctx.params || {});
+  const token = requireOAuthToken('google-docs', { scopes: ${scopesLiteral} });
+  try {
+    return ${handlerName}(ctx, token, params);
+  } catch (error) {
+    logError('google_docs_${operation}_failed', { message: error && error.message ? error.message : String(error) });
+    throw error;
+  }
+}
+${googleDocsHelpersBlock()}
+`;
+}
+
+function googleDocsHelpersBlock(): string {
+  return `
+function googleDocsResolveParams(config, ctx) {
+  const resolved = {};
+  if (config && typeof config === 'object') {
+    for (const key in config) {
+      if (!Object.prototype.hasOwnProperty.call(config, key)) continue;
+      const value = config[key];
+      if (typeof value === 'string') {
+        try {
+          resolved[key] = interpolate(value, ctx);
+        } catch (error) {
+          resolved[key] = value;
+        }
+      } else if (value && typeof value === 'object') {
+        try {
+          resolved[key] = JSON.parse(JSON.stringify(value));
+        } catch (cloneError) {
+          resolved[key] = value;
+        }
+      } else {
+        resolved[key] = value;
+      }
+    }
+  }
+  return resolved;
+}
+
+function googleDocsHandleTestConnection(ctx, token, params) {
+  const profile = googleDocsFetchUserProfile(token);
+  const user = googleDocsNormalizeUserProfile(profile);
+  ctx.googleDocsConnection = {
+    success: true,
+    user,
+    _meta: { raw: profile }
+  };
+  logInfo('google_docs_test_connection_success', {
+    email: user && user.emailAddress ? user.emailAddress : null,
+    permissionId: user && user.permissionId ? user.permissionId : null
+  });
+  return ctx;
+}
+
+function googleDocsHandleCreateDocument(ctx, token, params) {
+  const title = googleDocsCoerceString(params && params.title, 'Untitled Document');
+  const initialContent = googleDocsOptionalString(params && (params.content || params.initialContent));
+  const doc = DocumentApp.create(title);
+  if (initialContent) {
+    try {
+      doc.getBody().appendParagraph(initialContent);
+    } catch (error) {
+      logWarn('google_docs_initial_content_failed', {
+        message: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+  const documentId = doc.getId();
+  const metadata = googleDocsFetchDocument(token, documentId);
+  const timestamps = googleDocsReadDriveTimestamps(documentId);
+  const revisionId = metadata && metadata.revisionId ? metadata.revisionId : null;
+  const titleFromApi = metadata && metadata.title ? metadata.title : null;
+  ctx.googleDocsDocument = {
+    success: true,
+    documentId,
+    title: titleFromApi || doc.getName(),
+    revisionId,
+    createdTime: timestamps.createdTime,
+    lastModifiedTime: timestamps.lastModifiedTime,
+    documentUrl: doc.getUrl(),
+    _meta: { raw: metadata }
+  };
+  ctx.googleDocsLastDocumentId = documentId;
+  ctx.googleDocsLastRevisionId = revisionId;
+  logInfo('google_docs_create_document_success', {
+    documentId,
+    revisionId
+  });
+  return ctx;
+}
+
+function googleDocsHandleGetDocument(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'get_document');
+  const metadata = googleDocsFetchDocument(token, documentId);
+  const timestamps = googleDocsReadDriveTimestamps(documentId);
+  const revisionId = metadata && metadata.revisionId ? metadata.revisionId : null;
+  const simplified = googleDocsSimplifyContent(metadata);
+  const fallbackTitle = googleDocsSafeDocumentName(documentId);
+  ctx.googleDocsDocument = {
+    success: true,
+    documentId,
+    title: metadata && metadata.title ? metadata.title : (fallbackTitle || ''),
+    revisionId,
+    createdTime: timestamps.createdTime,
+    lastModifiedTime: timestamps.lastModifiedTime,
+    content: simplified,
+    _meta: { raw: metadata }
+  };
+  ctx.googleDocsLastDocumentId = documentId;
+  ctx.googleDocsLastRevisionId = revisionId;
+  logInfo('google_docs_get_document_success', {
+    documentId,
+    revisionId
+  });
+  return ctx;
+}
+
+function googleDocsHandleBatchUpdate(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'batch_update');
+  const requests = googleDocsCloneRequests(params && params.requests);
+  if (!Array.isArray(requests) || requests.length === 0) {
+    throw new Error('At least one request is required for batch_update');
+  }
+  const payload = googleDocsBuildPayload(requests, params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_batch_update_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null,
+    requestCount: requests.length
+  });
+  return ctx;
+}
+
+function googleDocsHandleInsertText(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'insert_text');
+  const text = googleDocsRequireString(params && params.text, 'Text is required for insert_text');
+  const index = googleDocsCoerceIndex(params && params.index, 1);
+  const request = {
+    insertText: {
+      text,
+      location: googleDocsBuildLocation(index, params && params.segmentId)
+    }
+  };
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_insert_text_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null,
+    index,
+    textLength: text.length
+  });
+  return ctx;
+}
+
+function googleDocsHandleReplaceText(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'replace_text');
+  const replacement = googleDocsRequireString(params && params.replaceText, 'replaceText is required for replace_text');
+  const contains = params && params.containsText;
+  if (!contains || typeof contains !== 'object' || !contains.text) {
+    throw new Error('containsText.text is required for replace_text');
+  }
+  const request = {
+    replaceAllText: {
+      replaceText: replacement,
+      containsText: {
+        text: String(contains.text),
+        matchCase: Boolean(contains.matchCase)
+      }
+    }
+  };
+  if (contains.segmentId) {
+    request.replaceAllText.containsText.segmentId = String(contains.segmentId);
+  }
+  if (params && params.tabId) {
+    request.replaceAllText.containsText.segmentId = String(params.tabId);
+  }
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_replace_text_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null,
+    occurrencesChanged: Array.isArray(response && response.replies)
+      ? response.replies.reduce((total, reply) => {
+          if (reply && reply.replaceAllText && typeof reply.replaceAllText.occurrencesChanged === 'number') {
+            return total + reply.replaceAllText.occurrencesChanged;
+          }
+          return total;
+        }, 0)
+      : null
+  });
+  return ctx;
+}
+
+function googleDocsHandleDeleteContentRange(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'delete_content_range');
+  const range = googleDocsNormalizeRange(params && params.range, 'delete_content_range');
+  const request = { deleteContentRange: { range } };
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_delete_content_range_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null
+  });
+  return ctx;
+}
+
+function googleDocsHandleInsertTable(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'insert_table');
+  const rows = googleDocsRequirePositiveInteger(params && params.rows, 'rows is required for insert_table');
+  const columns = googleDocsRequirePositiveInteger(params && params.columns, 'columns is required for insert_table');
+  const index = googleDocsCoerceIndex(params && params.index, 1);
+  const request = {
+    insertTable: {
+      rows,
+      columns,
+      location: googleDocsBuildLocation(index, params && params.segmentId)
+    }
+  };
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_insert_table_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null,
+    rows,
+    columns
+  });
+  return ctx;
+}
+
+function googleDocsHandleInsertImage(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'insert_image');
+  const uri = googleDocsRequireString(params && params.uri, 'uri is required for insert_image');
+  const index = googleDocsCoerceIndex(params && params.index, 1);
+  const request = {
+    insertInlineImage: {
+      uri,
+      location: googleDocsBuildLocation(index, params && params.segmentId)
+    }
+  };
+  if (params && params.objectId) {
+    request.insertInlineImage.objectId = String(params.objectId);
+  }
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_insert_image_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null
+  });
+  return ctx;
+}
+
+function googleDocsHandleUpdateTextStyle(ctx, token, params) {
+  const documentId = googleDocsRequireDocumentId(params, 'update_text_style');
+  const range = googleDocsNormalizeRange(params && params.range, 'update_text_style');
+  const textStyle = googleDocsNormalizeTextStyle(params && params.textStyle);
+  const fields = googleDocsComputeTextStyleFields(textStyle, params && params.fields);
+  const request = {
+    updateTextStyle: {
+      range,
+      textStyle,
+      fields
+    }
+  };
+  const payload = googleDocsBuildPayload([request], params && params.writeControl);
+  const response = googleDocsBatchUpdate(token, documentId, payload);
+  ctx = googleDocsApplyMutation(ctx, documentId, response);
+  logInfo('google_docs_update_text_style_success', {
+    documentId,
+    revisionId: ctx.googleDocsLastRevisionId || null,
+    fields
+  });
+  return ctx;
+}
+
+function googleDocsApplyMutation(ctx, documentId, response) {
+  const replies = response && Array.isArray(response.replies) ? response.replies : [];
+  const revisionId = response && response.revisionId ? response.revisionId : null;
+  ctx.googleDocsLastDocumentId = documentId;
+  ctx.googleDocsLastRevisionId = revisionId;
+  ctx.googleDocsLastMutation = {
+    success: true,
+    documentId,
+    revisionId,
+    writeControl: response && response.writeControl ? response.writeControl : null,
+    replies,
+    _meta: { raw: response }
+  };
+  return ctx;
+}
+
+function googleDocsBuildPayload(requests, writeControl) {
+  const payload = { requests };
+  const normalized = googleDocsNormalizeWriteControl(writeControl);
+  if (normalized) {
+    payload.writeControl = normalized;
+  }
+  return payload;
+}
+
+function googleDocsNormalizeWriteControl(writeControl) {
+  if (!writeControl || typeof writeControl !== 'object') {
+    return null;
+  }
+  const normalized = {};
+  if (writeControl.requiredRevisionId) {
+    normalized.requiredRevisionId = String(writeControl.requiredRevisionId);
+  }
+  if (writeControl.targetRevisionId) {
+    normalized.targetRevisionId = String(writeControl.targetRevisionId);
+  }
+  return Object.keys(normalized).length > 0 ? normalized : null;
+}
+
+function googleDocsRequireDocumentId(params, operation) {
+  const id = params && (params.documentId || params.document_id || params.id);
+  if (!id) {
+    throw new Error('documentId is required for ' + operation);
+  }
+  return String(id);
+}
+
+function googleDocsRequireString(value, message) {
+  if (value === undefined || value === null || value === '') {
+    throw new Error(message);
+  }
+  return String(value);
+}
+
+function googleDocsCoerceString(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+  return String(value);
+}
+
+function googleDocsOptionalString(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  const str = String(value);
+  return str.trim().length > 0 ? str : '';
+}
+
+function googleDocsCloneRequests(requests) {
+  if (!Array.isArray(requests)) {
+    return null;
+  }
+  try {
+    return JSON.parse(JSON.stringify(requests));
+  } catch (error) {
+    logWarn('google_docs_clone_requests_failed', {
+      message: error && error.message ? error.message : String(error)
+    });
+    return requests;
+  }
+}
+
+function googleDocsCoerceIndex(value, defaultValue) {
+  const num = Number(value);
+  if (isFinite(num) && num >= 1) {
+    return Math.floor(num);
+  }
+  const fallback = Number(defaultValue);
+  if (isFinite(fallback) && fallback >= 1) {
+    return Math.floor(fallback);
+  }
+  return 1;
+}
+
+function googleDocsRequirePositiveInteger(value, message) {
+  const num = Number(value);
+  if (!isFinite(num) || num < 1) {
+    throw new Error(message);
+  }
+  return Math.floor(num);
+}
+
+function googleDocsNormalizeRange(range, operation) {
+  if (!range || typeof range !== 'object') {
+    throw new Error('range is required for ' + operation);
+  }
+  if (range.startIndex === undefined || range.endIndex === undefined) {
+    throw new Error('range.startIndex and range.endIndex are required for ' + operation);
+  }
+  const startIndex = Number(range.startIndex);
+  const endIndex = Number(range.endIndex);
+  if (!isFinite(startIndex) || !isFinite(endIndex)) {
+    throw new Error('Range indexes must be numeric for ' + operation);
+  }
+  const normalized = {
+    startIndex: Math.floor(startIndex),
+    endIndex: Math.floor(endIndex)
+  };
+  if (range.segmentId) {
+    normalized.segmentId = String(range.segmentId);
+  }
+  return normalized;
+}
+
+function googleDocsBuildLocation(index, segmentId) {
+  const normalizedIndex = googleDocsCoerceIndex(index, 1);
+  const location = { index: normalizedIndex };
+  if (segmentId) {
+    location.segmentId = String(segmentId);
+  }
+  return location;
+}
+
+function googleDocsNormalizeTextStyle(style) {
+  if (!style || typeof style !== 'object') {
+    throw new Error('textStyle must be provided for update_text_style');
+  }
+  const normalized = {};
+  if (style.bold !== undefined) normalized.bold = Boolean(style.bold);
+  if (style.italic !== undefined) normalized.italic = Boolean(style.italic);
+  if (style.underline !== undefined) normalized.underline = Boolean(style.underline);
+  if (style.strikethrough !== undefined) normalized.strikethrough = Boolean(style.strikethrough);
+  if (style.fontSize && typeof style.fontSize === 'object') {
+    const magnitude = Number(style.fontSize.magnitude);
+    const unit = style.fontSize.unit || 'PT';
+    if (isFinite(magnitude)) {
+      normalized.fontSize = { magnitude, unit: String(unit) };
+    }
+  }
+  if (style.foregroundColor) {
+    const color = googleDocsNormalizeColor(style.foregroundColor);
+    if (color) normalized.foregroundColor = color;
+  }
+  if (style.backgroundColor) {
+    const color = googleDocsNormalizeColor(style.backgroundColor);
+    if (color) normalized.backgroundColor = color;
+  }
+  if (Object.keys(normalized).length === 0) {
+    throw new Error('textStyle must include at least one supported property');
+  }
+  return normalized;
+}
+
+function googleDocsNormalizeColor(value) {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  if (value.color && typeof value.color === 'object') {
+    return { color: googleDocsNormalizeColor(value.color) };
+  }
+  if (value.rgbColor && typeof value.rgbColor === 'object') {
+    return { color: { rgbColor: googleDocsNormalizeRgb(value.rgbColor) } };
+  }
+  if (value.red !== undefined || value.green !== undefined || value.blue !== undefined) {
+    return { color: { rgbColor: googleDocsNormalizeRgb(value) } };
+  }
+  return null;
+}
+
+function googleDocsNormalizeRgb(rgb) {
+  const result = {};
+  if (rgb.red !== undefined) result.red = googleDocsClampColor(rgb.red);
+  if (rgb.green !== undefined) result.green = googleDocsClampColor(rgb.green);
+  if (rgb.blue !== undefined) result.blue = googleDocsClampColor(rgb.blue);
+  return result;
+}
+
+function googleDocsClampColor(value) {
+  const num = Number(value);
+  if (!isFinite(num)) {
+    throw new Error('Color components must be numeric between 0 and 1');
+  }
+  if (num < 0) return 0;
+  if (num > 1) return 1;
+  return num;
+}
+
+function googleDocsComputeTextStyleFields(textStyle, provided) {
+  if (provided && typeof provided === 'string' && provided.trim()) {
+    return provided;
+  }
+  const fields = [];
+  if ('bold' in textStyle) fields.push('bold');
+  if ('italic' in textStyle) fields.push('italic');
+  if ('underline' in textStyle) fields.push('underline');
+  if ('strikethrough' in textStyle) fields.push('strikethrough');
+  if (textStyle.fontSize) fields.push('fontSize');
+  if (textStyle.foregroundColor) fields.push('foregroundColor');
+  if (textStyle.backgroundColor) fields.push('backgroundColor');
+  if (!fields.length) {
+    throw new Error('Unable to determine textStyle fields; specify the "fields" parameter.');
+  }
+  return fields.join(',');
+}
+
+function googleDocsFetchUserProfile(token) {
+  const endpoints = [
+    'https://www.googleapis.com/oauth2/v3/userinfo',
+    'https://www.googleapis.com/oauth2/v1/userinfo?alt=json',
+    'https://www.googleapis.com/drive/v3/about?fields=user'
+  ];
+  for (let i = 0; i < endpoints.length; i++) {
+    const endpoint = endpoints[i];
+    try {
+      const data = googleDocsHttpRequest(token, endpoint, { method: 'GET' });
+      if (data && data.user) {
+        return data.user;
+      }
+      if (data) {
+        return data;
+      }
+    } catch (error) {
+      if (i === endpoints.length - 1) {
+        throw error;
+      }
+      logWarn('google_docs_profile_fetch_retry', {
+        endpoint,
+        message: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+  throw new Error('Unable to fetch Google Docs profile');
+}
+
+function googleDocsNormalizeUserProfile(profile) {
+  if (!profile || typeof profile !== 'object') {
+    return { displayName: '', emailAddress: '', permissionId: null };
+  }
+  const displayName = profile.displayName
+    || profile.name
+    || [profile.given_name, profile.family_name].filter(Boolean).join(' ')
+    || '';
+  const emailAddress = profile.emailAddress || profile.email || profile.primaryEmail || '';
+  const permissionId = profile.permissionId || profile.id || profile.sub || null;
+  return { displayName, emailAddress, permissionId };
+}
+
+function googleDocsFetchDocument(token, documentId) {
+  const url = 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent(documentId);
+  return googleDocsHttpRequest(token, url, { method: 'GET' });
+}
+
+function googleDocsBatchUpdate(token, documentId, payload) {
+  const url = 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent(documentId) + ':batchUpdate';
+  return googleDocsHttpRequest(token, url, { method: 'POST', payload });
+}
+
+function googleDocsHttpRequest(token, url, options) {
+  const requestOptions = {
+    method: options && options.method ? options.method : 'GET',
+    headers: Object.assign({}, options && options.headers ? options.headers : {}, {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    }),
+    muteHttpExceptions: true
+  };
+  if (options && options.payload !== undefined) {
+    requestOptions.payload = typeof options.payload === 'string'
+      ? options.payload
+      : JSON.stringify(options.payload);
+  }
+  const response = UrlFetchApp.fetch(url, requestOptions);
+  const status = response.getResponseCode();
+  const text = response.getContentText() || '';
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      logWarn('google_docs_parse_response_failed', {
+        url,
+        message: error && error.message ? error.message : String(error)
+      });
+      data = null;
+    }
+  }
+  if (status >= 400) {
+    const message = data && data.error && data.error.message ? data.error.message : 'HTTP ' + status;
+    const err = new Error('Google Docs request failed: ' + message);
+    err.status = status;
+    err.url = url;
+    err.response = data;
+    throw err;
+  }
+  return data;
+}
+
+function googleDocsReadDriveTimestamps(documentId) {
+  try {
+    const file = DriveApp.getFileById(documentId);
+    const created = file.getDateCreated ? file.getDateCreated() : null;
+    const updated = file.getLastUpdated ? file.getLastUpdated() : null;
+    return {
+      createdTime: created ? created.toISOString() : null,
+      lastModifiedTime: updated ? updated.toISOString() : null
+    };
+  } catch (error) {
+    logWarn('google_docs_drive_metadata_failed', {
+      documentId,
+      message: error && error.message ? error.message : String(error)
+    });
+    return { createdTime: null, lastModifiedTime: null };
+  }
+}
+
+function googleDocsSafeDocumentName(documentId) {
+  try {
+    const doc = DocumentApp.openById(documentId);
+    return doc && doc.getName ? doc.getName() : null;
+  } catch (error) {
+    logWarn('google_docs_open_name_failed', {
+      documentId,
+      message: error && error.message ? error.message : String(error)
+    });
+    return null;
+  }
+}
+
+function googleDocsSimplifyContent(metadata) {
+  const result = [];
+  if (!metadata || !metadata.body || !Array.isArray(metadata.body.content)) {
+    return result;
+  }
+  metadata.body.content.forEach(function (element) {
+    if (!element) {
+      return;
+    }
+    if (element.paragraph && Array.isArray(element.paragraph.elements)) {
+      let text = '';
+      element.paragraph.elements.forEach(function (node) {
+        if (node && node.textRun && typeof node.textRun.content === 'string') {
+          text += node.textRun.content;
+        }
+      });
+      text = text.replace(/\n+$/, '');
+      if (text) {
+        const style = element.paragraph.paragraphStyle && element.paragraph.paragraphStyle.namedStyleType
+          ? element.paragraph.paragraphStyle.namedStyleType
+          : 'NORMAL_TEXT';
+        result.push({ type: 'paragraph', text, style });
+      }
+    } else if (element.table) {
+      result.push({
+        type: 'table',
+        rows: element.table.rows || 0,
+        columns: element.table.columns || 0
+      });
+    }
+  });
+  return result;
+}
+`;
+}
+
 
 function buildZoomEnhancedRealOps(operation: string, config: any, type: 'action' | 'trigger'): string {
   const functionName = type === 'action' ? `step_action_zoom_enhanced_${operation}` : `trigger_zoom_enhanced_${operation}`;
@@ -26303,19 +26981,16 @@ function step_sendDocuSignEnvelope(ctx) {
   return ctx;
 }`,
 
-  'action.google-docs:create_document': (c) => `
-function step_createGoogleDoc(ctx) {
-  const title = interpolate('${c.title || 'Automated Document'}', ctx);
-  const content = interpolate('${c.content || 'Document created by automation'}', ctx);
-  
-  const doc = DocumentApp.create(title);
-  const body = doc.getBody();
-  body.appendParagraph(content);
-  
-  console.log('📄 Google Doc created:', title);
-  ctx.googleDocId = doc.getId();
-  return ctx;
-}`,
+  'action.google-docs:test_connection': (c) => buildGoogleDocsOperation('test_connection', c),
+  'action.google-docs:create_document': (c) => buildGoogleDocsOperation('create_document', c),
+  'action.google-docs:get_document': (c) => buildGoogleDocsOperation('get_document', c),
+  'action.google-docs:batch_update': (c) => buildGoogleDocsOperation('batch_update', c),
+  'action.google-docs:insert_text': (c) => buildGoogleDocsOperation('insert_text', c),
+  'action.google-docs:replace_text': (c) => buildGoogleDocsOperation('replace_text', c),
+  'action.google-docs:delete_content_range': (c) => buildGoogleDocsOperation('delete_content_range', c),
+  'action.google-docs:insert_table': (c) => buildGoogleDocsOperation('insert_table', c),
+  'action.google-docs:insert_image': (c) => buildGoogleDocsOperation('insert_image', c),
+  'action.google-docs:update_text_style': (c) => buildGoogleDocsOperation('update_text_style', c),
 
   'action.google-slides:create_presentation': (c) => `
 function step_createGoogleSlides(ctx) {
