@@ -6862,10 +6862,59 @@ function ${functionName}(ctx) {
 }`;
 }
 
+function generateWorkfrontFunction(functionName: string, node: WorkflowNode): string {
+  const rawOperationKey = typeof node.op === 'string' ? node.op : '';
+  const nodeType = typeof node.type === 'string' ? node.type : '';
+  const isTrigger = rawOperationKey.startsWith('trigger.workfront')
+    || nodeType.startsWith('trigger.workfront')
+    || nodeType.startsWith('trigger');
+  const operationFromNode =
+    (typeof node.data?.operation === 'string' && node.data.operation)
+      || (typeof (node.params as any)?.operation === 'string' && (node.params as any).operation)
+      || (rawOperationKey.includes(':') ? rawOperationKey.split(':')[1]
+        : rawOperationKey.includes('.') ? rawOperationKey.split('.').pop() || ''
+        : '');
+  const defaultOperation = isTrigger ? 'project_created' : 'test_connection';
+  const operationName = operationFromNode || defaultOperation;
+
+  const prefix = isTrigger ? 'trigger.workfront' : 'action.workfront';
+  let resolvedKey = rawOperationKey;
+
+  if (!resolvedKey) {
+    resolvedKey = `${prefix}:${operationName}`;
+  } else if (!resolvedKey.startsWith('action.workfront') && !resolvedKey.startsWith('trigger.workfront')) {
+    const suffix = resolvedKey.includes(':')
+      ? resolvedKey.split(':').pop() || operationName
+      : resolvedKey.includes('.') ? resolvedKey.split('.').pop() || operationName
+      : operationName;
+    resolvedKey = `${prefix}:${suffix}`;
+  }
+
+  const config = node.data?.config ?? node.params ?? {};
+  const builder = REAL_OPS[resolvedKey];
+
+  if (typeof builder === 'function') {
+    const generated = builder(config);
+    if (typeof generated === 'string' && generated.trim().length > 0) {
+      return generated.replace(/function\s+[^(]+\(/, match => `function ${functionName}(`);
+    }
+  }
+
+  const safeKey = esc(resolvedKey || `${prefix}:${operationName}`);
+  const safeOperation = esc(operationName);
+
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  logWarn('workfront_operation_missing', { operation: '${safeKey}' });
+  throw new Error('Workfront operation "${safeOperation}" is not implemented in Apps Script runtime.');
+}`;
+}
+
 // Comprehensive Pipedrive implementation
 function generatePipedriveFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'get_deals';
-  
+
   return `
 function ${functionName}(inputData, params) {
   console.log('💼 Executing Pipedrive: ${node.name || operation}');
@@ -16200,6 +16249,662 @@ ${payloadBlock}
     const newest = collected[collected.length - 1].timestamp;
     state.cursor = cursorState;
     state.cursor['${options.cursorKey}'] = newest;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({ eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, resource: '${options.logKey}', cursor: newest });
+    logInfo('${options.logKey}_poll', { dispatched: batch.succeeded, cursor: newest });
+
+    return { eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, cursor: newest };
+  });
+}
+`;
+}
+
+interface WorkfrontActionOptions {
+  operationId: string;
+  logKey: string;
+  preludeLines?: string[];
+  requestExpression: string;
+  successLines: string[];
+  errorContext: string;
+}
+
+function workfrontCommonPrelude(operationId: string, logKey: string): string {
+  const operationLabel = esc(operationId);
+  const logKeyLabel = esc(logKey);
+  return `
+  const operationLabel = '${operationLabel}';
+  const operationLogKey = '${logKeyLabel}';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\\/\\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^v\d+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    } as any;
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), {
+      attempts: 4,
+      initialDelayMs: 750,
+      jitter: 0.25,
+      retryOn: function (context) {
+        const status = context && context.response && context.response.status;
+        if (status === 429 || status === 503) {
+          return { retry: true };
+        }
+        if (status && status >= 500) {
+          return { retry: true };
+        }
+        return { retry: false };
+      }
+    });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.errorMessage) {
+          details.push(String(payload.errorMessage));
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              details.push(entry);
+            } else if (entry.message) {
+              details.push(String(entry.message));
+            } else {
+              details.push(JSON.stringify(entry));
+            }
+          }
+        }
+        if (Array.isArray(payload.validationErrors)) {
+          for (let j = 0; j < payload.validationErrors.length; j++) {
+            const validation = payload.validationErrors[j];
+            if (!validation) {
+              continue;
+            }
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+`;
+}
+
+function buildWorkfrontAction(slug: string, config: any, options: WorkfrontActionOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const preludeBlock = preludeLines.length > 0 ? preludeLines.map(line => `  ${line}`).join('\n') + '\n' : '';
+  const requestLines = options.requestExpression.split('\n');
+  const requestBlock = requestLines.length === 1
+    ? `    const response = ${requestLines[0]};`
+    : `    const response = ${requestLines[0]}\n${requestLines.slice(1).map(line => `      ${line}`).join('\n')};`;
+  const successBlock = options.successLines.map(line => `    ${line}`).join('\n');
+
+  return `
+function step_${slug}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+
+${workfrontCommonPrelude(options.operationId, options.logKey)}${preludeBlock}  try {
+${requestBlock}
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+${successBlock}
+    return ctx;
+  } catch (error) {
+    handleError(error, '${esc(options.errorContext)}');
+  }
+}
+`;
+}
+
+interface WorkfrontTriggerOptions {
+  triggerKey: string;
+  logKey: string;
+  endpoint: string;
+  timestampFields: string[];
+  cursorKey: string;
+  preludeLines?: string[];
+  payloadLines: string[];
+  filterLines?: string[];
+  pageSize?: number;
+}
+
+function buildWorkfrontTrigger(functionName: string, config: any, options: WorkfrontTriggerOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const preludeBlock = preludeLines.length > 0 ? preludeLines.map(line => `    ${line}`).join('\n') + '\n' : '';
+  const payloadBlock = options.payloadLines.map(line => `        ${line}`).join('\n');
+  const filterLines = options.filterLines ?? [];
+  const filterBlock = filterLines.length > 0 ? filterLines.map(line => `      ${line}`).join('\n') + '\n' : '';
+  const timestampFieldsLiteral = JSON.stringify(options.timestampFields ?? []);
+  const pageSize = options.pageSize ?? 50;
+
+  return `
+function ${functionName}() {
+  const config = ${configLiteral};
+  return buildPollingWrapper('${options.triggerKey}', function (runtime) {
+    let apiKey;
+    try {
+      apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_api_key', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    let domainSecret;
+    try {
+      domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_domain', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function normalizeDomain(raw) {
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+      if (!value) {
+        return '';
+      }
+      if (!/^https?:\\/\\//i.test(value)) {
+        value = 'https://' + value;
+      }
+      value = value.replace(/\\/+$/, '');
+      return value;
+    }
+
+    const normalizedDomain = normalizeDomain(domainSecret);
+    if (!normalizedDomain) {
+      logWarn('workfront_invalid_domain', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function resolveApiVersion() {
+      if (config && typeof config.apiVersion === 'string') {
+        const raw = config.apiVersion.trim();
+        if (raw) {
+          if (/^v\d+/i.test(raw)) {
+            return raw.charAt(0).toLowerCase() + raw.slice(1);
+          }
+          return 'v' + raw;
+        }
+      }
+      return 'v15.0';
+    }
+
+    const baseUrl = normalizedDomain.replace(/\\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\\/+$/, '');
+    const defaultHeaders = {
+      'Accept': 'application/json',
+      'sessionID': String(apiKey).trim()
+    };
+
+    function workfrontRequest(options) {
+      options = options || {};
+      const endpoint = options.endpoint ? String(options.endpoint) : '';
+      const method = options.method ? String(options.method).toUpperCase() : 'GET';
+      const query = options.query && typeof options.query === 'object' ? options.query : null;
+      let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      if (query) {
+        const parts = [];
+        for (const key in query) {
+          if (!Object.prototype.hasOwnProperty.call(query, key)) {
+            continue;
+          }
+          const value = query[key];
+          if (value === null || value === undefined || value === '') {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) {
+              const entry = value[i];
+              if (entry === null || entry === undefined || entry === '') {
+                continue;
+              }
+              parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+            }
+          } else {
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+          }
+        }
+        if (parts.length > 0) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+      }
+      const requestConfig = {
+        url: url,
+        method: method,
+        headers: Object.assign({}, defaultHeaders, options.headers || {}),
+        muteHttpExceptions: true
+      } as any;
+      if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+        requestConfig.payload = JSON.stringify(options.body);
+        requestConfig.contentType = 'application/json';
+      } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+        requestConfig.payload = options.payload;
+        if (options.contentType) {
+          requestConfig.contentType = options.contentType;
+        }
+      }
+      return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+    }
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const interpolationContext = state.lastPayload || {};
+    const lastCursor = cursorState['${options.cursorKey}'] || null;
+
+    function resolveTemplate(template, options) {
+      options = options || {};
+      if (template === null || template === undefined) {
+        if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+          return String(options.defaultValue);
+        }
+        return '';
+      }
+      if (typeof template === 'number') {
+        return String(template);
+      }
+      if (typeof template === 'boolean') {
+        return template ? 'true' : 'false';
+      }
+      const raw = typeof template === 'string' ? template : String(template);
+      const resolved = interpolate(raw, interpolationContext);
+      if (options.keepWhitespace) {
+        return resolved;
+      }
+      const trimmed = resolved.trim();
+      if (!trimmed && options.allowEmpty) {
+        return '';
+      }
+      return trimmed || resolved;
+    }
+
+    function resolveOptional(template) {
+      const value = resolveTemplate(template, { allowEmpty: true });
+      return value ? value : undefined;
+    }
+
+    function resolveBooleanValue(template) {
+      if (template === null || template === undefined || template === '') {
+        return undefined;
+      }
+      if (typeof template === 'boolean') {
+        return template;
+      }
+      const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+      }
+      throw new Error('Workfront ${options.triggerKey} boolean filters must resolve to true/false.');
+    }
+
+    function parseDateValue(template, fieldLabel) {
+      const resolved = resolveTemplate(template, { allowEmpty: true });
+      if (!resolved) {
+        return undefined;
+      }
+      const parsed = new Date(resolved);
+      if (isNaN(parsed.getTime())) {
+        throw new Error('Workfront ${options.triggerKey} filter "' + fieldLabel + '" must be a valid date.');
+      }
+      return parsed.toISOString();
+    }
+
+    function normalizeTimestamp(value) {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        const millis = value > 1000000000000 ? value : value * 1000;
+        const fromNumber = new Date(millis);
+        if (!isNaN(fromNumber.getTime())) {
+          return fromNumber.toISOString();
+        }
+        return null;
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return null;
+      }
+      let parsed = new Date(text);
+      if (isNaN(parsed.getTime())) {
+        const normalized = text.replace(/:(\d{3})(?!\d)/, '.$1');
+        parsed = new Date(normalized);
+      }
+      if (isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.toISOString();
+    }
+
+    const query: Record<string, any> = { '$$LIMIT': ${pageSize} };
+${preludeBlock}    const response = workfrontRequest({ method: 'GET', endpoint: '${options.endpoint}', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = Array.isArray(body && body.data) ? body.data : [];
+    if (items.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: '${options.logKey}', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    const collected = [];
+    for (let index = 0; index < items.length; index++) {
+      const entry = items[index];
+      if (!entry) {
+        continue;
+      }
+${filterBlock}      let timestamp = null;
+      const candidates = ${timestampFieldsLiteral};
+      for (let i = 0; i < candidates.length; i++) {
+        const key = candidates[i];
+        if (!key || !Object.prototype.hasOwnProperty.call(entry, key)) {
+          continue;
+        }
+        timestamp = normalizeTimestamp(entry[key]);
+        if (timestamp) {
+          break;
+        }
+      }
+      if (!timestamp) {
+        continue;
+      }
+      if (lastCursor && timestamp <= lastCursor) {
+        continue;
+      }
+      collected.push({ item: entry, timestamp: timestamp });
+    }
+
+    if (collected.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: '${options.logKey}', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.timestamp < b.timestamp) { return -1; }
+      if (a.timestamp > b.timestamp) { return 1; }
+      return 0;
+    });
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+${payloadBlock}
+    });
+
+    const newest = collected[collected.length - 1].timestamp;
+    cursorState['${options.cursorKey}'] = newest;
+    state.cursor = cursorState;
     state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
     runtime.state = state;
 
@@ -26492,6 +27197,481 @@ function step_createWordPressPost(ctx) {
   ctx.wordpressPostId = result.id || 'wordpress_' + Date.now();
   return ctx;
 }`,
+
+  'action.workfront:test_connection': (c) =>
+    buildWorkfrontAction('testWorkfrontConnection', c, {
+      operationId: 'test_connection',
+      logKey: 'workfront_test_connection',
+      requestExpression: "workfrontRequest({ method: 'GET', endpoint: '/user/search', query: { '$$LIMIT': 1 } })",
+      successLines: [
+        "const status = response && typeof response.status === 'number' ? response.status : null;",
+        "const data = body && body.data ? body.data : null;",
+        "ctx.workfrontConnection = status !== null ? status < 400 : true;",
+        "ctx.workfrontUserSample = Array.isArray(data) ? data.slice(0, 1) : (data ? [data] : []);",
+        "logInfo('workfront_test_connection', { status: status, sampleCount: Array.isArray(data) ? data.length : (data ? 1 : 0) });"
+      ],
+      errorContext: 'Workfront test_connection failed',
+    }),
+  'action.workfront:create_project': (c) =>
+    buildWorkfrontAction('createWorkfrontProject', c, {
+      operationId: 'create_project',
+      logKey: 'workfront_create_project',
+      preludeLines: [
+        "const name = resolveRequired(config.name, 'a project name');",
+        "const payload = { name: name };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const ownerId = resolveOptional(config.ownerID);",
+        "if (ownerId) { payload.ownerID = ownerId; }",
+        "const sponsorId = resolveOptional(config.sponsorID);",
+        "if (sponsorId) { payload.sponsorID = sponsorId; }",
+        "const templateId = resolveOptional(config.templateID);",
+        "if (templateId) { payload.templateID = templateId; }",
+        "const groupId = resolveOptional(config.groupID);",
+        "if (groupId) { payload.groupID = groupId; }",
+        "const companyId = resolveOptional(config.companyID);",
+        "if (companyId) { payload.companyID = companyId; }",
+        "const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');",
+        "if (plannedStart) { payload.plannedStartDate = plannedStart; }",
+        "const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');",
+        "if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }",
+        "const priority = resolveNumberValue(config.priority, 'priority');",
+        "if (priority !== undefined) { payload.priority = priority; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { payload.status = status; }",
+        "const portfolioId = resolveOptional(config.portfolioID);",
+        "if (portfolioId) { payload.portfolioID = portfolioId; }",
+        "const programId = resolveOptional(config.programID);",
+        "if (programId) { payload.programID = programId; }",
+        "const budgetedCost = resolveNumberValue(config.budgetedCost, 'budgeted cost');",
+        "if (budgetedCost !== undefined) { payload.budgetedCost = budgetedCost; }",
+        "const budgetedHours = resolveNumberValue(config.budgetedHours, 'budgeted hours');",
+        "if (budgetedHours !== undefined) { payload.budgetedHours = budgetedHours; }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/project', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const project = Array.isArray(data) ? (data[0] || null) : data;",
+        "const projectId = project && (project.ID || project.id) ? (project.ID || project.id) : null;",
+        "ctx.workfrontProjectId = projectId || null;",
+        "ctx.workfrontProject = project || null;",
+        "logInfo('workfront_create_project', { projectId: projectId || null });"
+      ],
+      errorContext: 'Workfront create_project failed',
+    }),
+  'action.workfront:get_project': (c) =>
+    buildWorkfrontAction('getWorkfrontProject', c, {
+      operationId: 'get_project',
+      logKey: 'workfront_get_project',
+      preludeLines: [
+        "const projectId = resolveRequired(config.projectID, 'a project ID');",
+        "const fieldsList = resolveFields(config.fields);",
+        "const query = {};",
+        "if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'GET', endpoint: '/project/' + encodeURIComponent(projectId), query: query })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "ctx.workfrontProjectId = projectId;",
+        "ctx.workfrontProject = Array.isArray(data) ? (data[0] || null) : data;",
+        "logInfo('workfront_get_project', { projectId: projectId, fields: fieldsList ? fieldsList.length : null });"
+      ],
+      errorContext: 'Workfront get_project failed',
+    }),
+  'action.workfront:update_project': (c) =>
+    buildWorkfrontAction('updateWorkfrontProject', c, {
+      operationId: 'update_project',
+      logKey: 'workfront_update_project',
+      preludeLines: [
+        "const projectId = resolveRequired(config.projectID, 'a project ID');",
+        "const payload = {};",
+        "const name = resolveOptional(config.name);",
+        "if (name) { payload.name = name; }",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const ownerId = resolveOptional(config.ownerID);",
+        "if (ownerId) { payload.ownerID = ownerId; }",
+        "const sponsorId = resolveOptional(config.sponsorID);",
+        "if (sponsorId) { payload.sponsorID = sponsorId; }",
+        "const templateId = resolveOptional(config.templateID);",
+        "if (templateId) { payload.templateID = templateId; }",
+        "const groupId = resolveOptional(config.groupID);",
+        "if (groupId) { payload.groupID = groupId; }",
+        "const companyId = resolveOptional(config.companyID);",
+        "if (companyId) { payload.companyID = companyId; }",
+        "const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');",
+        "if (plannedStart) { payload.plannedStartDate = plannedStart; }",
+        "const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');",
+        "if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }",
+        "const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');",
+        "if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }",
+        "const priority = resolveNumberValue(config.priority, 'priority');",
+        "if (priority !== undefined) { payload.priority = priority; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { payload.status = status; }",
+        "const portfolioId = resolveOptional(config.portfolioID);",
+        "if (portfolioId) { payload.portfolioID = portfolioId; }",
+        "const programId = resolveOptional(config.programID);",
+        "if (programId) { payload.programID = programId; }",
+        "const budgetedCost = resolveNumberValue(config.budgetedCost, 'budgeted cost');",
+        "if (budgetedCost !== undefined) { payload.budgetedCost = budgetedCost; }",
+        "const budgetedHours = resolveNumberValue(config.budgetedHours, 'budgeted hours');",
+        "if (budgetedHours !== undefined) { payload.budgetedHours = budgetedHours; }",
+        "if (Object.keys(payload).length === 0) { logWarn('workfront_update_project_skipped', { projectId: projectId }); return ctx; }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'PUT', endpoint: '/project/' + encodeURIComponent(projectId), body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const project = Array.isArray(data) ? (data[0] || null) : data;",
+        "const returnedId = project && (project.ID || project.id) ? (project.ID || project.id) : projectId;",
+        "ctx.workfrontProjectId = returnedId;",
+        "ctx.workfrontProject = project || null;",
+        "logInfo('workfront_update_project', { projectId: returnedId, updated: true });"
+      ],
+      errorContext: 'Workfront update_project failed',
+    }),
+  'action.workfront:search_projects': (c) =>
+    buildWorkfrontAction('searchWorkfrontProjects', c, {
+      operationId: 'search_projects',
+      logKey: 'workfront_search_projects',
+      preludeLines: [
+        "const limit = resolveNumberValue(config.limit, 'limit');",
+        "const query = { '$$LIMIT': limit !== undefined ? limit : 100 };",
+        "const offset = resolveNumberValue(config.offset, 'offset');",
+        "if (offset !== undefined) { query['$$FIRST'] = offset; }",
+        "const nameFilter = resolveOptional(config.name);",
+        "if (nameFilter) { query.name = nameFilter; }",
+        "const ownerId = resolveOptional(config.ownerID);",
+        "if (ownerId) { query.ownerID = ownerId; }",
+        "const statusValues = resolveMultiValue(config.status);",
+        "if (statusValues.length) { query.status = statusValues.join(','); }",
+        "const groupId = resolveOptional(config.groupID);",
+        "if (groupId) { query.groupID = groupId; }",
+        "const portfolioId = resolveOptional(config.portfolioID);",
+        "if (portfolioId) { query.portfolioID = portfolioId; }",
+        "const fieldsList = resolveFields(config.fields);",
+        "if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'GET', endpoint: '/project/search', query: query })",
+      successLines: [
+        "const projects = body && Array.isArray(body.data) ? body.data : [];",
+        "ctx.workfrontProjects = projects;",
+        "ctx.workfrontProjectsMeta = { totalCount: body && typeof body.totalCount === 'number' ? body.totalCount : null };",
+        "logInfo('workfront_search_projects', { count: Array.isArray(projects) ? projects.length : 0, limit: query['$$LIMIT'] || null, offset: query['$$FIRST'] || null });"
+      ],
+      errorContext: 'Workfront search_projects failed',
+    }),
+  'action.workfront:create_task': (c) =>
+    buildWorkfrontAction('createWorkfrontTask', c, {
+      operationId: 'create_task',
+      logKey: 'workfront_create_task',
+      preludeLines: [
+        "const name = resolveRequired(config.name, 'a task name');",
+        "const projectId = resolveRequired(config.projectID, 'a project ID');",
+        "const payload = { name: name, projectID: projectId };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const assignedTo = resolveOptional(config.assignedToID);",
+        "if (assignedTo) { payload.assignedToID = assignedTo; }",
+        "const parentId = resolveOptional(config.parentID);",
+        "if (parentId) { payload.parentID = parentId; }",
+        "const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');",
+        "if (plannedStart) { payload.plannedStartDate = plannedStart; }",
+        "const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');",
+        "if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }",
+        "const plannedHours = resolveNumberValue(config.plannedHours, 'planned hours');",
+        "if (plannedHours !== undefined) { payload.plannedHours = plannedHours; }",
+        "const priority = resolveNumberValue(config.priority, 'priority');",
+        "if (priority !== undefined) { payload.priority = priority; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { payload.status = status; }",
+        "const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');",
+        "if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }",
+        "const predecessors = resolveMultiValue(config.predecessors);",
+        "if (predecessors.length) { payload.predecessors = predecessors.join(','); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/task', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const task = Array.isArray(data) ? (data[0] || null) : data;",
+        "const taskId = task && (task.ID || task.id) ? (task.ID || task.id) : null;",
+        "ctx.workfrontTaskId = taskId || null;",
+        "ctx.workfrontTask = task || null;",
+        "logInfo('workfront_create_task', { taskId: taskId || null, projectId: projectId });"
+      ],
+      errorContext: 'Workfront create_task failed',
+    }),
+  'action.workfront:get_task': (c) =>
+    buildWorkfrontAction('getWorkfrontTask', c, {
+      operationId: 'get_task',
+      logKey: 'workfront_get_task',
+      preludeLines: [
+        "const taskId = resolveRequired(config.taskID, 'a task ID');",
+        "const fieldsList = resolveFields(config.fields);",
+        "const query = {};",
+        "if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'GET', endpoint: '/task/' + encodeURIComponent(taskId), query: query })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "ctx.workfrontTaskId = taskId;",
+        "ctx.workfrontTask = Array.isArray(data) ? (data[0] || null) : data;",
+        "logInfo('workfront_get_task', { taskId: taskId });"
+      ],
+      errorContext: 'Workfront get_task failed',
+    }),
+  'action.workfront:update_task': (c) =>
+    buildWorkfrontAction('updateWorkfrontTask', c, {
+      operationId: 'update_task',
+      logKey: 'workfront_update_task',
+      preludeLines: [
+        "const taskId = resolveRequired(config.taskID, 'a task ID');",
+        "const payload = {};",
+        "const name = resolveOptional(config.name);",
+        "if (name) { payload.name = name; }",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const assignedTo = resolveOptional(config.assignedToID);",
+        "if (assignedTo) { payload.assignedToID = assignedTo; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { payload.status = status; }",
+        "const priority = resolveNumberValue(config.priority, 'priority');",
+        "if (priority !== undefined) { payload.priority = priority; }",
+        "const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');",
+        "if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }",
+        "const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');",
+        "if (plannedStart) { payload.plannedStartDate = plannedStart; }",
+        "const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');",
+        "if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }",
+        "const actualStart = formatDateValue(config.actualStartDate, 'actual start date');",
+        "if (actualStart) { payload.actualStartDate = actualStart; }",
+        "const actualCompletion = formatDateValue(config.actualCompletionDate, 'actual completion date');",
+        "if (actualCompletion) { payload.actualCompletionDate = actualCompletion; }",
+        "if (Object.keys(payload).length === 0) { logWarn('workfront_update_task_skipped', { taskId: taskId }); return ctx; }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'PUT', endpoint: '/task/' + encodeURIComponent(taskId), body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const task = Array.isArray(data) ? (data[0] || null) : data;",
+        "ctx.workfrontTaskId = taskId;",
+        "ctx.workfrontTask = task || null;",
+        "logInfo('workfront_update_task', { taskId: taskId, updated: true });"
+      ],
+      errorContext: 'Workfront update_task failed',
+    }),
+  'action.workfront:create_issue': (c) =>
+    buildWorkfrontAction('createWorkfrontIssue', c, {
+      operationId: 'create_issue',
+      logKey: 'workfront_create_issue',
+      preludeLines: [
+        "const name = resolveRequired(config.name, 'an issue name');",
+        "const projectId = resolveRequired(config.projectID, 'a project ID');",
+        "const payload = { name: name, projectID: projectId };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const assignedTo = resolveOptional(config.assignedToID);",
+        "if (assignedTo) { payload.assignedToID = assignedTo; }",
+        "const submittedBy = resolveOptional(config.submittedByID);",
+        "if (submittedBy) { payload.submittedByID = submittedBy; }",
+        "const priority = resolveNumberValue(config.priority, 'priority');",
+        "if (priority !== undefined) { payload.priority = priority; }",
+        "const severity = resolveNumberValue(config.severity, 'severity');",
+        "if (severity !== undefined) { payload.severity = severity; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { payload.status = status; }",
+        "const resolutionType = resolveOptional(config.resolutionType);",
+        "if (resolutionType) { payload.resolutionType = resolutionType; }",
+        "const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');",
+        "if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/issue', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const issue = Array.isArray(data) ? (data[0] || null) : data;",
+        "const issueId = issue && (issue.ID || issue.id) ? (issue.ID || issue.id) : null;",
+        "ctx.workfrontIssueId = issueId || null;",
+        "ctx.workfrontIssue = issue || null;",
+        "logInfo('workfront_create_issue', { issueId: issueId || null, projectId: projectId });"
+      ],
+      errorContext: 'Workfront create_issue failed',
+    }),
+  'action.workfront:create_timesheet': (c) =>
+    buildWorkfrontAction('createWorkfrontTimesheet', c, {
+      operationId: 'create_timesheet',
+      logKey: 'workfront_create_timesheet',
+      preludeLines: [
+        "const userId = resolveRequired(config.userID, 'a user ID');",
+        "const startDate = formatDateValue(config.startDate, 'start date');",
+        "if (!startDate) { throw new Error('Workfront create_timesheet requires a start date.'); }",
+        "const endDate = formatDateValue(config.endDate, 'end date');",
+        "if (!endDate) { throw new Error('Workfront create_timesheet requires an end date.'); }",
+        "const payload = { userID: userId, startDate: startDate, endDate: endDate };",
+        "const approverId = resolveOptional(config.approverID);",
+        "if (approverId) { payload.approverID = approverId; }",
+        "const profileId = resolveOptional(config.timesheetProfileID);",
+        "if (profileId) { payload.timesheetProfileID = profileId; }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/timesheet', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const timesheet = Array.isArray(data) ? (data[0] || null) : data;",
+        "const timesheetId = timesheet && (timesheet.ID || timesheet.id) ? (timesheet.ID || timesheet.id) : null;",
+        "ctx.workfrontTimesheetId = timesheetId || null;",
+        "ctx.workfrontTimesheet = timesheet || null;",
+        "logInfo('workfront_create_timesheet', { timesheetId: timesheetId || null, userId: userId });"
+      ],
+      errorContext: 'Workfront create_timesheet failed',
+    }),
+  'action.workfront:log_time': (c) =>
+    buildWorkfrontAction('logWorkfrontTime', c, {
+      operationId: 'log_time',
+      logKey: 'workfront_log_time',
+      preludeLines: [
+        "const hours = resolveNumberValue(config.hours, 'hours');",
+        "if (hours === undefined) { throw new Error('Workfront log_time requires hours.'); }",
+        "const entryDate = formatDateValue(config.entryDate, 'entry date');",
+        "if (!entryDate) { throw new Error('Workfront log_time requires an entry date.'); }",
+        "const payload = { hours: hours, entryDate: entryDate };",
+        "const taskId = resolveOptional(config.taskID);",
+        "if (taskId) { payload.taskID = taskId; }",
+        "const projectId = resolveOptional(config.projectID);",
+        "if (projectId) { payload.projectID = projectId; }",
+        "const issueId = resolveOptional(config.issueID);",
+        "if (issueId) { payload.issueID = issueId; }",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "const hourTypeId = resolveOptional(config.hourTypeID);",
+        "if (hourTypeId) { payload.hourTypeID = hourTypeId; }",
+        "if (!payload.taskID && !payload.projectID && !payload.issueID) { throw new Error('Workfront log_time requires taskID, projectID, or issueID.'); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/hour', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const hour = Array.isArray(data) ? (data[0] || null) : data;",
+        "const hourId = hour && (hour.ID || hour.id) ? (hour.ID || hour.id) : null;",
+        "ctx.workfrontHourId = hourId || null;",
+        "ctx.workfrontHour = hour || null;",
+        "logInfo('workfront_log_time', { hourId: hourId || null });"
+      ],
+      errorContext: 'Workfront log_time failed',
+    }),
+  'action.workfront:get_users': (c) =>
+    buildWorkfrontAction('getWorkfrontUsers', c, {
+      operationId: 'get_users',
+      logKey: 'workfront_get_users',
+      preludeLines: [
+        "const limit = resolveNumberValue(config.limit, 'limit');",
+        "const query = { '$$LIMIT': limit !== undefined ? limit : 100 };",
+        "const isActive = resolveBooleanValue(config.isActive);",
+        "if (isActive !== undefined) { query.isActive = isActive ? 'true' : 'false'; }",
+        "const groupId = resolveOptional(config.groupID);",
+        "if (groupId) { query.groupID = groupId; }",
+        "const roleId = resolveOptional(config.roleID);",
+        "if (roleId) { query.roleID = roleId; }",
+        "const fieldsList = resolveFields(config.fields);",
+        "if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'GET', endpoint: '/user/search', query: query })",
+      successLines: [
+        "const users = body && Array.isArray(body.data) ? body.data : [];",
+        "ctx.workfrontUsers = users;",
+        "ctx.workfrontUsersMeta = { totalCount: body && typeof body.totalCount === 'number' ? body.totalCount : null };",
+        "logInfo('workfront_get_users', { count: Array.isArray(users) ? users.length : 0, limit: query['$$LIMIT'] || null });"
+      ],
+      errorContext: 'Workfront get_users failed',
+    }),
+  'action.workfront:create_document': (c) =>
+    buildWorkfrontAction('createWorkfrontDocument', c, {
+      operationId: 'create_document',
+      logKey: 'workfront_create_document',
+      preludeLines: [
+        "const name = resolveRequired(config.name, 'a document name');",
+        "const objCode = resolveRequired(config.docObjCode, 'a document object code');",
+        "const objId = resolveRequired(config.objID, 'an object ID');",
+        "const payload = { name: name, docObjCode: objCode, objID: objId };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { payload.description = description; }",
+        "if (config.currentVersion) { payload.currentVersion = ensureNonEmptyObject(config.currentVersion, 'Workfront create_document currentVersion requires at least one property.'); }"
+      ],
+      requestExpression: "workfrontRequest({ method: 'POST', endpoint: '/document', body: payload })",
+      successLines: [
+        "const data = body && body.data ? body.data : body;",
+        "const document = Array.isArray(data) ? (data[0] || null) : data;",
+        "const documentId = document && (document.ID || document.id) ? (document.ID || document.id) : null;",
+        "ctx.workfrontDocumentId = documentId || null;",
+        "ctx.workfrontDocument = document || null;",
+        "logInfo('workfront_create_document', { documentId: documentId || null, objID: objId, docObjCode: objCode });"
+      ],
+      errorContext: 'Workfront create_document failed',
+    }),
+  'trigger.workfront:project_created': (c) =>
+    buildWorkfrontTrigger('workfrontProjectCreated', c, {
+      triggerKey: 'trigger.workfront:project_created',
+      logKey: 'workfront_project_created',
+      endpoint: '/project/search',
+      timestampFields: ['entryDate', 'lastUpdateDate'],
+      cursorKey: 'workfront_project_created_cursor',
+      preludeLines: [
+        "const groupId = resolveOptional(config.groupID);",
+        "if (groupId) { query.groupID = groupId; }",
+        "const portfolioId = resolveOptional(config.portfolioID);",
+        "if (portfolioId) { query.portfolioID = portfolioId; }",
+        "query.fields = 'ID,name,description,ownerID,portfolioID,groupID,entryDate,status,plannedStartDate,plannedCompletionDate';"
+      ],
+      payloadLines: [
+        "const record = entry.item;",
+        "lastPayloadDispatched = record;",
+        "return record;"
+      ],
+      pageSize: 50,
+    }),
+  'trigger.workfront:task_created': (c) =>
+    buildWorkfrontTrigger('workfrontTaskCreated', c, {
+      triggerKey: 'trigger.workfront:task_created',
+      logKey: 'workfront_task_created',
+      endpoint: '/task/search',
+      timestampFields: ['entryDate', 'lastUpdateDate'],
+      cursorKey: 'workfront_task_created_cursor',
+      preludeLines: [
+        "const projectId = resolveOptional(config.projectID);",
+        "if (projectId) { query.projectID = projectId; }",
+        "const assignedTo = resolveOptional(config.assignedToID);",
+        "if (assignedTo) { query.assignedToID = assignedTo; }",
+        "query.fields = 'ID,name,projectID,assignedToID,status,plannedStartDate,plannedCompletionDate,entryDate';"
+      ],
+      payloadLines: [
+        "const record = entry.item;",
+        "lastPayloadDispatched = record;",
+        "return record;"
+      ],
+      pageSize: 50,
+    }),
+  'trigger.workfront:task_completed': (c) =>
+    buildWorkfrontTrigger('workfrontTaskCompleted', c, {
+      triggerKey: 'trigger.workfront:task_completed',
+      logKey: 'workfront_task_completed',
+      endpoint: '/task/search',
+      timestampFields: ['actualCompletionDate', 'lastUpdateDate'],
+      cursorKey: 'workfront_task_completed_cursor',
+      preludeLines: [
+        "const projectId = resolveOptional(config.projectID);",
+        "if (projectId) { query.projectID = projectId; }",
+        "const assignedTo = resolveOptional(config.assignedToID);",
+        "if (assignedTo) { query.assignedToID = assignedTo; }",
+        "query.status = 'CPL';",
+        "query.fields = 'ID,name,projectID,assignedToID,status,percentComplete,actualCompletionDate';"
+      ],
+      filterLines: [
+        "if (entry.status && entry.status !== 'CPL') { continue; }",
+        "if (!entry.actualCompletionDate) { continue; }"
+      ],
+      payloadLines: [
+        "const record = entry.item;",
+        "lastPayloadDispatched = record;",
+        "return record;"
+      ],
+      pageSize: 50,
+    }),
 
   // APP #149: Final application to complete 100% coverage
   'action.drupal:create_node': (c) => `

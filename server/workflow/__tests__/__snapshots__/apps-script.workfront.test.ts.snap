@@ -1,0 +1,5119 @@
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:test_connection 1`] = `
+
+function step_testWorkfrontConnection(ctx) {
+  ctx = ctx || {};
+  const config = {"apiVersion":"16.0"};
+
+
+  const operationLabel = 'test_connection';
+  const operationLogKey = 'workfront_test_connection';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  try {
+    const response = workfrontRequest({ method: 'GET', endpoint: '/user/search', query: { '$$LIMIT': 1 } });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const status = response && typeof response.status === 'number' ? response.status : null;
+    const data = body && body.data ? body.data : null;
+    ctx.workfrontConnection = status !== null ? status < 400 : true;
+    ctx.workfrontUserSample = Array.isArray(data) ? data.slice(0, 1) : (data ? [data] : []);
+    logInfo('workfront_test_connection', { status: status, sampleCount: Array.isArray(data) ? data.length : (data ? 1 : 0) });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront test_connection failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:create_project 1`] = `
+
+function step_createWorkfrontProject(ctx) {
+  ctx = ctx || {};
+  const config = {"apiVersion":"v16.0","name":"Launch {{project_name}} campaign","description":"Coordinate kickoff for {{client_name}} redesign.","ownerID":"{{owner_id}}","sponsorID":"{{executive_sponsor_id}}","templateID":"TPL12345","groupID":"GRP-42","companyID":"COMP-99","plannedStartDate":"2024-01-15","plannedCompletionDate":"2024-04-30","priority":3,"status":"CUR","portfolioID":"PORT-7","programID":"PROG-3","budgetedCost":125000,"budgetedHours":880};
+
+
+  const operationLabel = 'create_project';
+  const operationLogKey = 'workfront_create_project';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const name = resolveRequired(config.name, 'a project name');
+  const payload = { name: name };
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const ownerId = resolveOptional(config.ownerID);
+  if (ownerId) { payload.ownerID = ownerId; }
+  const sponsorId = resolveOptional(config.sponsorID);
+  if (sponsorId) { payload.sponsorID = sponsorId; }
+  const templateId = resolveOptional(config.templateID);
+  if (templateId) { payload.templateID = templateId; }
+  const groupId = resolveOptional(config.groupID);
+  if (groupId) { payload.groupID = groupId; }
+  const companyId = resolveOptional(config.companyID);
+  if (companyId) { payload.companyID = companyId; }
+  const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');
+  if (plannedStart) { payload.plannedStartDate = plannedStart; }
+  const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');
+  if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }
+  const priority = resolveNumberValue(config.priority, 'priority');
+  if (priority !== undefined) { payload.priority = priority; }
+  const status = resolveOptional(config.status);
+  if (status) { payload.status = status; }
+  const portfolioId = resolveOptional(config.portfolioID);
+  if (portfolioId) { payload.portfolioID = portfolioId; }
+  const programId = resolveOptional(config.programID);
+  if (programId) { payload.programID = programId; }
+  const budgetedCost = resolveNumberValue(config.budgetedCost, 'budgeted cost');
+  if (budgetedCost !== undefined) { payload.budgetedCost = budgetedCost; }
+  const budgetedHours = resolveNumberValue(config.budgetedHours, 'budgeted hours');
+  if (budgetedHours !== undefined) { payload.budgetedHours = budgetedHours; }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/project', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const project = Array.isArray(data) ? (data[0] || null) : data;
+    const projectId = project && (project.ID || project.id) ? (project.ID || project.id) : null;
+    ctx.workfrontProjectId = projectId || null;
+    ctx.workfrontProject = project || null;
+    logInfo('workfront_create_project', { projectId: projectId || null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront create_project failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:get_project 1`] = `
+
+function step_getWorkfrontProject(ctx) {
+  ctx = ctx || {};
+  const config = {"projectID":"{{workfront_project_id}}","fields":["ID","name","ownerID","plannedStartDate","status"]};
+
+
+  const operationLabel = 'get_project';
+  const operationLogKey = 'workfront_get_project';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const projectId = resolveRequired(config.projectID, 'a project ID');
+  const fieldsList = resolveFields(config.fields);
+  const query = {};
+  if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }
+  try {
+    const response = workfrontRequest({ method: 'GET', endpoint: '/project/' + encodeURIComponent(projectId), query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    ctx.workfrontProjectId = projectId;
+    ctx.workfrontProject = Array.isArray(data) ? (data[0] || null) : data;
+    logInfo('workfront_get_project', { projectId: projectId, fields: fieldsList ? fieldsList.length : null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront get_project failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:update_project 1`] = `
+
+function step_updateWorkfrontProject(ctx) {
+  ctx = ctx || {};
+  const config = {"projectID":"{{workfront_project_id}}","name":"Updated {{project_name}} rollout","description":"Refresh scope after executive review.","ownerID":"{{new_owner_id}}","sponsorID":"{{executive_sponsor_id}}","plannedStartDate":"2024-01-22","plannedCompletionDate":"2024-05-10","actualStartDate":"2024-01-18","actualCompletionDate":"2024-05-08","percentComplete":75,"priority":2,"status":"CUR","portfolioID":"PORT-7","programID":"PROG-3","budgetedCost":135000,"budgetedHours":940};
+
+
+  const operationLabel = 'update_project';
+  const operationLogKey = 'workfront_update_project';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const projectId = resolveRequired(config.projectID, 'a project ID');
+  const payload = {};
+  const name = resolveOptional(config.name);
+  if (name) { payload.name = name; }
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const ownerId = resolveOptional(config.ownerID);
+  if (ownerId) { payload.ownerID = ownerId; }
+  const sponsorId = resolveOptional(config.sponsorID);
+  if (sponsorId) { payload.sponsorID = sponsorId; }
+  const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');
+  if (plannedStart) { payload.plannedStartDate = plannedStart; }
+  const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');
+  if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }
+  const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');
+  if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }
+  const priority = resolveNumberValue(config.priority, 'priority');
+  if (priority !== undefined) { payload.priority = priority; }
+  const status = resolveOptional(config.status);
+  if (status) { payload.status = status; }
+  const portfolioId = resolveOptional(config.portfolioID);
+  if (portfolioId) { payload.portfolioID = portfolioId; }
+  const programId = resolveOptional(config.programID);
+  if (programId) { payload.programID = programId; }
+  const budgetedCost = resolveNumberValue(config.budgetedCost, 'budgeted cost');
+  if (budgetedCost !== undefined) { payload.budgetedCost = budgetedCost; }
+  const budgetedHours = resolveNumberValue(config.budgetedHours, 'budgeted hours');
+  if (budgetedHours !== undefined) { payload.budgetedHours = budgetedHours; }
+  if (Object.keys(payload).length === 0) { logWarn('workfront_update_project_skipped', { projectId: projectId }); return ctx; }
+  try {
+    const response = workfrontRequest({ method: 'PUT', endpoint: '/project/' + encodeURIComponent(projectId), body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const project = Array.isArray(data) ? (data[0] || null) : data;
+    const returnedId = project && (project.ID || project.id) ? (project.ID || project.id) : projectId;
+    ctx.workfrontProjectId = returnedId;
+    ctx.workfrontProject = project || null;
+    logInfo('workfront_update_project', { projectId: returnedId, updated: true });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront update_project failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:search_projects 1`] = `
+
+function step_searchWorkfrontProjects(ctx) {
+  ctx = ctx || {};
+  const config = {"limit":50,"offset":25,"name":"Marketing","ownerID":"{{owner_id}}","status":["CUR","PLN"],"groupID":"GRP-42","portfolioID":"PORT-7","fields":["ID","name","status","plannedCompletionDate"]};
+
+
+  const operationLabel = 'search_projects';
+  const operationLogKey = 'workfront_search_projects';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const limit = resolveNumberValue(config.limit, 'limit');
+  const query = { '$$LIMIT': limit !== undefined ? limit : 100 };
+  const offset = resolveNumberValue(config.offset, 'offset');
+  if (offset !== undefined) { query['$$FIRST'] = offset; }
+  const nameFilter = resolveOptional(config.name);
+  if (nameFilter) { query.name = nameFilter; }
+  const ownerId = resolveOptional(config.ownerID);
+  if (ownerId) { query.ownerID = ownerId; }
+  const statusValues = resolveMultiValue(config.status);
+  if (statusValues.length) { query.status = statusValues.join(','); }
+  const groupId = resolveOptional(config.groupID);
+  if (groupId) { query.groupID = groupId; }
+  const portfolioId = resolveOptional(config.portfolioID);
+  if (portfolioId) { query.portfolioID = portfolioId; }
+  const fieldsList = resolveFields(config.fields);
+  if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }
+  try {
+    const response = workfrontRequest({ method: 'GET', endpoint: '/project/search', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const projects = body && Array.isArray(body.data) ? body.data : [];
+    ctx.workfrontProjects = projects;
+    ctx.workfrontProjectsMeta = { totalCount: body && typeof body.totalCount === 'number' ? body.totalCount : null };
+    logInfo('workfront_search_projects', { count: Array.isArray(projects) ? projects.length : 0, limit: query['$$LIMIT'] || null, offset: query['$$FIRST'] || null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront search_projects failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:create_task 1`] = `
+
+function step_createWorkfrontTask(ctx) {
+  ctx = ctx || {};
+  const config = {"name":"Draft {{asset_name}} brief","projectID":"{{workfront_project_id}}","description":"Outline deliverables and review owners.","assignedToID":"{{assignee_id}}","parentID":"{{parent_task_id}}","plannedStartDate":"2024-02-05","plannedCompletionDate":"2024-02-16","plannedHours":32,"priority":2,"status":"INP","percentComplete":15,"predecessors":["TASK123","TASK456"]};
+
+
+  const operationLabel = 'create_task';
+  const operationLogKey = 'workfront_create_task';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const name = resolveRequired(config.name, 'a task name');
+  const projectId = resolveRequired(config.projectID, 'a project ID');
+  const payload = { name: name, projectID: projectId };
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const assignedTo = resolveOptional(config.assignedToID);
+  if (assignedTo) { payload.assignedToID = assignedTo; }
+  const parentId = resolveOptional(config.parentID);
+  if (parentId) { payload.parentID = parentId; }
+  const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');
+  if (plannedStart) { payload.plannedStartDate = plannedStart; }
+  const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');
+  if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }
+  const plannedHours = resolveNumberValue(config.plannedHours, 'planned hours');
+  if (plannedHours !== undefined) { payload.plannedHours = plannedHours; }
+  const priority = resolveNumberValue(config.priority, 'priority');
+  if (priority !== undefined) { payload.priority = priority; }
+  const status = resolveOptional(config.status);
+  if (status) { payload.status = status; }
+  const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');
+  if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }
+  const predecessors = resolveMultiValue(config.predecessors);
+  if (predecessors.length) { payload.predecessors = predecessors.join(','); }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/task', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const task = Array.isArray(data) ? (data[0] || null) : data;
+    const taskId = task && (task.ID || task.id) ? (task.ID || task.id) : null;
+    ctx.workfrontTaskId = taskId || null;
+    ctx.workfrontTask = task || null;
+    logInfo('workfront_create_task', { taskId: taskId || null, projectId: projectId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront create_task failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:get_task 1`] = `
+
+function step_getWorkfrontTask(ctx) {
+  ctx = ctx || {};
+  const config = {"taskID":"{{workfront_task_id}}","fields":["ID","name","assignedToID","plannedCompletionDate"]};
+
+
+  const operationLabel = 'get_task';
+  const operationLogKey = 'workfront_get_task';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const taskId = resolveRequired(config.taskID, 'a task ID');
+  const fieldsList = resolveFields(config.fields);
+  const query = {};
+  if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }
+  try {
+    const response = workfrontRequest({ method: 'GET', endpoint: '/task/' + encodeURIComponent(taskId), query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    ctx.workfrontTaskId = taskId;
+    ctx.workfrontTask = Array.isArray(data) ? (data[0] || null) : data;
+    logInfo('workfront_get_task', { taskId: taskId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront get_task failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:update_task 1`] = `
+
+function step_updateWorkfrontTask(ctx) {
+  ctx = ctx || {};
+  const config = {"taskID":"{{workfront_task_id}}","name":"Finalize {{asset_name}} brief","description":"Incorporate stakeholder feedback.","assignedToID":"{{assignee_id}}","status":"CPL","priority":3,"percentComplete":100,"plannedStartDate":"2024-02-05","plannedCompletionDate":"2024-02-16","actualStartDate":"2024-02-06","actualCompletionDate":"2024-02-15"};
+
+
+  const operationLabel = 'update_task';
+  const operationLogKey = 'workfront_update_task';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const taskId = resolveRequired(config.taskID, 'a task ID');
+  const payload = {};
+  const name = resolveOptional(config.name);
+  if (name) { payload.name = name; }
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const assignedTo = resolveOptional(config.assignedToID);
+  if (assignedTo) { payload.assignedToID = assignedTo; }
+  const status = resolveOptional(config.status);
+  if (status) { payload.status = status; }
+  const priority = resolveNumberValue(config.priority, 'priority');
+  if (priority !== undefined) { payload.priority = priority; }
+  const percentComplete = resolveNumberValue(config.percentComplete, 'percent complete');
+  if (percentComplete !== undefined) { payload.percentComplete = percentComplete; }
+  const plannedStart = formatDateValue(config.plannedStartDate, 'planned start date');
+  if (plannedStart) { payload.plannedStartDate = plannedStart; }
+  const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');
+  if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }
+  const actualStart = formatDateValue(config.actualStartDate, 'actual start date');
+  if (actualStart) { payload.actualStartDate = actualStart; }
+  const actualCompletion = formatDateValue(config.actualCompletionDate, 'actual completion date');
+  if (actualCompletion) { payload.actualCompletionDate = actualCompletion; }
+  if (Object.keys(payload).length === 0) { logWarn('workfront_update_task_skipped', { taskId: taskId }); return ctx; }
+  try {
+    const response = workfrontRequest({ method: 'PUT', endpoint: '/task/' + encodeURIComponent(taskId), body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const task = Array.isArray(data) ? (data[0] || null) : data;
+    ctx.workfrontTaskId = taskId;
+    ctx.workfrontTask = task || null;
+    logInfo('workfront_update_task', { taskId: taskId, updated: true });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront update_task failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:create_issue 1`] = `
+
+function step_createWorkfrontIssue(ctx) {
+  ctx = ctx || {};
+  const config = {"name":"Bug report for {{feature_name}}","projectID":"{{workfront_project_id}}","description":"Customer reported sync failures on {{date}}.","assignedToID":"{{assignee_id}}","submittedByID":"{{reporter_id}}","priority":2,"severity":3,"status":"INP","resolutionType":"FIX","plannedCompletionDate":"2024-03-01"};
+
+
+  const operationLabel = 'create_issue';
+  const operationLogKey = 'workfront_create_issue';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const name = resolveRequired(config.name, 'an issue name');
+  const projectId = resolveRequired(config.projectID, 'a project ID');
+  const payload = { name: name, projectID: projectId };
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const assignedTo = resolveOptional(config.assignedToID);
+  if (assignedTo) { payload.assignedToID = assignedTo; }
+  const submittedBy = resolveOptional(config.submittedByID);
+  if (submittedBy) { payload.submittedByID = submittedBy; }
+  const priority = resolveNumberValue(config.priority, 'priority');
+  if (priority !== undefined) { payload.priority = priority; }
+  const severity = resolveNumberValue(config.severity, 'severity');
+  if (severity !== undefined) { payload.severity = severity; }
+  const status = resolveOptional(config.status);
+  if (status) { payload.status = status; }
+  const resolutionType = resolveOptional(config.resolutionType);
+  if (resolutionType) { payload.resolutionType = resolutionType; }
+  const plannedCompletion = formatDateValue(config.plannedCompletionDate, 'planned completion date');
+  if (plannedCompletion) { payload.plannedCompletionDate = plannedCompletion; }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/issue', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const issue = Array.isArray(data) ? (data[0] || null) : data;
+    const issueId = issue && (issue.ID || issue.id) ? (issue.ID || issue.id) : null;
+    ctx.workfrontIssueId = issueId || null;
+    ctx.workfrontIssue = issue || null;
+    logInfo('workfront_create_issue', { issueId: issueId || null, projectId: projectId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront create_issue failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:create_timesheet 1`] = `
+
+function step_createWorkfrontTimesheet(ctx) {
+  ctx = ctx || {};
+  const config = {"userID":"{{user_id}}","startDate":"2024-02-12","endDate":"2024-02-18","approverID":"{{approver_id}}","timesheetProfileID":"PROFILE-9"};
+
+
+  const operationLabel = 'create_timesheet';
+  const operationLogKey = 'workfront_create_timesheet';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const userId = resolveRequired(config.userID, 'a user ID');
+  const startDate = formatDateValue(config.startDate, 'start date');
+  if (!startDate) { throw new Error('Workfront create_timesheet requires a start date.'); }
+  const endDate = formatDateValue(config.endDate, 'end date');
+  if (!endDate) { throw new Error('Workfront create_timesheet requires an end date.'); }
+  const payload = { userID: userId, startDate: startDate, endDate: endDate };
+  const approverId = resolveOptional(config.approverID);
+  if (approverId) { payload.approverID = approverId; }
+  const profileId = resolveOptional(config.timesheetProfileID);
+  if (profileId) { payload.timesheetProfileID = profileId; }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/timesheet', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const timesheet = Array.isArray(data) ? (data[0] || null) : data;
+    const timesheetId = timesheet && (timesheet.ID || timesheet.id) ? (timesheet.ID || timesheet.id) : null;
+    ctx.workfrontTimesheetId = timesheetId || null;
+    ctx.workfrontTimesheet = timesheet || null;
+    logInfo('workfront_create_timesheet', { timesheetId: timesheetId || null, userId: userId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront create_timesheet failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:log_time 1`] = `
+
+function step_logWorkfrontTime(ctx) {
+  ctx = ctx || {};
+  const config = {"hours":6.5,"entryDate":"2024-02-14","taskID":"{{workfront_task_id}}","projectID":"{{workfront_project_id}}","description":"Deep dive on {{feature_name}} requirements.","hourTypeID":"HOUR-TYPE-1"};
+
+
+  const operationLabel = 'log_time';
+  const operationLogKey = 'workfront_log_time';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const hours = resolveNumberValue(config.hours, 'hours');
+  if (hours === undefined) { throw new Error('Workfront log_time requires hours.'); }
+  const entryDate = formatDateValue(config.entryDate, 'entry date');
+  if (!entryDate) { throw new Error('Workfront log_time requires an entry date.'); }
+  const payload = { hours: hours, entryDate: entryDate };
+  const taskId = resolveOptional(config.taskID);
+  if (taskId) { payload.taskID = taskId; }
+  const projectId = resolveOptional(config.projectID);
+  if (projectId) { payload.projectID = projectId; }
+  const issueId = resolveOptional(config.issueID);
+  if (issueId) { payload.issueID = issueId; }
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  const hourTypeId = resolveOptional(config.hourTypeID);
+  if (hourTypeId) { payload.hourTypeID = hourTypeId; }
+  if (!payload.taskID && !payload.projectID && !payload.issueID) { throw new Error('Workfront log_time requires taskID, projectID, or issueID.'); }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/hour', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const hour = Array.isArray(data) ? (data[0] || null) : data;
+    const hourId = hour && (hour.ID || hour.id) ? (hour.ID || hour.id) : null;
+    ctx.workfrontHourId = hourId || null;
+    ctx.workfrontHour = hour || null;
+    logInfo('workfront_log_time', { hourId: hourId || null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront log_time failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:get_users 1`] = `
+
+function step_getWorkfrontUsers(ctx) {
+  ctx = ctx || {};
+  const config = {"limit":75,"isActive":true,"groupID":"GRP-42","roleID":"ROLE-7","fields":["ID","name","emailAddr"]};
+
+
+  const operationLabel = 'get_users';
+  const operationLogKey = 'workfront_get_users';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const limit = resolveNumberValue(config.limit, 'limit');
+  const query = { '$$LIMIT': limit !== undefined ? limit : 100 };
+  const isActive = resolveBooleanValue(config.isActive);
+  if (isActive !== undefined) { query.isActive = isActive ? 'true' : 'false'; }
+  const groupId = resolveOptional(config.groupID);
+  if (groupId) { query.groupID = groupId; }
+  const roleId = resolveOptional(config.roleID);
+  if (roleId) { query.roleID = roleId; }
+  const fieldsList = resolveFields(config.fields);
+  if (fieldsList && fieldsList.length) { query.fields = fieldsList.join(','); }
+  try {
+    const response = workfrontRequest({ method: 'GET', endpoint: '/user/search', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const users = body && Array.isArray(body.data) ? body.data : [];
+    ctx.workfrontUsers = users;
+    ctx.workfrontUsersMeta = { totalCount: body && typeof body.totalCount === 'number' ? body.totalCount : null };
+    logInfo('workfront_get_users', { count: Array.isArray(users) ? users.length : 0, limit: query['$$LIMIT'] || null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront get_users failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds action.workfront:create_document 1`] = `
+
+function step_createWorkfrontDocument(ctx) {
+  ctx = ctx || {};
+  const config = {"name":"Upload {{asset_name}} mockups","docObjCode":"TASK","objID":"{{workfront_task_id}}","description":"First draft assets for review.","currentVersion":{"versionNumber":1,"description":"Initial upload","extRefID":"{{file_reference_id}}"}};
+
+
+  const operationLabel = 'create_document';
+  const operationLogKey = 'workfront_create_document';
+
+  let apiKey;
+  try {
+    apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_api_key', { operation: operationLogKey });
+    return ctx;
+  }
+
+  let domainSecret;
+  try {
+    domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+  } catch (error) {
+    logWarn('workfront_missing_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeDomain(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      value = 'https://' + value;
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedDomain = normalizeDomain(domainSecret);
+  if (!normalizedDomain) {
+    logWarn('workfront_invalid_domain', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^vd+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v15.0';
+  }
+
+  const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'sessionID': String(apiKey).trim()
+  };
+
+  function workfrontRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            const entry = value[i];
+            if (entry === null || entry === undefined || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    const response = rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    if (!response || typeof response.status !== 'number') {
+      throw new Error('Workfront ' + operationLabel + ' response missing status.');
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response;
+    }
+
+    const status = response.status;
+    const headers = response.headers;
+    const payload = response.body;
+
+    const details = [];
+    if (payload && typeof payload === 'object') {
+      if (payload.error && typeof payload.error === 'string') {
+        details.push(payload.error);
+      } else if (payload.message && typeof payload.message === 'string') {
+        details.push(payload.message);
+      }
+
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const validation = payload.errors[i];
+          if (!validation) {
+            continue;
+          }
+          if (typeof validation === 'string') {
+            details.push(validation);
+          } else if (typeof validation === 'object') {
+            if (validation.message) {
+              details.push(String(validation.message));
+            } else {
+              details.push(JSON.stringify(validation));
+            }
+          }
+        }
+      }
+    }
+    const messagePrefix = context || ('Workfront ' + operationLabel + ' failed');
+    const messageSuffix = details.length > 0 ? details.join(' ') : 'Unexpected error.';
+    const wrapped = new Error(messagePrefix + '. ' + messageSuffix);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed || resolved;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Workfront ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Workfront ' + operationLabel + ' boolean fields must resolve to true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Workfront ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date.');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function resolveMultiValue(template) {
+    const result = [];
+    if (template === null || template === undefined) {
+      return result;
+    }
+    if (Array.isArray(template)) {
+      for (let i = 0; i < template.length; i++) {
+        const entry = resolveTemplate(template[i], { allowEmpty: true });
+        if (entry) {
+          result.push(entry);
+        }
+      }
+      return result;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return result;
+    }
+    const parts = resolved.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const entry = parts[i].trim();
+      if (entry) {
+        result.push(entry);
+      }
+    }
+    return result;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const candidate = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(candidate).length === 0) {
+      throw new Error(message);
+    }
+    return candidate;
+  }
+
+  function resolveFields(source) {
+    const values = resolveMultiValue(source);
+    return values.length > 0 ? values : undefined;
+  }
+  const name = resolveRequired(config.name, 'a document name');
+  const objCode = resolveRequired(config.docObjCode, 'a document object code');
+  const objId = resolveRequired(config.objID, 'an object ID');
+  const payload = { name: name, docObjCode: objCode, objID: objId };
+  const description = resolveOptional(config.description);
+  if (description) { payload.description = description; }
+  if (config.currentVersion) { payload.currentVersion = ensureNonEmptyObject(config.currentVersion, 'Workfront create_document currentVersion requires at least one property.'); }
+  try {
+    const response = workfrontRequest({ method: 'POST', endpoint: '/document', body: payload });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const data = body && body.data ? body.data : body;
+    const document = Array.isArray(data) ? (data[0] || null) : data;
+    const documentId = document && (document.ID || document.id) ? (document.ID || document.id) : null;
+    ctx.workfrontDocumentId = documentId || null;
+    ctx.workfrontDocument = document || null;
+    logInfo('workfront_create_document', { documentId: documentId || null, objID: objId, docObjCode: objCode });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Workfront create_document failed');
+  }
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds trigger.workfront:project_created 1`] = `
+
+function workfrontProjectCreated() {
+  const config = {"apiVersion":"v16.0","groupID":"{{group_id}}","portfolioID":"{{portfolio_id}}"};
+  return buildPollingWrapper('trigger.workfront:project_created', function (runtime) {
+    let apiKey;
+    try {
+      apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_api_key', { trigger: 'trigger.workfront:project_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    let domainSecret;
+    try {
+      domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_domain', { trigger: 'trigger.workfront:project_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function normalizeDomain(raw) {
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+      if (!value) {
+        return '';
+      }
+      if (!/^https?:\/\//i.test(value)) {
+        value = 'https://' + value;
+      }
+      value = value.replace(/\/+$/, '');
+      return value;
+    }
+
+    const normalizedDomain = normalizeDomain(domainSecret);
+    if (!normalizedDomain) {
+      logWarn('workfront_invalid_domain', { trigger: 'trigger.workfront:project_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function resolveApiVersion() {
+      if (config && typeof config.apiVersion === 'string') {
+        const raw = config.apiVersion.trim();
+        if (raw) {
+          if (/^vd+/i.test(raw)) {
+            return raw.charAt(0).toLowerCase() + raw.slice(1);
+          }
+          return 'v' + raw;
+        }
+      }
+      return 'v15.0';
+    }
+
+    const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+    const defaultHeaders = {
+      'Accept': 'application/json',
+      'sessionID': String(apiKey).trim()
+    };
+
+    function workfrontRequest(options) {
+      options = options || {};
+      const endpoint = options.endpoint ? String(options.endpoint) : '';
+      const method = options.method ? String(options.method).toUpperCase() : 'GET';
+      const query = options.query && typeof options.query === 'object' ? options.query : null;
+      let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      if (query) {
+        const parts = [];
+        for (const key in query) {
+          if (!Object.prototype.hasOwnProperty.call(query, key)) {
+            continue;
+          }
+          const value = query[key];
+          if (value === null || value === undefined || value === '') {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) {
+              const entry = value[i];
+              if (entry === null || entry === undefined || entry === '') {
+                continue;
+              }
+              parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+            }
+          } else {
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+          }
+        }
+        if (parts.length > 0) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+      }
+      const requestConfig = {
+        url: url,
+        method: method,
+        headers: Object.assign({}, defaultHeaders, options.headers || {}),
+        muteHttpExceptions: true
+      };
+      if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+        requestConfig.payload = JSON.stringify(options.body);
+        requestConfig.contentType = 'application/json';
+      } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+        requestConfig.payload = options.payload;
+        if (options.contentType) {
+          requestConfig.contentType = options.contentType;
+        }
+      }
+      return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+    }
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const interpolationContext = state.lastPayload || {};
+    const lastCursor = cursorState['workfront_project_created_cursor'] || null;
+
+    function resolveTemplate(template, options) {
+      options = options || {};
+      if (template === null || template === undefined) {
+        if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+          return String(options.defaultValue);
+        }
+        return '';
+      }
+      if (typeof template === 'number') {
+        return String(template);
+      }
+      if (typeof template === 'boolean') {
+        return template ? 'true' : 'false';
+      }
+      const raw = typeof template === 'string' ? template : String(template);
+      const resolved = interpolate(raw, interpolationContext);
+      if (options.keepWhitespace) {
+        return resolved;
+      }
+      const trimmed = resolved.trim();
+      if (!trimmed && options.allowEmpty) {
+        return '';
+      }
+      return trimmed || resolved;
+    }
+
+    function resolveOptional(template) {
+      const value = resolveTemplate(template, { allowEmpty: true });
+      return value ? value : undefined;
+    }
+
+    function resolveBooleanValue(template) {
+      if (template === null || template === undefined || template === '') {
+        return undefined;
+      }
+      if (typeof template === 'boolean') {
+        return template;
+      }
+      const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+      }
+      throw new Error('Workfront trigger.workfront:project_created boolean filters must resolve to true/false.');
+    }
+
+    function parseDateValue(template, fieldLabel) {
+      const resolved = resolveTemplate(template, { allowEmpty: true });
+      if (!resolved) {
+        return undefined;
+      }
+      const parsed = new Date(resolved);
+      if (isNaN(parsed.getTime())) {
+        throw new Error('Workfront trigger.workfront:project_created filter "' + fieldLabel + '" must be a valid date.');
+      }
+      return parsed.toISOString();
+    }
+
+    function normalizeTimestamp(value) {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        const millis = value > 1000000000000 ? value : value * 1000;
+        const fromNumber = new Date(millis);
+        if (!isNaN(fromNumber.getTime())) {
+          return fromNumber.toISOString();
+        }
+        return null;
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return null;
+      }
+      let parsed = new Date(text);
+      if (isNaN(parsed.getTime())) {
+        const normalized = text.replace(/:(d{3})(?!d)/, '.$1');
+        parsed = new Date(normalized);
+      }
+      if (isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.toISOString();
+    }
+
+    const query = { '$$LIMIT': 50 };
+    const groupId = resolveOptional(config.groupID);
+    if (groupId) { query.groupID = groupId; }
+    const portfolioId = resolveOptional(config.portfolioID);
+    if (portfolioId) { query.portfolioID = portfolioId; }
+    query.fields = 'ID,name,description,ownerID,portfolioID,groupID,entryDate,status,plannedStartDate,plannedCompletionDate';
+    const response = workfrontRequest({ method: 'GET', endpoint: '/project/search', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = Array.isArray(body && body.data) ? body.data : [];
+    if (items.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_project_created', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    const collected = [];
+    for (let index = 0; index < items.length; index++) {
+      const entry = items[index];
+      if (!entry) {
+        continue;
+      }
+      let timestamp = null;
+      const candidates = ["entryDate","lastUpdateDate"];
+      for (let i = 0; i < candidates.length; i++) {
+        const key = candidates[i];
+        if (!key || !Object.prototype.hasOwnProperty.call(entry, key)) {
+          continue;
+        }
+        timestamp = normalizeTimestamp(entry[key]);
+        if (timestamp) {
+          break;
+        }
+      }
+      if (!timestamp) {
+        continue;
+      }
+      if (lastCursor && timestamp <= lastCursor) {
+        continue;
+      }
+      collected.push({ item: entry, timestamp: timestamp });
+    }
+
+    if (collected.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_project_created', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.timestamp < b.timestamp) { return -1; }
+      if (a.timestamp > b.timestamp) { return 1; }
+      return 0;
+    });
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+        const record = entry.item;
+        lastPayloadDispatched = record;
+        return record;
+    });
+
+    const newest = collected[collected.length - 1].timestamp;
+    cursorState['workfront_project_created_cursor'] = newest;
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({ eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, resource: 'workfront_project_created', cursor: newest });
+    logInfo('workfront_project_created_poll', { dispatched: batch.succeeded, cursor: newest });
+
+    return { eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, cursor: newest };
+  });
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds trigger.workfront:task_created 1`] = `
+
+function workfrontTaskCreated() {
+  const config = {"projectID":"{{workfront_project_id}}","assignedToID":"{{assignee_id}}"};
+  return buildPollingWrapper('trigger.workfront:task_created', function (runtime) {
+    let apiKey;
+    try {
+      apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_api_key', { trigger: 'trigger.workfront:task_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    let domainSecret;
+    try {
+      domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_domain', { trigger: 'trigger.workfront:task_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function normalizeDomain(raw) {
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+      if (!value) {
+        return '';
+      }
+      if (!/^https?:\/\//i.test(value)) {
+        value = 'https://' + value;
+      }
+      value = value.replace(/\/+$/, '');
+      return value;
+    }
+
+    const normalizedDomain = normalizeDomain(domainSecret);
+    if (!normalizedDomain) {
+      logWarn('workfront_invalid_domain', { trigger: 'trigger.workfront:task_created' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function resolveApiVersion() {
+      if (config && typeof config.apiVersion === 'string') {
+        const raw = config.apiVersion.trim();
+        if (raw) {
+          if (/^vd+/i.test(raw)) {
+            return raw.charAt(0).toLowerCase() + raw.slice(1);
+          }
+          return 'v' + raw;
+        }
+      }
+      return 'v15.0';
+    }
+
+    const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+    const defaultHeaders = {
+      'Accept': 'application/json',
+      'sessionID': String(apiKey).trim()
+    };
+
+    function workfrontRequest(options) {
+      options = options || {};
+      const endpoint = options.endpoint ? String(options.endpoint) : '';
+      const method = options.method ? String(options.method).toUpperCase() : 'GET';
+      const query = options.query && typeof options.query === 'object' ? options.query : null;
+      let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      if (query) {
+        const parts = [];
+        for (const key in query) {
+          if (!Object.prototype.hasOwnProperty.call(query, key)) {
+            continue;
+          }
+          const value = query[key];
+          if (value === null || value === undefined || value === '') {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) {
+              const entry = value[i];
+              if (entry === null || entry === undefined || entry === '') {
+                continue;
+              }
+              parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+            }
+          } else {
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+          }
+        }
+        if (parts.length > 0) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+      }
+      const requestConfig = {
+        url: url,
+        method: method,
+        headers: Object.assign({}, defaultHeaders, options.headers || {}),
+        muteHttpExceptions: true
+      };
+      if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+        requestConfig.payload = JSON.stringify(options.body);
+        requestConfig.contentType = 'application/json';
+      } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+        requestConfig.payload = options.payload;
+        if (options.contentType) {
+          requestConfig.contentType = options.contentType;
+        }
+      }
+      return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+    }
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const interpolationContext = state.lastPayload || {};
+    const lastCursor = cursorState['workfront_task_created_cursor'] || null;
+
+    function resolveTemplate(template, options) {
+      options = options || {};
+      if (template === null || template === undefined) {
+        if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+          return String(options.defaultValue);
+        }
+        return '';
+      }
+      if (typeof template === 'number') {
+        return String(template);
+      }
+      if (typeof template === 'boolean') {
+        return template ? 'true' : 'false';
+      }
+      const raw = typeof template === 'string' ? template : String(template);
+      const resolved = interpolate(raw, interpolationContext);
+      if (options.keepWhitespace) {
+        return resolved;
+      }
+      const trimmed = resolved.trim();
+      if (!trimmed && options.allowEmpty) {
+        return '';
+      }
+      return trimmed || resolved;
+    }
+
+    function resolveOptional(template) {
+      const value = resolveTemplate(template, { allowEmpty: true });
+      return value ? value : undefined;
+    }
+
+    function resolveBooleanValue(template) {
+      if (template === null || template === undefined || template === '') {
+        return undefined;
+      }
+      if (typeof template === 'boolean') {
+        return template;
+      }
+      const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+      }
+      throw new Error('Workfront trigger.workfront:task_created boolean filters must resolve to true/false.');
+    }
+
+    function parseDateValue(template, fieldLabel) {
+      const resolved = resolveTemplate(template, { allowEmpty: true });
+      if (!resolved) {
+        return undefined;
+      }
+      const parsed = new Date(resolved);
+      if (isNaN(parsed.getTime())) {
+        throw new Error('Workfront trigger.workfront:task_created filter "' + fieldLabel + '" must be a valid date.');
+      }
+      return parsed.toISOString();
+    }
+
+    function normalizeTimestamp(value) {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        const millis = value > 1000000000000 ? value : value * 1000;
+        const fromNumber = new Date(millis);
+        if (!isNaN(fromNumber.getTime())) {
+          return fromNumber.toISOString();
+        }
+        return null;
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return null;
+      }
+      let parsed = new Date(text);
+      if (isNaN(parsed.getTime())) {
+        const normalized = text.replace(/:(d{3})(?!d)/, '.$1');
+        parsed = new Date(normalized);
+      }
+      if (isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.toISOString();
+    }
+
+    const query = { '$$LIMIT': 50 };
+    const projectId = resolveOptional(config.projectID);
+    if (projectId) { query.projectID = projectId; }
+    const assignedTo = resolveOptional(config.assignedToID);
+    if (assignedTo) { query.assignedToID = assignedTo; }
+    query.fields = 'ID,name,projectID,assignedToID,status,plannedStartDate,plannedCompletionDate,entryDate';
+    const response = workfrontRequest({ method: 'GET', endpoint: '/task/search', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = Array.isArray(body && body.data) ? body.data : [];
+    if (items.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_task_created', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    const collected = [];
+    for (let index = 0; index < items.length; index++) {
+      const entry = items[index];
+      if (!entry) {
+        continue;
+      }
+      let timestamp = null;
+      const candidates = ["entryDate","lastUpdateDate"];
+      for (let i = 0; i < candidates.length; i++) {
+        const key = candidates[i];
+        if (!key || !Object.prototype.hasOwnProperty.call(entry, key)) {
+          continue;
+        }
+        timestamp = normalizeTimestamp(entry[key]);
+        if (timestamp) {
+          break;
+        }
+      }
+      if (!timestamp) {
+        continue;
+      }
+      if (lastCursor && timestamp <= lastCursor) {
+        continue;
+      }
+      collected.push({ item: entry, timestamp: timestamp });
+    }
+
+    if (collected.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_task_created', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.timestamp < b.timestamp) { return -1; }
+      if (a.timestamp > b.timestamp) { return 1; }
+      return 0;
+    });
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+        const record = entry.item;
+        lastPayloadDispatched = record;
+        return record;
+    });
+
+    const newest = collected[collected.length - 1].timestamp;
+    cursorState['workfront_task_created_cursor'] = newest;
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({ eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, resource: 'workfront_task_created', cursor: newest });
+    logInfo('workfront_task_created_poll', { dispatched: batch.succeeded, cursor: newest });
+
+    return { eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, cursor: newest };
+  });
+}
+
+`;
+
+exports[`Apps Script Workfront REAL_OPS builds trigger.workfront:task_completed 1`] = `
+
+function workfrontTaskCompleted() {
+  const config = {"projectID":"{{workfront_project_id}}","assignedToID":"{{assignee_id}}"};
+  return buildPollingWrapper('trigger.workfront:task_completed', function (runtime) {
+    let apiKey;
+    try {
+      apiKey = getSecret('WORKFRONT_API_KEY', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_api_key', { trigger: 'trigger.workfront:task_completed' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    let domainSecret;
+    try {
+      domainSecret = getSecret('WORKFRONT_DOMAIN', { connectorKey: 'workfront' });
+    } catch (error) {
+      logWarn('workfront_missing_domain', { trigger: 'trigger.workfront:task_completed' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function normalizeDomain(raw) {
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+      if (!value) {
+        return '';
+      }
+      if (!/^https?:\/\//i.test(value)) {
+        value = 'https://' + value;
+      }
+      value = value.replace(/\/+$/, '');
+      return value;
+    }
+
+    const normalizedDomain = normalizeDomain(domainSecret);
+    if (!normalizedDomain) {
+      logWarn('workfront_invalid_domain', { trigger: 'trigger.workfront:task_completed' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function resolveApiVersion() {
+      if (config && typeof config.apiVersion === 'string') {
+        const raw = config.apiVersion.trim();
+        if (raw) {
+          if (/^vd+/i.test(raw)) {
+            return raw.charAt(0).toLowerCase() + raw.slice(1);
+          }
+          return 'v' + raw;
+        }
+      }
+      return 'v15.0';
+    }
+
+    const baseUrl = normalizedDomain.replace(/\/+$/, '') + '/attask/api/' + resolveApiVersion().replace(/\/+$/, '');
+    const defaultHeaders = {
+      'Accept': 'application/json',
+      'sessionID': String(apiKey).trim()
+    };
+
+    function workfrontRequest(options) {
+      options = options || {};
+      const endpoint = options.endpoint ? String(options.endpoint) : '';
+      const method = options.method ? String(options.method).toUpperCase() : 'GET';
+      const query = options.query && typeof options.query === 'object' ? options.query : null;
+      let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      if (query) {
+        const parts = [];
+        for (const key in query) {
+          if (!Object.prototype.hasOwnProperty.call(query, key)) {
+            continue;
+          }
+          const value = query[key];
+          if (value === null || value === undefined || value === '') {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) {
+              const entry = value[i];
+              if (entry === null || entry === undefined || entry === '') {
+                continue;
+              }
+              parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+            }
+          } else {
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+          }
+        }
+        if (parts.length > 0) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+      }
+      const requestConfig = {
+        url: url,
+        method: method,
+        headers: Object.assign({}, defaultHeaders, options.headers || {}),
+        muteHttpExceptions: true
+      };
+      if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+        requestConfig.payload = JSON.stringify(options.body);
+        requestConfig.contentType = 'application/json';
+      } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+        requestConfig.payload = options.payload;
+        if (options.contentType) {
+          requestConfig.contentType = options.contentType;
+        }
+      }
+      return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+    }
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const interpolationContext = state.lastPayload || {};
+    const lastCursor = cursorState['workfront_task_completed_cursor'] || null;
+
+    function resolveTemplate(template, options) {
+      options = options || {};
+      if (template === null || template === undefined) {
+        if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+          return String(options.defaultValue);
+        }
+        return '';
+      }
+      if (typeof template === 'number') {
+        return String(template);
+      }
+      if (typeof template === 'boolean') {
+        return template ? 'true' : 'false';
+      }
+      const raw = typeof template === 'string' ? template : String(template);
+      const resolved = interpolate(raw, interpolationContext);
+      if (options.keepWhitespace) {
+        return resolved;
+      }
+      const trimmed = resolved.trim();
+      if (!trimmed && options.allowEmpty) {
+        return '';
+      }
+      return trimmed || resolved;
+    }
+
+    function resolveOptional(template) {
+      const value = resolveTemplate(template, { allowEmpty: true });
+      return value ? value : undefined;
+    }
+
+    function resolveBooleanValue(template) {
+      if (template === null || template === undefined || template === '') {
+        return undefined;
+      }
+      if (typeof template === 'boolean') {
+        return template;
+      }
+      const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+      }
+      throw new Error('Workfront trigger.workfront:task_completed boolean filters must resolve to true/false.');
+    }
+
+    function parseDateValue(template, fieldLabel) {
+      const resolved = resolveTemplate(template, { allowEmpty: true });
+      if (!resolved) {
+        return undefined;
+      }
+      const parsed = new Date(resolved);
+      if (isNaN(parsed.getTime())) {
+        throw new Error('Workfront trigger.workfront:task_completed filter "' + fieldLabel + '" must be a valid date.');
+      }
+      return parsed.toISOString();
+    }
+
+    function normalizeTimestamp(value) {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        const millis = value > 1000000000000 ? value : value * 1000;
+        const fromNumber = new Date(millis);
+        if (!isNaN(fromNumber.getTime())) {
+          return fromNumber.toISOString();
+        }
+        return null;
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return null;
+      }
+      let parsed = new Date(text);
+      if (isNaN(parsed.getTime())) {
+        const normalized = text.replace(/:(d{3})(?!d)/, '.$1');
+        parsed = new Date(normalized);
+      }
+      if (isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.toISOString();
+    }
+
+    const query = { '$$LIMIT': 50 };
+    const projectId = resolveOptional(config.projectID);
+    if (projectId) { query.projectID = projectId; }
+    const assignedTo = resolveOptional(config.assignedToID);
+    if (assignedTo) { query.assignedToID = assignedTo; }
+    query.status = 'CPL';
+    query.fields = 'ID,name,projectID,assignedToID,status,percentComplete,actualCompletionDate';
+    const response = workfrontRequest({ method: 'GET', endpoint: '/task/search', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = Array.isArray(body && body.data) ? body.data : [];
+    if (items.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_task_completed', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    const collected = [];
+    for (let index = 0; index < items.length; index++) {
+      const entry = items[index];
+      if (!entry) {
+        continue;
+      }
+      if (entry.status && entry.status !== 'CPL') { continue; }
+      if (!entry.actualCompletionDate) { continue; }
+      let timestamp = null;
+      const candidates = ["actualCompletionDate","lastUpdateDate"];
+      for (let i = 0; i < candidates.length; i++) {
+        const key = candidates[i];
+        if (!key || !Object.prototype.hasOwnProperty.call(entry, key)) {
+          continue;
+        }
+        timestamp = normalizeTimestamp(entry[key]);
+        if (timestamp) {
+          break;
+        }
+      }
+      if (!timestamp) {
+        continue;
+      }
+      if (lastCursor && timestamp <= lastCursor) {
+        continue;
+      }
+      collected.push({ item: entry, timestamp: timestamp });
+    }
+
+    if (collected.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'workfront_task_completed', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.timestamp < b.timestamp) { return -1; }
+      if (a.timestamp > b.timestamp) { return 1; }
+      return 0;
+    });
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+        const record = entry.item;
+        lastPayloadDispatched = record;
+        return record;
+    });
+
+    const newest = collected[collected.length - 1].timestamp;
+    cursorState['workfront_task_completed_cursor'] = newest;
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({ eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, resource: 'workfront_task_completed', cursor: newest });
+    logInfo('workfront_task_completed_poll', { dispatched: batch.succeeded, cursor: newest });
+
+    return { eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, cursor: newest };
+  });
+}
+
+`;
+

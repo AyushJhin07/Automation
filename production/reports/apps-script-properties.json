@@ -195,8 +195,65 @@
       "triggers": [
         "trigger.adp:worker_hired"
       ],
-      "properties": [],
-      "environmentProperties": []
+      "properties": [
+        {
+          "name": "WORKFRONT_API_KEY",
+          "optional": false,
+          "operations": [
+            "action.workfront:create_document",
+            "action.workfront:create_issue",
+            "action.workfront:create_project",
+            "action.workfront:create_task",
+            "action.workfront:create_timesheet",
+            "action.workfront:get_project",
+            "action.workfront:get_task",
+            "action.workfront:get_users",
+            "action.workfront:log_time",
+            "action.workfront:search_projects",
+            "action.workfront:test_connection",
+            "action.workfront:update_project",
+            "action.workfront:update_task"
+          ],
+          "triggers": [
+            "trigger.workfront:project_created",
+            "trigger.workfront:task_completed",
+            "trigger.workfront:task_created"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "WORKFRONT_DOMAIN",
+          "optional": false,
+          "operations": [
+            "action.workfront:create_document",
+            "action.workfront:create_issue",
+            "action.workfront:create_project",
+            "action.workfront:create_task",
+            "action.workfront:create_timesheet",
+            "action.workfront:get_project",
+            "action.workfront:get_task",
+            "action.workfront:get_users",
+            "action.workfront:log_time",
+            "action.workfront:search_projects",
+            "action.workfront:test_connection",
+            "action.workfront:update_project",
+            "action.workfront:update_task"
+          ],
+          "triggers": [
+            "trigger.workfront:project_created",
+            "trigger.workfront:task_completed",
+            "trigger.workfront:task_created"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "WORKFRONT_DOMAIN"
+      ]
     },
     {
       "id": "adyen",
