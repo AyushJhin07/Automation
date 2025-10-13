@@ -943,6 +943,8 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     DOCUSIGN_BASE_URI: { aliases: ['apps_script__docusign__base_uri'] },
     DROPBOX_ACCESS_TOKEN: { aliases: ['apps_script__dropbox__access_token'] },
     GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] },
+    GOOGLE_DRIVE_ACCESS_TOKEN: { aliases: ['apps_script__google_drive__access_token'] },
+    GOOGLE_DRIVE_SERVICE_ACCOUNT: { aliases: ['apps_script__google_drive__service_account'] },
     GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
     GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] },
     HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] },
@@ -990,6 +992,10 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     },
     github: {
       GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] }
+    },
+    'google-drive': {
+      GOOGLE_DRIVE_ACCESS_TOKEN: { aliases: ['apps_script__google_drive__access_token'] },
+      GOOGLE_DRIVE_SERVICE_ACCOUNT: { aliases: ['apps_script__google_drive__service_account'] }
     },
     'google-admin': {
       GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
@@ -1078,6 +1084,12 @@ var __CONNECTOR_OAUTH_TOKEN_METADATA = {
     property: 'GOOGLE_ADMIN_ACCESS_TOKEN',
     description: 'access token',
     aliases: ['apps_script__google_admin__access_token']
+  },
+  'google-drive': {
+    displayName: 'Google Drive',
+    property: 'GOOGLE_DRIVE_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__google_drive__access_token']
   },
   jira: {
     displayName: 'Jira',
@@ -16041,15 +16053,179 @@ function step_uploadDropboxFile(ctx) {
 
   'action.google-drive:create_folder': (c) => `
 function step_createDriveFolder(ctx) {
-  const folderName = interpolate('${c.name || 'Automated Folder'}', ctx);
-  const parentId = '${c.parentId || ''}';
-  
-  const folder = parentId ? 
-    DriveApp.getFolderById(parentId).createFolder(folderName) :
-    DriveApp.createFolder(folderName);
-  
-  console.log('📁 Google Drive folder created:', folderName);
-  ctx.driveFolderId = folder.getId();
+  const scopeList = ['https://www.googleapis.com/auth/drive.file'];
+  const nameTemplate = ${JSON.stringify(c.name ?? '')};
+  const parentTemplate = ${JSON.stringify(c.parentId ?? '')};
+
+  let folderName = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!folderName) {
+    folderName = 'Automated Folder';
+  }
+
+  const parentId = parentTemplate ? interpolate(parentTemplate, ctx).trim() : '';
+
+  function getDriveAccessToken() {
+    try {
+      return requireOAuthToken('google-drive', { scopes: scopeList });
+    } catch (oauthError) {
+      let rawServiceAccount = null;
+      try {
+        rawServiceAccount = getSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT', { connectorKey: 'google-drive' });
+      } catch (serviceAccountError) {
+        rawServiceAccount = null;
+      }
+
+      if (!rawServiceAccount) {
+        throw oauthError;
+      }
+
+      function base64UrlEncode(value) {
+        if (Object.prototype.toString.call(value) === '[object Array]') {
+          return Utilities.base64EncodeWebSafe(value).replace(/=+$/, '');
+        }
+        return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8).replace(/=+$/, '');
+      }
+
+      try {
+        const parsed = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Service account payload must be valid JSON.');
+        }
+
+        const clientEmail = parsed.client_email;
+        const privateKey = parsed.private_key;
+
+        if (!clientEmail || !privateKey) {
+          throw new Error('Service account JSON must include client_email and private_key.');
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const headerSegment = base64UrlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+        const claimSegment = base64UrlEncode(JSON.stringify({
+          iss: clientEmail,
+          scope: scopeList.join(' '),
+          aud: 'https://oauth2.googleapis.com/token',
+          exp: now + 3600,
+          iat: now
+        }));
+        const signingInput = headerSegment + '.' + claimSegment;
+        const signatureBytes = Utilities.computeRsaSha256Signature(signingInput, privateKey);
+        const signatureSegment = base64UrlEncode(signatureBytes);
+        const assertion = signingInput + '.' + signatureSegment;
+
+        const tokenResponse = rateLimitAware(() => fetchJson({
+          url: 'https://oauth2.googleapis.com/token',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          payload: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion),
+          contentType: 'application/x-www-form-urlencoded'
+        }), { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+        const token = tokenResponse.body && tokenResponse.body.access_token;
+        if (!token) {
+          throw new Error('Service account token exchange did not return an access_token.');
+        }
+
+        return token;
+      } catch (serviceError) {
+        const message = serviceError && serviceError.message ? serviceError.message : String(serviceError);
+        throw new Error('Google Drive service account authentication failed: ' + message);
+      }
+    }
+  }
+
+  const accessToken = getDriveAccessToken();
+
+  if (!folderName) {
+    throw new Error('Google Drive requires a folder name.');
+  }
+
+  let parentMetadata = null;
+  if (parentId) {
+    try {
+      const parentResponse = rateLimitAware(() => fetchJson({
+        url: 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(parentId) + '?fields=id,name,mimeType,trashed&supportsAllDrives=true',
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Accept': 'application/json'
+        }
+      }), { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+      parentMetadata = parentResponse.body || {};
+      const mimeType = (parentMetadata.mimeType || '').toLowerCase();
+      if (mimeType !== 'application/vnd.google-apps.folder') {
+        logError('google_drive_parent_invalid_type', { parentId: parentId, mimeType: mimeType || null });
+        throw new Error('Google Drive parentId must reference a folder.');
+      }
+      if (parentMetadata.trashed) {
+        logError('google_drive_parent_trashed', { parentId: parentId });
+        throw new Error('Google Drive parent folder is in the trash.');
+      }
+    } catch (error) {
+      const status = error && typeof error.status === 'number' ? error.status : null;
+      const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+      logError('google_drive_parent_validation_failed', { parentId: parentId, status: status, payload: payload });
+      if (status === 404) {
+        throw new Error('Google Drive parent folder not found. Confirm the folder ID and sharing permissions.');
+      }
+      throw error;
+    }
+  }
+
+  const requestBody = {
+    name: folderName,
+    mimeType: 'application/vnd.google-apps.folder'
+  };
+
+  if (parentId) {
+    requestBody.parents = [parentId];
+  }
+
+  const createResponse = rateLimitAware(() => fetchJson({
+    url: 'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType,parents,webViewLink,webContentLink,createdTime,modifiedTime,owners',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(requestBody),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const folder = createResponse.body || {};
+  const folderId = folder.id || null;
+
+  if (!folderId) {
+    throw new Error('Google Drive did not return a folder identifier.');
+  }
+
+  if (!Array.isArray(folder.parents) && parentId) {
+    folder.parents = [parentId];
+  }
+
+  ctx.driveFolderId = folderId;
+  ctx.googleDriveFolderId = folderId;
+  ctx.googleDriveFolder = folder;
+  if (parentId) {
+    ctx.googleDriveParentId = parentId;
+  }
+  ctx.lastCreatedFolderId = folderId;
+
+  const parentName = parentMetadata && typeof parentMetadata.name === 'string' ? parentMetadata.name : null;
+
+  logInfo('google_drive_create_folder_success', {
+    folderId: folderId,
+    parentId: parentId || null,
+    parentName: parentName,
+    name: folder.name || folderName,
+    link: folder.webViewLink || null
+  });
+
   return ctx;
 }`,
 
