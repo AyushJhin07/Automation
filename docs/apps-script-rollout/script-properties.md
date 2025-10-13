@@ -21,7 +21,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | activecampaign | `ACTIVECAMPAIGN_API_KEY`<br>`ACTIVECAMPAIGN_API_URL` | — | — |
 | adobe-acrobat | `ADOBE_PDF_CLIENT_ID`<br>`ADOBE_PDF_CLIENT_SECRET` | — | — |
 | adobe-creative | `ADOBE_CREATIVE_ACCESS_TOKEN` | — | — |
-| adobe-sign | `ADOBE_SIGN_ACCESS_TOKEN` | — | — |
+| adobe-sign | `ADOBE_SIGN_ACCESS_TOKEN` | `ADOBE_SIGN_REFRESH_TOKEN`<br>`ADOBE_SIGN_CLIENT_ID`<br>`ADOBE_SIGN_CLIENT_SECRET`<br>`ADOBE_SIGN_BASE_URL` (default `https://api.na1.echosign.com/api/rest/v6`)<br>`ADOBE_SIGN_TOKEN_URL` (default `https://api.na1.echosign.com/oauth/token`)<br>`ADOBE_SIGN_ACCOUNT_ID` | `ADOBE_SIGN_BASE_URL`, `ADOBE_SIGN_TOKEN_URL` |
 | Airtable | `AIRTABLE_API_KEY`<br>`AIRTABLE_BASE_ID` | — | — |
 | amazon | `AMAZON_ACCESS_KEY`<br>`AMAZON_SECRET_KEY` | — | — |
 | amplitude | `AMPLITUDE_API_KEY` | — | — |

@@ -121,66 +121,107 @@
       ],
       "properties": [
         {
-          "name": "TEAMWORK_API_TOKEN",
+          "name": "ADOBE_SIGN_ACCESS_TOKEN",
           "optional": false,
           "operations": [
-            "action.teamwork:create_milestone",
-            "action.teamwork:create_project",
-            "action.teamwork:create_task",
-            "action.teamwork:create_time_entry",
-            "action.teamwork:get_project",
-            "action.teamwork:get_task",
-            "action.teamwork:get_time_entry",
-            "action.teamwork:list_milestones",
-            "action.teamwork:list_projects",
-            "action.teamwork:list_tasks",
-            "action.teamwork:list_time_entries",
-            "action.teamwork:test_connection",
-            "action.teamwork:update_project",
-            "action.teamwork:update_task"
-          ],
-          "triggers": [
-            "trigger.teamwork:project_created",
-            "trigger.teamwork:task_completed",
-            "trigger.teamwork:task_created",
-            "trigger.teamwork:time_entry_created"
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
           ],
           "contexts": [
-            "getSecret"
+            "readScriptProperty"
           ]
         },
         {
-          "name": "TEAMWORK_SITE_URL",
-          "optional": false,
+          "name": "ADOBE_SIGN_REFRESH_TOKEN",
+          "optional": true,
           "operations": [
-            "action.teamwork:create_milestone",
-            "action.teamwork:create_project",
-            "action.teamwork:create_task",
-            "action.teamwork:create_time_entry",
-            "action.teamwork:get_project",
-            "action.teamwork:get_task",
-            "action.teamwork:get_time_entry",
-            "action.teamwork:list_milestones",
-            "action.teamwork:list_projects",
-            "action.teamwork:list_tasks",
-            "action.teamwork:list_time_entries",
-            "action.teamwork:test_connection",
-            "action.teamwork:update_project",
-            "action.teamwork:update_task"
-          ],
-          "triggers": [
-            "trigger.teamwork:project_created",
-            "trigger.teamwork:task_completed",
-            "trigger.teamwork:task_created",
-            "trigger.teamwork:time_entry_created"
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
           ],
           "contexts": [
-            "getSecret"
+            "readScriptProperty"
+          ]
+        },
+        {
+          "name": "ADOBE_SIGN_CLIENT_ID",
+          "optional": true,
+          "operations": [
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
+          ],
+          "contexts": [
+            "readScriptProperty"
+          ]
+        },
+        {
+          "name": "ADOBE_SIGN_CLIENT_SECRET",
+          "optional": true,
+          "operations": [
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
+          ],
+          "contexts": [
+            "readScriptProperty"
+          ]
+        },
+        {
+          "name": "ADOBE_SIGN_BASE_URL",
+          "optional": true,
+          "operations": [
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
+          ],
+          "contexts": [
+            "readScriptProperty"
+          ]
+        },
+        {
+          "name": "ADOBE_SIGN_TOKEN_URL",
+          "optional": true,
+          "operations": [
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
+          ],
+          "contexts": [
+            "readScriptProperty"
+          ]
+        },
+        {
+          "name": "ADOBE_SIGN_ACCOUNT_ID",
+          "optional": true,
+          "operations": [
+            "action.adobesign:cancel_agreement",
+            "action.adobesign:create_agreement",
+            "action.adobesign:get_agreement",
+            "action.adobesign:send_agreement",
+            "action.adobesign:test_connection"
+          ],
+          "contexts": [
+            "readScriptProperty"
           ]
         }
       ],
       "environmentProperties": [
-        "TEAMWORK_SITE_URL"
+        "ADOBE_SIGN_BASE_URL",
+        "ADOBE_SIGN_TOKEN_URL"
       ]
     },
     {

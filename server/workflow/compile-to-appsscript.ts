@@ -1261,6 +1261,13 @@ function __slackApiRequest(accessToken, endpoint, options) {
 
 var __SECRET_HELPER_DEFAULT_OVERRIDES = {
   defaults: {
+    ADOBE_SIGN_ACCESS_TOKEN: { aliases: ['apps_script__adobe_sign__access_token', 'ADOBESIGN_ACCESS_TOKEN'] },
+    ADOBE_SIGN_REFRESH_TOKEN: { aliases: ['apps_script__adobe_sign__refresh_token', 'ADOBESIGN_REFRESH_TOKEN'] },
+    ADOBE_SIGN_CLIENT_ID: { aliases: ['apps_script__adobe_sign__client_id', 'ADOBESIGN_CLIENT_ID'] },
+    ADOBE_SIGN_CLIENT_SECRET: { aliases: ['apps_script__adobe_sign__client_secret', 'ADOBESIGN_CLIENT_SECRET'] },
+    ADOBE_SIGN_BASE_URL: { aliases: ['apps_script__adobe_sign__base_url', 'ADOBESIGN_BASE_URL'] },
+    ADOBE_SIGN_TOKEN_URL: { aliases: ['apps_script__adobe_sign__token_url', 'ADOBESIGN_TOKEN_URL'] },
+    ADOBE_SIGN_TOKEN_EXPIRES_AT: { aliases: ['apps_script__adobe_sign__token_expires_at', 'ADOBESIGN_TOKEN_EXPIRES_AT'] },
     AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
     AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] },
     ASANA_ACCESS_TOKEN: { aliases: ['apps_script__asana__access_token'] },
@@ -1306,6 +1313,15 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     TYPEFORM_ACCESS_TOKEN: { aliases: ['apps_script__typeform__access_token'] }
   },
   connectors: {
+    'adobe-sign': {
+      ADOBE_SIGN_ACCESS_TOKEN: { aliases: ['apps_script__adobe_sign__access_token', 'ADOBESIGN_ACCESS_TOKEN'] },
+      ADOBE_SIGN_REFRESH_TOKEN: { aliases: ['apps_script__adobe_sign__refresh_token', 'ADOBESIGN_REFRESH_TOKEN'] },
+      ADOBE_SIGN_CLIENT_ID: { aliases: ['apps_script__adobe_sign__client_id', 'ADOBESIGN_CLIENT_ID'] },
+      ADOBE_SIGN_CLIENT_SECRET: { aliases: ['apps_script__adobe_sign__client_secret', 'ADOBESIGN_CLIENT_SECRET'] },
+      ADOBE_SIGN_BASE_URL: { aliases: ['apps_script__adobe_sign__base_url', 'ADOBESIGN_BASE_URL'] },
+      ADOBE_SIGN_TOKEN_URL: { aliases: ['apps_script__adobe_sign__token_url', 'ADOBESIGN_TOKEN_URL'] },
+      ADOBE_SIGN_TOKEN_EXPIRES_AT: { aliases: ['apps_script__adobe_sign__token_expires_at', 'ADOBESIGN_TOKEN_EXPIRES_AT'] }
+    },
     airtable: {
       AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
       AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] }
@@ -1403,6 +1419,12 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
   }
 };
 var __CONNECTOR_OAUTH_TOKEN_METADATA = {
+  'adobe-sign': {
+    displayName: 'Adobe Sign',
+    property: 'ADOBE_SIGN_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['ADOBESIGN_ACCESS_TOKEN']
+  },
   asana: {
     displayName: 'Asana',
     property: 'ASANA_ACCESS_TOKEN',
@@ -11502,91 +11524,49 @@ function ${functionName}(inputData, params) {
 }
 
 function generateAdobeSignFunction(functionName: string, node: WorkflowNode): string {
-  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'create_agreement';
+  const params = (node.params ?? {}) as any;
+  const rawOperation = params.operation ?? node.data?.operation ?? '';
+  const config = (node.data?.config ?? params) as any;
+  const opKey = node.op ?? '';
+  const nodeType = typeof node.type === 'string' ? node.type.toLowerCase() : '';
+  const keySegments = opKey.split(':');
+  const prefix = keySegments[0] ?? '';
+  const operationFromKey =
+    keySegments.length > 1
+      ? keySegments[1]
+      : (prefix.split('.').pop() ?? '');
+  const isTrigger = prefix.startsWith('trigger.adobesign') || nodeType === 'trigger';
+  const defaultOperation = isTrigger ? 'agreement_workflow_completed' : 'test_connection';
+  const resolvedOperation = String(rawOperation || operationFromKey || defaultOperation).trim();
+  const normalizedOperation = resolvedOperation
+    ? resolvedOperation.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
+    : defaultOperation;
 
-  return `
-function ${functionName}(inputData, params) {
-  const accessToken = params.accessToken || getSecret('ADOBESIGN_ACCESS_TOKEN');
-  const baseUrl = (params.baseUrl || getSecret('ADOBESIGN_BASE_URL', { defaultValue: 'https://api.na1.echosign.com/api/rest/v6' })).replace(/\/$/, '');
-
-  if (!accessToken) {
-    console.warn('⚠️ Adobe Sign access token not configured');
-    return { ...inputData, adobeSignError: 'Missing Adobe Sign access token' };
-  }
-
-  const operation = (params.operation || '${defaultOperation}').toLowerCase();
-  const headers = {
-    'Authorization': 'Bearer ' + accessToken,
-    'Content-Type': 'application/json'
-  };
-
-  function request(method, endpoint, payload) {
-    const response = UrlFetchApp.fetch(baseUrl + endpoint, {
-      method: method,
-      headers: headers,
-      muteHttpExceptions: true,
-      payload: payload ? JSON.stringify(payload) : undefined,
-    });
-    const status = response.getResponseCode();
-    const text = response.getContentText();
-    if (status >= 200 && status < 300) {
-      return text ? JSON.parse(text) : {};
+  if (isTrigger) {
+    const builder = ADOBE_SIGN_TRIGGER_BUILDERS[normalizedOperation];
+    if (builder) {
+      return builder(config, functionName);
     }
-    throw new Error('Adobe Sign API ' + status + ': ' + text);
+  } else {
+    const builder = ADOBE_SIGN_ACTION_BUILDERS[normalizedOperation];
+    if (builder) {
+      return builder(config, functionName);
+    }
   }
 
-  try {
-    switch (operation) {
-      case 'test_connection': {
-        request('GET', '/users/me');
-        return { ...inputData, adobeSignConnection: 'ok' };
-      }
-      case 'create_agreement': {
-        const payload = {
-          name: params.name,
-          fileInfos: params.fileInfos || [],
-          participantSetsInfo: params.participantSetsInfo || [],
-          signatureType: params.signatureType || 'ESIGN',
-          state: params.state || 'IN_PROCESS',
-          emailOption: params.emailOption || null,
-          externalId: params.externalId || null,
-          message: params.message || '',
-        };
-        const result = request('POST', '/agreements', payload);
-        return { ...inputData, adobeSignAgreement: result };
-      }
-      case 'send_agreement': {
-        const agreementId = params.agreementId || params.id;
-        if (!agreementId) throw new Error('agreementId is required');
-        const result = request('POST', '/agreements/' + encodeURIComponent(agreementId) + '/state', { state: 'IN_PROCESS' });
-        return { ...inputData, adobeSignAgreement: result };
-      }
-      case 'get_agreement': {
-        const agreementId = params.agreementId || params.id;
-        if (!agreementId) throw new Error('agreementId is required');
-        const query = params.includeSupportingDocuments ? '?includeSupportingDocuments=true' : '';
-        const result = request('GET', '/agreements/' + encodeURIComponent(agreementId) + query);
-        return { ...inputData, adobeSignAgreement: result };
-      }
-      case 'cancel_agreement': {
-        const agreementId = params.agreementId || params.id;
-        if (!agreementId) throw new Error('agreementId is required');
-        const payload = {
-          state: 'CANCELLED',
-          note: params.reason || 'Cancelled via automation',
-          notifySigner: params.notifySigner !== false,
-        };
-        const result = request('POST', '/agreements/' + encodeURIComponent(agreementId) + '/state', payload);
-        return { ...inputData, adobeSignAgreement: result };
-      }
-      default:
-        throw new Error('Unsupported Adobe Sign operation: ' + operation);
+  if (isTrigger) {
+    const fallback = ADOBE_SIGN_TRIGGER_BUILDERS[defaultOperation];
+    if (fallback) {
+      return fallback(config, functionName);
     }
-  } catch (error) {
-    console.error('❌ Adobe Sign error:', error);
-    return { ...inputData, adobeSignError: error.toString() };
+  } else {
+    const fallback = ADOBE_SIGN_ACTION_BUILDERS[defaultOperation];
+    if (fallback) {
+      return fallback(config, functionName);
+    }
   }
-}`;
+
+  throw new Error('Unsupported Adobe Sign operation: ' + normalizedOperation);
 }
 
 function generateEgnyteFunction(functionName: string, node: WorkflowNode): string {
@@ -15180,6 +15160,663 @@ function salesforceHelperPrelude(): string {
   }
 `;
 }
+
+
+interface AdobeSignActionOptions {
+  preludeLines?: string[];
+  tryLines: string[];
+  errorContext: string;
+  functionName?: string;
+}
+
+function adobeSignHelperPrelude(operationId: string): string {
+  const opLabel = esc(operationId);
+  return String.raw`
+  const operationLabel = '${opLabel}';
+  const scriptProps = PropertiesService.getScriptProperties();
+  const rateConfig = { attempts: 4, initialDelayMs: 500, maxDelayMs: 12000, jitter: 0.2 };
+  const defaultBaseUrl = 'https://api.na1.echosign.com/api/rest/v6';
+  const defaultTokenUrl = 'https://api.na1.echosign.com/oauth/token';
+
+  function readScriptProperty(primary, aliases) {
+    const keys = [primary].concat(Array.isArray(aliases) ? aliases : []);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      if (!key) {
+        continue;
+      }
+      const raw = scriptProps.getProperty(key);
+      if (raw !== null && raw !== undefined && String(raw).trim() !== '') {
+        return raw;
+      }
+    }
+    return null;
+  }
+
+  function normalizeBaseUrl(value) {
+    let raw = value !== undefined && value !== null ? String(value).trim() : '';
+    if (!raw) {
+      raw = readScriptProperty('ADOBE_SIGN_BASE_URL', ['ADOBESIGN_BASE_URL']) || defaultBaseUrl;
+    }
+    if (!/^https?:/i.test(raw)) {
+      raw = 'https://' + raw.replace(/^\/+/, '');
+    }
+    while (raw.endsWith('/')) {
+      raw = raw.slice(0, raw.length - 1);
+    }
+    return raw;
+  }
+
+  function normalizeTokenUrl(value) {
+    let raw = value !== undefined && value !== null ? String(value).trim() : '';
+    if (!raw) {
+      raw = readScriptProperty('ADOBE_SIGN_TOKEN_URL', ['ADOBESIGN_TOKEN_URL']) || defaultTokenUrl;
+    }
+    if (!/^https?:/i.test(raw)) {
+      raw = 'https://' + raw.replace(/^\/+/, '');
+    }
+    return raw;
+  }
+
+  function parseTimestamp(raw) {
+    if (!raw && raw !== 0) {
+      return null;
+    }
+    if (typeof raw === 'number' && !isNaN(raw)) {
+      return raw;
+    }
+    const numeric = Number(raw);
+    if (!isNaN(numeric) && numeric > 0) {
+      return numeric;
+    }
+    if (typeof raw === 'string') {
+      const parsed = Date.parse(raw);
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
+  function resolveOptionalString(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    const raw = String(value);
+    const template = raw.trim();
+    if (!template) {
+      return '';
+    }
+    return interpolate(template, ctx).trim();
+  }
+
+  function resolveRequiredString(value, message) {
+    const resolved = resolveOptionalString(value);
+    if (!resolved) {
+      throw new Error(message);
+    }
+    return resolved;
+  }
+
+  function resolveAny(value) {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === null) {
+      return null;
+    }
+    if (typeof value === 'string') {
+      const template = value.trim();
+      if (!template) {
+        return '';
+      }
+      return interpolate(template, ctx);
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        const entry = resolveAny(value[i]);
+        if (entry === undefined || entry === null) {
+          continue;
+        }
+        if (Array.isArray(entry) && entry.length === 0) {
+          continue;
+        }
+        if (entry && typeof entry === 'object' && !Array.isArray(entry) && Object.keys(entry).length === 0) {
+          continue;
+        }
+        result.push(entry);
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) {
+          continue;
+        }
+        const entry = resolveAny(value[key]);
+        if (entry === undefined || entry === null) {
+          continue;
+        }
+        if (Array.isArray(entry) && entry.length === 0) {
+          continue;
+        }
+        if (entry && typeof entry === 'object' && !Array.isArray(entry) && Object.keys(entry).length === 0) {
+          continue;
+        }
+        result[key] = entry;
+      }
+      return result;
+    }
+    return value;
+  }
+
+  function ensureNonEmptyArray(value, message) {
+    const arrayValue = Array.isArray(value) ? value : [];
+    const filtered = [];
+    for (let i = 0; i < arrayValue.length; i++) {
+      if (arrayValue[i] !== undefined && arrayValue[i] !== null) {
+        filtered.push(arrayValue[i]);
+      }
+    }
+    if (filtered.length === 0) {
+      throw new Error(message);
+    }
+    return filtered;
+  }
+
+  function extractAgreementId(payload, fallback) {
+    if (!payload || typeof payload !== 'object') {
+      return fallback || null;
+    }
+    if (payload.id) {
+      return payload.id;
+    }
+    if (payload.agreementId) {
+      return payload.agreementId;
+    }
+    if (payload.agreement_id) {
+      return payload.agreement_id;
+    }
+    if (payload.agreement && typeof payload.agreement === 'object') {
+      if (payload.agreement.id) {
+        return payload.agreement.id;
+      }
+      if (payload.agreement.agreementId) {
+        return payload.agreement.agreementId;
+      }
+    }
+    return fallback || null;
+  }
+
+  function handleAdobeSignError(error, metadata) {
+    metadata = metadata || {};
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              details.push(entry);
+            } else if (entry.message) {
+              details.push(String(entry.message));
+            } else {
+              details.push(JSON.stringify(entry));
+            }
+          }
+        }
+      }
+    }
+    const contextParts = [];
+    if (metadata && metadata.agreementId) {
+      contextParts.push('agreement ' + metadata.agreementId);
+    }
+    const context = contextParts.length > 0 ? ' for ' + contextParts.join(' ') : '';
+    const message = 'Adobe Sign ' + (metadata && metadata.operation ? metadata.operation : opLabel || 'request') + context + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    logError('adobesign_request_failed', {
+      operation: (metadata && metadata.operation) || opLabel || null,
+      agreementId: metadata && metadata.agreementId ? metadata.agreementId : null,
+      status: status,
+      message: message
+    });
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function ensureAccessToken() {
+    const configuredToken = resolveOptionalString(config && config.accessToken);
+    if (configuredToken) {
+      return configuredToken;
+    }
+
+    const storedToken = readScriptProperty('ADOBE_SIGN_ACCESS_TOKEN', ['ADOBESIGN_ACCESS_TOKEN']);
+    const expiresAt = parseTimestamp(readScriptProperty('ADOBE_SIGN_TOKEN_EXPIRES_AT', ['ADOBESIGN_TOKEN_EXPIRES_AT']));
+    const now = Date.now();
+    if (storedToken && (!expiresAt || expiresAt - now > 60000)) {
+      return storedToken;
+    }
+
+    const refreshToken = resolveOptionalString(config && config.refreshToken) || readScriptProperty('ADOBE_SIGN_REFRESH_TOKEN', ['ADOBESIGN_REFRESH_TOKEN']) || '';
+    const clientId = resolveOptionalString(config && config.clientId) || readScriptProperty('ADOBE_SIGN_CLIENT_ID', ['ADOBESIGN_CLIENT_ID']) || '';
+    const clientSecret = resolveOptionalString(config && config.clientSecret) || readScriptProperty('ADOBE_SIGN_CLIENT_SECRET', ['ADOBESIGN_CLIENT_SECRET']) || '';
+    const tokenEndpoint = normalizeTokenUrl(config && config.tokenUrl);
+
+    if (refreshToken && clientId && clientSecret) {
+      try {
+        const tokenResponse = withRetries(() => fetchJson({
+          url: tokenEndpoint,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          payload: 'grant_type=refresh_token' + '&refresh_token=' + encodeURIComponent(refreshToken) + '&client_id=' + encodeURIComponent(clientId) + '&client_secret=' + encodeURIComponent(clientSecret),
+          contentType: 'application/x-www-form-urlencoded'
+        }), { attempts: 2, initialDelayMs: 500, maxDelayMs: 4000, jitter: 0.2 });
+        const body = tokenResponse && tokenResponse.body ? tokenResponse.body : null;
+        const newAccessToken = body && body.access_token ? String(body.access_token) : '';
+        if (!newAccessToken) {
+          throw new Error('Adobe Sign token refresh did not return an access token.');
+        }
+        scriptProps.setProperty('ADOBE_SIGN_ACCESS_TOKEN', newAccessToken);
+        if (body && body.refresh_token) {
+          scriptProps.setProperty('ADOBE_SIGN_REFRESH_TOKEN', String(body.refresh_token));
+        }
+        if (body && body.expires_in) {
+          const expiresMs = Date.now() + Number(body.expires_in) * 1000;
+          scriptProps.setProperty('ADOBE_SIGN_TOKEN_EXPIRES_AT', String(expiresMs));
+        } else {
+          scriptProps.deleteProperty('ADOBE_SIGN_TOKEN_EXPIRES_AT');
+        }
+        return newAccessToken;
+      } catch (refreshError) {
+        logError('adobesign_refresh_failed', {
+          operation: opLabel,
+          status: refreshError && refreshError.status ? refreshError.status : null,
+          message: refreshError && refreshError.message ? refreshError.message : String(refreshError)
+        });
+        if (storedToken) {
+          return storedToken;
+        }
+        throw new Error('Adobe Sign token refresh failed. Verify ADOBE_SIGN_REFRESH_TOKEN, ADOBE_SIGN_CLIENT_ID, and ADOBE_SIGN_CLIENT_SECRET.');
+      }
+    }
+
+    if (storedToken) {
+      return storedToken;
+    }
+
+    logError('adobesign_missing_access_token', { operation: opLabel });
+    throw new Error('Adobe Sign requires an access token. Configure ADOBE_SIGN_ACCESS_TOKEN or refresh credentials.');
+  }
+
+  const accessToken = ensureAccessToken();
+  const baseUrl = normalizeBaseUrl(config && config.baseUrl);
+  const configuredAccountId =
+    resolveOptionalString(config && config.accountId) ||
+    readScriptProperty('ADOBE_SIGN_ACCOUNT_ID', ['ADOBESIGN_ACCOUNT_ID']) ||
+    '';
+
+  function buildUrl(endpoint, query) {
+    let path = endpoint ? String(endpoint) : '';
+    if (!/^https?:/i.test(path)) {
+      if (path && path.charAt(0) !== '/') {
+        path = '/' + path;
+      }
+      path = baseUrl + path;
+    }
+    if (query && typeof query === 'object') {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const raw = query[key];
+        if (raw === undefined || raw === null || raw === '') {
+          continue;
+        }
+        if (Array.isArray(raw)) {
+          for (let i = 0; i < raw.length; i++) {
+            const entry = raw[i];
+            if (entry === undefined || entry === null || entry === '') {
+              continue;
+            }
+            parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(entry));
+          }
+        } else {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(raw));
+        }
+      }
+      if (parts.length > 0) {
+        path += (path.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    return path;
+  }
+
+  function adobeSignRequest(options) {
+    options = options || {};
+    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+    const endpoint = options.endpoint || '';
+    const url = buildUrl(endpoint, options.query);
+    const headers = Object.assign({ Authorization: 'Bearer ' + accessToken, Accept: 'application/json' }, options.headers || {});
+    if (configuredAccountId) {
+      headers['x-api-user'] = 'accountId:' + configuredAccountId;
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: headers,
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      if (!headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      requestConfig.contentType = headers['Content-Type'];
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        headers['Content-Type'] = options.contentType;
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return withRetries(() => fetchJson(requestConfig), rateConfig);
+  }
+`;
+}
+
+function buildAdobeSignAction(operationId: string, config: any, options: AdobeSignActionOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const prelude = (options.preludeLines ?? []).map(line => `  ${line}`).join('
+');
+  const tryLines = options.tryLines.map(line => `    ${line}`).join('
+');
+  const functionName = options.functionName || `step_action_adobesign_${operationId}`;
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+${adobeSignHelperPrelude(operationId)}${prelude ? prelude + '
+' : ''}  try {
+${tryLines}
+  } catch (error) {
+    handleAdobeSignError(error, ${options.errorContext});
+  }
+}
+`;
+}
+
+interface AdobeSignTriggerOptions {
+  functionName?: string;
+}
+
+function buildAdobeSignTrigger(operationId: string, config: any, options?: AdobeSignTriggerOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const opLabel = esc(operationId);
+  const functionName = options?.functionName || `trigger_trigger_adobesign_${operationId}`;
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const payload = ctx && ctx.webhookPayload ? ctx.webhookPayload : (ctx && ctx.event ? ctx.event : {});
+  const eventData = payload && payload.event ? payload.event : payload;
+  const agreementId = extractAgreementIdFromPayload(payload);
+  const template = config && Object.prototype.hasOwnProperty.call(config, 'agreementId') ? config.agreementId : '';
+  const filterAgreementId = template ? interpolate(String(template), ctx).trim() : '';
+  if (filterAgreementId && agreementId && filterAgreementId !== agreementId) {
+    logInfo('adobesign_trigger_filtered', { trigger: '${opLabel}', agreementId: agreementId, filterAgreementId: filterAgreementId });
+    ctx.adobeSignTrigger = '${opLabel}';
+    ctx.adobeSignAgreementId = agreementId;
+    ctx.adobeSignTriggerFiltered = true;
+    ctx.adobeSignEvent = payload;
+    return ctx;
+  }
+  ctx.adobeSignTrigger = '${opLabel}';
+  ctx.adobeSignAgreementId = agreementId;
+  ctx.adobeSignEvent = payload;
+  ctx.adobeSignEventDetail = eventData;
+  if (payload && payload.eventDate) {
+    ctx.adobeSignEventTimestamp = payload.eventDate;
+  }
+  if (payload && payload.eventType) {
+    ctx.adobeSignEventType = payload.eventType;
+  } else if (eventData && eventData.eventType) {
+    ctx.adobeSignEventType = eventData.eventType;
+  }
+  logInfo('adobesign_${opLabel}_received', { agreementId: agreementId || null });
+  return ctx;
+
+  function extractAgreementIdFromPayload(source) {
+    if (!source || typeof source !== 'object') {
+      return null;
+    }
+    if (source.agreement && typeof source.agreement === 'object') {
+      if (source.agreement.id) {
+        return source.agreement.id;
+      }
+      if (source.agreement.agreementId) {
+        return source.agreement.agreementId;
+      }
+    }
+    if (source.agreementId) {
+      return source.agreementId;
+    }
+    if (source.agreement_id) {
+      return source.agreement_id;
+    }
+    if (source.event && typeof source.event === 'object') {
+      if (source.event.agreementId) {
+        return source.event.agreementId;
+      }
+      if (source.event.agreement_id) {
+        return source.event.agreement_id;
+      }
+    }
+    if (source.payload && typeof source.payload === 'object') {
+      return extractAgreementIdFromPayload(source.payload);
+    }
+    return null;
+  }
+}
+`;
+}
+
+
+type AdobeSignActionBuilder = (config: any, functionName?: string) => string;
+type AdobeSignTriggerBuilder = (config: any, functionName?: string) => string;
+
+const ADOBE_SIGN_ACTION_BUILDERS: Record<string, AdobeSignActionBuilder> = {
+  test_connection: (config, functionName) =>
+    buildAdobeSignAction('test_connection', config, {
+      functionName,
+      preludeLines: [
+        "const resolvedAccountId = resolveOptionalString(config && config.accountId) || readScriptProperty('ADOBE_SIGN_ACCOUNT_ID', ['ADOBESIGN_ACCOUNT_ID']) || '';",
+      ],
+      tryLines: [
+        "const response = adobeSignRequest({ method: 'GET', endpoint: '/users/me' });",
+        "const body = response && response.body ? response.body : null;",
+        "ctx.adobeSignConnectionOk = true;",
+        "ctx.adobeSignCurrentUser = body;",
+        "if (resolvedAccountId) { ctx.adobeSignAccountId = resolvedAccountId; }",
+        "logInfo('adobesign_test_connection', { accountId: resolvedAccountId || null });",
+        "return ctx;",
+      ],
+      errorContext: "{ operation: 'test_connection' }",
+    }),
+  create_agreement: (config, functionName) =>
+    buildAdobeSignAction('create_agreement', config, {
+      functionName,
+      preludeLines: [
+        "const agreementName = resolveRequiredString(config && config.name, 'Adobe Sign create_agreement requires the Agreement Name field. Provide a Name value.');",
+        "const fileInfos = ensureNonEmptyArray(resolveAny(config && config.fileInfos), 'Adobe Sign create_agreement requires at least one File Info entry.');",
+        "const participantSets = ensureNonEmptyArray(resolveAny(config && config.participantSetsInfo), 'Adobe Sign create_agreement requires at least one Participant Set.');",
+        "const signatureType = resolveOptionalString(config && config.signatureType) || 'ESIGN';",
+        "const agreementState = resolveOptionalString(config && config.state) || 'IN_PROCESS';",
+        "const emailOption = resolveAny(config && config.emailOption);",
+        "const externalId = resolveOptionalString(config && config.externalId);",
+        "const message = resolveOptionalString(config && config.message);",
+        "let createdAgreementId = '';",
+      ],
+      tryLines: [
+        "const payload = {",
+        "  name: agreementName,",
+        "  fileInfos: fileInfos,",
+        "  participantSetsInfo: participantSets,",
+        "  signatureType: signatureType || 'ESIGN',",
+        "  state: agreementState || 'IN_PROCESS'",
+        "};",
+        "if (emailOption && (typeof emailOption !== 'object' || Object.keys(emailOption).length > 0)) {",
+        "  payload.emailOption = emailOption;",
+        "}",
+        "if (externalId) {",
+        "  payload.externalId = externalId;",
+        "}",
+        "if (message) {",
+        "  payload.message = message;",
+        "}",
+        "const response = adobeSignRequest({ method: 'POST', endpoint: '/agreements', body: payload });",
+        "const body = response && response.body ? response.body : null;",
+        "const agreementId = extractAgreementId(body, null);",
+        "createdAgreementId = agreementId || '';",
+        "ctx.adobeSignAgreementId = agreementId || null;",
+        "ctx.adobeSignAgreement = body;",
+        "ctx.adobeSignAgreementName = agreementName;",
+        "ctx.adobeSignAgreementState = agreementState || 'IN_PROCESS';",
+        "logInfo('adobesign_create_agreement', { agreementId: agreementId || null, name: agreementName });",
+        "return ctx;",
+      ],
+      errorContext: "{ operation: 'create_agreement', agreementId: createdAgreementId || null }",
+    }),
+  send_agreement: (config, functionName) =>
+    buildAdobeSignAction('send_agreement', config, {
+      functionName,
+      preludeLines: [
+        "const agreementIdValue = resolveRequiredString(config && config.agreementId, 'Adobe Sign send_agreement requires the Agreement ID field. Provide an Agreement ID.');",
+        "const sendNoteTemplate = Object.prototype.hasOwnProperty.call(config || {}, 'note') ? config.note : (Object.prototype.hasOwnProperty.call(config || {}, 'comment') ? config.comment : '');",
+        "const sendNote = resolveOptionalString(sendNoteTemplate);",
+        "const notifySignerRaw = resolveAny(config && config.notifySigner);",
+        "const notifySigner = notifySignerRaw === false || (typeof notifySignerRaw === 'string' && notifySignerRaw.toLowerCase() === 'false') ? false : true;",
+      ],
+      tryLines: [
+        "const payload = { state: 'IN_PROCESS' };",
+        "if (sendNote) {",
+        "  payload.note = sendNote;",
+        "}",
+        "if (!notifySigner) {",
+        "  payload.notifySigner = false;",
+        "}",
+        "const response = adobeSignRequest({ method: 'POST', endpoint: '/agreements/' + encodeURIComponent(agreementIdValue) + '/state', body: payload });",
+        "const body = response && response.body ? response.body : null;",
+        "ctx.adobeSignAgreementId = agreementIdValue;",
+        "ctx.adobeSignAgreement = body;",
+        "ctx.adobeSignAgreementState = 'IN_PROCESS';",
+        "if (sendNote) {",
+        "  ctx.adobeSignAgreementNote = sendNote;",
+        "}",
+        "ctx.adobeSignNotifySigner = notifySigner;",
+        "logInfo('adobesign_send_agreement', { agreementId: agreementIdValue, notifySigner: notifySigner });",
+        "return ctx;",
+      ],
+      errorContext: "{ operation: 'send_agreement', agreementId: agreementIdValue }",
+    }),
+  get_agreement: (config, functionName) =>
+    buildAdobeSignAction('get_agreement', config, {
+      functionName,
+      preludeLines: [
+        "const agreementIdValue = resolveRequiredString(config && config.agreementId, 'Adobe Sign get_agreement requires the Agreement ID field. Provide an Agreement ID.');",
+        "const includeDocumentsSource = Object.prototype.hasOwnProperty.call(config || {}, 'includeSupportingDocuments') ? config.includeSupportingDocuments : '';",
+        "const includeDocumentsRaw = resolveAny(includeDocumentsSource);",
+        "let includeDocumentsParam = '';",
+        "if (includeDocumentsRaw !== undefined && includeDocumentsRaw !== null && includeDocumentsRaw !== '') {",
+        "  const rawValue = typeof includeDocumentsRaw === 'string' ? includeDocumentsRaw.trim().toLowerCase() : includeDocumentsRaw;",
+        "  const includeDocuments = rawValue === true || rawValue === 'true' || rawValue === '1';",
+        "  includeDocumentsParam = includeDocuments ? 'true' : 'false';",
+        "}",
+      ],
+      tryLines: [
+        "const response = adobeSignRequest({",
+        "  method: 'GET',",
+        "  endpoint: '/agreements/' + encodeURIComponent(agreementIdValue),",
+        "  query: includeDocumentsParam ? { includeSupportingDocuments: includeDocumentsParam } : undefined",
+        "});",
+        "const body = response && response.body ? response.body : null;",
+        "ctx.adobeSignAgreementId = agreementIdValue;",
+        "ctx.adobeSignAgreement = body;",
+        "if (includeDocumentsParam) {",
+        "  ctx.adobeSignIncludeSupportingDocuments = includeDocumentsParam === 'true';",
+        "}",
+        "logInfo('adobesign_get_agreement', { agreementId: agreementIdValue });",
+        "return ctx;",
+      ],
+      errorContext: "{ operation: 'get_agreement', agreementId: agreementIdValue }",
+    }),
+  cancel_agreement: (config, functionName) =>
+    buildAdobeSignAction('cancel_agreement', config, {
+      functionName,
+      preludeLines: [
+        "const agreementIdValue = resolveRequiredString(config && config.agreementId, 'Adobe Sign cancel_agreement requires the Agreement ID field. Provide an Agreement ID.');",
+        "const cancelNoteTemplate = Object.prototype.hasOwnProperty.call(config || {}, 'comment') ? config.comment : (Object.prototype.hasOwnProperty.call(config || {}, 'note') ? config.note : '');",
+        "const cancelNote = resolveOptionalString(cancelNoteTemplate);",
+        "const notifySignerRaw = resolveAny(config && config.notifySigner);",
+        "const notifySigner = notifySignerRaw === false || (typeof notifySignerRaw === 'string' && notifySignerRaw.toLowerCase() === 'false') ? false : true;",
+      ],
+      tryLines: [
+        "const payload = { state: 'CANCELLED' };",
+        "if (cancelNote) {",
+        "  payload.note = cancelNote;",
+        "}",
+        "if (!notifySigner) {",
+        "  payload.notifySigner = false;",
+        "}",
+        "const response = adobeSignRequest({ method: 'POST', endpoint: '/agreements/' + encodeURIComponent(agreementIdValue) + '/state', body: payload });",
+        "const body = response && response.body ? response.body : null;",
+        "ctx.adobeSignAgreementId = agreementIdValue;",
+        "ctx.adobeSignAgreement = body;",
+        "ctx.adobeSignAgreementState = 'CANCELLED';",
+        "if (cancelNote) {",
+        "  ctx.adobeSignCancellationNote = cancelNote;",
+        "}",
+        "ctx.adobeSignNotifySigner = notifySigner;",
+        "logInfo('adobesign_cancel_agreement', { agreementId: agreementIdValue, notifySigner: notifySigner });",
+        "return ctx;",
+      ],
+      errorContext: "{ operation: 'cancel_agreement', agreementId: agreementIdValue }",
+    }),
+};
+
+const ADOBE_SIGN_TRIGGER_BUILDERS: Record<string, AdobeSignTriggerBuilder> = {
+  agreement_workflow_completed: (config, functionName) =>
+    buildAdobeSignTrigger('agreement_workflow_completed', config, { functionName }),
+  agreement_action_completed: (config, functionName) =>
+    buildAdobeSignTrigger('agreement_action_completed', config, { functionName }),
+};
 
 interface SalesforceActionOptions {
   preludeLines?: string[];
@@ -25465,21 +26102,27 @@ function step_createWordDocument(ctx) {
   'action.microsoft-powerpoint:create_presentation': (c) => `
 function step_createPowerPointPresentation(ctx) {
   const accessToken = getSecret('MICROSOFT_POWERPOINT_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
     console.warn('⚠️ Microsoft PowerPoint access token not configured');
     return ctx;
   }
-  
+
   console.log('📊 Microsoft PowerPoint presentation created:', interpolate('${c.title || 'Automated Presentation'}', ctx));
   ctx.powerpointPresentationId = 'powerpoint_' + Date.now();
   return ctx;
 }`,
 
+  'action.adobesign:test_connection': (c) => ADOBE_SIGN_ACTION_BUILDERS.test_connection(c),
+  'action.adobesign:create_agreement': (c) => ADOBE_SIGN_ACTION_BUILDERS.create_agreement(c),
+  'action.adobesign:send_agreement': (c) => ADOBE_SIGN_ACTION_BUILDERS.send_agreement(c),
+  'action.adobesign:get_agreement': (c) => ADOBE_SIGN_ACTION_BUILDERS.get_agreement(c),
+  'action.adobesign:cancel_agreement': (c) => ADOBE_SIGN_ACTION_BUILDERS.cancel_agreement(c),
+
   'action.adobe-sign:send_document': (c) => `
 function step_sendAdobeSignDocument(ctx) {
   const accessToken = getSecret('ADOBE_SIGN_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
     console.warn('⚠️ Adobe Sign access token not configured');
     return ctx;
@@ -25489,6 +26132,11 @@ function step_sendAdobeSignDocument(ctx) {
   ctx.adobeSignAgreementId = 'adobesign_' + Date.now();
   return ctx;
 }`,
+
+  'trigger.adobesign:agreement_workflow_completed': (c) =>
+    ADOBE_SIGN_TRIGGER_BUILDERS.agreement_workflow_completed(c),
+  'trigger.adobesign:agreement_action_completed': (c) =>
+    ADOBE_SIGN_TRIGGER_BUILDERS.agreement_action_completed(c),
 
   'action.pandadoc:create_document': (c) => `
 function step_createPandaDocDocument(ctx) {
