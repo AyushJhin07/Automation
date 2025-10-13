@@ -1,0 +1,89 @@
+{
+  "id": "gmail-send-email",
+  "description": "Sends a Gmail message using the REST API and records identifiers in context.",
+  "graph": {
+    "id": "fixture-gmail-send-email",
+    "name": "Gmail send email",
+    "nodes": [
+      {
+        "id": "gmail-action",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Send Gmail notification",
+        "op": "action.gmail:send_email",
+        "params": {
+          "operation": "send_email",
+          "to": "alerts@example.com",
+          "subject": "Integration Test",
+          "body": "Hello world"
+        },
+        "data": {
+          "operation": "send_email",
+          "config": {
+            "to": "alerts@example.com",
+            "subject": "Integration Test",
+            "body": "Hello world"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "incidentId": "INC-9000"
+    }
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-send",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "raw": "VG86IGFsZXJ0c0BleGFtcGxlLmNvbQ0KU3ViamVjdDogSW50ZWdyYXRpb24gVGVzdA0KTUlNRS1WZXJzaW9uOiAxLjANCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD0iVVRGLTgiDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA3Yml0DQoNCkhlbGxvIHdvcmxk"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "msg-123",
+          "threadId": "thread-001",
+          "labelIds": [
+            "SENT"
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "incidentId": "INC-9000",
+      "messageId": "msg-123",
+      "gmailMessageId": "msg-123",
+      "gmailThreadId": "thread-001",
+      "gmailLabelIds": [
+        "SENT"
+      ]
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_send_email_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "method": "POST"
+      }
+    ]
+  }
+}
