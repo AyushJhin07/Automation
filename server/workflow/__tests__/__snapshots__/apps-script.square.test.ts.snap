@@ -1,0 +1,41 @@
+exports[`Apps Script Square REAL_OPS builds action.square:create_customer 1`] = `
+
+function step_action_square_create_customer(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#square): Implement action.square:create_customer Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'square', operation: 'action.square:create_customer' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.square:create_customer. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Square REAL_OPS builds action.square:create_order 1`] = `
+
+function step_action_square_create_order(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#square): Implement action.square:create_order Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'square', operation: 'action.square:create_order' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.square:create_order. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Square REAL_OPS builds action.square:create_payment 1`] = `
+
+function step_createSquarePayment(ctx) {
+  const accessToken = requireOAuthToken('square');
+
+  console.log('🟩 Square payment created for amount:', '${c.amount || '10.00'}');
+  ctx.squarePaymentId = 'square_' + Date.now();
+  return ctx;
+}
+
+`;
+
+exports[`Apps Script Square REAL_OPS builds trigger.square:payment_created 1`] = `
+
+function trigger_trigger_square_payment_created(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#square): Implement trigger.square:payment_created Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'square', operation: 'trigger.square:payment_created' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.square:payment_created. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
