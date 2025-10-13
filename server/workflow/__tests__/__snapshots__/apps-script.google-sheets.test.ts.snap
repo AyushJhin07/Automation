@@ -1,0 +1,481 @@
+exports[`Apps Script Google Sheets REAL_OPS builds trigger.sheets:onEdit 1`] = `
+function onEdit(e) {
+  return buildPollingWrapper('trigger.sheets:onEdit', function (runtime) {
+    var config = {
+      spreadsheetId: '',
+      sheetName: '',
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      columns: []
+    };
+
+    if (!config.spreadsheetId) {
+      runtime.summary({ skipped: true, reason: 'missing_spreadsheet_id' });
+      logWarn('sheets_onedit_missing_spreadsheet_id', { operation: 'trigger.sheets:onEdit' });
+      return { skipped: true, reason: 'missing_spreadsheet_id' };
+    }
+
+    if (!e || !e.range) {
+      runtime.summary({ skipped: true, reason: 'missing_event_range', spreadsheetId: config.spreadsheetId });
+      logWarn('sheets_onedit_missing_event', { operation: 'trigger.sheets:onEdit' });
+      return { skipped: true, reason: 'missing_event_range' };
+    }
+
+    var eventSheet = e.range.getSheet ? e.range.getSheet() : null;
+    var eventSheetName = eventSheet && eventSheet.getName ? eventSheet.getName() : null;
+    if (config.sheetName && eventSheetName && config.sheetName !== eventSheetName) {
+      runtime.summary({ skipped: true, reason: 'sheet_mismatch', expected: config.sheetName, actual: eventSheetName });
+      return { skipped: true, reason: 'sheet_mismatch', expected: config.sheetName, actual: eventSheetName };
+    }
+
+    var sheetName = config.sheetName || eventSheetName || '';
+    var a1Notation = e.range.getA1Notation ? e.range.getA1Notation() : null;
+    var startRow = e.range.getRow ? e.range.getRow() : null;
+    var rowCount = e.range.getNumRows ? e.range.getNumRows() : 1;
+    var columnCount = e.range.getNumColumns ? e.range.getNumColumns() : 1;
+
+    if (!a1Notation || startRow === null) {
+      runtime.summary({ skipped: true, reason: 'unresolvable_range', sheet: sheetName || null });
+      logWarn('sheets_onedit_missing_notation', { operation: 'trigger.sheets:onEdit', sheet: sheetName || null });
+      return { skipped: true, reason: 'unresolvable_range' };
+    }
+
+    var qualifiedRange = sheetName ? sheetName + '!' + a1Notation : a1Notation;
+    var accessToken = getSecret('GOOGLE_SHEETS_ACCESS_TOKEN', { connectorKey: 'google-sheets-enhanced' });
+    if (!accessToken) {
+      runtime.summary({ skipped: true, reason: 'missing_access_token', sheet: sheetName || null, range: qualifiedRange });
+      logError('sheets_missing_access_token', { operation: 'trigger.sheets:onEdit' });
+      return { skipped: true, reason: 'missing_access_token' };
+    }
+
+    var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(config.spreadsheetId) +
+      '/values/' + encodeURIComponent(qualifiedRange) +
+      '?majorDimension=ROWS&valueRenderOption=' + encodeURIComponent(config.valueRenderOption || 'UNFORMATTED_VALUE');
+
+    var response;
+    try {
+      response = withRetries(function () {
+        return fetchJson({
+          url: url,
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer ' + accessToken
+          }
+        });
+      });
+    } catch (error) {
+      var status = error && typeof error.status === 'number' ? error.status : null;
+      var message = error && error.message ? error.message : String(error);
+      logError('sheets_onedit_fetch_failed', {
+        sheet: sheetName || null,
+        range: qualifiedRange,
+        status: status,
+        message: message
+      });
+      throw error;
+    }
+
+    var values = (response && response.body && response.body.values) || [];
+    var entries = [];
+
+    for (var index = 0; index < rowCount; index++) {
+      var rowValues = values[index] || [];
+      var rowNumber = (startRow || 0) + index;
+      var rowRange = e.range.offset && typeof e.range.offset === 'function'
+        ? e.range.offset(index, 0, 1, columnCount)
+        : null;
+      var rowNotation = rowRange && rowRange.getA1Notation ? rowRange.getA1Notation() : a1Notation;
+      var qualifiedRowRange = sheetName ? sheetName + '!' + rowNotation : rowNotation;
+      var record = {};
+      if (Array.isArray(config.columns) && config.columns.length) {
+        for (var colIndex = 0; colIndex < config.columns.length; colIndex++) {
+          var key = config.columns[colIndex];
+          if (!key) {
+            continue;
+          }
+          record[key] = rowValues[colIndex] !== undefined ? rowValues[colIndex] : null;
+        }
+      }
+
+      entries.push({
+        spreadsheetId: config.spreadsheetId,
+        sheet: sheetName || null,
+        range: qualifiedRowRange,
+        rowNumber: rowNumber,
+        values: rowValues,
+        record: record
+      });
+    }
+
+    var batch = runtime.dispatchBatch(entries, function (entry) {
+      return {
+        spreadsheetId: entry.spreadsheetId,
+        sheet: entry.sheet,
+        range: entry.range,
+        rowNumber: entry.rowNumber,
+        values: entry.values,
+        record: entry.record
+      };
+    });
+
+    runtime.state.lastSpreadsheetId = config.spreadsheetId;
+    runtime.state.lastSheet = sheetName || null;
+    runtime.state.lastRange = qualifiedRange;
+    runtime.state.lastRow = (startRow || 0) + rowCount - 1;
+    runtime.state.lastValues = values;
+    runtime.state.lastUpdatedAt = new Date().toISOString();
+
+    runtime.summary({
+      spreadsheetId: config.spreadsheetId,
+      sheet: sheetName || null,
+      range: qualifiedRange,
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed
+    });
+
+    return {
+      spreadsheetId: config.spreadsheetId,
+      sheet: sheetName || null,
+      range: qualifiedRange,
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed
+    };
+  });
+}`;
+
+exports[`Apps Script Google Sheets REAL_OPS builds action.sheets:getRow 1`] = `
+function step_getSheetsRow(ctx) {
+  ctx = ctx || {};
+
+  var spreadsheetIdTemplate = '';
+  var sheetNameTemplate = '';
+  var rangeTemplate = '';
+  var rowNumberTemplate = '';
+  var columns = [];
+  var valueRenderOption = 'UNFORMATTED_VALUE';
+
+  var spreadsheetId = spreadsheetIdTemplate ? interpolate(spreadsheetIdTemplate, ctx).trim() : '';
+  if (!spreadsheetId) {
+    logError('sheets_missing_spreadsheet_id', { operation: 'action.sheets:getRow' });
+    throw new Error('Spreadsheet ID is required for action.sheets:getRow');
+  }
+
+  var sheetName = sheetNameTemplate ? interpolate(sheetNameTemplate, ctx).trim() : '';
+  if (!sheetName) {
+    var fallbackSheet = ctx.sheet || ctx.sheetName;
+    if (typeof fallbackSheet === 'string') {
+      sheetName = fallbackSheet.trim();
+    }
+  }
+
+  var range = rangeTemplate ? interpolate(rangeTemplate, ctx).trim() : '';
+  var rowNumberRaw = rowNumberTemplate ? interpolate(rowNumberTemplate, ctx).trim() : '';
+  var rowNumber = rowNumberRaw ? Number(rowNumberRaw) : null;
+  if (!rowNumber || isNaN(rowNumber)) {
+    if (typeof ctx.rowNumber === 'number') {
+      rowNumber = ctx.rowNumber;
+    } else if (typeof ctx.row === 'number') {
+      rowNumber = ctx.row;
+    } else if (typeof ctx.sheetsLastAppendRowNumber === 'number') {
+      rowNumber = ctx.sheetsLastAppendRowNumber;
+    }
+  }
+  if (!rowNumber || isNaN(rowNumber)) {
+    rowNumber = 1;
+  }
+  rowNumber = Math.max(1, Math.floor(Number(rowNumber)));
+
+  function columnLabel(count) {
+    if (!count || count < 1) {
+      return 'A';
+    }
+    var dividend = count;
+    var label = '';
+    while (dividend > 0) {
+      var modulo = (dividend - 1) % 26;
+      label = String.fromCharCode(65 + modulo) + label;
+      dividend = Math.floor((dividend - modulo) / 26);
+    }
+    return label;
+  }
+
+  if (!range) {
+    if (!sheetName) {
+      logError('sheets_missing_sheet_name', { operation: 'action.sheets:getRow' });
+      throw new Error('Sheet name or range is required for action.sheets:getRow');
+    }
+    var columnCount = columns.length > 0 ? columns.length : 0;
+    if (!columnCount && Array.isArray(ctx.rowValues) && ctx.rowValues.length) {
+      columnCount = ctx.rowValues.length;
+    }
+    if (!columnCount && typeof ctx.columnCount === 'number') {
+      columnCount = ctx.columnCount;
+    }
+    if (!columnCount) {
+      columnCount = 26;
+    }
+    var endColumn = columnLabel(columnCount);
+    range = sheetName + '!A' + rowNumber + ':' + endColumn + rowNumber;
+  } else if (range.indexOf('!') === -1 && sheetName) {
+    range = sheetName + '!' + range;
+  }
+
+  var accessToken = getSecret('GOOGLE_SHEETS_ACCESS_TOKEN', { connectorKey: 'google-sheets-enhanced' });
+  if (!accessToken) {
+    logError('sheets_missing_access_token', { operation: 'action.sheets:getRow' });
+    throw new Error('Missing Google Sheets access token for action.sheets:getRow');
+  }
+
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) +
+    '/values/' + encodeURIComponent(range) +
+    '?majorDimension=ROWS&valueRenderOption=' + encodeURIComponent(valueRenderOption);
+
+  var response;
+  try {
+    response = withRetries(function () {
+      return fetchJson({
+        url: url,
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer ' + accessToken
+        }
+      });
+    });
+  } catch (error) {
+    var status = error && typeof error.status === 'number' ? error.status : null;
+    var message = error && error.message ? error.message : String(error);
+    logError('sheets_get_row_failed', {
+      spreadsheetId: spreadsheetId,
+      range: range,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+
+  var values = response && response.body && Array.isArray(response.body.values) ? response.body.values : [];
+  var rowValues = values.length > 0 && Array.isArray(values[0]) ? values[0] : [];
+  var record = {};
+  if (columns.length) {
+    for (var i = 0; i < columns.length; i++) {
+      var key = columns[i];
+      if (!key) {
+        continue;
+      }
+      record[key] = rowValues[i] !== undefined ? rowValues[i] : null;
+    }
+  } else {
+    for (var index = 0; index < rowValues.length; index++) {
+      record['column_' + (index + 1)] = rowValues[index];
+    }
+  }
+
+  ctx.rowValues = rowValues.slice();
+  ctx.rowRecord = Object.assign({}, record);
+  ctx.sheets = ctx.sheets || {};
+  ctx.sheets.lastRead = {
+    spreadsheetId: spreadsheetId,
+    sheet: sheetName || null,
+    range: range,
+    rowNumber: rowNumber,
+    values: rowValues.slice(),
+    record: Object.assign({}, record)
+  };
+  ctx.sheetsLastReadRange = range;
+  ctx.sheetsLastReadValues = rowValues.slice();
+  ctx.sheetsLastReadRecord = Object.assign({}, record);
+  ctx.sheetsLastReadRowNumber = rowNumber;
+
+  logInfo('sheets_get_row_success', {
+    spreadsheetId: spreadsheetId,
+    range: range,
+    rowNumber: rowNumber,
+    valueCount: rowValues.length
+  });
+
+  return ctx;
+}`;
+
+exports[`Apps Script Google Sheets REAL_OPS builds action.sheets:append_row 1`] = `
+function step_appendSheetsRow(ctx) {
+  ctx = ctx || {};
+
+  var spreadsheetIdTemplate = '';
+  var sheetNameTemplate = '';
+  var rangeTemplate = '';
+  var valueInputOption = 'USER_ENTERED';
+  var columns = [];
+  var configuredValues = [];
+
+  var spreadsheetId = spreadsheetIdTemplate ? interpolate(spreadsheetIdTemplate, ctx).trim() : '';
+  if (!spreadsheetId) {
+    logError('sheets_missing_spreadsheet_id', { operation: 'action.sheets:append_row' });
+    throw new Error('Spreadsheet ID is required for action.sheets:append_row');
+  }
+
+  var sheetName = sheetNameTemplate ? interpolate(sheetNameTemplate, ctx).trim() : '';
+  var range = rangeTemplate ? interpolate(rangeTemplate, ctx).trim() : '';
+  if (!range) {
+    range = sheetName;
+  }
+  if (!range) {
+    logError('sheets_missing_range', { operation: 'action.sheets:append_row' });
+    throw new Error('Sheet name or range is required for action.sheets:append_row');
+  }
+
+  var accessToken = getSecret('GOOGLE_SHEETS_ACCESS_TOKEN', { connectorKey: 'google-sheets-enhanced' });
+  if (!accessToken) {
+    logError('sheets_missing_access_token', { operation: 'action.sheets:append_row' });
+    throw new Error('Missing Google Sheets access token for action.sheets:append_row');
+  }
+
+  function coerceValue(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    return value;
+  }
+
+  function resolveValue(key) {
+    if (!key) {
+      return '';
+    }
+    if (Object.prototype.hasOwnProperty.call(ctx, key)) {
+      return ctx[key];
+    }
+    if (ctx.record && typeof ctx.record === 'object' && Object.prototype.hasOwnProperty.call(ctx.record, key)) {
+      return ctx.record[key];
+    }
+    if (ctx.payload && typeof ctx.payload === 'object' && Object.prototype.hasOwnProperty.call(ctx.payload, key)) {
+      return ctx.payload[key];
+    }
+    if (ctx.row && typeof ctx.row === 'object' && Object.prototype.hasOwnProperty.call(ctx.row, key)) {
+      return ctx.row[key];
+    }
+    return '';
+  }
+
+  var rowValues = [];
+  if (configuredValues.length) {
+    for (var valueIndex = 0; valueIndex < configuredValues.length; valueIndex++) {
+      var template = configuredValues[valueIndex];
+      if (typeof template === 'string') {
+        rowValues.push(interpolate(template, ctx));
+      } else {
+        rowValues.push(template);
+      }
+    }
+  } else if (columns.length) {
+    for (var columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+      var columnKey = columns[columnIndex];
+      rowValues.push(resolveValue(columnKey));
+    }
+  } else if (Array.isArray(ctx.rowValues)) {
+    rowValues = ctx.rowValues.slice();
+  } else if (Array.isArray(ctx.values)) {
+    rowValues = ctx.values.slice();
+  }
+
+  if (!rowValues.length) {
+    logError('sheets_append_row_missing_values', { operation: 'action.sheets:append_row' });
+    throw new Error('At least one value is required for action.sheets:append_row');
+  }
+
+  for (var normalizeIndex = 0; normalizeIndex < rowValues.length; normalizeIndex++) {
+    rowValues[normalizeIndex] = coerceValue(rowValues[normalizeIndex]);
+  }
+
+  var record = {};
+  if (columns.length) {
+    for (var recordIndex = 0; recordIndex < columns.length; recordIndex++) {
+      var recordKey = columns[recordIndex];
+      if (!recordKey) {
+        continue;
+      }
+      record[recordKey] = rowValues[recordIndex] !== undefined ? rowValues[recordIndex] : '';
+    }
+  }
+
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) +
+    '/values/' + encodeURIComponent(range) +
+    ':append?valueInputOption=' + encodeURIComponent(valueInputOption || 'USER_ENTERED') +
+    '&insertDataOption=INSERT_ROWS&includeValuesInResponse=true';
+
+  var requestBody = {
+    majorDimension: 'ROWS',
+    values: [rowValues]
+  };
+
+  var response;
+  try {
+    response = withRetries(function () {
+      return fetchJson({
+        url: url,
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(requestBody),
+        contentType: 'application/json'
+      });
+    });
+  } catch (error) {
+    var status = error && typeof error.status === 'number' ? error.status : null;
+    var message = error && error.message ? error.message : String(error);
+    logError('sheets_append_row_failed', {
+      spreadsheetId: spreadsheetId,
+      range: range,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+
+  var updates = response && response.body && response.body.updates ? response.body.updates : {};
+  var updatedRange = updates.updatedRange || (response && response.body && response.body.tableRange) || null;
+  var updatedRows = updates.updatedRows;
+  if (typeof updatedRows === 'string') {
+    updatedRows = Number(updatedRows);
+  }
+  if (typeof updatedRows !== 'number' || isNaN(updatedRows)) {
+    updatedRows = 1;
+  }
+
+  var appendedRowNumber = null;
+  if (updatedRange) {
+    var match = String(updatedRange).match(/!.*?(\\d+)(?::.*?(\\d+))?$/);
+    if (match) {
+      var parsed = match[2] ? Number(match[2]) : Number(match[1]);
+      if (!isNaN(parsed) && parsed > 0) {
+        appendedRowNumber = parsed;
+      }
+    }
+  }
+
+  ctx.sheets = ctx.sheets || {};
+  ctx.sheets.lastAppend = {
+    spreadsheetId: spreadsheetId,
+    sheet: sheetName || null,
+    range: updatedRange || range,
+    values: rowValues.slice(),
+    updatedRows: updatedRows,
+    record: Object.assign({}, record),
+    rowNumber: appendedRowNumber
+  };
+  ctx.sheetsLastAppendRange = updatedRange || range;
+  ctx.sheetsLastAppendValues = rowValues.slice();
+  ctx.sheetsLastAppendUpdatedRows = updatedRows;
+  if (appendedRowNumber) {
+    ctx.sheetsLastAppendRowNumber = appendedRowNumber;
+  }
+
+  logInfo('sheets_append_row_success', {
+    spreadsheetId: spreadsheetId,
+    range: updatedRange || range,
+    updatedRows: updatedRows
+  });
+
+  return ctx;
+}`;

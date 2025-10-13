@@ -157,6 +157,12 @@ The table below is regenerated automatically. Required properties appear in the 
 - Populate `GMAIL_REFRESH_TOKEN` alongside the access token. A rotation job should exchange the refresh token at least daily; the Apps Script runtime expects fresh access tokens because Gmail REST calls fail once the one-hour access token expires.
 - Store both secrets in Script Properties (production and staging) before deploying new handlers. Missing tokens cause structured `gmail_missing_access_token` errors during runtime, surfacing misconfigurations quickly.
 
+### Google Sheets token management
+
+- Apps Script Google Sheets handlers require `GOOGLE_SHEETS_ACCESS_TOKEN` with the scopes `https://www.googleapis.com/auth/spreadsheets` and `https://www.googleapis.com/auth/drive.metadata.readonly`. Populate the Script Properties store before deployment—missing tokens surface as `sheets_missing_access_token` errors during trigger and action execution.
+- For delegated OAuth flows, store a matching `GOOGLE_SHEETS_REFRESH_TOKEN` so the rotation job can mint fresh access tokens without manual intervention. Rotate both tokens alongside Gmail to avoid stale credentials.
+- When using service accounts with domain-wide delegation, store the JSON key in `GOOGLE_SHEETS_SERVICE_ACCOUNT` and the impersonated principal in `GOOGLE_SHEETS_DELEGATED_SUBJECT`. The credential rotation task exchanges those secrets for `GOOGLE_SHEETS_ACCESS_TOKEN` on the cadence defined in the runbook.
+
 ## Machine-readable report
 
 Deployment tooling and Confluence dashboards rely on `production/reports/apps-script-properties.json`. Run `tsx scripts/verify-apps-script-properties.ts --write` after updating REAL_OPS handlers or connector manifests so the report and table stay in sync. CI will fail if the report or guide drifts from the generated output.

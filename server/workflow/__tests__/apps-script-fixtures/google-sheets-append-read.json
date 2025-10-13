@@ -1,0 +1,162 @@
+{
+  "id": "google-sheets-append-read",
+  "description": "Appends a Google Sheets row and reads it back using the REST API.",
+  "graph": {
+    "id": "fixture-google-sheets-append-read",
+    "name": "Google Sheets append and read",
+    "nodes": [
+      {
+        "id": "append-row",
+        "type": "action.google-sheets-enhanced",
+        "app": "google-sheets-enhanced",
+        "name": "Append incident row",
+        "op": "action.sheets:append_row",
+        "params": {
+          "operation": "append_row",
+          "spreadsheetId": "test-spreadsheet",
+          "sheetName": "Incidents",
+          "columns": ["incidentId", "status"],
+          "values": ["{{incidentId}}", "{{status}}"],
+          "valueInputOption": "USER_ENTERED"
+        },
+        "data": {
+          "operation": "append_row",
+          "config": {
+            "spreadsheetId": "test-spreadsheet",
+            "sheetName": "Incidents",
+            "columns": ["incidentId", "status"],
+            "values": ["{{incidentId}}", "{{status}}"],
+            "valueInputOption": "USER_ENTERED"
+          }
+        }
+      },
+      {
+        "id": "get-row",
+        "type": "action.google-sheets-enhanced",
+        "app": "google-sheets-enhanced",
+        "name": "Read appended row",
+        "op": "action.sheets:getRow",
+        "params": {
+          "operation": "getRow",
+          "spreadsheetId": "test-spreadsheet",
+          "sheetName": "Incidents",
+          "rowNumber": "{{sheetsLastAppendRowNumber}}",
+          "columns": ["incidentId", "status"],
+          "valueRenderOption": "UNFORMATTED_VALUE"
+        },
+        "data": {
+          "operation": "getRow",
+          "config": {
+            "spreadsheetId": "test-spreadsheet",
+            "sheetName": "Incidents",
+            "rowNumber": "{{sheetsLastAppendRowNumber}}",
+            "columns": ["incidentId", "status"],
+            "valueRenderOption": "UNFORMATTED_VALUE"
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-append-read",
+        "from": "append-row",
+        "to": "get-row",
+        "source": "append-row",
+        "target": "get-row"
+      }
+    ]
+  },
+  "entry": {
+    "context": {
+      "incidentId": "INC-9000",
+      "status": "Open"
+    }
+  },
+  "secrets": {
+    "GOOGLE_SHEETS_ACCESS_TOKEN": "ya29.sheets-access"
+  },
+  "http": [
+    {
+      "name": "sheets-append",
+      "request": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/test-spreadsheet/values/Incidents:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&includeValuesInResponse=true",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.sheets-access",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "majorDimension": "ROWS",
+          "values": [["INC-9000", "Open"]]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "updates": {
+            "spreadsheetId": "test-spreadsheet",
+            "updatedRange": "Incidents!A5:B5",
+            "updatedRows": 1,
+            "updatedColumns": 2,
+            "updatedCells": 2
+          }
+        }
+      }
+    },
+    {
+      "name": "sheets-get",
+      "request": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/test-spreadsheet/values/Incidents!A5:B5?majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.sheets-access"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "range": "Incidents!A5:B5",
+          "majorDimension": "ROWS",
+          "values": [["INC-9000", "Open"]]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "incidentId": "INC-9000",
+      "status": "Open",
+      "sheetsLastAppendRowNumber": 5,
+      "sheets": {
+        "lastAppend": {
+          "range": "Incidents!A5:B5",
+          "updatedRows": 1
+        },
+        "lastRead": {
+          "range": "Incidents!A5:B5",
+          "values": ["INC-9000", "Open"]
+        }
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "sheets_append_row_success"
+      },
+      {
+        "level": "log",
+        "includes": "sheets_get_row_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/test-spreadsheet/values/Incidents:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&includeValuesInResponse=true",
+        "method": "POST"
+      },
+      {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/test-spreadsheet/values/Incidents!A5:B5?majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE",
+        "method": "GET"
+      }
+    ]
+  }
+}
