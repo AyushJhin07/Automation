@@ -1,6 +1,6 @@
 {
   "id": "slack-send-message",
-  "description": "Sends a Slack notification via webhook fallback when no bot token is configured.",
+  "description": "Sends a Slack notification with chat.postMessage using the Apps Script OAuth helper.",
   "graph": {
     "id": "fixture-slack-send-message",
     "name": "Slack send message",
@@ -15,7 +15,8 @@
           "operation": "send_message",
           "channel": "#incidents",
           "text": "Critical incident declared",
-          "username": "Automation Bot"
+          "username": "Automation Bot",
+          "icon_emoji": ":robot_face:"
         },
         "data": {
           "operation": "send_message",
@@ -23,9 +24,7 @@
             "channel": "#incidents",
             "text": "Critical incident declared",
             "username": "Automation Bot",
-            "credentials": {
-              "webhookSecret": "SLACK_WEBHOOK_URL"
-            }
+            "icon_emoji": ":robot_face:"
           }
         }
       }
@@ -38,26 +37,38 @@
     }
   },
   "secrets": {
-    "SLACK_WEBHOOK_URL": "https://hooks.slack.test/services/T000/B000/INCIDENT"
+    "SLACK_BOT_TOKEN": "xoxb-test-token"
   },
   "http": [
     {
-      "name": "slack-webhook",
+      "name": "slack-chat-post",
       "request": {
-        "url": "https://hooks.slack.test/services/T000/B000/INCIDENT",
+        "url": "https://slack.com/api/chat.postMessage",
         "method": "POST",
+        "headers": {
+          "authorization": "Bearer xoxb-test-token",
+          "content-type": "application/json"
+        },
         "payload": {
           "channel": "#incidents",
           "text": "Critical incident declared",
           "username": "Automation Bot",
-          "icon_emoji": ":robot_face:",
-          "attachments": [],
-          "blocks": []
+          "icon_emoji": ":robot_face:"
         }
       },
       "response": {
         "status": 200,
-        "body": "ok"
+        "body": {
+          "ok": true,
+          "channel": "C123",
+          "ts": "1733756457.000200",
+          "message": {
+            "type": "message",
+            "text": "Critical incident declared",
+            "user": "U123",
+            "ts": "1733756457.000200"
+          }
+        }
       }
     }
   ],
@@ -65,17 +76,24 @@
     "context": {
       "incidentId": "INC-1001",
       "slackSent": true,
-      "channel": "#incidents"
+      "slackChannel": "C123",
+      "slackMessageTs": "1733756457.000200",
+      "slackMessage": {
+        "type": "message",
+        "text": "Critical incident declared",
+        "user": "U123",
+        "ts": "1733756457.000200"
+      }
     },
     "logs": [
       {
         "level": "log",
-        "includes": "Slack webhook message sent"
+        "includes": "slack_send_message_success"
       }
     ],
     "httpCalls": [
       {
-        "url": "https://hooks.slack.test/services/T000/B000/INCIDENT",
+        "url": "https://slack.com/api/chat.postMessage",
         "method": "POST"
       }
     ]

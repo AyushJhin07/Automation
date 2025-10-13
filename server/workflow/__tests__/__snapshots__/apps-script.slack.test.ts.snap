@@ -1,0 +1,1045 @@
+exports[`Apps Script Slack REAL_OPS builds action.slack:test_connection 1`] = `
+
+function step_action_slack_test_connection(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['chat:write'] });
+
+  try {
+    const response = __slackApiRequest(accessToken, 'auth.test', { method: 'POST' });
+
+    ctx.slackConnectionTest = {
+      ok: true,
+      team: response.team || null,
+      user: response.user || null,
+      botId: response.bot_id || null,
+      url: response.url || null
+    };
+
+    logInfo('slack_test_connection_success', {
+      team: response.team || null,
+      user: response.user || null,
+      botId: response.bot_id || null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_test_connection_failed', {
+      message: error && error.message ? error.message : String(error),
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:send_message 1`] = `
+
+function step_action_slack_send_message(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['chat:write'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const fallbackChannel = ctx.slackChannel || ctx.channel;
+  let channel = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channel && typeof fallbackChannel === 'string') {
+    channel = String(fallbackChannel).trim();
+  }
+  if (!channel) {
+    throw new Error('Slack send_message requires a channel ID or name. Configure the node or provide ctx.channel.');
+  }
+
+  const textTemplate = '${esc(c.text ?? c.message ?? '')}';
+  let text = textTemplate ? interpolate(textTemplate, ctx).trim() : '';
+  if (!text && typeof ctx.message === 'string') {
+    text = ctx.message.trim();
+  }
+  if (!text && typeof ctx.text === 'string') {
+    text = ctx.text.trim();
+  }
+  if (!text) {
+    throw new Error('Slack send_message requires message text.');
+  }
+
+  const usernameTemplate = ${JSON.stringify(c.username ?? null)};
+  const iconEmojiTemplate = ${JSON.stringify(c.icon_emoji ?? c.iconEmoji ?? null)};
+  const threadTemplate = '${esc(c.thread_ts ?? c.threadTs ?? '')}';
+  const replyBroadcast = ${c.reply_broadcast === true || c.replyBroadcast === true ? 'true' : 'false'};
+  const metadataConfig = ${JSON.stringify(c.metadata ?? null)};
+  const blocksConfig = ${JSON.stringify(c.blocks ?? null)};
+  const attachmentsConfig = ${JSON.stringify(c.attachments ?? null)};
+
+  const payload = {
+    channel: channel,
+    text: text
+  };
+
+  if (usernameTemplate !== null && usernameTemplate !== undefined) {
+    const resolvedUsername = __slackResolveString(usernameTemplate, ctx);
+    if (resolvedUsername) {
+      payload.username = resolvedUsername;
+    }
+  }
+
+  if (iconEmojiTemplate !== null && iconEmojiTemplate !== undefined) {
+    const resolvedIcon = __slackResolveString(iconEmojiTemplate, ctx);
+    if (resolvedIcon) {
+      payload.icon_emoji = resolvedIcon;
+    }
+  }
+
+  if (threadTemplate) {
+    const threadTs = interpolate(threadTemplate, ctx).trim();
+    if (threadTs) {
+      payload.thread_ts = threadTs;
+      if (replyBroadcast) {
+        payload.reply_broadcast = true;
+      }
+    }
+  }
+
+  const attachments = __slackResolveStructured(attachmentsConfig, ctx);
+  if (Array.isArray(attachments) && attachments.length > 0) {
+    payload.attachments = attachments;
+  }
+
+  const blocks = __slackResolveStructured(blocksConfig, ctx);
+  if (Array.isArray(blocks) && blocks.length > 0) {
+    payload.blocks = blocks;
+  }
+
+  const metadata = __slackResolveStructured(metadataConfig, ctx);
+  if (metadata && typeof metadata === 'object') {
+    payload.metadata = metadata;
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'chat.postMessage', { method: 'POST', body: payload });
+    ctx.slackSent = true;
+    ctx.slackChannel = response.channel || channel;
+    ctx.slackMessageTs = response.ts || null;
+    ctx.slackMessage = response.message || null;
+
+    logInfo('slack_send_message_success', {
+      channel: ctx.slackChannel,
+      ts: ctx.slackMessageTs,
+      threadTs: payload.thread_ts || null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_send_message_failed', {
+      channel: channel,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:create_channel 1`] = `
+
+function step_action_slack_create_channel(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['channels:manage'] });
+
+  const nameTemplate = '${esc(c.name ?? c.channelName ?? '')}';
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Slack create_channel requires a channel name.');
+  }
+
+  const body = { name: name };
+  body.is_private = ${c.is_private === true || c.private === true ? 'true' : 'false'};
+
+  try {
+    const response = __slackApiRequest(accessToken, 'conversations.create', { method: 'POST', body: body });
+    const channel = response.channel || {};
+    ctx.slackChannelCreated = true;
+    ctx.slackChannelId = channel.id || null;
+    ctx.slackChannelName = channel.name || name;
+
+    logInfo('slack_create_channel_success', {
+      channelId: ctx.slackChannelId,
+      channelName: ctx.slackChannelName,
+      isPrivate: body.is_private || false
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_create_channel_failed', {
+      channel: name,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:invite_to_channel 1`] = `
+
+function step_action_slack_invite_to_channel(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['channels:manage'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const channelId = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channelId) {
+    throw new Error('Slack invite_to_channel requires a channel ID.');
+  }
+
+  const usersConfig = ${JSON.stringify(c.users ?? c.user ?? c.userId ?? null)};
+  const userIds = __slackNormalizeList(usersConfig, ctx);
+  if (userIds.length === 0) {
+    throw new Error('Slack invite_to_channel requires at least one user ID.');
+  }
+
+  const body = {
+    channel: channelId,
+    users: userIds.join(',')
+  };
+
+  try {
+    const response = __slackApiRequest(accessToken, 'conversations.invite', { method: 'POST', body: body });
+    const channel = response.channel || {};
+    ctx.slackUserInvited = true;
+    ctx.slackChannelId = channel.id || channelId;
+    ctx.slackInvitedUsers = userIds;
+
+    logInfo('slack_invite_to_channel_success', {
+      channelId: ctx.slackChannelId,
+      users: userIds
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_invite_to_channel_failed', {
+      channel: channelId,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:upload_file 1`] = `
+
+function step_action_slack_upload_file(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['files:write'] });
+
+  const channelsConfig = ${JSON.stringify(c.channels ?? c.channel ?? null)};
+  const channelsList = __slackNormalizeList(channelsConfig, ctx);
+  const channels = channelsList.length ? channelsList.join(',') : '';
+
+  const filenameTemplate = '${esc(c.filename ?? '')}';
+  const filename = filenameTemplate ? interpolate(filenameTemplate, ctx).trim() : '';
+  if (!filename) {
+    throw new Error('Slack upload_file requires a filename.');
+  }
+
+  const contentTemplate = ${JSON.stringify(c.content ?? c.fileContent ?? null)};
+  let content = contentTemplate !== null && contentTemplate !== undefined
+    ? __slackResolveString(contentTemplate, ctx, { trim: false })
+    : '';
+  if (!content && ctx.fileContent) {
+    content = String(ctx.fileContent);
+  }
+  if (!content) {
+    throw new Error('Slack upload_file requires file content.');
+  }
+
+  const titleTemplate = '${esc(c.title ?? '')}';
+  const initialCommentTemplate = '${esc(c.initial_comment ?? c.comment ?? '')}';
+  const filetypeTemplate = '${esc(c.filetype ?? c.mime_type ?? '')}';
+
+  const payload = {
+    content: content,
+    filename: filename
+  };
+  if (channels) {
+    payload.channels = channels;
+  }
+
+  const title = titleTemplate ? interpolate(titleTemplate, ctx).trim() : '';
+  if (title) {
+    payload.title = title;
+  }
+
+  const initialComment = initialCommentTemplate ? interpolate(initialCommentTemplate, ctx).trim() : '';
+  if (initialComment) {
+    payload.initial_comment = initialComment;
+  }
+
+  const filetype = filetypeTemplate ? interpolate(filetypeTemplate, ctx).trim() : '';
+  if (filetype) {
+    payload.filetype = filetype;
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'files.upload', { method: 'POST', payload: payload });
+    const file = response.file || {};
+    ctx.slackFileUploaded = true;
+    ctx.slackFileId = file.id || null;
+    ctx.slackFileName = file.name || filename;
+
+    logInfo('slack_upload_file_success', {
+      fileId: ctx.slackFileId,
+      filename: ctx.slackFileName,
+      channels: channels || null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_upload_file_failed', {
+      filename: filename,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:get_channel_info 1`] = `
+
+function step_action_slack_get_channel_info(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['channels:read'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const channelId = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channelId) {
+    throw new Error('Slack get_channel_info requires a channel ID.');
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'conversations.info', {
+      method: 'GET',
+      query: { channel: channelId }
+    });
+
+    ctx.slackChannel = response.channel || null;
+    ctx.slackChannelId = channelId;
+
+    logInfo('slack_get_channel_info_success', { channelId: channelId });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_get_channel_info_failed', {
+      channel: channelId,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:list_channels 1`] = `
+
+function step_action_slack_list_channels(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['channels:read'] });
+
+  const typesTemplate = '${esc(c.types ?? '')}';
+  const resolvedTypes = typesTemplate ? interpolate(typesTemplate, ctx).trim() : '';
+  const requestedLimit = ${typeof c.limit === 'number' ? c.limit : 0};
+  const pageSize = requestedLimit && requestedLimit > 0 && requestedLimit < 200 ? requestedLimit : 200;
+
+  const collected = [];
+  let cursor = null;
+  let pageCount = 0;
+
+  try {
+    do {
+      const query = { limit: pageSize };
+      if (resolvedTypes) {
+        query.types = resolvedTypes;
+      }
+      if (cursor) {
+        query.cursor = cursor;
+      }
+
+      const response = __slackApiRequest(accessToken, 'conversations.list', {
+        method: 'GET',
+        query: query
+      });
+
+      const channels = Array.isArray(response.channels) ? response.channels : [];
+      for (let i = 0; i < channels.length; i++) {
+        collected.push(channels[i]);
+        if (requestedLimit && collected.length >= requestedLimit) {
+          break;
+        }
+      }
+
+      if (requestedLimit && collected.length >= requestedLimit) {
+        cursor = null;
+      } else {
+        cursor = response.response_metadata && response.response_metadata.next_cursor
+          ? response.response_metadata.next_cursor
+          : null;
+      }
+
+      pageCount += 1;
+    } while (cursor && pageCount < 10 && (!requestedLimit || collected.length < requestedLimit));
+
+    ctx.slackChannels = collected;
+    ctx.slackChannelCount = collected.length;
+
+    logInfo('slack_list_channels_success', {
+      count: collected.length,
+      types: resolvedTypes || null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_list_channels_failed', {
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:get_user_info 1`] = `
+
+function step_action_slack_get_user_info(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['users:read'] });
+
+  const userTemplate = '${esc(c.user ?? c.userId ?? '')}';
+  const userId = userTemplate ? interpolate(userTemplate, ctx).trim() : '';
+  if (!userId) {
+    throw new Error('Slack get_user_info requires a user ID.');
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'users.info', {
+      method: 'GET',
+      query: { user: userId }
+    });
+
+    ctx.slackUser = response.user || null;
+    ctx.slackUserId = userId;
+
+    logInfo('slack_get_user_info_success', { userId: userId });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_get_user_info_failed', {
+      user: userId,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:list_users 1`] = `
+
+function step_action_slack_list_users(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['users:read'] });
+
+  const requestedLimit = ${typeof c.limit === 'number' ? c.limit : 0};
+  const includePresence = ${c.include_presence === true || c.includePresence === true ? 'true' : 'false'};
+  const pageSize = requestedLimit && requestedLimit > 0 && requestedLimit < 200 ? requestedLimit : 200;
+
+  const members = [];
+  let cursor = null;
+  let pageCount = 0;
+
+  try {
+    do {
+      const query = { limit: pageSize };
+      if (cursor) {
+        query.cursor = cursor;
+      }
+      if (includePresence) {
+        query.include_presence = true;
+      }
+
+      const response = __slackApiRequest(accessToken, 'users.list', {
+        method: 'GET',
+        query: query
+      });
+
+      const batch = Array.isArray(response.members) ? response.members : [];
+      for (let i = 0; i < batch.length; i++) {
+        members.push(batch[i]);
+        if (requestedLimit && members.length >= requestedLimit) {
+          break;
+        }
+      }
+
+      if (requestedLimit && members.length >= requestedLimit) {
+        cursor = null;
+      } else {
+        cursor = response.response_metadata && response.response_metadata.next_cursor
+          ? response.response_metadata.next_cursor
+          : null;
+      }
+
+      pageCount += 1;
+    } while (cursor && pageCount < 10 && (!requestedLimit || members.length < requestedLimit));
+
+    ctx.slackUsers = members;
+    ctx.slackUserCount = members.length;
+
+    logInfo('slack_list_users_success', { count: members.length });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_list_users_failed', {
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:add_reaction 1`] = `
+
+function step_action_slack_add_reaction(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['reactions:write'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  let channel = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channel && typeof ctx.slackChannel === 'string') {
+    channel = ctx.slackChannel.trim();
+  }
+  if (!channel) {
+    throw new Error('Slack add_reaction requires a channel ID.');
+  }
+
+  const timestampTemplate = '${esc(c.timestamp ?? c.ts ?? '')}';
+  let timestamp = timestampTemplate ? interpolate(timestampTemplate, ctx).trim() : '';
+  if (!timestamp && typeof ctx.slackMessageTs === 'string') {
+    timestamp = ctx.slackMessageTs.trim();
+  }
+  if (!timestamp) {
+    throw new Error('Slack add_reaction requires a message timestamp.');
+  }
+
+  const nameTemplate = '${esc(c.name ?? c.reaction ?? '')}';
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Slack add_reaction requires a reaction name.');
+  }
+
+  const body = {
+    channel: channel,
+    timestamp: timestamp,
+    name: name
+  };
+
+  try {
+    __slackApiRequest(accessToken, 'reactions.add', { method: 'POST', body: body });
+
+    ctx.slackReactionAdded = true;
+    ctx.slackReactionName = name;
+
+    logInfo('slack_add_reaction_success', {
+      channel: channel,
+      timestamp: timestamp,
+      name: name
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_add_reaction_failed', {
+      channel: channel,
+      timestamp: timestamp,
+      reaction: name,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:remove_reaction 1`] = `
+
+function step_action_slack_remove_reaction(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['reactions:write'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  let channel = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channel && typeof ctx.slackChannel === 'string') {
+    channel = ctx.slackChannel.trim();
+  }
+  if (!channel) {
+    throw new Error('Slack remove_reaction requires a channel ID.');
+  }
+
+  const timestampTemplate = '${esc(c.timestamp ?? c.ts ?? '')}';
+  let timestamp = timestampTemplate ? interpolate(timestampTemplate, ctx).trim() : '';
+  if (!timestamp && typeof ctx.slackMessageTs === 'string') {
+    timestamp = ctx.slackMessageTs.trim();
+  }
+  if (!timestamp) {
+    throw new Error('Slack remove_reaction requires a message timestamp.');
+  }
+
+  const nameTemplate = '${esc(c.name ?? c.reaction ?? '')}';
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Slack remove_reaction requires a reaction name.');
+  }
+
+  const body = {
+    channel: channel,
+    timestamp: timestamp,
+    name: name
+  };
+
+  try {
+    __slackApiRequest(accessToken, 'reactions.remove', { method: 'POST', body: body });
+
+    ctx.slackReactionRemoved = true;
+    ctx.slackReactionName = name;
+
+    logInfo('slack_remove_reaction_success', {
+      channel: channel,
+      timestamp: timestamp,
+      name: name
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_remove_reaction_failed', {
+      channel: channel,
+      timestamp: timestamp,
+      reaction: name,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:schedule_message 1`] = `
+
+function step_action_slack_schedule_message(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['chat:write'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const channel = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channel) {
+    throw new Error('Slack schedule_message requires a channel ID.');
+  }
+
+  const textTemplate = '${esc(c.text ?? '')}';
+  const text = textTemplate ? interpolate(textTemplate, ctx).trim() : '';
+  if (!text) {
+    throw new Error('Slack schedule_message requires message text.');
+  }
+
+  const postAtTemplate = '${esc(String(c.post_at ?? ''))}';
+  const postAtRaw = postAtTemplate ? interpolate(postAtTemplate, ctx).trim() : '';
+  const postAt = Number(postAtRaw);
+  if (!postAt || isNaN(postAt)) {
+    throw new Error('Slack schedule_message requires a numeric Unix timestamp (seconds).');
+  }
+
+  const body = {
+    channel: channel,
+    text: text,
+    post_at: Math.floor(postAt)
+  };
+
+  const threadTemplate = '${esc(c.thread_ts ?? c.threadTs ?? '')}';
+  const threadTs = threadTemplate ? interpolate(threadTemplate, ctx).trim() : '';
+  if (threadTs) {
+    body.thread_ts = threadTs;
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'chat.scheduleMessage', { method: 'POST', body: body });
+
+    ctx.slackScheduledMessageId = response.scheduled_message_id || null;
+    ctx.slackScheduledPostAt = response.post_at || body.post_at;
+    ctx.slackScheduledChannel = response.channel || channel;
+
+    logInfo('slack_schedule_message_success', {
+      channel: ctx.slackScheduledChannel,
+      scheduledMessageId: ctx.slackScheduledMessageId,
+      postAt: ctx.slackScheduledPostAt
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_schedule_message_failed', {
+      channel: channel,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:conversations_history 1`] = `
+
+function step_action_slack_conversations_history(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['channels:history', 'groups:history', 'im:history', 'mpim:history'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const channelId = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (!channelId) {
+    throw new Error('Slack conversations_history requires a channel ID.');
+  }
+
+  const oldestTemplate = '${esc(c.oldest ?? '')}';
+  const latestTemplate = '${esc(c.latest ?? '')}';
+  const inclusive = ${c.inclusive === true ? 'true' : 'false'};
+  const limit = ${typeof c.limit === 'number' ? c.limit : 100};
+
+  const query = {
+    channel: channelId,
+    limit: limit && limit > 0 && limit < 1000 ? limit : 100
+  };
+
+  const oldest = oldestTemplate ? interpolate(oldestTemplate, ctx).trim() : '';
+  if (oldest) {
+    query.oldest = oldest;
+  }
+
+  const latest = latestTemplate ? interpolate(latestTemplate, ctx).trim() : '';
+  if (latest) {
+    query.latest = latest;
+  }
+
+  if (inclusive) {
+    query.inclusive = true;
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'conversations.history', {
+      method: 'GET',
+      query: query
+    });
+
+    ctx.slackMessages = Array.isArray(response.messages) ? response.messages : [];
+    ctx.slackHasMore = !!response.has_more;
+    ctx.slackHistoryCursor = response.response_metadata && response.response_metadata.next_cursor
+      ? response.response_metadata.next_cursor
+      : null;
+
+    logInfo('slack_conversations_history_success', {
+      channelId: channelId,
+      messageCount: ctx.slackMessages.length,
+      hasMore: ctx.slackHasMore
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_conversations_history_failed', {
+      channel: channelId,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds action.slack:list_files 1`] = `
+
+function step_action_slack_list_files(ctx) {
+  ctx = ctx || {};
+  const accessToken = requireOAuthToken('slack', { scopes: ['files:read'] });
+
+  const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+  const userTemplate = '${esc(c.user ?? c.userId ?? '')}';
+  const typesTemplate = '${esc(c.types ?? '')}';
+  const tsFromTemplate = '${esc(c.ts_from ?? c.start_time ?? '')}';
+  const tsToTemplate = '${esc(c.ts_to ?? c.end_time ?? '')}';
+  const requestedLimit = ${typeof c.count === 'number' ? c.count : 100};
+
+  const query = {
+    count: requestedLimit && requestedLimit > 0 && requestedLimit < 1000 ? requestedLimit : 100
+  };
+
+  const channel = channelTemplate ? interpolate(channelTemplate, ctx).trim() : '';
+  if (channel) {
+    query.channel = channel;
+  }
+
+  const user = userTemplate ? interpolate(userTemplate, ctx).trim() : '';
+  if (user) {
+    query.user = user;
+  }
+
+  const types = typesTemplate ? interpolate(typesTemplate, ctx).trim() : '';
+  if (types) {
+    query.types = types;
+  }
+
+  const tsFrom = tsFromTemplate ? interpolate(tsFromTemplate, ctx).trim() : '';
+  if (tsFrom) {
+    query.ts_from = tsFrom;
+  }
+
+  const tsTo = tsToTemplate ? interpolate(tsToTemplate, ctx).trim() : '';
+  if (tsTo) {
+    query.ts_to = tsTo;
+  }
+
+  try {
+    const response = __slackApiRequest(accessToken, 'files.list', {
+      method: 'GET',
+      query: query
+    });
+
+    ctx.slackFiles = Array.isArray(response.files) ? response.files : [];
+    ctx.slackFilesPaging = response.paging || null;
+
+    logInfo('slack_list_files_success', {
+      count: ctx.slackFiles.length,
+      channel: channel || null,
+      user: user || null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('slack_list_files_failed', {
+      channel: channel || null,
+      user: user || null,
+      error: error && error.slackErrorCode ? error.slackErrorCode : null,
+      status: error && error.slackStatus ? error.slackStatus : null,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+
+`;
+exports[`Apps Script Slack REAL_OPS builds trigger.slack:message_received 1`] = `
+
+function onSlackMessageReceived() {
+  return buildPollingWrapper('trigger.slack:message_received', function (runtime) {
+    const accessToken = requireOAuthToken('slack', {
+      scopes: ['channels:history', 'groups:history', 'im:history', 'mpim:history']
+    });
+
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+
+    const channelTemplate = '${esc(c.channel ?? c.channelId ?? '')}';
+    const channelId = channelTemplate ? interpolate(channelTemplate, interpolationContext).trim() : '';
+    if (!channelId) {
+      throw new Error('Slack message_received trigger requires a channel ID. Configure the node before deploying.');
+    }
+
+    const userTemplate = '${esc(c.user ?? c.userId ?? '')}';
+    const userFilter = userTemplate ? interpolate(userTemplate, interpolationContext).trim() : '';
+
+    const keywordsTemplate = '${esc(c.keywords ?? '')}';
+    const keywordsRaw = keywordsTemplate ? interpolate(keywordsTemplate, interpolationContext).trim() : '';
+    const keywordList = keywordsRaw ? keywordsRaw.split(',').map(part => part.trim()).filter(Boolean) : [];
+
+    const cursorState = runtime.state && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+    const lastTimestamp = cursorState && cursorState.ts ? Number(cursorState.ts) : null;
+
+    const collected = [];
+    let pageCursor = null;
+    let pageCount = 0;
+    let newestTimestamp = lastTimestamp || 0;
+    let lastPayloadDispatched = null;
+
+    try {
+      do {
+        const query = {
+          channel: channelId,
+          limit: 200
+        };
+
+        if (pageCursor) {
+          query.cursor = pageCursor;
+        }
+
+        if (lastTimestamp) {
+          query.oldest = String(lastTimestamp);
+        }
+
+        const response = __slackApiRequest(accessToken, 'conversations.history', {
+          method: 'GET',
+          query: query
+        });
+
+        const messages = Array.isArray(response.messages) ? response.messages : [];
+        for (let i = 0; i < messages.length; i++) {
+          const message = messages[i] || {};
+          const tsNumber = Number(message.ts);
+          if (!tsNumber || (lastTimestamp && tsNumber <= lastTimestamp)) {
+            continue;
+          }
+
+          if (userFilter) {
+            const candidate = (message.user || message.bot_id || '').trim();
+            if (!candidate || candidate !== userFilter) {
+              continue;
+            }
+          }
+
+          if (keywordList.length > 0) {
+            const text = (message.text || '').toLowerCase();
+            let matched = false;
+            for (let k = 0; k < keywordList.length; k++) {
+              const keyword = keywordList[k].toLowerCase();
+              if (keyword && text.indexOf(keyword) !== -1) {
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              continue;
+            }
+          }
+
+          collected.push({
+            ts: message.ts,
+            text: message.text || '',
+            user: message.user || message.bot_id || '',
+            thread_ts: message.thread_ts || null,
+            subtype: message.subtype || null,
+            bot_id: message.bot_id || null,
+            raw: message
+          });
+
+          if (tsNumber > newestTimestamp) {
+            newestTimestamp = tsNumber;
+          }
+        }
+
+        if (collected.length >= 50) {
+          pageCursor = null;
+        } else {
+          pageCursor = response.response_metadata && response.response_metadata.next_cursor
+            ? response.response_metadata.next_cursor
+            : null;
+        }
+
+        pageCount += 1;
+      } while (pageCursor && pageCount < 5 && collected.length < 50);
+
+      if (collected.length === 0) {
+        runtime.summary({
+          messagesAttempted: 0,
+          messagesDispatched: 0,
+          messagesFailed: 0,
+          channel: channelId,
+          user: userFilter || null,
+          keywords: keywordList
+        });
+        return {
+          messagesAttempted: 0,
+          messagesDispatched: 0,
+          messagesFailed: 0,
+          channel: channelId,
+          user: userFilter || null,
+          keywords: keywordList
+        };
+      }
+
+      collected.sort(function (a, b) {
+        return Number(a.ts) - Number(b.ts);
+      });
+
+      const batch = runtime.dispatchBatch(collected, function (entry) {
+        const payload = {
+          event_id: 'slack.polling.' + channelId + '.' + entry.ts,
+          event_ts: entry.ts,
+          type: 'event_callback',
+          api_app_id: null,
+          team_id: null,
+          event: {
+            type: entry.subtype || 'message',
+            channel: channelId,
+            channel_type: __slackDetectChannelType(channelId) || null,
+            user: entry.user || '',
+            text: entry.text || '',
+            ts: entry.ts,
+            thread_ts: entry.thread_ts || null,
+            bot_id: entry.bot_id || null
+          },
+          slack_polling: true,
+          _meta: {
+            raw: entry.raw || null
+          }
+        };
+
+        lastPayloadDispatched = payload;
+        return payload;
+      });
+
+      runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+      runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+      runtime.state.cursor.ts = String(newestTimestamp || Date.now() / 1000);
+      runtime.state.cursor.channel = channelId;
+      runtime.state.lastPayload = lastPayloadDispatched || runtime.state.lastPayload || null;
+
+      runtime.summary({
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+        channel: channelId,
+        user: userFilter || null,
+        keywords: keywordList,
+        lastTimestamp: runtime.state.cursor.ts
+      });
+
+      logInfo('slack_message_received_poll_success', {
+        channel: channelId,
+        dispatched: batch.succeeded,
+        lastTimestamp: runtime.state.cursor.ts
+      });
+
+      return {
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+        channel: channelId,
+        user: userFilter || null,
+        keywords: keywordList,
+        lastTimestamp: runtime.state.cursor.ts
+      };
+    } catch (error) {
+      logError('slack_message_received_poll_failed', {
+        channel: channelId,
+        error: error && error.slackErrorCode ? error.slackErrorCode : null,
+        status: error && error.slackStatus ? error.slackStatus : null,
+        message: error && error.message ? error.message : String(error)
+      });
+      throw error;
+    }
+  });
+}
+
+`;

@@ -70,7 +70,7 @@ Before deploying a workflow, populate Script Properties with the credentials req
 
 | Connector | Script Properties |
 | --- | --- |
-| Slack | `SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL` |
+| Slack | `SLACK_BOT_TOKEN` (required), optional `SLACK_WEBHOOK_URL` |
 | Salesforce | `SALESFORCE_ACCESS_TOKEN`, `SALESFORCE_INSTANCE_URL` |
 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
 | Shopify | `SHOPIFY_API_KEY`, `SHOPIFY_SHOP_DOMAIN` |
@@ -111,6 +111,15 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
 - Script Property tips: `AIRTABLE_BASE_ID` seeds the pagination cursor for `list_records`, so workflows resume from the last offset even after the Apps Script runtime restarts.
+
+#### Slack
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SLACK_BOT_TOKEN` | Yes | OAuth access token used for `chat.postMessage`, channel management, reactions, file uploads, and history polling. Must include `chat:write`, `channels:manage`, `channels:read`, `groups:history`, `mpim:history`, `im:history`, `users:read`, `reactions:write`, and `files:write` scopes. | `apps_script__slack__bot_token`, historical `SLACK_ACCESS_TOKEN` |
+| `SLACK_WEBHOOK_URL` | No | Fallback incoming webhook URL for legacy automations that still rely on webhooks when OAuth tokens are unavailable. | `apps_script__slack__webhook_url` |
+
+- Script Property tips: Configure the Apps Script deployment with a bot token that includes the scopes listed above. The runtime calls `requireOAuthToken('slack', …)` for every action and trigger, so missing scopes surface before the API call. Incoming webhooks remain supported as a safety valve but are only used when explicitly configured alongside the OAuth token.
 
 #### Asana
 
