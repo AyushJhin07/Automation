@@ -138,7 +138,7 @@ Salesforce workflows must populate both properties before deployment. Access tok
 | vimeo | `VIMEO_ACCESS_TOKEN` | — | — |
 | vonage | `VONAGE_API_KEY`<br>`VONAGE_API_SECRET` | — | — |
 | wave | `WAVE_ACCESS_TOKEN` | — | — |
-| Webflow | `WEBFLOW_API_TOKEN` | — | — |
+| Webflow | `WEBFLOW_API_TOKEN`<br>`WEBFLOW_DEFAULT_SITE_ID` | — | `WEBFLOW_DEFAULT_SITE_ID` |
 | whatsapp | `WHATSAPP_ACCESS_TOKEN`<br>`WHATSAPP_PHONE_NUMBER_ID` | — | — |
 | wistia | `WISTIA_API_KEY` | — | — |
 | WooCommerce | `WOOCOMMERCE_CONSUMER_KEY`<br>`WOOCOMMERCE_CONSUMER_SECRET`<br>`WOOCOMMERCE_STORE_URL` | — | — |
