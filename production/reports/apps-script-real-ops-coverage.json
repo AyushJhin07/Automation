@@ -1151,9 +1151,15 @@
       "connectorId": "clickup",
       "connectorName": "ClickUp",
       "totalOperations": 11,
-      "coveredOperations": 11,
-      "missingOperations": [],
-      "coverageRatio": 1,
+      "coveredOperations": 6,
+      "missingOperations": [
+        "action.google-admin:delete_user",
+        "action.google-admin:get_user",
+        "action.google-admin:list_users",
+        "action.google-admin:remove_group_member",
+        "action.google-admin:update_user"
+      ],
+      "coverageRatio": 0.5454545454545454,
       "operations": [
         {
           "key": "action.clickup:create_comment",
