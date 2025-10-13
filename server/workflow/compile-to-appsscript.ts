@@ -2016,83 +2016,139 @@ function requireOAuthToken(connectorKey, opts) {
 }
 
 function withRetries(fn, options) {
-  var config = options || {};
-  var attempts = config.attempts || config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
-  var backoffMs = config.backoffMs || config.initialDelayMs || __HTTP_RETRY_DEFAULTS.initialDelayMs;
-  var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;
-  var maxDelayMs = config.maxDelayMs || __HTTP_RETRY_DEFAULTS.maxDelayMs;
+  var config = options && typeof options === 'object' ? options : {};
+  var attempts = config.attempts !== undefined ? Number(config.attempts) : (config.maxAttempts !== undefined ? Number(config.maxAttempts) : __HTTP_RETRY_DEFAULTS.maxAttempts);
+  if (!attempts || isNaN(attempts) || attempts < 1) {
+    attempts = __HTTP_RETRY_DEFAULTS.maxAttempts;
+  }
+  var backoffMs = config.backoffMs !== undefined ? Number(config.backoffMs) : (config.initialDelayMs !== undefined ? Number(config.initialDelayMs) : __HTTP_RETRY_DEFAULTS.initialDelayMs);
+  if (isNaN(backoffMs) || backoffMs <= 0) {
+    backoffMs = __HTTP_RETRY_DEFAULTS.initialDelayMs;
+  }
+  var backoffFactor = config.backoffFactor !== undefined ? Number(config.backoffFactor) : __HTTP_RETRY_DEFAULTS.backoffFactor;
+  if (isNaN(backoffFactor) || backoffFactor < 1) {
+    backoffFactor = __HTTP_RETRY_DEFAULTS.backoffFactor;
+  }
+  var maxDelayMs = config.maxDelayMs !== undefined ? Number(config.maxDelayMs) : __HTTP_RETRY_DEFAULTS.maxDelayMs;
+  if (isNaN(maxDelayMs) || maxDelayMs <= 0) {
+    maxDelayMs = __HTTP_RETRY_DEFAULTS.maxDelayMs;
+  }
   var jitter = typeof config.jitter === 'number' ? config.jitter : 0;
   var retryOn = typeof config.retryOn === 'function' ? config.retryOn : null;
+
   var attempt = 0;
   var delay = backoffMs;
 
   while (attempt < attempts) {
+    var attemptNumber = attempt + 1;
+    var invocationResult;
+    var invocationError = null;
+
     try {
-      return fn(attempt + 1);
-    } catch (error) {
-      attempt++;
-      var status = error && typeof error.status === 'number' ? error.status : null;
-      var headers = error && error.headers ? error.headers : {};
+      invocationResult = fn(attemptNumber);
+    } catch (err) {
+      invocationError = err;
+    }
+
+    var status = null;
+    var headers = {};
+    var body = null;
+    var text = null;
+    var retryAfterMs = null;
+    var message = '';
+    var shouldRetry = false;
+    var userDelay = null;
+
+    if (invocationError === null) {
+      if (invocationResult && typeof invocationResult === 'object') {
+        if (typeof invocationResult.status === 'number') {
+          status = invocationResult.status;
+        }
+        if (invocationResult.headers) {
+          headers = invocationResult.headers;
+        }
+        body = invocationResult.body;
+        text = invocationResult.text;
+      } else {
+        return invocationResult;
+      }
+
+      if (status === null || (status >= 200 && status < 300)) {
+        return invocationResult;
+      }
+
       var normalizedHeaders = __normalizeHeaders(headers);
-      var retryAfterMs = __resolveRetryAfterMs(normalizedHeaders['retry-after']);
-      var message = error && error.message ? error.message : String(error);
-      var shouldRetry = attempt < attempts && (status ? (status === 429 || (status >= 500 && status < 600)) : true);
-      var userDelay = null;
+      retryAfterMs = __resolveRetryAfterMs(normalizedHeaders['retry-after']);
+      message = 'Request returned status ' + status;
+      shouldRetry = attemptNumber < attempts && (status === 429 || (status >= 500 && status < 600));
+    } else {
+      status = invocationError && typeof invocationError.status === 'number' ? invocationError.status : null;
+      headers = invocationError && invocationError.headers ? invocationError.headers : {};
+      body = invocationError && invocationError.body !== undefined ? invocationError.body : null;
+      text = invocationError && invocationError.text !== undefined ? invocationError.text : null;
+      var normalizedErrorHeaders = __normalizeHeaders(headers);
+      retryAfterMs = __resolveRetryAfterMs(normalizedErrorHeaders['retry-after']);
+      message = invocationError && invocationError.message ? invocationError.message : String(invocationError);
+      shouldRetry = attemptNumber < attempts && (status ? (status === 429 || (status >= 500 && status < 600)) : true);
+    }
 
-      var context = {
-        attempt: attempt,
-        error: error,
-        response: status !== null ? { status: status, headers: headers || {}, body: error.body, text: error.text } : null,
-        delayMs: delay,
-        retryAfterMs: retryAfterMs
-      };
+    var context = {
+      attempt: attemptNumber,
+      error: invocationError,
+      response: status !== null ? { status: status, headers: headers || {}, body: body, text: text } : null,
+      delayMs: delay,
+      retryAfterMs: retryAfterMs
+    };
 
-      if (retryOn) {
-        try {
-          var decision = retryOn(context);
-          if (typeof decision === 'boolean') {
-            shouldRetry = attempt < attempts && decision;
-          } else if (decision && typeof decision === 'object') {
-            if (decision.retry !== undefined) {
-              shouldRetry = attempt < attempts && !!decision.retry;
-            }
-            if (decision.delayMs !== undefined) {
-              userDelay = Number(decision.delayMs);
-              if (isNaN(userDelay)) {
-                userDelay = null;
-              }
+    if (retryOn) {
+      try {
+        var decision = retryOn(context);
+        if (typeof decision === 'boolean') {
+          shouldRetry = attemptNumber < attempts && decision;
+        } else if (decision && typeof decision === 'object') {
+          if (decision.retry !== undefined) {
+            shouldRetry = attemptNumber < attempts && !!decision.retry;
+          }
+          if (decision.delayMs !== undefined) {
+            var parsedDelay = Number(decision.delayMs);
+            if (!isNaN(parsedDelay)) {
+              userDelay = parsedDelay;
             }
           }
-        } catch (retryError) {
-          logWarn('http_retry_callback_failed', {
-            attempt: attempt,
-            message: retryError && retryError.message ? retryError.message : String(retryError)
-          });
         }
+      } catch (retryError) {
+        logWarn('http_retry_callback_failed', {
+          attempt: attemptNumber,
+          message: retryError && retryError.message ? retryError.message : String(retryError)
+        });
       }
-
-      if (!shouldRetry || attempt >= attempts) {
-        logError('http_retry_exhausted', { attempts: attempt, message: message, status: status });
-        throw error;
-      }
-
-      var waitMs = userDelay !== null ? userDelay : (retryAfterMs !== null ? retryAfterMs : delay);
-      if (typeof waitMs !== 'number' || isNaN(waitMs) || waitMs < 0) {
-        waitMs = delay;
-      }
-      waitMs = Math.min(waitMs, maxDelayMs);
-
-      if (jitter) {
-        var jitterRange = waitMs * jitter;
-        if (jitterRange > 0) {
-          waitMs = Math.min(maxDelayMs, waitMs + Math.floor(Math.random() * jitterRange));
-        }
-      }
-
-      logWarn('http_retry', { attempt: attempt, delayMs: waitMs, status: status, message: message });
-      Utilities.sleep(waitMs);
-      delay = Math.min(Math.max(backoffMs, waitMs) * backoffFactor, maxDelayMs);
     }
+
+    if (!shouldRetry || attemptNumber >= attempts) {
+      if (invocationError) {
+        logError('http_retry_exhausted', { attempts: attemptNumber, message: message, status: status });
+        throw invocationError;
+      }
+      return invocationResult;
+    }
+
+    var waitMs = userDelay !== null ? userDelay : (retryAfterMs !== null ? retryAfterMs : delay);
+    if (typeof waitMs !== 'number' || isNaN(waitMs) || waitMs < 0) {
+      waitMs = delay;
+    }
+    waitMs = Math.min(Math.max(0, waitMs), maxDelayMs);
+
+    if (jitter) {
+      var jitterRange = waitMs * jitter;
+      if (jitterRange > 0) {
+        waitMs = Math.min(maxDelayMs, waitMs + Math.floor(Math.random() * jitterRange));
+      }
+    }
+
+    logWarn('http_retry', { attempt: attemptNumber, delayMs: waitMs, status: status, message: message });
+    Utilities.sleep(waitMs);
+    delay = Math.min(Math.max(backoffMs, waitMs) * backoffFactor, maxDelayMs);
+    attempt = attemptNumber;
   }
 
   throw new Error('withRetries exhausted without executing function');
@@ -2108,23 +2164,93 @@ function rateLimitAware(fn, options) {
     }
   }
 
-  mergedOptions.retryOn = function(context) {
-    var headers = {};
-    if (context) {
-      if (context.response && context.response.headers) {
-        headers = context.response.headers;
-      } else if (context.error && context.error.headers) {
-        headers = context.error.headers;
-      }
+  function resolveRetryAfterFromBody(body, depth) {
+    if (depth === undefined) {
+      depth = 0;
     }
-    var normalizedHeaders = __normalizeHeaders(headers);
-    var status = null;
-    if (context && context.response && typeof context.response.status === 'number') {
-      status = context.response.status;
-    } else if (context && context.error && typeof context.error.status === 'number') {
-      status = context.error.status;
+    if (body === null || body === undefined) {
+      return null;
+    }
+    if (depth > 3) {
+      return null;
+    }
+    if (typeof body === 'number' || typeof body === 'string') {
+      return __resolveRetryAfterMs(body);
+    }
+    if (typeof body !== 'object') {
+      return null;
     }
 
+    var candidateKeys = ['retry_after_ms', 'retry-after-ms', 'retryAfterMs', 'retry_after', 'retry-after', 'retryAfter'];
+    for (var i = 0; i < candidateKeys.length; i++) {
+      if (Object.prototype.hasOwnProperty.call(body, candidateKeys[i])) {
+        var candidateDelay = __resolveRetryAfterMs(body[candidateKeys[i]]);
+        if (candidateDelay !== null) {
+          return candidateDelay;
+        }
+      }
+    }
+
+    var nestedKeys = ['error', 'errors', 'meta', 'detail', 'details', 'data'];
+    for (var j = 0; j < nestedKeys.length; j++) {
+      if (!Object.prototype.hasOwnProperty.call(body, nestedKeys[j])) {
+        continue;
+      }
+      var nested = body[nestedKeys[j]];
+      if (Array.isArray && Array.isArray(nested)) {
+        for (var k = 0; k < nested.length; k++) {
+          var nestedDelay = resolveRetryAfterFromBody(nested[k], depth + 1);
+          if (nestedDelay !== null) {
+            return nestedDelay;
+          }
+        }
+      } else {
+        var nestedValue = resolveRetryAfterFromBody(nested, depth + 1);
+        if (nestedValue !== null) {
+          return nestedValue;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  mergedOptions.retryOn = function(context) {
+    var headers = {};
+    var status = null;
+    var body = null;
+
+    if (context) {
+      if (context.response) {
+        if (context.response.headers) {
+          headers = context.response.headers;
+        }
+        if (typeof context.response.status === 'number') {
+          status = context.response.status;
+        }
+        if (context.response.body !== undefined) {
+          body = context.response.body;
+        }
+      }
+      if (context.error) {
+        if (headers === null || (typeof headers === 'object' && Object.keys(headers).length === 0)) {
+          if (context.error.headers) {
+            headers = context.error.headers;
+          }
+        }
+        if (status === null && typeof context.error.status === 'number') {
+          status = context.error.status;
+        }
+        if (body === null && context.error.body !== undefined) {
+          body = context.error.body;
+        }
+        if (body === null && context.error.text !== undefined) {
+          body = context.error.text;
+        }
+      }
+    }
+
+    var normalizedHeaders = __normalizeHeaders(headers);
     var computedDelay = null;
 
     if (normalizedHeaders['retry-after'] !== undefined) {
@@ -2132,6 +2258,10 @@ function rateLimitAware(fn, options) {
       if (retryDelay !== null) {
         computedDelay = retryDelay;
       }
+    }
+
+    if (computedDelay === null) {
+      computedDelay = resolveRetryAfterFromBody(body, 0);
     }
 
     var remainingKeys = ['x-ratelimit-remaining', 'x-rate-limit-remaining'];
@@ -2157,6 +2287,9 @@ function rateLimitAware(fn, options) {
 
     if (computedDelay !== null) {
       result.delayMs = computedDelay;
+      if (result.retry === undefined) {
+        result.retry = true;
+      }
     }
 
     if (providedRetryOn) {
@@ -2644,32 +2777,50 @@ function __boxChunkedUpload(accessToken, parentId, fileInput) {
   return JSON.parse(commitResponse.getContentText());
 }
 
-function fetchJson(request) {
-  var config = request || {};
-  if (typeof request === 'string') {
-    var legacyOptions = arguments.length > 1 ? (arguments[1] || {}) : {};
-    legacyOptions.url = request;
-    config = legacyOptions;
+function fetchJson(options) {
+  var config = options;
+  if (typeof options === 'string') {
+    config = {};
+    if (arguments.length > 1 && arguments[1] && typeof arguments[1] === 'object') {
+      var legacyOptions = arguments[1];
+      for (var legacyKey in legacyOptions) {
+        if (Object.prototype.hasOwnProperty.call(legacyOptions, legacyKey)) {
+          config[legacyKey] = legacyOptions[legacyKey];
+        }
+      }
+    }
+    config.url = options;
+  } else if (!config || typeof config !== 'object') {
+    config = {};
   }
 
-  var url = config.url;
+  var request = config.request && typeof config.request === 'object' ? config.request : {};
+  if (!config.url && request.url) {
+    config.url = request.url;
+  }
+
+  var url = typeof config.url === 'string' ? config.url : '';
   if (!url) {
     throw new Error('fetchJson requires a url');
   }
 
-  var method = config.method || 'GET';
-  var headers = config.headers || {};
-  var payload = config.payload;
-  var contentType = config.contentType || config['contentType'];
-  var muteHttpExceptions = config.muteHttpExceptions !== undefined ? config.muteHttpExceptions : true;
-  var followRedirects = config.followRedirects;
-  var escape = config.escape;
+  var method = config.method !== undefined ? config.method : (request.method !== undefined ? request.method : 'GET');
+  var headers = config.headers !== undefined ? config.headers : (request.headers !== undefined ? request.headers : {});
+  if (!headers || typeof headers !== 'object') {
+    headers = {};
+  }
+  var payload = config.payload !== undefined ? config.payload : request.payload;
+  var contentType = config.contentType !== undefined ? config.contentType : (config['contentType'] !== undefined ? config['contentType'] : (request.contentType !== undefined ? request.contentType : request['contentType']));
+  var muteHttpExceptionsValue = config.muteHttpExceptions !== undefined ? config.muteHttpExceptions : (request.muteHttpExceptions !== undefined ? request.muteHttpExceptions : true);
+  var followRedirects = config.followRedirects !== undefined ? config.followRedirects : request.followRedirects;
+  var escape = config.escape !== undefined ? config.escape : request.escape;
+  var timeout = config.timeout !== undefined ? config.timeout : request.timeout;
   var start = new Date().getTime();
 
   var fetchOptions = {
     method: method,
     headers: headers,
-    muteHttpExceptions: muteHttpExceptions
+    muteHttpExceptions: !!muteHttpExceptionsValue
   };
 
   if (typeof payload !== 'undefined') {
@@ -2688,6 +2839,10 @@ function fetchJson(request) {
     fetchOptions.escape = escape;
   }
 
+  if (typeof timeout !== 'undefined') {
+    fetchOptions.timeout = timeout;
+  }
+
   var response = UrlFetchApp.fetch(url, fetchOptions);
   var durationMs = new Date().getTime() - start;
   var status = response.getResponseCode();
@@ -2703,16 +2858,13 @@ function fetchJson(request) {
     durationMs: durationMs
   };
 
-  if (!success) {
-    logDetails.response = text;
-  }
-
-  logStructured(success ? 'INFO' : 'ERROR', success ? 'http_success' : 'http_failure', logDetails);
-
   var body = text;
   var isJson = false;
-  if (normalizedHeaders['content-type'] && normalizedHeaders['content-type'].indexOf('application/json') !== -1) {
-    isJson = true;
+  if (normalizedHeaders['content-type']) {
+    var lowerContentType = String(normalizedHeaders['content-type']).toLowerCase();
+    if (lowerContentType.indexOf('json') !== -1) {
+      isJson = true;
+    }
   }
   if (!isJson && text) {
     var trimmed = text.trim();
@@ -2725,10 +2877,13 @@ function fetchJson(request) {
       body = text ? JSON.parse(text) : null;
     } catch (error) {
       logWarn('http_parse_failure', { url: url, message: error && error.message ? error.message : String(error) });
+      body = text;
     }
   }
 
   if (!success) {
+    logDetails.response = isJson ? body : text;
+    logStructured('ERROR', 'http_failure', logDetails);
     var err = new Error('Request failed with status ' + status);
     err.status = status;
     err.headers = allHeaders;
@@ -2736,6 +2891,8 @@ function fetchJson(request) {
     err.text = text;
     throw err;
   }
+
+  logStructured('INFO', 'http_success', logDetails);
 
   return {
     status: status,
