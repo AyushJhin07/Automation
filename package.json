@@ -64,7 +64,7 @@
     "observability:check": "tsx scripts/observability-check.ts",
     "report:runtime": "tsx scripts/connector-runtime-status.ts",
     "report:apps-script-coverage": "tsx scripts/report-apps-script-coverage.ts",
-    "report:apps-script-real-ops": "node --loader ./scripts/ts-loader.mjs scripts/apps-script-coverage.ts",
+    "report:apps-script-real-ops": "npx tsx scripts/apps-script-coverage.ts",
     "prioritize:apps-script": "node scripts/apps-script-prioritize-connectors.mjs",
     "update:apps-script-backlog": "node scripts/update-apps-script-backlog.mjs",
     "check:apps-script-backlog": "node scripts/check-apps-script-backlog.mjs",

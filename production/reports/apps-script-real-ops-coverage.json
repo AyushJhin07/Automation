@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2025-10-13T05:00:38.160Z",
+  "generatedAt": "2025-10-13T10:18:50.080Z",
   "target": 0,
   "totals": {
-    "operations": 1861,
-    "covered": 1861,
+    "operations": 1862,
+    "covered": 1862,
     "missing": 0,
     "ratio": 1,
     "connectors": 149,
@@ -9845,11 +9845,16 @@
     {
       "connectorId": "typeform",
       "connectorName": "Typeform",
-      "totalOperations": 2,
-      "coveredOperations": 2,
+      "totalOperations": 3,
+      "coveredOperations": 3,
       "missingOperations": [],
       "coverageRatio": 1,
       "operations": [
+        {
+          "key": "action.typeform:create_form",
+          "type": "action",
+          "id": "create_form"
+        },
         {
           "key": "trigger.typeform:form_created",
           "type": "trigger",
