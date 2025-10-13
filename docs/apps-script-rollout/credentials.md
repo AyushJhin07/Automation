@@ -75,7 +75,7 @@ Before deploying a workflow, populate Script Properties with the credentials req
 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
 | Shopify | `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_SHOP_DOMAIN` |
 | Square | `SQUARE_ACCESS_TOKEN`, `SQUARE_APPLICATION_ID`, optional `SQUARE_ENVIRONMENT` (`sandbox` by default) |
-| Google Admin | `GOOGLE_ADMIN_ACCESS_TOKEN`, optional `GOOGLE_ADMIN_CUSTOMER_ID` (defaults to `my_customer`) |
+| Google Admin | `GOOGLE_ADMIN_ACCESS_TOKEN` or (`GOOGLE_ADMIN_SERVICE_ACCOUNT` + `GOOGLE_ADMIN_DELEGATED_EMAIL`), optional `GOOGLE_ADMIN_CUSTOMER_ID` (defaults to `my_customer`) |
 | DocuSign | `DOCUSIGN_ACCESS_TOKEN`, `DOCUSIGN_ACCOUNT_ID`, optional `DOCUSIGN_BASE_URI` |
 
 The helper automatically infers connector keys from the property prefix, so additional overrides can be added to `SECRET_HELPER_OVERRIDES.connectors` when bespoke aliases are required.
@@ -173,11 +173,14 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
-| `GOOGLE_ADMIN_ACCESS_TOKEN` | Yes | OAuth token for Admin Directory APIs | `apps_script__google_admin__access_token` |
+| `GOOGLE_ADMIN_ACCESS_TOKEN` | Optional | OAuth token for Admin Directory APIs when not using service accounts | `apps_script__google_admin__access_token` |
+| `GOOGLE_ADMIN_SERVICE_ACCOUNT` | Optional | JSON service-account key used for domain-wide delegation fallback | `apps_script__google_admin__service_account` |
+| `GOOGLE_ADMIN_DELEGATED_EMAIL` | Optional | Admin email impersonated when authenticating with a service account | `apps_script__google_admin__delegated_email` |
 | `GOOGLE_ADMIN_CUSTOMER_ID` | Optional | Overrides the default `my_customer` tenant | `apps_script__google_admin__customer_id` |
 
 - **OAuth scopes:** Align with the handlers in use (for example `https://www.googleapis.com/auth/admin.directory.user` and `…group` scopes for CRUD actions).
-- **Refresh strategy:** Tokens expire in one hour—use delegated domain-wide credentials or a refresh service to keep values current.
+- **Authentication strategy:** Handlers first attempt `requireOAuthToken`. When that fails, they fall back to the service-account JSON and delegated admin email if both are configured.
+- **Refresh strategy:** OAuth tokens expire in one hour—refresh centrally and overwrite Script Properties. Rotate service accounts and delegated access on a regular cadence.
 - **API key naming:** Maintain the canonical property names; aliases ensure namespaced variants resolve without additional overrides.
 - **Runbook:** Document changes in the Google Admin section of the [Troubleshooting Playbook](../troubleshooting-playbook.md).
 

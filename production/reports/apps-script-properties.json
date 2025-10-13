@@ -311,7 +311,76 @@
         "trigger.airtable-enhanced:record_created",
         "trigger.airtable-enhanced:record_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_ADMIN_ACCESS_TOKEN",
+          "optional": true,
+          "operations": [
+            "action.google-admin:add_group_member",
+            "action.google-admin:create_group",
+            "action.google-admin:create_user",
+            "action.google-admin:test_connection"
+          ],
+          "triggers": [
+            "trigger.google-admin:user_created",
+            "trigger.google-admin:user_suspended"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_ADMIN_SERVICE_ACCOUNT",
+          "optional": true,
+          "operations": [
+            "action.google-admin:add_group_member",
+            "action.google-admin:create_group",
+            "action.google-admin:create_user",
+            "action.google-admin:test_connection"
+          ],
+          "triggers": [
+            "trigger.google-admin:user_created",
+            "trigger.google-admin:user_suspended"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_ADMIN_DELEGATED_EMAIL",
+          "optional": true,
+          "operations": [
+            "action.google-admin:add_group_member",
+            "action.google-admin:create_group",
+            "action.google-admin:create_user",
+            "action.google-admin:test_connection"
+          ],
+          "triggers": [
+            "trigger.google-admin:user_created",
+            "trigger.google-admin:user_suspended"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_ADMIN_CUSTOMER_ID",
+          "optional": true,
+          "operations": [
+            "action.google-admin:add_group_member",
+            "action.google-admin:create_group",
+            "action.google-admin:create_user",
+            "action.google-admin:test_connection"
+          ],
+          "triggers": [
+            "trigger.google-admin:user_created",
+            "trigger.google-admin:user_suspended"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

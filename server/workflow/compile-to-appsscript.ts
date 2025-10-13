@@ -14533,6 +14533,917 @@ ${adpHelpersBlock()}
 `;
 }
 
+function googleAdminHelpersBlock(): string {
+  return `
+if (typeof googleAdminGetAccessToken !== 'function') {
+  function googleAdminGetAccessToken(scopeList) {
+    var scopes = Array.isArray(scopeList) && scopeList.length ? scopeList : ['https://www.googleapis.com/auth/admin.directory.user'];
+    try {
+      return requireOAuthToken('google-admin', { scopes: scopes });
+    } catch (oauthError) {
+      var manualToken = null;
+      try {
+        manualToken = getSecret('GOOGLE_ADMIN_ACCESS_TOKEN', { connectorKey: 'google-admin' });
+      } catch (manualError) {
+        manualToken = null;
+      }
+
+      if (manualToken !== null && manualToken !== undefined) {
+        if (typeof manualToken === 'string') {
+          var trimmedManual = manualToken.trim();
+          if (trimmedManual) {
+            return trimmedManual;
+          }
+        } else {
+          return manualToken;
+        }
+      }
+
+      var rawServiceAccount = null;
+      try {
+        rawServiceAccount = getSecret('GOOGLE_ADMIN_SERVICE_ACCOUNT', { connectorKey: 'google-admin' });
+      } catch (serviceAccountError) {
+        rawServiceAccount = null;
+      }
+
+      if (!rawServiceAccount) {
+        throw oauthError;
+      }
+
+      var delegatedUser = null;
+      try {
+        delegatedUser = getSecret('GOOGLE_ADMIN_DELEGATED_EMAIL', { connectorKey: 'google-admin' });
+      } catch (delegatedError) {
+        delegatedUser = null;
+      }
+
+      function base64UrlEncode(value) {
+        if (Object.prototype.toString.call(value) === '[object Array]') {
+          return Utilities.base64EncodeWebSafe(value).replace(/=+$/, '');
+        }
+        return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8).replace(/=+$/, '');
+      }
+
+      try {
+        var parsed = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Service account payload must be valid JSON.');
+        }
+
+        var clientEmail = parsed.client_email;
+        var privateKey = parsed.private_key;
+
+        if (!clientEmail || !privateKey) {
+          throw new Error('Service account JSON must include client_email and private_key.');
+        }
+
+        var now = Math.floor(Date.now() / 1000);
+        var headerSegment = base64UrlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+        var claimPayload = {
+          iss: clientEmail,
+          scope: scopes.join(' '),
+          aud: 'https://oauth2.googleapis.com/token',
+          exp: now + 3600,
+          iat: now
+        };
+        if (delegatedUser) {
+          claimPayload.sub = delegatedUser;
+        }
+        var claimSegment = base64UrlEncode(JSON.stringify(claimPayload));
+        var signingInput = headerSegment + '.' + claimSegment;
+        var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, privateKey);
+        var signatureSegment = base64UrlEncode(signatureBytes);
+        var assertion = signingInput + '.' + signatureSegment;
+
+        var tokenResponse = rateLimitAware(function () {
+          return fetchJson({
+            url: 'https://oauth2.googleapis.com/token',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            payload: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion),
+            contentType: 'application/x-www-form-urlencoded'
+          });
+        }, { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+        var token = tokenResponse.body && tokenResponse.body.access_token;
+        if (!token) {
+          throw new Error('Service account token exchange did not return an access_token.');
+        }
+        return token;
+      } catch (serviceError) {
+        var message = serviceError && serviceError.message ? serviceError.message : String(serviceError);
+        throw new Error('Google Admin service account authentication failed: ' + message);
+      }
+    }
+  }
+}
+
+if (typeof googleAdminBuildUrl !== 'function') {
+  function googleAdminBuildUrl(endpoint, query) {
+    var baseUrl = 'https://admin.googleapis.com/admin/directory/v1';
+    var path = endpoint || '';
+    if (path && path.charAt(0) !== '/') {
+      path = '/' + path;
+    }
+    var url = baseUrl + path;
+    var params = [];
+    if (query && typeof query === 'object') {
+      for (var key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) continue;
+        var raw = query[key];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          for (var i = 0; i < raw.length; i++) {
+            var entry = raw[i];
+            if (entry === undefined || entry === null || entry === '') continue;
+            params.push(encodeURIComponent(key) + '=' + encodeURIComponent(entry));
+          }
+        } else {
+          params.push(encodeURIComponent(key) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (params.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + params.join('&');
+    }
+    return url;
+  }
+}
+
+if (typeof googleAdminResolveValue !== 'function') {
+  function googleAdminResolveValue(template, ctx) {
+    if (template === null || template === undefined) {
+      return template;
+    }
+    if (Array.isArray(template)) {
+      var resolvedArray = [];
+      for (var i = 0; i < template.length; i++) {
+        var value = googleAdminResolveValue(template[i], ctx);
+        if (value !== undefined) {
+          resolvedArray.push(value);
+        }
+      }
+      return resolvedArray;
+    }
+    if (typeof template === 'object') {
+      var resolvedObject = {};
+      for (var key in template) {
+        if (!Object.prototype.hasOwnProperty.call(template, key)) continue;
+        var value = googleAdminResolveValue(template[key], ctx);
+        if (value !== undefined) {
+          resolvedObject[key] = value;
+        }
+      }
+      return resolvedObject;
+    }
+    if (typeof template === 'string') {
+      return interpolate(template, ctx || {});
+    }
+    return template;
+  }
+}
+
+if (typeof googleAdminAssignResolved !== 'function') {
+  function googleAdminAssignResolved(target, source) {
+    if (!source || typeof source !== 'object') {
+      return target;
+    }
+    if (!target || typeof target !== 'object' || Array.isArray(target)) {
+      target = {};
+    }
+    for (var key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+      var value = source[key];
+      if (value === undefined) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        target[key] = value.slice();
+      } else if (value && typeof value === 'object') {
+        var existing = target[key];
+        if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+          existing = {};
+        }
+        target[key] = existing;
+        googleAdminAssignResolved(existing, value);
+      } else {
+        target[key] = value;
+      }
+    }
+    return target;
+  }
+}
+
+if (typeof googleAdminResolveCustomerId !== 'function') {
+  function googleAdminResolveCustomerId(config, ctx) {
+    var fallback = 'my_customer';
+    try {
+      var secret = getSecret('GOOGLE_ADMIN_CUSTOMER_ID', { connectorKey: 'google-admin', defaultValue: 'my_customer' });
+      if (typeof secret === 'string') {
+        var trimmedSecret = secret.trim();
+        if (trimmedSecret) {
+          fallback = trimmedSecret;
+        }
+      } else if (secret !== null && secret !== undefined) {
+        var coerced = String(secret).trim();
+        if (coerced) {
+          fallback = coerced;
+        }
+      }
+    } catch (customerError) {
+      fallback = 'my_customer';
+    }
+
+    var template = null;
+    if (config && typeof config.customerId === 'string') {
+      template = config.customerId;
+    } else if (config && typeof config.customer === 'string') {
+      template = config.customer;
+    }
+
+    if (template) {
+      var resolved = interpolate(template, ctx || {});
+      if (typeof resolved === 'string') {
+        var trimmedResolved = resolved.trim();
+        if (trimmedResolved) {
+          return trimmedResolved;
+        }
+      }
+    }
+
+    return fallback;
+  }
+}
+`;
+}
+
+function buildGoogleAdminAction(
+  operation: 'create_group' | 'create_user' | 'add_group_member' | 'test_connection',
+  config: any
+): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+
+  if (operation === 'create_user') {
+    const scopes = JSON.stringify([
+      'https://www.googleapis.com/auth/admin.directory.user',
+      'https://www.googleapis.com/auth/admin.directory.group'
+    ]);
+
+    return `
+function step_action_google_admin_create_user(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const basePayloadSource = config && typeof config === 'object' ? (config.user || config.payload || config.body || config) : {};
+  const resolvedConfig = googleAdminResolveValue(basePayloadSource, ctx) || {};
+  const request = ctx.request && typeof ctx.request === 'object' ? ctx.request : {};
+  const runtimePayloadSource =
+    (request.body && typeof request.body === 'object' ? request.body : null) ||
+    (request.payload && typeof request.payload === 'object' ? request.payload : null) ||
+    (ctx.payload && typeof ctx.payload === 'object' ? ctx.payload : {});
+  const runtimePayload = googleAdminResolveValue(runtimePayloadSource, ctx) || {};
+  const payload = {};
+  if (resolvedConfig && typeof resolvedConfig === 'object') {
+    googleAdminAssignResolved(payload, resolvedConfig);
+  }
+  if (runtimePayload && typeof runtimePayload === 'object') {
+    googleAdminAssignResolved(payload, runtimePayload);
+  }
+
+  let attemptedEmail = null;
+
+  try {
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    const primaryEmail = typeof payload.primaryEmail === 'string' ? payload.primaryEmail.trim() : '';
+    const fallbackEmail = typeof payload.email === 'string' ? payload.email.trim() : '';
+    attemptedEmail = primaryEmail || fallbackEmail;
+    if (!attemptedEmail) {
+      throw new Error('Google Admin create_user requires a primaryEmail');
+    }
+    payload.primaryEmail = attemptedEmail;
+
+    if (!payload.password || typeof payload.password !== 'string') {
+      throw new Error('Google Admin create_user requires a password');
+    }
+
+    const nameObject = payload.name && typeof payload.name === 'object' ? payload.name : null;
+    if (!nameObject) {
+      throw new Error('Google Admin create_user requires a name object');
+    }
+
+    if (payload.changePasswordAtNextLogin === undefined) {
+      payload.changePasswordAtNextLogin = true;
+    }
+    if (!payload.orgUnitPath) {
+      payload.orgUnitPath = '/';
+    }
+
+    const response = rateLimitAware(function () {
+      return fetchJson({
+        url: googleAdminBuildUrl('/users', null),
+        method: 'POST',
+        headers: headers,
+        payload: JSON.stringify(payload),
+        contentType: 'application/json'
+      });
+    }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+    const body = response && response.body ? response.body : {};
+    ctx.googleAdminUser = body;
+    logInfo('google_admin_create_user_success', {
+      primaryEmail: attemptedEmail,
+      userId: body && body.id ? body.id : null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('google_admin_create_user_failed', {
+      primaryEmail: attemptedEmail,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+${googleAdminHelpersBlock()}`;
+  }
+
+  if (operation === 'create_group') {
+    const scopes = JSON.stringify(['https://www.googleapis.com/auth/admin.directory.group']);
+
+    return `
+function step_action_google_admin_create_group(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const basePayloadSource = config && typeof config === 'object' ? (config.group || config.payload || config.body || config) : {};
+  const resolvedConfig = googleAdminResolveValue(basePayloadSource, ctx) || {};
+  const request = ctx.request && typeof ctx.request === 'object' ? ctx.request : {};
+  const runtimePayloadSource =
+    (request.body && typeof request.body === 'object' ? request.body : null) ||
+    (request.payload && typeof request.payload === 'object' ? request.payload : null) ||
+    (ctx.payload && typeof ctx.payload === 'object' ? ctx.payload : {});
+  const runtimePayload = googleAdminResolveValue(runtimePayloadSource, ctx) || {};
+  const payload = {};
+  if (resolvedConfig && typeof resolvedConfig === 'object') {
+    googleAdminAssignResolved(payload, resolvedConfig);
+  }
+  if (runtimePayload && typeof runtimePayload === 'object') {
+    googleAdminAssignResolved(payload, runtimePayload);
+  }
+
+  let attemptedEmail = null;
+
+  try {
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    const email = typeof payload.email === 'string' ? payload.email.trim() :
+      (typeof payload.primaryEmail === 'string' ? payload.primaryEmail.trim() : '');
+    attemptedEmail = email;
+    if (!attemptedEmail) {
+      throw new Error('Google Admin create_group requires an email');
+    }
+    payload.email = attemptedEmail;
+
+    if (!payload.name || typeof payload.name !== 'string') {
+      payload.name = attemptedEmail;
+    }
+
+    delete payload.groupKey;
+    delete payload.groupId;
+
+    const response = rateLimitAware(function () {
+      return fetchJson({
+        url: googleAdminBuildUrl('/groups', null),
+        method: 'POST',
+        headers: headers,
+        payload: JSON.stringify(payload),
+        contentType: 'application/json'
+      });
+    }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+    const body = response && response.body ? response.body : {};
+    ctx.googleAdminGroup = body;
+    logInfo('google_admin_create_group_success', {
+      email: attemptedEmail,
+      groupId: body && body.id ? body.id : null
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('google_admin_create_group_failed', {
+      email: attemptedEmail,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+${googleAdminHelpersBlock()}`;
+  }
+
+  if (operation === 'add_group_member') {
+    const scopes = JSON.stringify([
+      'https://www.googleapis.com/auth/admin.directory.group',
+      'https://www.googleapis.com/auth/admin.directory.user'
+    ]);
+
+    return `
+function step_action_google_admin_add_group_member(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const basePayloadSource = config && typeof config === 'object' ? (config.member || config.payload || config.body || config) : {};
+  const resolvedConfig = googleAdminResolveValue(basePayloadSource, ctx) || {};
+  const request = ctx.request && typeof ctx.request === 'object' ? ctx.request : {};
+  const runtimePayloadSource =
+    (request.body && typeof request.body === 'object' ? request.body : null) ||
+    (request.payload && typeof request.payload === 'object' ? request.payload : null) ||
+    (ctx.payload && typeof ctx.payload === 'object' ? ctx.payload : {});
+  const runtimePayload = googleAdminResolveValue(runtimePayloadSource, ctx) || {};
+  const payload = {};
+  if (resolvedConfig && typeof resolvedConfig === 'object') {
+    googleAdminAssignResolved(payload, resolvedConfig);
+  }
+  if (runtimePayload && typeof runtimePayload === 'object') {
+    googleAdminAssignResolved(payload, runtimePayload);
+  }
+
+  let groupKey = null;
+  let memberEmail = null;
+
+  try {
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    if (typeof payload.groupKey === 'string' && payload.groupKey.trim()) {
+      groupKey = payload.groupKey.trim();
+    } else if (typeof payload.groupId === 'string' && payload.groupId.trim()) {
+      groupKey = payload.groupId.trim();
+    }
+
+    if (!groupKey) {
+      throw new Error('Google Admin add_group_member requires a groupKey or groupId');
+    }
+
+    if (typeof payload.email === 'string' && payload.email.trim()) {
+      memberEmail = payload.email.trim();
+    } else if (typeof payload.memberKey === 'string' && payload.memberKey.trim()) {
+      memberEmail = payload.memberKey.trim();
+    }
+
+    if (!memberEmail) {
+      throw new Error('Google Admin add_group_member requires a member email');
+    }
+
+    payload.email = memberEmail;
+    if (!payload.role) {
+      payload.role = 'MEMBER';
+    }
+    if (!payload.type) {
+      payload.type = 'USER';
+    }
+
+    delete payload.groupKey;
+    delete payload.groupId;
+    delete payload.memberKey;
+
+    const response = rateLimitAware(function () {
+      return fetchJson({
+        url: googleAdminBuildUrl('/groups/' + encodeURIComponent(groupKey) + '/members', null),
+        method: 'POST',
+        headers: headers,
+        payload: JSON.stringify(payload),
+        contentType: 'application/json'
+      });
+    }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+    const body = response && response.body ? response.body : {};
+    ctx.googleAdminGroupMember = body;
+    logInfo('google_admin_add_group_member_success', {
+      groupKey: groupKey,
+      member: memberEmail
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('google_admin_add_group_member_failed', {
+      groupKey: groupKey,
+      member: memberEmail,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+${googleAdminHelpersBlock()}`;
+  }
+
+  const scopes = JSON.stringify(['https://www.googleapis.com/auth/admin.directory.user']);
+
+  return `
+function step_action_google_admin_test_connection(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  let customerId = 'my_customer';
+
+  try {
+    customerId = googleAdminResolveCustomerId(config, ctx);
+  } catch (resolveError) {
+    customerId = 'my_customer';
+  }
+
+  try {
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json'
+    };
+
+    const response = rateLimitAware(function () {
+      return fetchJson({
+        url: googleAdminBuildUrl('/users', { customer: customerId, maxResults: 1, projection: 'basic' }),
+        method: 'GET',
+        headers: headers
+      });
+    }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+    const users = Array.isArray(response.body && response.body.users) ? response.body.users : [];
+    ctx.googleAdminConnectionTest = {
+      ok: true,
+      customerId: customerId,
+      sampleUser: users.length ? (users[0] && users[0].primaryEmail ? users[0].primaryEmail : null) : null
+    };
+
+    logInfo('google_admin_test_connection_success', {
+      customerId: customerId,
+      sampleCount: users.length
+    });
+
+    return ctx;
+  } catch (error) {
+    logError('google_admin_test_connection_failed', {
+      customerId: customerId,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+${googleAdminHelpersBlock()}`;
+}
+
+function buildGoogleAdminTrigger(operation: 'user_created' | 'user_suspended', config: any): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+
+  if (operation === 'user_created') {
+    const scopes = JSON.stringify([
+      'https://www.googleapis.com/auth/admin.directory.user',
+      'https://www.googleapis.com/auth/admin.directory.group'
+    ]);
+    const orgUnitTemplate = esc(String((config && (config.orgUnitPath ?? config.orgUnit)) ?? ''));
+
+    return `
+function trigger_trigger_google_admin_user_created(ctx) {
+  return buildPollingWrapper('trigger.google-admin:user_created', function (runtime) {
+    const config = ${configLiteral};
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+    const customerId = googleAdminResolveCustomerId(config, interpolationContext);
+    const orgUnitTemplate = '${orgUnitTemplate}';
+    const orgUnitPath = orgUnitTemplate ? interpolate(orgUnitTemplate, interpolationContext).trim() : '';
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json'
+    };
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const rawCursor = cursorState && cursorState.creationTimestamp ? Number(cursorState.creationTimestamp) : 0;
+    const lastTimestamp = isNaN(rawCursor) ? 0 : rawCursor;
+    const lastUserId = cursorState && cursorState.lastUserId ? cursorState.lastUserId : null;
+
+    const collected = [];
+    let pageToken = null;
+    let pageCount = 0;
+    let newestTimestamp = lastTimestamp;
+    let newestUserId = lastUserId;
+
+    try {
+      let stopPaging = false;
+      while (!stopPaging && pageCount < 5) {
+        const query = {
+          customer: customerId,
+          maxResults: 200,
+          orderBy: 'creationTime',
+          sortOrder: 'DESCENDING'
+        };
+        if (orgUnitPath) {
+          query.orgUnitPath = orgUnitPath;
+        }
+        if (pageToken) {
+          query.pageToken = pageToken;
+        }
+
+        const response = rateLimitAware(function () {
+          return fetchJson({
+            url: googleAdminBuildUrl('/users', query),
+            method: 'GET',
+            headers: headers
+          });
+        }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+        const users = Array.isArray(response.body && response.body.users) ? response.body.users : [];
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i] || {};
+          const creationTime = user.creationTime ? Date.parse(user.creationTime) : null;
+          if (!creationTime) {
+            continue;
+          }
+          const identifier = user.id || user.primaryEmail || null;
+          if (!identifier) {
+            continue;
+          }
+          if (creationTime < lastTimestamp || (creationTime === lastTimestamp && lastUserId && identifier === lastUserId)) {
+            stopPaging = true;
+            break;
+          }
+
+          collected.push({
+            user: user,
+            timestamp: creationTime,
+            id: identifier
+          });
+
+          if (!newestTimestamp || creationTime > newestTimestamp) {
+            newestTimestamp = creationTime;
+            newestUserId = identifier;
+          }
+        }
+
+        if (stopPaging) {
+          break;
+        }
+
+        if (response.body && response.body.nextPageToken) {
+          pageToken = response.body.nextPageToken;
+          pageCount++;
+        } else {
+          break;
+        }
+      }
+
+      state.cursor = cursorState;
+      runtime.state = state;
+
+      if (!collected.length) {
+        runtime.summary({
+          eventsAttempted: 0,
+          eventsDispatched: 0,
+          eventsFailed: 0,
+          customerId: customerId,
+          orgUnitPath: orgUnitPath || null
+        });
+        return {
+          eventsAttempted: 0,
+          eventsDispatched: 0,
+          eventsFailed: 0,
+          customerId: customerId,
+          orgUnitPath: orgUnitPath || null
+        };
+      }
+
+      collected.sort(function (a, b) {
+        return a.timestamp - b.timestamp;
+      });
+
+      const batch = runtime.dispatchBatch(collected, function (entry) {
+        const user = entry.user || {};
+        return {
+          id: user.id || user.primaryEmail || 'google-admin:user:' + entry.timestamp,
+          primaryEmail: user.primaryEmail || null,
+          name: user.name || null,
+          orgUnitPath: user.orgUnitPath || null,
+          creationTime: user.creationTime || new Date(entry.timestamp).toISOString()
+        };
+      });
+
+      if (newestTimestamp) {
+        cursorState.creationTimestamp = String(newestTimestamp);
+      }
+      if (newestUserId) {
+        cursorState.lastUserId = newestUserId;
+      }
+      state.cursor = cursorState;
+      runtime.state = state;
+
+      runtime.summary({
+        eventsAttempted: batch.attempted,
+        eventsDispatched: batch.succeeded,
+        eventsFailed: batch.failed,
+        customerId: customerId,
+        orgUnitPath: orgUnitPath || null,
+        lastCreationTime: newestTimestamp ? new Date(newestTimestamp).toISOString() : null
+      });
+
+      logInfo('google_admin_user_created_poll_success', {
+        dispatched: batch.succeeded,
+        customerId: customerId,
+        orgUnitPath: orgUnitPath || null,
+        lastCreationTime: newestTimestamp ? new Date(newestTimestamp).toISOString() : null
+      });
+
+      return {
+        eventsAttempted: batch.attempted,
+        eventsDispatched: batch.succeeded,
+        eventsFailed: batch.failed,
+        customerId: customerId,
+        orgUnitPath: orgUnitPath || null,
+        lastCreationTime: newestTimestamp ? new Date(newestTimestamp).toISOString() : null
+      };
+    } catch (error) {
+      logError('google_admin_user_created_poll_failed', {
+        message: error && error.message ? error.message : String(error),
+        customerId: customerId,
+        orgUnitPath: orgUnitPath || null
+      });
+      throw error;
+    }
+  });
+}
+${googleAdminHelpersBlock()}`;
+  }
+
+  const scopes = JSON.stringify(['https://www.googleapis.com/auth/admin.directory.user']);
+
+  return `
+function trigger_trigger_google_admin_user_suspended(ctx) {
+  return buildPollingWrapper('trigger.google-admin:user_suspended', function (runtime) {
+    const config = ${configLiteral};
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+    const customerId = googleAdminResolveCustomerId(config, interpolationContext);
+    const accessToken = googleAdminGetAccessToken(${scopes});
+    const headers = {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json'
+    };
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const previousMap = cursorState.knownSuspended && typeof cursorState.knownSuspended === 'object' ? cursorState.knownSuspended : {};
+    const knownSuspended = {};
+    for (var key in previousMap) {
+      if (Object.prototype.hasOwnProperty.call(previousMap, key) && previousMap[key]) {
+        knownSuspended[key] = true;
+      }
+    }
+
+    const currentSuspended = {};
+    const newlySuspended = [];
+    let pageToken = null;
+    let pageCount = 0;
+
+    try {
+      while (pageCount < 5) {
+        const query = {
+          customer: customerId,
+          maxResults: 200,
+          query: 'isSuspended=true',
+          projection: 'full'
+        };
+        if (pageToken) {
+          query.pageToken = pageToken;
+        }
+
+        const response = rateLimitAware(function () {
+          return fetchJson({
+            url: googleAdminBuildUrl('/users', query),
+            method: 'GET',
+            headers: headers
+          });
+        }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+        const users = Array.isArray(response.body && response.body.users) ? response.body.users : [];
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i] || {};
+          const identifier = user.id || user.primaryEmail || null;
+          if (!identifier) {
+            continue;
+          }
+          currentSuspended[identifier] = true;
+          if (!knownSuspended[identifier]) {
+            let suspensionTime = null;
+            if (user.suspensionDetails && user.suspensionDetails.suspensionTime) {
+              const parsed = Date.parse(user.suspensionDetails.suspensionTime);
+              if (!isNaN(parsed)) {
+                suspensionTime = parsed;
+              }
+            }
+            if (!suspensionTime) {
+              suspensionTime = Date.now();
+            }
+            newlySuspended.push({
+              user: user,
+              timestamp: suspensionTime,
+              id: identifier
+            });
+          }
+        }
+
+        if (response.body && response.body.nextPageToken) {
+          pageToken = response.body.nextPageToken;
+          pageCount++;
+        } else {
+          break;
+        }
+      }
+
+      cursorState.knownSuspended = currentSuspended;
+      state.cursor = cursorState;
+      runtime.state = state;
+
+      const activeSuspensions = Object.keys(currentSuspended).length;
+
+      if (!newlySuspended.length) {
+        runtime.summary({
+          eventsAttempted: 0,
+          eventsDispatched: 0,
+          eventsFailed: 0,
+          customerId: customerId,
+          suspendedCount: activeSuspensions
+        });
+        return {
+          eventsAttempted: 0,
+          eventsDispatched: 0,
+          eventsFailed: 0,
+          customerId: customerId,
+          suspendedCount: activeSuspensions
+        };
+      }
+
+      newlySuspended.sort(function (a, b) {
+        return a.timestamp - b.timestamp;
+      });
+
+      const batch = runtime.dispatchBatch(newlySuspended, function (entry) {
+        const user = entry.user || {};
+        const details = user.suspensionDetails || {};
+        return {
+          id: user.id || user.primaryEmail || 'google-admin:suspended:' + entry.timestamp,
+          primaryEmail: user.primaryEmail || null,
+          suspended: true,
+          suspensionReason: details.suspensionReason || null,
+          suspensionType: details.suspensionType || null,
+          eventTime: entry.timestamp ? new Date(entry.timestamp).toISOString() : null
+        };
+      });
+
+      runtime.summary({
+        eventsAttempted: batch.attempted,
+        eventsDispatched: batch.succeeded,
+        eventsFailed: batch.failed,
+        customerId: customerId,
+        suspendedCount: activeSuspensions
+      });
+
+      logInfo('google_admin_user_suspended_poll_success', {
+        dispatched: batch.succeeded,
+        customerId: customerId,
+        suspendedCount: activeSuspensions
+      });
+
+      return {
+        eventsAttempted: batch.attempted,
+        eventsDispatched: batch.succeeded,
+        eventsFailed: batch.failed,
+        customerId: customerId,
+        suspendedCount: activeSuspensions
+      };
+    } catch (error) {
+      logError('google_admin_user_suspended_poll_failed', {
+        message: error && error.message ? error.message : String(error),
+        customerId: customerId
+      });
+      throw error;
+    }
+  });
+}
+${googleAdminHelpersBlock()}`;
+}
+
+
+
 function generateADPFunction(functionName: string, node: WorkflowNode): string {
   const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'test_connection';
   const displayName = escapeForSingleQuotes(String(node.name || defaultOperation));
@@ -18063,6 +18974,12 @@ ${payloadBlock}
 
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
+  'action.google-admin:create_group': (c) => buildGoogleAdminAction('create_group', c),
+  'action.google-admin:create_user': (c) => buildGoogleAdminAction('create_user', c),
+  'action.google-admin:add_group_member': (c) => buildGoogleAdminAction('add_group_member', c),
+  'action.google-admin:test_connection': (c) => buildGoogleAdminAction('test_connection', c),
+  'trigger.google-admin:user_created': (c) => buildGoogleAdminTrigger('user_created', c),
+  'trigger.google-admin:user_suspended': (c) => buildGoogleAdminTrigger('user_suspended', c),
   ...GENERATED_REAL_OPS,
   'action.adp:test_connection': (c) => buildAdpAction('test_connection', c),
   'action.adp:get_worker': (c) => buildAdpAction('get_worker', c),
