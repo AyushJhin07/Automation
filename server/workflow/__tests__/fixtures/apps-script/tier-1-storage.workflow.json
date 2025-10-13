@@ -1,0 +1,95 @@
+{
+  "id": "apps-script-tier-1-storage",
+  "name": "Tier 1 storage handoff",
+  "meta": {
+    "appsScript": {
+      "tier": 1,
+      "description": "Schedule uploads into Dropbox then mirror to Box using shared file references",
+      "features": ["storage", "authentication", "chunking"]
+    },
+    "automationType": "storage_ops",
+    "prompt": "Every morning upload a generated report to Dropbox and archive a copy in Box"
+  },
+  "nodes": [
+    {
+      "id": "morning-schedule",
+      "type": "trigger.time",
+      "app": "time",
+      "name": "Morning schedule",
+      "op": "trigger.time:schedule",
+      "params": {
+        "frequency": "24",
+        "unit": "hours"
+      },
+      "data": {
+        "operation": "schedule",
+        "config": {
+          "frequency": "24",
+          "unit": "hours"
+        }
+      }
+    },
+    {
+      "id": "dropbox-upload",
+      "type": "action.dropbox",
+      "app": "dropbox",
+      "name": "Upload report to Dropbox",
+      "op": "action.dropbox:upload_file",
+      "params": {
+        "path": "/automations/{{formatDate trigger.timestamp 'YYYY-MM-DD'}}/daily-report.pdf",
+        "contentRef": "report-pdf",
+        "mode": "overwrite"
+      },
+      "data": {
+        "operation": "upload_file",
+        "config": {
+          "path": "/automations/{{formatDate trigger.timestamp 'YYYY-MM-DD'}}/daily-report.pdf",
+          "contentRef": "report-pdf",
+          "mode": "overwrite"
+        },
+        "metadata": {
+          "outputs": {
+            "dropboxFile": { "type": "object" }
+          }
+        }
+      }
+    },
+    {
+      "id": "box-upload",
+      "type": "action.box",
+      "app": "box",
+      "name": "Archive report in Box",
+      "op": "action.box:upload_file",
+      "params": {
+        "parent_folder_id": "123456789",
+        "file_name": "Daily Report.pdf",
+        "file_content_ref": "report-pdf"
+      },
+      "data": {
+        "operation": "upload_file",
+        "config": {
+          "parent_folder_id": "123456789",
+          "file_name": "Daily Report.pdf",
+          "file_content_ref": "report-pdf"
+        },
+        "metadata": {
+          "outputs": {
+            "boxFile": { "type": "object" }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-schedule-dropbox",
+      "source": "morning-schedule",
+      "target": "dropbox-upload"
+    },
+    {
+      "id": "edge-dropbox-box",
+      "source": "dropbox-upload",
+      "target": "box-upload"
+    }
+  ]
+}

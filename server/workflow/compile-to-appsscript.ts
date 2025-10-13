@@ -1863,6 +1863,464 @@ function rateLimitAware(fn, options) {
   return withRetries(fn, mergedOptions);
 }
 
+function __getRuntimeFileByRef(ctx, ref) {
+  if (!ref) {
+    return null;
+  }
+
+  var containers = [];
+  if (ctx && typeof ctx === 'object') {
+    if (ctx.__automationRuntime && ctx.__automationRuntime.files) {
+      containers.push(ctx.__automationRuntime.files);
+    }
+    if (ctx.__runtime && ctx.__runtime.files) {
+      containers.push(ctx.__runtime.files);
+    }
+    if (ctx.files) {
+      containers.push(ctx.files);
+    }
+    if (ctx.attachments) {
+      containers.push(ctx.attachments);
+    }
+    if (ctx.__files) {
+      containers.push(ctx.__files);
+    }
+  }
+
+  for (var i = 0; i < containers.length; i++) {
+    var store = containers[i];
+    if (!store) {
+      continue;
+    }
+
+    if (typeof store === 'object') {
+      if (Array.isArray(store)) {
+        for (var j = 0; j < store.length; j++) {
+          var item = store[j];
+          if (!item) {
+            continue;
+          }
+          if (item.id === ref || item.ref === ref || item.name === ref || item.fileName === ref) {
+            return item;
+          }
+        }
+      } else {
+        if (store[ref]) {
+          return store[ref];
+        }
+        if (store[String(ref)]) {
+          return store[String(ref)];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function __coerceByteArray(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    var result = [];
+    for (var i = 0; i < value.length; i++) {
+      var current = value[i];
+      if (typeof current === 'number') {
+        result.push(current & 0xff);
+      } else if (typeof current === 'string' && current) {
+        var parsed = Number(current);
+        if (!isNaN(parsed)) {
+          result.push(parsed & 0xff);
+        }
+      }
+    }
+    return result;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return Utilities.base64Decode(value);
+    } catch (error) {
+      return Utilities.newBlob(value).getBytes();
+    }
+  }
+
+  if (value.bytes && Array.isArray(value.bytes)) {
+    return __coerceByteArray(value.bytes);
+  }
+
+  if (value.blob && typeof value.blob.getBytes === 'function') {
+    try {
+      return value.blob.getBytes();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function __resolveUploadInput(ctx, options) {
+  var config = options || {};
+  var provider = config.provider || 'connector';
+  var inlineContent = typeof config.inlineContent === 'string' ? interpolate(config.inlineContent, ctx) : null;
+  var inlineFileContent = typeof config.inlineFileContent === 'string' ? interpolate(config.inlineFileContent, ctx) : null;
+  var inlineRef = typeof config.inlineRef === 'string' ? interpolate(config.inlineRef, ctx) : null;
+  var inlineFileName = typeof config.inlineFileName === 'string' ? interpolate(config.inlineFileName, ctx) : null;
+  var inlineMimeType = typeof config.inlineMimeType === 'string' ? interpolate(config.inlineMimeType, ctx) : null;
+  var fallbackName = typeof config.fallbackName === 'string' ? config.fallbackName : null;
+
+  var source = 'inline';
+  var candidateContent = inlineContent || inlineFileContent;
+  var base64Content = typeof candidateContent === 'string' ? candidateContent.trim() : null;
+  var bytes = null;
+  var mimeType = inlineMimeType || 'application/octet-stream';
+
+  if ((!base64Content || base64Content.length === 0) && inlineRef) {
+    var file = __getRuntimeFileByRef(ctx, inlineRef.trim());
+    if (!file) {
+      throw new Error(provider + ' upload requires resolving file reference "' + inlineRef + '".');
+    }
+    source = 'reference';
+    if (!inlineFileName && (file.name || file.fileName || file.filename)) {
+      inlineFileName = file.name || file.fileName || file.filename;
+    }
+    if (!inlineMimeType && (file.mimeType || file.contentType)) {
+      mimeType = file.mimeType || file.contentType;
+    }
+    if (file.base64 || file.base64Content) {
+      base64Content = file.base64 || file.base64Content;
+    } else if (typeof file.content === 'string' && file.content) {
+      base64Content = file.content;
+    } else if (typeof file.data === 'string' && file.data) {
+      base64Content = file.data;
+    } else if (file.body && typeof file.body === 'string') {
+      base64Content = file.body;
+    }
+    if (!base64Content && file.bytes) {
+      bytes = __coerceByteArray(file.bytes);
+    }
+    if (!base64Content && !bytes && file.blob && typeof file.blob.getBytes === 'function') {
+      bytes = file.blob.getBytes();
+      try {
+        if (!inlineMimeType && file.blob.getContentType) {
+          mimeType = file.blob.getContentType();
+        }
+        if (!inlineFileName && file.blob.getName) {
+          inlineFileName = file.blob.getName();
+        }
+      } catch (error) {}
+    }
+    if (!base64Content && file.base64Content) {
+      base64Content = file.base64Content;
+    }
+  }
+
+  if ((!base64Content || base64Content.length === 0) && !bytes) {
+    var fallbackKeys = Array.isArray(config.fallbackCtxKeys) ? config.fallbackCtxKeys : [];
+    for (var i = 0; i < fallbackKeys.length; i++) {
+      var key = fallbackKeys[i];
+      if (!key) {
+        continue;
+      }
+      if (ctx && typeof ctx === 'object' && typeof ctx[key] === 'string') {
+        base64Content = ctx[key];
+        source = 'context';
+        break;
+      }
+    }
+  }
+
+  if (!base64Content && !bytes) {
+    throw new Error(provider + ' upload requires file content. Provide base64 content or a valid reference.');
+  }
+
+  if (!bytes) {
+    try {
+      bytes = Utilities.base64Decode(base64Content);
+    } catch (error) {
+      var blob = Utilities.newBlob(String(base64Content));
+      bytes = blob.getBytes();
+      if (!inlineMimeType) {
+        mimeType = blob.getContentType();
+      }
+      source = source || 'text';
+    }
+  }
+
+  var size = bytes.length;
+  var name = inlineFileName || (fallbackName || ('upload-' + Date.now()));
+
+  return {
+    bytes: bytes,
+    size: size,
+    mimeType: mimeType || 'application/octet-stream',
+    name: name,
+    base64: base64Content || Utilities.base64Encode(bytes),
+    source: source || 'inline'
+  };
+}
+
+function __sliceBytes(bytes, start, end) {
+  var result = [];
+  if (!bytes || !bytes.length) {
+    return result;
+  }
+  var limit = typeof end === 'number' ? Math.min(end, bytes.length) : bytes.length;
+  for (var i = start; i < limit; i++) {
+    result.push(bytes[i]);
+  }
+  return result;
+}
+
+function __dropboxFetch(url, requestOptions, accessToken) {
+  var headers = {};
+  if (requestOptions && requestOptions.headers) {
+    for (var key in requestOptions.headers) {
+      if (Object.prototype.hasOwnProperty.call(requestOptions.headers, key)) {
+        headers[key] = requestOptions.headers[key];
+      }
+    }
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+
+  var options = {
+    method: requestOptions && requestOptions.method ? requestOptions.method : 'post',
+    headers: headers,
+    muteHttpExceptions: true
+  };
+
+  if (requestOptions && typeof requestOptions.payload !== 'undefined') {
+    options.payload = requestOptions.payload;
+  }
+
+  if (requestOptions && requestOptions.contentType) {
+    options.contentType = requestOptions.contentType;
+  }
+
+  return rateLimitAware(function() {
+    var response = UrlFetchApp.fetch(url, options);
+    var status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      return response;
+    }
+
+    var error = new Error('Dropbox API request failed with status ' + status);
+    error.status = status;
+    try {
+      error.headers = response.getAllHeaders();
+    } catch (headerError) {
+      error.headers = {};
+    }
+    try {
+      error.text = response.getContentText();
+      error.body = JSON.parse(error.text);
+    } catch (parseError) {}
+    throw error;
+  }, requestOptions && requestOptions.retryOptions ? requestOptions.retryOptions : {});
+}
+
+function __dropboxDirectUpload(accessToken, commitOptions, fileInput) {
+  var response = __dropboxFetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify(commitOptions)
+    },
+    payload: fileInput.bytes
+  }, accessToken);
+
+  return JSON.parse(response.getContentText());
+}
+
+function __dropboxChunkedUpload(accessToken, commitOptions, fileInput) {
+  var bytes = fileInput.bytes;
+  var total = bytes.length;
+  var chunkSize = 8 * 1024 * 1024;
+  var firstChunkSize = Math.min(chunkSize, total);
+
+  var startResponse = __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/start', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ close: false })
+    },
+    payload: __sliceBytes(bytes, 0, firstChunkSize)
+  }, accessToken);
+
+  var session = JSON.parse(startResponse.getContentText());
+  var sessionId = session.session_id;
+  var offset = firstChunkSize;
+
+  while (offset + chunkSize < total) {
+    var chunk = __sliceBytes(bytes, offset, offset + chunkSize);
+    __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/append_v2', {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({
+          cursor: {
+            session_id: sessionId,
+            offset: offset
+          },
+          close: false
+        })
+      },
+      payload: chunk
+    }, accessToken);
+    offset += chunk.length;
+  }
+
+  var finishChunk = __sliceBytes(bytes, offset, total);
+  var finishResponse = __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/finish', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({
+        cursor: {
+          session_id: sessionId,
+          offset: offset
+        },
+        commit: commitOptions
+      })
+    },
+    payload: finishChunk
+  }, accessToken);
+
+  return JSON.parse(finishResponse.getContentText());
+}
+
+function __boxFetch(url, requestOptions, accessToken) {
+  var headers = {};
+  if (requestOptions && requestOptions.headers) {
+    for (var key in requestOptions.headers) {
+      if (Object.prototype.hasOwnProperty.call(requestOptions.headers, key)) {
+        headers[key] = requestOptions.headers[key];
+      }
+    }
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+
+  var options = {
+    method: requestOptions && requestOptions.method ? requestOptions.method : 'post',
+    headers: headers,
+    muteHttpExceptions: true
+  };
+
+  if (requestOptions && typeof requestOptions.payload !== 'undefined') {
+    options.payload = requestOptions.payload;
+  }
+
+  if (requestOptions && requestOptions.contentType) {
+    options.contentType = requestOptions.contentType;
+  }
+
+  if (requestOptions && typeof requestOptions.followRedirects === 'boolean') {
+    options.followRedirects = requestOptions.followRedirects;
+  }
+
+  return rateLimitAware(function() {
+    var response = UrlFetchApp.fetch(url, options);
+    var status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      return response;
+    }
+
+    var error = new Error('Box API request failed with status ' + status);
+    error.status = status;
+    try {
+      error.headers = response.getAllHeaders();
+    } catch (headerError) {
+      error.headers = {};
+    }
+    try {
+      error.text = response.getContentText();
+      error.body = JSON.parse(error.text);
+    } catch (parseError) {}
+    throw error;
+  }, requestOptions && requestOptions.retryOptions ? requestOptions.retryOptions : {});
+}
+
+function __boxDirectUpload(accessToken, parentId, fileInput) {
+  var metadataBlob = Utilities.newBlob(JSON.stringify({
+    name: fileInput.name,
+    parent: { id: parentId }
+  }), 'application/json', 'attributes.json');
+  var fileBlob = Utilities.newBlob(fileInput.bytes, fileInput.mimeType, fileInput.name);
+
+  var response = __boxFetch('https://upload.box.com/api/2.0/files/content', {
+    method: 'post',
+    payload: {
+      attributes: metadataBlob,
+      file: fileBlob
+    }
+  }, accessToken);
+
+  return JSON.parse(response.getContentText());
+}
+
+function __boxChunkedUpload(accessToken, parentId, fileInput) {
+  var sessionResponse = __boxFetch('https://upload.box.com/api/2.0/files/upload_sessions', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      folder_id: parentId,
+      file_name: fileInput.name,
+      file_size: fileInput.bytes.length
+    })
+  }, accessToken);
+
+  var session = JSON.parse(sessionResponse.getContentText());
+  if (!session || !session.id || !session.session_endpoints) {
+    throw new Error('Box upload session response missing required fields.');
+  }
+
+  var uploadUrl = session.session_endpoints.upload_part;
+  var commitUrl = session.session_endpoints.commit;
+  var partSize = session.part_size;
+  var parts = [];
+  var offset = 0;
+  var total = fileInput.bytes.length;
+
+  while (offset < total) {
+    var end = Math.min(offset + partSize, total);
+    var chunk = __sliceBytes(fileInput.bytes, offset, end);
+    var digestBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_1, chunk);
+    var digest = Utilities.base64Encode(digestBytes);
+
+    var uploadResponse = __boxFetch(uploadUrl, {
+      method: 'put',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Range': 'bytes ' + offset + '-' + (end - 1) + '/' + total,
+        'Digest': 'SHA=' + digest
+      },
+      payload: chunk
+    }, accessToken);
+
+    var uploadBody = JSON.parse(uploadResponse.getContentText());
+    if (!uploadBody || !uploadBody.part) {
+      throw new Error('Box chunk upload did not return part metadata.');
+    }
+    parts.push(uploadBody.part);
+    offset = end;
+  }
+
+  var commitResponse = __boxFetch(commitUrl, {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({ parts: parts })
+  }, accessToken);
+
+  return JSON.parse(commitResponse.getContentText());
+}
+
 function fetchJson(request) {
   var config = request || {};
   if (typeof request === 'string') {
@@ -2242,6 +2700,24 @@ function computeTopologicalOrder(nodes: any[], edges: any[]): string[] {
   });
 
   return order;
+}
+
+function generateBoxFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split(':').pop() || node.op?.split('.').pop() || 'upload_file';
+
+  return [
+    'function ' + functionName + '(inputData, params) {',
+    "  const operation = params && params.operation ? params.operation : '" + operation + "';",
+    '',
+    '  switch (operation) {',
+    "    case 'upload_file':",
+    '      return step_uploadBoxFile(inputData);',
+    '    default:',
+    "      console.warn('⚠️ Unsupported Box operation:', operation);",
+    "      return { ...inputData, boxWarning: 'Unsupported Box operation: ' + operation };",
+    '  }',
+    '}'
+  ].join('\n');
 }
 
 function computeRootNodeIds(nodes: any[], edges: any[]): string[] {
@@ -3688,7 +4164,7 @@ function handleSlackTrigger(botToken, params, inputData) {
 // Comprehensive Dropbox implementation
 function generateDropboxEnhancedFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'upload_file';
-  
+
   return `
 function ${functionName}(inputData, params) {
   console.log('☁️ Executing Dropbox: ${node.name || operation}');
@@ -3766,7 +4242,7 @@ function handleDropboxUpload(dropboxToken, params, inputData) {
     return { ...inputData, dropboxUploaded: true, filePath: data.path_display, fileId: data.id };
   } else {
     throw new Error(\`Upload failed: \${response.getResponseCode()}\`);
-  }
+}
 }
 
 function handleDropboxDownload(dropboxToken, params, inputData) {
@@ -14626,15 +15102,90 @@ function step_createCalendlyEvent(ctx) {
   'action.dropbox:upload_file': (c) => `
 function step_uploadDropboxFile(ctx) {
   const accessToken = getSecret('DROPBOX_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Dropbox access token not configured');
-    return ctx;
+    throw new Error('Missing Dropbox access token. Configure DROPBOX_ACCESS_TOKEN in Script Properties.');
   }
-  
-  console.log('📁 Dropbox file uploaded:', '${c.filename || 'automated_file.txt'}');
-  ctx.dropboxFileId = 'dropbox_' + Date.now();
-  return ctx;
+
+  const config = {
+    path: ${c.path !== undefined ? `'${escapeForSingleQuotes(String(c.path))}'` : 'null'},
+    destination: ${c.destination !== undefined ? `'${escapeForSingleQuotes(String(c.destination))}'` : 'null'},
+    filePath: ${c.filePath !== undefined ? `'${escapeForSingleQuotes(String(c.filePath))}'` : 'null'},
+    mode: ${c.mode !== undefined ? `'${escapeForSingleQuotes(String(c.mode))}'` : "'add'"},
+    autorename: ${c.autorename !== undefined ? String(Boolean(c.autorename)) : 'true'},
+    mute: ${c.mute !== undefined ? String(Boolean(c.mute)) : 'false'},
+    strict_conflict: ${c.strict_conflict !== undefined ? String(Boolean(c.strict_conflict)) : 'false'},
+    content: ${c.content !== undefined ? `'${escapeForSingleQuotes(String(c.content))}'` : 'null'},
+    fileContent: ${c.fileContent !== undefined ? `'${escapeForSingleQuotes(String(c.fileContent))}'` : 'null'},
+    contentRef: ${c.contentRef !== undefined ? `'${escapeForSingleQuotes(String(c.contentRef))}'` : 'null'},
+    fileContentRef: ${c.fileContentRef !== undefined ? `'${escapeForSingleQuotes(String(c.fileContentRef))}'` : 'null'},
+    fileName: ${c.filename !== undefined
+      ? `'${escapeForSingleQuotes(String(c.filename))}'`
+      : c.fileName !== undefined
+        ? `'${escapeForSingleQuotes(String(c.fileName))}'`
+        : 'null'}
+  };
+
+  const rawPath = config.path || config.destination || config.filePath;
+  const resolvedPath = rawPath ? interpolate(rawPath, ctx) : null;
+
+  if (!resolvedPath || typeof resolvedPath !== 'string' || resolvedPath.trim().length === 0) {
+    throw new Error('Dropbox upload requires a destination path. Provide a path like "/folder/file.txt".');
+  }
+
+  let normalizedPath = resolvedPath.trim();
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
+  }
+
+  const fileInput = __resolveUploadInput(ctx, {
+    provider: 'Dropbox',
+    inlineContent: config.content || config.fileContent,
+    inlineRef: config.contentRef || config.fileContentRef,
+    inlineFileName: config.fileName,
+    fallbackName: config.fileName || normalizedPath.split('/').pop() || 'upload.bin'
+  });
+
+  const commitOptions = {
+    path: normalizedPath,
+    mode: config.mode || 'add',
+    autorename: config.autorename !== false,
+    mute: config.mute === true,
+    strict_conflict: config.strict_conflict === true
+  };
+
+  const uploadMetadata = fileInput.bytes.length <= 150 * 1024 * 1024
+    ? __dropboxDirectUpload(accessToken, commitOptions, fileInput)
+    : __dropboxChunkedUpload(accessToken, commitOptions, fileInput);
+
+  const metadata = {
+    id: uploadMetadata.id,
+    name: uploadMetadata.name || fileInput.name,
+    path: uploadMetadata.path_display || uploadMetadata.path_lower || normalizedPath,
+    size: uploadMetadata.size || fileInput.size,
+    revision: uploadMetadata.rev || uploadMetadata.rev_id || null,
+    clientModified: uploadMetadata.client_modified || null,
+    serverModified: uploadMetadata.server_modified || null,
+    contentHash: uploadMetadata.content_hash || null
+  };
+
+  logInfo('dropbox_upload_file', {
+    path: metadata.path,
+    size: metadata.size,
+    source: fileInput.source,
+    chunked: fileInput.bytes.length > 150 * 1024 * 1024
+  });
+
+  return {
+    ...ctx,
+    dropboxUploaded: true,
+    dropboxFile: metadata,
+    dropboxUpload: {
+      metadata: metadata,
+      bytesUploaded: fileInput.bytes.length,
+      source: fileInput.source
+    }
+  };
 }`,
 
   'action.google-drive:create_folder': (c) => `
@@ -14654,15 +15205,91 @@ function step_createDriveFolder(ctx) {
   'action.box:upload_file': (c) => `
 function step_uploadBoxFile(ctx) {
   const accessToken = getSecret('BOX_ACCESS_TOKEN');
-  
+
   if (!accessToken) {
-    console.warn('⚠️ Box access token not configured');
-    return ctx;
+    throw new Error('Missing Box access token. Configure BOX_ACCESS_TOKEN in Script Properties.');
   }
-  
-  console.log('📦 Box file uploaded:', '${c.filename || 'automated_file.txt'}');
-  ctx.boxFileId = 'box_' + Date.now();
-  return ctx;
+
+  const config = {
+    parentId: ${c.parent_folder_id !== undefined
+      ? `'${escapeForSingleQuotes(String(c.parent_folder_id))}'`
+      : c.parentId !== undefined
+        ? `'${escapeForSingleQuotes(String(c.parentId))}'`
+        : 'null'},
+    fileName: ${c.file_name !== undefined
+      ? `'${escapeForSingleQuotes(String(c.file_name))}'`
+      : c.fileName !== undefined
+        ? `'${escapeForSingleQuotes(String(c.fileName))}'`
+        : 'null'},
+    fileContent: ${c.file_content !== undefined
+      ? `'${escapeForSingleQuotes(String(c.file_content))}'`
+      : c.fileContent !== undefined
+        ? `'${escapeForSingleQuotes(String(c.fileContent))}'`
+        : 'null'},
+    contentRef: ${c.file_content_ref !== undefined
+      ? `'${escapeForSingleQuotes(String(c.file_content_ref))}'`
+      : c.contentRef !== undefined
+        ? `'${escapeForSingleQuotes(String(c.contentRef))}'`
+        : 'null'}
+  };
+
+  const resolvedParent = config.parentId ? interpolate(config.parentId, ctx) : null;
+
+  if (!resolvedParent || typeof resolvedParent !== 'string' || resolvedParent.trim().length === 0) {
+    throw new Error('Box upload requires a destination folder ID.');
+  }
+
+  const parentId = resolvedParent.trim();
+
+  const fileInput = __resolveUploadInput(ctx, {
+    provider: 'Box',
+    inlineContent: config.fileContent,
+    inlineRef: config.contentRef,
+    inlineFileName: config.fileName,
+    fallbackName: config.fileName || 'upload.bin'
+  });
+
+  const uploadResponse = fileInput.bytes.length <= 45 * 1024 * 1024
+    ? __boxDirectUpload(accessToken, parentId, fileInput)
+    : __boxChunkedUpload(accessToken, parentId, fileInput);
+
+  const entry = uploadResponse && uploadResponse.entries && uploadResponse.entries.length > 0
+    ? uploadResponse.entries[0]
+    : uploadResponse;
+
+  if (!entry || !entry.id) {
+    throw new Error('Box upload did not return file metadata.');
+  }
+
+  const metadata = {
+    id: entry.id,
+    name: entry.name || fileInput.name,
+    size: entry.size || fileInput.size,
+    etag: entry.etag || null,
+    sequenceId: entry.sequence_id || null,
+    sha1: entry.sha1 || entry.sha || null,
+    parentId: entry.parent && entry.parent.id ? entry.parent.id : parentId,
+    webUrl: entry.shared_link && entry.shared_link.url ? entry.shared_link.url : null
+  };
+
+  logInfo('box_upload_file', {
+    fileId: metadata.id,
+    parentId: metadata.parentId,
+    size: metadata.size,
+    source: fileInput.source,
+    chunked: fileInput.bytes.length > 45 * 1024 * 1024
+  });
+
+  return {
+    ...ctx,
+    boxUploaded: true,
+    boxFile: metadata,
+    boxUpload: {
+      metadata: metadata,
+      bytesUploaded: fileInput.bytes.length,
+      source: fileInput.source
+    }
+  };
 }`,
 
   // PHASE 2: Analytics & Data Applications

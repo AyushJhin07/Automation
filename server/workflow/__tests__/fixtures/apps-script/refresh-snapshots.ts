@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const fixturesDir = __dirname;
 const snapshotsDir = path.join(fixturesDir, '__snapshots__');
 
-const FIXTURES = ['tier-0-critical', 'tier-1-growth', 'tier-2-long-tail'] as const;
+const FIXTURES = ['tier-0-critical', 'tier-1-growth', 'tier-1-storage', 'tier-2-long-tail'] as const;
 
 type FixtureName = (typeof FIXTURES)[number];
 
@@ -32,6 +32,9 @@ async function loadCompileModule(): Promise<{ compileToAppsScript: (graph: Workf
   ).replace(
     "import { GENERATED_REAL_OPS } from './realOps.generated.js';\n",
     "import { GENERATED_REAL_OPS } from './realOps.generated.ts';\nconst webhookCapabilityReport = JSON.parse(__readFileSync(new URL('../../production/reports/webhook-capability.json', import.meta.url), 'utf-8')) as any;\n"
+  ).replace(
+    "import { getAppsScriptConnectorFlag } from '../runtime/appsScriptConnectorFlags.js';\n",
+    "import { getAppsScriptConnectorFlag } from '../runtime/appsScriptConnectorFlags.ts';\n"
   );
 
   const tempDir = path.dirname(originalPath);

@@ -126,6 +126,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `BOX_ACCESS_TOKEN` | Yes | OAuth access token for Box API requests | `apps_script__box__access_token` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- The token must include the `item_upload` scope (or equivalent enterprise permission) so upload sessions can create files in the target folders.
+- Apps Script uploads under 45 MB use the standard multipart endpoint. Larger payloads transparently switch to [chunked upload sessions](https://developer.box.com/guides/uploads/chunked/)—ensure the Box account tier supports them and allow a small buffer for the session `part_size` overhead when sizing payloads.
 
 #### Dropbox
 
@@ -134,6 +136,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `DROPBOX_ACCESS_TOKEN` | Yes | OAuth access token for Dropbox file operations | `apps_script__dropbox__access_token` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Generate the token with the `files.content.write` scope so workflows can create or overwrite files in Dropbox.
+- Direct uploads are capped at 150 MB; the compiler automatically falls back to upload sessions for larger files. Configure Script Properties with tokens that can initiate sessions and confirm the Apps Script project has enough execution quota to stream the chunks.
 
 #### GitHub
 
