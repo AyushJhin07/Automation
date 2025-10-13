@@ -1,0 +1,197 @@
+{
+  "id": "shopify-create-order",
+  "description": "Creates a Shopify order using validated line items and structured context persistence.",
+  "graph": {
+    "id": "fixture-shopify-create-order",
+    "name": "Shopify create order",
+    "nodes": [
+      {
+        "id": "shopify-action",
+        "type": "action.shopify",
+        "app": "shopify",
+        "name": "Create order",
+        "op": "action.shopify:create_order",
+        "params": {
+          "operation": "create_order",
+          "lineItems": [
+            {
+              "title": "Invoice {{values.number}}",
+              "price": "{{values.amount}}",
+              "quantity": "{{values.quantity}}",
+              "sku": "SKU-001"
+            }
+          ],
+          "customer": {
+            "email": "{{values.customer.email}}",
+            "first_name": "{{values.customer.firstName}}",
+            "last_name": "{{values.customer.lastName}}",
+            "phone": "{{values.customer.phone}}"
+          },
+          "shippingAddress": {
+            "first_name": "{{values.shipping.firstName}}",
+            "last_name": "{{values.shipping.lastName}}",
+            "address1": "{{values.shipping.address1}}",
+            "address2": "{{values.shipping.address2}}",
+            "city": "{{values.shipping.city}}",
+            "province": "{{values.shipping.state}}",
+            "zip": "{{values.shipping.postalCode}}",
+            "country": "{{values.shipping.country}}",
+            "phone": "{{values.customer.phone}}"
+          },
+          "tags": ["apps-script", "commerce"],
+          "note": "Created via Apps Script dry run"
+        },
+        "data": {
+          "operation": "create_order",
+          "config": {
+            "operation": "create_order",
+            "lineItems": [
+              {
+                "title": "Invoice {{values.number}}",
+                "price": "{{values.amount}}",
+                "quantity": "{{values.quantity}}",
+                "sku": "SKU-001"
+              }
+            ],
+            "customer": {
+              "email": "{{values.customer.email}}",
+              "first_name": "{{values.customer.firstName}}",
+              "last_name": "{{values.customer.lastName}}",
+              "phone": "{{values.customer.phone}}"
+            },
+            "shippingAddress": {
+              "first_name": "{{values.shipping.firstName}}",
+              "last_name": "{{values.shipping.lastName}}",
+              "address1": "{{values.shipping.address1}}",
+              "address2": "{{values.shipping.address2}}",
+              "city": "{{values.shipping.city}}",
+              "province": "{{values.shipping.state}}",
+              "zip": "{{values.shipping.postalCode}}",
+              "country": "{{values.shipping.country}}",
+              "phone": "{{values.customer.phone}}"
+            },
+            "tags": ["apps-script", "commerce"],
+            "note": "Created via Apps Script dry run"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "values": {
+        "number": "INV-001",
+        "amount": "149.99",
+        "quantity": "2",
+        "customer": {
+          "email": "customer@example.com",
+          "firstName": "Casey",
+          "lastName": "Jordan",
+          "phone": "+1-555-0100"
+        },
+        "shipping": {
+          "firstName": "Casey",
+          "lastName": "Jordan",
+          "address1": "123 Commerce St",
+          "address2": "Suite 5",
+          "city": "Springfield",
+          "state": "IL",
+          "postalCode": "62701",
+          "country": "US"
+        }
+      }
+    }
+  },
+  "secrets": {
+    "SHOPIFY_ACCESS_TOKEN": "shpat_test_123",
+    "SHOPIFY_SHOP_DOMAIN": "demo-shop"
+  },
+  "http": [
+    {
+      "name": "shopify-create-order",
+      "request": {
+        "url": "https://demo-shop.myshopify.com/admin/api/2024-01/orders.json",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": "shpat_test_123"
+        },
+        "payload": {
+          "order": {
+            "line_items": [
+              {
+                "quantity": 2,
+                "title": "Invoice INV-001",
+                "price": "149.99",
+                "sku": "SKU-001"
+              }
+            ],
+            "email": "customer@example.com",
+            "customer": {
+              "email": "customer@example.com",
+              "first_name": "Casey",
+              "last_name": "Jordan",
+              "phone": "+1-555-0100"
+            },
+            "shipping_address": {
+              "first_name": "Casey",
+              "last_name": "Jordan",
+              "address1": "123 Commerce St",
+              "address2": "Suite 5",
+              "city": "Springfield",
+              "province": "IL",
+              "zip": "62701",
+              "country": "US",
+              "phone": "+1-555-0100"
+            },
+            "note": "Created via Apps Script dry run",
+            "tags": "apps-script, commerce"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "X-Shopify-Shop-Api-Call-Limit": "1/40"
+        },
+        "body": {
+          "order": {
+            "id": 1234567890,
+            "name": "#D1001",
+            "order_number": 1001,
+            "order_status_url": "https://demo-shop.myshopify.com/orders/1234567890/status",
+            "email": "customer@example.com",
+            "customer": {
+              "id": 99887766,
+              "email": "customer@example.com"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "shopifyOrderId": "1234567890",
+      "shopifyOrderName": "#D1001",
+      "shopifyOrderNumber": 1001,
+      "shopifyOrderUrl": "https://demo-shop.myshopify.com/orders/1234567890/status",
+      "shopifyOrderAdminUrl": "https://demo-shop.myshopify.com/admin/orders/1234567890",
+      "shopifyCustomerId": 99887766,
+      "shopifyOrderCustomerEmail": "customer@example.com"
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "shopify_create_order_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://demo-shop.myshopify.com/admin/api/2024-01/orders.json",
+        "method": "POST"
+      }
+    ]
+  }
+}

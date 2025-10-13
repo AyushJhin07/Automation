@@ -1,0 +1,126 @@
+{
+  "id": "apps-script-tier-1-commerce",
+  "name": "Tier 1 commerce handoff",
+  "meta": {
+    "appsScript": {
+      "tier": 1,
+      "description": "Capture spreadsheet orders and create Shopify drafts with enriched context",
+      "features": ["ecommerce", "authentication", "rate-limits"]
+    },
+    "automationType": "commerce_ops",
+    "prompt": "Whenever the commerce sheet receives a new paid order, create the order in Shopify."
+  },
+  "nodes": [
+    {
+      "id": "sheets-order",
+      "type": "trigger.sheets",
+      "app": "sheets",
+      "name": "New paid order row",
+      "op": "trigger.sheets:new_row",
+      "params": {
+        "spreadsheetId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
+        "worksheetName": "Paid Orders",
+        "pollingInterval": "5m"
+      },
+      "data": {
+        "operation": "new_row",
+        "config": {
+          "spreadsheetId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
+          "worksheetName": "Paid Orders",
+          "pollingInterval": "5m"
+        },
+        "metadata": {
+          "outputs": {
+            "values": { "type": "object" },
+            "row": { "type": "number" }
+          }
+        }
+      }
+    },
+    {
+      "id": "shopify-create-order",
+      "type": "action.shopify",
+      "app": "shopify",
+      "name": "Create Shopify order",
+      "op": "action.shopify:create_order",
+      "params": {
+        "operation": "create_order",
+        "lineItems": [
+          {
+            "title": "{{values.product_name}} preorder",
+            "price": "{{values.unit_price}}",
+            "quantity": "{{values.quantity}}",
+            "sku": "{{values.sku}}"
+          }
+        ],
+        "customer": {
+          "email": "{{values.customer_email}}",
+          "first_name": "{{values.customer_first_name}}",
+          "last_name": "{{values.customer_last_name}}",
+          "phone": "{{values.customer_phone}}"
+        },
+        "shippingAddress": {
+          "first_name": "{{values.recipient_first_name}}",
+          "last_name": "{{values.recipient_last_name}}",
+          "address1": "{{values.shipping_address_1}}",
+          "address2": "{{values.shipping_address_2}}",
+          "city": "{{values.shipping_city}}",
+          "province": "{{values.shipping_state}}",
+          "zip": "{{values.shipping_postal_code}}",
+          "country": "{{values.shipping_country}}",
+          "phone": "{{values.customer_phone}}"
+        },
+        "tags": ["apps-script", "tier-1"],
+        "note": "Created from Apps Script tier-1 commerce workflow"
+      },
+      "data": {
+        "operation": "create_order",
+        "config": {
+          "operation": "create_order",
+          "lineItems": [
+            {
+              "title": "{{values.product_name}} preorder",
+              "price": "{{values.unit_price}}",
+              "quantity": "{{values.quantity}}",
+              "sku": "{{values.sku}}"
+            }
+          ],
+          "customer": {
+            "email": "{{values.customer_email}}",
+            "first_name": "{{values.customer_first_name}}",
+            "last_name": "{{values.customer_last_name}}",
+            "phone": "{{values.customer_phone}}"
+          },
+          "shippingAddress": {
+            "first_name": "{{values.recipient_first_name}}",
+            "last_name": "{{values.recipient_last_name}}",
+            "address1": "{{values.shipping_address_1}}",
+            "address2": "{{values.shipping_address_2}}",
+            "city": "{{values.shipping_city}}",
+            "province": "{{values.shipping_state}}",
+            "zip": "{{values.shipping_postal_code}}",
+            "country": "{{values.shipping_country}}",
+            "phone": "{{values.customer_phone}}"
+          },
+          "tags": ["apps-script", "tier-1"],
+          "note": "Created from Apps Script tier-1 commerce workflow"
+        },
+        "metadata": {
+          "outputs": {
+            "shopifyOrderId": { "type": "string" },
+            "shopifyOrderUrl": { "type": "string" }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-sheets-to-shopify",
+      "source": "sheets-order",
+      "target": "shopify-create-order",
+      "from": "sheets-order",
+      "to": "shopify-create-order"
+    }
+  ]
+}
