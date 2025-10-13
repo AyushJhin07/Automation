@@ -63,6 +63,7 @@
     "seed:encryption-key": "tsx scripts/seed-encryption-key.ts",
     "observability:check": "tsx scripts/observability-check.ts",
     "report:runtime": "tsx scripts/connector-runtime-status.ts",
+    "report:apps-script-coverage": "tsx scripts/report-apps-script-coverage.ts",
     "prioritize:apps-script": "node scripts/apps-script-prioritize-connectors.mjs",
     "update:apps-script-backlog": "node scripts/update-apps-script-backlog.mjs",
     "check:apps-script-backlog": "node scripts/check-apps-script-backlog.mjs",
