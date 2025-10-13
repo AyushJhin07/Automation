@@ -1,6 +1,11 @@
 connector_id,operation_id,resource_type,apps_script_status
 adobesign,create_agreement,action,done
 adobesign,get_agreement,action,done
+adp,test_connection,action,done
+adp,get_worker,action,done
+adp,create_worker,action,done
+adp,update_worker,action,done
+adp,worker_hired,trigger,done
 asana,create_task,action,in_progress
 asana,list_projects,action,planned
 hubspot,create_contact,action,done

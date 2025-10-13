@@ -197,77 +197,62 @@
       ],
       "properties": [
         {
-          "name": "WORKFRONT_API_KEY",
+          "name": "ADP_ACCESS_TOKEN",
           "optional": false,
           "operations": [
-            "action.workfront:create_document",
-            "action.workfront:create_issue",
-            "action.workfront:create_project",
-            "action.workfront:create_task",
-            "action.workfront:create_timesheet",
-            "action.workfront:get_project",
-            "action.workfront:get_task",
-            "action.workfront:get_users",
-            "action.workfront:log_time",
-            "action.workfront:search_projects",
-            "action.workfront:test_connection",
-            "action.workfront:update_project",
-            "action.workfront:update_task"
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker"
           ],
-          "triggers": [
-            "trigger.workfront:project_created",
-            "trigger.workfront:task_completed",
-            "trigger.workfront:task_created"
+          "triggers": [],
+          "contexts": [
+            "requireOAuthToken"
+          ]
+        },
+        {
+          "name": "ADP_CLIENT_ID",
+          "optional": false,
+          "operations": [
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker"
           ],
+          "triggers": [],
           "contexts": [
             "getSecret"
           ]
         },
         {
-          "name": "WORKFRONT_DOMAIN",
+          "name": "ADP_CLIENT_SECRET",
           "optional": false,
           "operations": [
-            "action.workfront:create_document",
-            "action.workfront:create_issue",
-            "action.workfront:create_project",
-            "action.workfront:create_task",
-            "action.workfront:create_timesheet",
-            "action.workfront:get_project",
-            "action.workfront:get_task",
-            "action.workfront:get_users",
-            "action.workfront:log_time",
-            "action.workfront:search_projects",
-            "action.workfront:test_connection",
-            "action.workfront:update_project",
-            "action.workfront:update_task"
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker"
           ],
-          "triggers": [
-            "trigger.workfront:project_created",
-            "trigger.workfront:task_completed",
-            "trigger.workfront:task_created"
+          "triggers": [],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ADP_COMPANY_CODES",
+          "optional": false,
+          "operations": [
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker"
           ],
+          "triggers": [],
           "contexts": [
             "getSecret"
           ]
         }
       ],
-      "environmentProperties": [
-        "WORKFRONT_DOMAIN"
-      ]
-    },
-    {
-      "id": "adyen",
-      "name": "Adyen",
-      "operations": [
-        "action.adyen:capture_payment",
-        "action.adyen:create_payment",
-        "action.adyen:refund_payment",
-        "action.adyen:test_connection"
-      ],
-      "triggers": [
-        "trigger.adyen:payment_success"
-      ],
-      "properties": [],
       "environmentProperties": []
     },
     {
