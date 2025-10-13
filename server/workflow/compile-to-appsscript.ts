@@ -17909,38 +17909,994 @@ function step_createGreenhouseCandidate(ctx) {
   // PHASE 4: Customer Support Applications
   'action.zendesk:create_ticket': (c) => `
 function step_createZendeskTicket(ctx) {
-  const apiToken = getSecret('ZENDESK_API_TOKEN');
-  const email = getSecret('ZENDESK_EMAIL');
-  const subdomain = getSecret('ZENDESK_SUBDOMAIN');
+  ctx = ctx || {};
 
-  if (!apiToken || !email || !subdomain) {
-    logWarn('zendesk_missing_credentials', { message: 'Zendesk credentials not configured' });
+  const config = ${JSON.stringify(c ?? {})};
+
+  let oauthToken = null;
+  let oauthError = null;
+  try {
+    oauthToken = requireOAuthToken('zendesk', { scopes: ['read', 'write'] });
+  } catch (error) {
+    oauthError = error;
+    oauthToken = null;
+  }
+
+  const apiToken = oauthToken ? null : getSecret('ZENDESK_API_TOKEN');
+  const email = oauthToken ? null : getSecret('ZENDESK_EMAIL');
+  const subdomainSecret = getSecret('ZENDESK_SUBDOMAIN');
+
+  if (!oauthToken && (!apiToken || !email)) {
+    logWarn('zendesk_missing_credentials', { message: 'Zendesk OAuth token or API token/email not configured' });
+    if (oauthError) {
+      logInfo('zendesk_oauth_fallback', { message: oauthError && oauthError.message ? oauthError.message : String(oauthError) });
+    }
     return ctx;
   }
-  
-  const ticketData = {
-    ticket: {
-      subject: interpolate('${c.subject || 'Automated Ticket'}', ctx),
-      description: interpolate('${c.description || 'Created by automation'}', ctx),
-      priority: '${c.priority || 'normal'}',
-      type: '${c.type || 'question'}'
-    }
-  };
-  
-  const auth = Utilities.base64Encode(email + '/token:' + apiToken);
-  const response = withRetries(() => fetchJson(\`https://\${subdomain}.zendesk.com/api/v2/tickets.json\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Basic \${auth}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(ticketData),
-    contentType: 'application/json'
-  }));
 
-  ctx.zendeskTicketId = response.body && response.body.ticket ? response.body.ticket.id : null;
-  logInfo('zendesk_create_ticket', { ticketId: ctx.zendeskTicketId || null });
-  return ctx;
+  if (!subdomainSecret) {
+    logWarn('zendesk_missing_subdomain', { message: 'ZENDESK_SUBDOMAIN is required to call the Zendesk API' });
+    return ctx;
+  }
+
+  function normalizeSubdomain(raw) {
+    if (!raw) {
+      return '';
+    }
+    const value = String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    const withoutProtocol = value.replace(/^https?:\\/\\//i, '');
+    const firstSegment = withoutProtocol.split('/')[0] || '';
+    return firstSegment ? firstSegment.replace(/\.zendesk\.com$/i, '') : '';
+  }
+
+  const normalizedSubdomain = normalizeSubdomain(subdomainSecret);
+  if (!normalizedSubdomain) {
+    logWarn('zendesk_invalid_subdomain', { message: 'ZENDESK_SUBDOMAIN must be a Zendesk subdomain (e.g. acme)' });
+    return ctx;
+  }
+
+  const apiBase = 'https://' + normalizedSubdomain + '.zendesk.com/api/v2';
+
+  function buildHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (oauthToken) {
+      headers['Authorization'] = 'Bearer ' + oauthToken;
+      return headers;
+    }
+    const encoded = Utilities.base64Encode(String(email).trim() + '/token:' + apiToken);
+    headers['Authorization'] = 'Basic ' + encoded;
+    return headers;
+  }
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return options && options.defaultValue ? String(options.defaultValue) : '';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const value = interpolate(raw, ctx);
+    if (options && options.keepWhitespace) {
+      return value;
+    }
+    const trimmed = value.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptionalString(template) {
+    const value = resolveString(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveNumber(template, fieldName) {
+    if (template === null || template === undefined) {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveString(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = Number(resolved);
+    if (!isFinite(parsed)) {
+      throw new Error('Zendesk create_ticket field "' + fieldName + '" must be numeric.');
+    }
+    return parsed;
+  }
+
+  function resolveNumberArray(template, fieldName) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const values = [];
+    for (let i = 0; i < template.length; i++) {
+      const value = resolveNumber(template[i], fieldName + '[' + i + ']');
+      if (value !== undefined) {
+        values.push(value);
+      }
+    }
+    return values.length > 0 ? values : undefined;
+  }
+
+  function resolveStringArray(template) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const values = [];
+    for (let i = 0; i < template.length; i++) {
+      const value = resolveString(template[i], { allowEmpty: true });
+      if (value) {
+        values.push(value);
+      }
+    }
+    return values.length > 0 ? values : undefined;
+  }
+
+  function normalizeCustomFields(template) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const result = [];
+    for (let i = 0; i < template.length; i++) {
+      const entry = template[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const normalized = {};
+      if (Object.prototype.hasOwnProperty.call(entry, 'id')) {
+        const id = resolveNumber(entry.id, 'ticket.custom_fields[' + i + '].id');
+        if (id !== undefined) {
+          normalized['id'] = id;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(entry, 'value')) {
+        const value = entry.value;
+        if (typeof value === 'string') {
+          const resolved = resolveString(value, { allowEmpty: true });
+          if (resolved) {
+            normalized['value'] = resolved;
+          }
+        } else if (value !== undefined) {
+          normalized['value'] = value;
+        }
+      }
+      if (Object.keys(normalized).length > 0) {
+        result.push(normalized);
+      }
+    }
+    return result.length > 0 ? result : undefined;
+  }
+
+  function normalizeZendeskError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const messages = [];
+
+    function pushMessage(value, prefix) {
+      if (!value && value !== 0) {
+        return;
+      }
+      const text = typeof value === 'string' ? value : JSON.stringify(value);
+      if (text) {
+        messages.push(prefix ? prefix + text : text);
+      }
+    }
+
+    if (body) {
+      if (typeof body === 'string') {
+        pushMessage(body.trim());
+      } else if (typeof body === 'object') {
+        if (body.error) {
+          pushMessage(String(body.error));
+        }
+        if (body.description) {
+          pushMessage(String(body.description));
+        }
+        if (body.message) {
+          pushMessage(String(body.message));
+        }
+        if (body.details && typeof body.details === 'object') {
+          for (const key in body.details) {
+            if (!Object.prototype.hasOwnProperty.call(body.details, key)) continue;
+            const detail = body.details[key];
+            if (Array.isArray(detail)) {
+              for (let i = 0; i < detail.length; i++) {
+                const entry = detail[i];
+                if (!entry) continue;
+                if (entry.description) {
+                  pushMessage(entry.description, key + ': ');
+                } else if (entry.message) {
+                  pushMessage(entry.message, key + ': ');
+                } else {
+                  pushMessage(entry, key + ': ');
+                }
+              }
+            } else {
+              pushMessage(detail, key + ': ');
+            }
+          }
+        }
+        if (Array.isArray(body.errors)) {
+          for (let i = 0; i < body.errors.length; i++) {
+            pushMessage(body.errors[i]);
+          }
+        } else if (body.errors && typeof body.errors === 'object') {
+          for (const key in body.errors) {
+            if (!Object.prototype.hasOwnProperty.call(body.errors, key)) continue;
+            pushMessage(body.errors[key], key + ': ');
+          }
+        }
+      }
+    }
+
+    if (messages.length === 0 && error && error.message) {
+      pushMessage(error.message);
+    }
+
+    const message = context + (messages.length > 0 ? ': ' + messages.join(' | ') : '.');
+    const wrapped = new Error(message);
+    if (status !== null) {
+      wrapped.status = status;
+    }
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    if (body !== undefined) {
+      wrapped.body = body;
+    }
+    wrapped.cause = error;
+    return wrapped;
+  }
+
+  try {
+    const ticketConfig = config && typeof config.ticket === 'object' && config.ticket ? config.ticket : {};
+    const commentConfig = ticketConfig && typeof ticketConfig.comment === 'object' && ticketConfig.comment ? ticketConfig.comment : {};
+    const requesterConfig = ticketConfig && typeof ticketConfig.requester === 'object' && ticketConfig.requester ? ticketConfig.requester : null;
+
+    const subjectTemplate = Object.prototype.hasOwnProperty.call(ticketConfig, 'subject') ? ticketConfig.subject : config.subject;
+    const commentBodyTemplate = Object.prototype.hasOwnProperty.call(commentConfig, 'body') ? commentConfig.body : (config.description || config.commentBody);
+
+    const subject = resolveString(subjectTemplate || 'Automated Ticket');
+    if (!subject) {
+      throw new Error('Zendesk create_ticket requires ticket.subject to be provided.');
+    }
+
+    const commentBody = resolveString(commentBodyTemplate || 'Created by automation');
+    if (!commentBody) {
+      throw new Error('Zendesk create_ticket requires ticket.comment.body to be provided.');
+    }
+
+    const payloadTicket = { subject: subject, comment: { body: commentBody } };
+
+    if (Object.prototype.hasOwnProperty.call(commentConfig, 'html_body')) {
+      const html = resolveOptionalString(commentConfig.html_body);
+      if (html) {
+        payloadTicket.comment.html_body = html;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(commentConfig, 'public')) {
+      payloadTicket.comment.public = !!commentConfig.public;
+    } else if (commentConfig.public === undefined) {
+      payloadTicket.comment.public = true;
+    }
+
+    if (requesterConfig) {
+      const requester = {};
+      const requesterName = resolveOptionalString(requesterConfig.name);
+      const requesterEmail = resolveOptionalString(requesterConfig.email);
+      if (requesterName) {
+        requester.name = requesterName;
+      }
+      if (requesterEmail) {
+        requester.email = requesterEmail;
+      }
+      if (Object.keys(requester).length > 0) {
+        payloadTicket.requester = requester;
+      }
+    }
+
+    const optionalNumberFields = ['submitter_id', 'assignee_id', 'group_id', 'organization_id', 'brand_id', 'problem_id', 'forum_topic_id', 'requester_id', 'ticket_form_id'];
+    for (let i = 0; i < optionalNumberFields.length; i++) {
+      const field = optionalNumberFields[i];
+      const value = resolveNumber(ticketConfig[field] !== undefined ? ticketConfig[field] : config[field], 'ticket.' + field);
+      if (value !== undefined) {
+        payloadTicket[field] = value;
+      }
+    }
+
+    const optionalStringFields = ['external_id', 'type', 'priority', 'status', 'recipient', 'due_at'];
+    for (let i = 0; i < optionalStringFields.length; i++) {
+      const field = optionalStringFields[i];
+      const value = resolveOptionalString(ticketConfig[field] !== undefined ? ticketConfig[field] : config[field]);
+      if (value !== undefined) {
+        payloadTicket[field] = value;
+      }
+    }
+
+    const optionalBooleanFields = ['is_public'];
+    for (let i = 0; i < optionalBooleanFields.length; i++) {
+      const field = optionalBooleanFields[i];
+      if (Object.prototype.hasOwnProperty.call(ticketConfig, field)) {
+        payloadTicket[field] = !!ticketConfig[field];
+      }
+    }
+
+    const arrayNumberFields = ['collaborator_ids', 'follower_ids', 'email_cc_ids'];
+    for (let i = 0; i < arrayNumberFields.length; i++) {
+      const field = arrayNumberFields[i];
+      const value = resolveNumberArray(ticketConfig[field] !== undefined ? ticketConfig[field] : config[field], 'ticket.' + field);
+      if (value) {
+        payloadTicket[field] = value;
+      }
+    }
+
+    const tags = resolveStringArray(ticketConfig.tags !== undefined ? ticketConfig.tags : config.tags);
+    if (tags) {
+      payloadTicket.tags = tags;
+    }
+
+    const customFields = normalizeCustomFields(ticketConfig.custom_fields !== undefined ? ticketConfig.custom_fields : config.custom_fields);
+    if (customFields) {
+      payloadTicket.custom_fields = customFields;
+    }
+
+    if (ticketConfig.via && typeof ticketConfig.via === 'object') {
+      payloadTicket.via = ticketConfig.via;
+    }
+
+    const createResponse = rateLimitAware(() => fetchJson({
+      url: apiBase + '/tickets.json',
+      method: 'POST',
+      headers: buildHeaders(),
+      payload: JSON.stringify({ ticket: payloadTicket }),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const ticket = createResponse && createResponse.body && createResponse.body.ticket ? createResponse.body.ticket : null;
+    ctx.zendeskTicketId = ticket && ticket.id !== undefined ? ticket.id : null;
+    ctx.zendeskTicket = ticket;
+    logInfo('zendesk_create_ticket', { ticketId: ctx.zendeskTicketId || null });
+    return ctx;
+  } catch (error) {
+    const wrapped = normalizeZendeskError(error, 'Zendesk create_ticket failed');
+    logError('zendesk_create_ticket_failed', {
+      message: wrapped.message,
+      status: wrapped.status || null
+    });
+    throw wrapped;
+  }
+}`,
+
+  'action.zendesk:list_tickets': (c) => `
+function step_listZendeskTickets(ctx) {
+  ctx = ctx || {};
+
+  const config = ${JSON.stringify(c ?? {})};
+
+  let oauthToken = null;
+  let oauthError = null;
+  try {
+    oauthToken = requireOAuthToken('zendesk', { scopes: ['read'] });
+  } catch (error) {
+    oauthError = error;
+    oauthToken = null;
+  }
+
+  const apiToken = oauthToken ? null : getSecret('ZENDESK_API_TOKEN');
+  const email = oauthToken ? null : getSecret('ZENDESK_EMAIL');
+  const subdomainSecret = getSecret('ZENDESK_SUBDOMAIN');
+
+  if (!oauthToken && (!apiToken || !email)) {
+    logWarn('zendesk_missing_credentials', { message: 'Zendesk OAuth token or API token/email not configured' });
+    if (oauthError) {
+      logInfo('zendesk_oauth_fallback', { message: oauthError && oauthError.message ? oauthError.message : String(oauthError) });
+    }
+    return ctx;
+  }
+
+  if (!subdomainSecret) {
+    logWarn('zendesk_missing_subdomain', { message: 'ZENDESK_SUBDOMAIN is required to call the Zendesk API' });
+    return ctx;
+  }
+
+  function normalizeSubdomain(raw) {
+    if (!raw) {
+      return '';
+    }
+    const value = String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    const withoutProtocol = value.replace(/^https?:\\/\\//i, '');
+    const firstSegment = withoutProtocol.split('/')[0] || '';
+    return firstSegment ? firstSegment.replace(/\.zendesk\.com$/i, '') : '';
+  }
+
+  const normalizedSubdomain = normalizeSubdomain(subdomainSecret);
+  if (!normalizedSubdomain) {
+    logWarn('zendesk_invalid_subdomain', { message: 'ZENDESK_SUBDOMAIN must be a Zendesk subdomain (e.g. acme)' });
+    return ctx;
+  }
+
+  const apiBase = 'https://' + normalizedSubdomain + '.zendesk.com/api/v2';
+
+  function buildHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (oauthToken) {
+      headers['Authorization'] = 'Bearer ' + oauthToken;
+      return headers;
+    }
+    const encoded = Utilities.base64Encode(String(email).trim() + '/token:' + apiToken);
+    headers['Authorization'] = 'Basic ' + encoded;
+    return headers;
+  }
+
+  function resolveString(template) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    return interpolate(raw, ctx).trim();
+  }
+
+  function resolveNumber(template) {
+    if (template === null || template === undefined) {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const value = resolveString(template);
+    if (!value) {
+      return undefined;
+    }
+    const parsed = Number(value);
+    if (!isFinite(parsed)) {
+      throw new Error('Zendesk list_tickets numeric field must be a number.');
+    }
+    return parsed;
+  }
+
+  function normalizeZendeskError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const messages = [];
+
+    function pushMessage(value, prefix) {
+      if (!value && value !== 0) {
+        return;
+      }
+      const text = typeof value === 'string' ? value : JSON.stringify(value);
+      if (text) {
+        messages.push(prefix ? prefix + text : text);
+      }
+    }
+
+    if (body) {
+      if (typeof body === 'string') {
+        pushMessage(body.trim());
+      } else if (typeof body === 'object') {
+        if (body.error) {
+          pushMessage(String(body.error));
+        }
+        if (body.description) {
+          pushMessage(String(body.description));
+        }
+        if (body.message) {
+          pushMessage(String(body.message));
+        }
+        if (body.details && typeof body.details === 'object') {
+          for (const key in body.details) {
+            if (!Object.prototype.hasOwnProperty.call(body.details, key)) continue;
+            const detail = body.details[key];
+            if (Array.isArray(detail)) {
+              for (let i = 0; i < detail.length; i++) {
+                const entry = detail[i];
+                if (!entry) continue;
+                if (entry.description) {
+                  pushMessage(entry.description, key + ': ');
+                } else if (entry.message) {
+                  pushMessage(entry.message, key + ': ');
+                } else {
+                  pushMessage(entry, key + ': ');
+                }
+              }
+            } else {
+              pushMessage(detail, key + ': ');
+            }
+          }
+        }
+        if (Array.isArray(body.errors)) {
+          for (let i = 0; i < body.errors.length; i++) {
+            pushMessage(body.errors[i]);
+          }
+        } else if (body.errors && typeof body.errors === 'object') {
+          for (const key in body.errors) {
+            if (!Object.prototype.hasOwnProperty.call(body.errors, key)) continue;
+            pushMessage(body.errors[key], key + ': ');
+          }
+        }
+      }
+    }
+
+    if (messages.length === 0 && error && error.message) {
+      pushMessage(error.message);
+    }
+
+    const message = context + (messages.length > 0 ? ': ' + messages.join(' | ') : '.');
+    const wrapped = new Error(message);
+    if (status !== null) {
+      wrapped.status = status;
+    }
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    if (body !== undefined) {
+      wrapped.body = body;
+    }
+    wrapped.cause = error;
+    return wrapped;
+  }
+
+  try {
+    const query = {};
+    const sortBy = resolveString(config.sort_by || config.sortBy || '');
+    if (sortBy) {
+      query['sort_by'] = sortBy;
+    }
+    const sortOrder = resolveString(config.sort_order || config.sortOrder || '');
+    if (sortOrder) {
+      query['sort_order'] = sortOrder;
+    }
+    const include = resolveString(config.include || '');
+    if (include) {
+      query['include'] = include;
+    }
+    const pageSize = resolveNumber(config['page[size]'] !== undefined ? config['page[size]'] : config.pageSize);
+    if (pageSize !== undefined) {
+      query['page[size]'] = pageSize;
+    }
+    const pageAfter = resolveString(config['page[after]'] || '');
+    if (pageAfter) {
+      query['page[after]'] = pageAfter;
+    }
+    const pageBefore = resolveString(config['page[before]'] || '');
+    if (pageBefore) {
+      query['page[before]'] = pageBefore;
+    }
+
+    const parts = [];
+    for (const key in query) {
+      if (!Object.prototype.hasOwnProperty.call(query, key)) continue;
+      const value = query[key];
+      if (value === undefined || value === null || value === '') continue;
+      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+    }
+    const url = apiBase + '/tickets.json' + (parts.length > 0 ? '?' + parts.join('&') : '');
+
+    const listResponse = rateLimitAware(() => fetchJson({
+      url: url,
+      method: 'GET',
+      headers: buildHeaders()
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const body = listResponse && listResponse.body ? listResponse.body : {};
+    const tickets = Array.isArray(body.tickets) ? body.tickets : [];
+    ctx.zendeskTickets = tickets;
+    ctx.zendeskTicketsMeta = {
+      next_page: body.next_page || null,
+      previous_page: body.previous_page || null,
+      count: body.count !== undefined ? body.count : tickets.length
+    };
+    logInfo('zendesk_list_tickets', { count: ctx.zendeskTicketsMeta.count || tickets.length });
+    return ctx;
+  } catch (error) {
+    const wrapped = normalizeZendeskError(error, 'Zendesk list_tickets failed');
+    logError('zendesk_list_tickets_failed', {
+      message: wrapped.message,
+      status: wrapped.status || null
+    });
+    throw wrapped;
+  }
+}`,
+
+  'action.zendesk:update_ticket': (c) => `
+function step_updateZendeskTicket(ctx) {
+  ctx = ctx || {};
+
+  const config = ${JSON.stringify(c ?? {})};
+
+  let oauthToken = null;
+  let oauthError = null;
+  try {
+    oauthToken = requireOAuthToken('zendesk', { scopes: ['write', 'read'] });
+  } catch (error) {
+    oauthError = error;
+    oauthToken = null;
+  }
+
+  const apiToken = oauthToken ? null : getSecret('ZENDESK_API_TOKEN');
+  const email = oauthToken ? null : getSecret('ZENDESK_EMAIL');
+  const subdomainSecret = getSecret('ZENDESK_SUBDOMAIN');
+
+  if (!oauthToken && (!apiToken || !email)) {
+    logWarn('zendesk_missing_credentials', { message: 'Zendesk OAuth token or API token/email not configured' });
+    if (oauthError) {
+      logInfo('zendesk_oauth_fallback', { message: oauthError && oauthError.message ? oauthError.message : String(oauthError) });
+    }
+    return ctx;
+  }
+
+  if (!subdomainSecret) {
+    logWarn('zendesk_missing_subdomain', { message: 'ZENDESK_SUBDOMAIN is required to call the Zendesk API' });
+    return ctx;
+  }
+
+  function normalizeSubdomain(raw) {
+    if (!raw) {
+      return '';
+    }
+    const value = String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    const withoutProtocol = value.replace(/^https?:\\/\\//i, '');
+    const firstSegment = withoutProtocol.split('/')[0] || '';
+    return firstSegment ? firstSegment.replace(/\.zendesk\.com$/i, '') : '';
+  }
+
+  const normalizedSubdomain = normalizeSubdomain(subdomainSecret);
+  if (!normalizedSubdomain) {
+    logWarn('zendesk_invalid_subdomain', { message: 'ZENDESK_SUBDOMAIN must be a Zendesk subdomain (e.g. acme)' });
+    return ctx;
+  }
+
+  const apiBase = 'https://' + normalizedSubdomain + '.zendesk.com/api/v2';
+
+  function buildHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (oauthToken) {
+      headers['Authorization'] = 'Bearer ' + oauthToken;
+      return headers;
+    }
+    const encoded = Utilities.base64Encode(String(email).trim() + '/token:' + apiToken);
+    headers['Authorization'] = 'Basic ' + encoded;
+    return headers;
+  }
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return options && options.defaultValue ? String(options.defaultValue) : '';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const value = interpolate(raw, ctx);
+    if (options && options.keepWhitespace) {
+      return value;
+    }
+    const trimmed = value.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptionalString(template) {
+    const value = resolveString(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveNumber(template, fieldName) {
+    if (template === null || template === undefined) {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveString(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const parsed = Number(resolved);
+    if (!isFinite(parsed)) {
+      throw new Error('Zendesk update_ticket field "' + fieldName + '" must be numeric.');
+    }
+    return parsed;
+  }
+
+  function resolveNumberArray(template, fieldName) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const values = [];
+    for (let i = 0; i < template.length; i++) {
+      const value = resolveNumber(template[i], fieldName + '[' + i + ']');
+      if (value !== undefined) {
+        values.push(value);
+      }
+    }
+    return values.length > 0 ? values : undefined;
+  }
+
+  function resolveStringArray(template) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const values = [];
+    for (let i = 0; i < template.length; i++) {
+      const value = resolveString(template[i], { allowEmpty: true });
+      if (value) {
+        values.push(value);
+      }
+    }
+    return values.length > 0 ? values : undefined;
+  }
+
+  function normalizeCustomFields(template) {
+    if (!Array.isArray(template)) {
+      return undefined;
+    }
+    const result = [];
+    for (let i = 0; i < template.length; i++) {
+      const entry = template[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const normalized = {};
+      if (Object.prototype.hasOwnProperty.call(entry, 'id')) {
+        const id = resolveNumber(entry.id, 'ticket.custom_fields[' + i + '].id');
+        if (id !== undefined) {
+          normalized['id'] = id;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(entry, 'value')) {
+        const value = entry.value;
+        if (typeof value === 'string') {
+          const resolved = resolveString(value, { allowEmpty: true });
+          if (resolved) {
+            normalized['value'] = resolved;
+          }
+        } else if (value !== undefined) {
+          normalized['value'] = value;
+        }
+      }
+      if (Object.keys(normalized).length > 0) {
+        result.push(normalized);
+      }
+    }
+    return result.length > 0 ? result : undefined;
+  }
+
+  function normalizeZendeskError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const messages = [];
+
+    function pushMessage(value, prefix) {
+      if (!value && value !== 0) {
+        return;
+      }
+      const text = typeof value === 'string' ? value : JSON.stringify(value);
+      if (text) {
+        messages.push(prefix ? prefix + text : text);
+      }
+    }
+
+    if (body) {
+      if (typeof body === 'string') {
+        pushMessage(body.trim());
+      } else if (typeof body === 'object') {
+        if (body.error) {
+          pushMessage(String(body.error));
+        }
+        if (body.description) {
+          pushMessage(String(body.description));
+        }
+        if (body.message) {
+          pushMessage(String(body.message));
+        }
+        if (body.details && typeof body.details === 'object') {
+          for (const key in body.details) {
+            if (!Object.prototype.hasOwnProperty.call(body.details, key)) continue;
+            const detail = body.details[key];
+            if (Array.isArray(detail)) {
+              for (let i = 0; i < detail.length; i++) {
+                const entry = detail[i];
+                if (!entry) continue;
+                if (entry.description) {
+                  pushMessage(entry.description, key + ': ');
+                } else if (entry.message) {
+                  pushMessage(entry.message, key + ': ');
+                } else {
+                  pushMessage(entry, key + ': ');
+                }
+              }
+            } else {
+              pushMessage(detail, key + ': ');
+            }
+          }
+        }
+        if (Array.isArray(body.errors)) {
+          for (let i = 0; i < body.errors.length; i++) {
+            pushMessage(body.errors[i]);
+          }
+        } else if (body.errors && typeof body.errors === 'object') {
+          for (const key in body.errors) {
+            if (!Object.prototype.hasOwnProperty.call(body.errors, key)) continue;
+            pushMessage(body.errors[key], key + ': ');
+          }
+        }
+      }
+    }
+
+    if (messages.length === 0 && error && error.message) {
+      pushMessage(error.message);
+    }
+
+    const message = context + (messages.length > 0 ? ': ' + messages.join(' | ') : '.');
+    const wrapped = new Error(message);
+    if (status !== null) {
+      wrapped.status = status;
+    }
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    if (body !== undefined) {
+      wrapped.body = body;
+    }
+    wrapped.cause = error;
+    return wrapped;
+  }
+
+  try {
+    const ticketIdTemplate = config.id;
+    const ticketIdValue = resolveNumber(ticketIdTemplate, 'id');
+    if (ticketIdValue === undefined) {
+      throw new Error('Zendesk update_ticket requires an id value.');
+    }
+
+    const ticketConfig = config && typeof config.ticket === 'object' && config.ticket ? config.ticket : {};
+    const commentConfig = ticketConfig && typeof ticketConfig.comment === 'object' && ticketConfig.comment ? ticketConfig.comment : {};
+
+    const payloadTicket = {};
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'subject')) {
+      const subject = resolveOptionalString(ticketConfig.subject);
+      if (subject !== undefined) {
+        payloadTicket.subject = subject;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'comment')) {
+      const commentPayload = {};
+      if (Object.prototype.hasOwnProperty.call(commentConfig, 'body')) {
+        const commentBody = resolveOptionalString(commentConfig.body);
+        if (commentBody !== undefined) {
+          commentPayload.body = commentBody;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(commentConfig, 'html_body')) {
+        const htmlBody = resolveOptionalString(commentConfig.html_body);
+        if (htmlBody !== undefined) {
+          commentPayload.html_body = htmlBody;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(commentConfig, 'public')) {
+        commentPayload.public = !!commentConfig.public;
+      }
+      if (Object.prototype.hasOwnProperty.call(commentConfig, 'author_id')) {
+        const authorId = resolveNumber(commentConfig.author_id, 'ticket.comment.author_id');
+        if (authorId !== undefined) {
+          commentPayload.author_id = authorId;
+        }
+      }
+      if (Object.keys(commentPayload).length > 0) {
+        payloadTicket.comment = commentPayload;
+      }
+    }
+
+    const optionalNumberFields = ['assignee_id', 'group_id', 'organization_id', 'requester_id', 'brand_id', 'problem_id', 'ticket_form_id'];
+    for (let i = 0; i < optionalNumberFields.length; i++) {
+      const field = optionalNumberFields[i];
+      if (Object.prototype.hasOwnProperty.call(ticketConfig, field)) {
+        const value = resolveNumber(ticketConfig[field], 'ticket.' + field);
+        if (value !== undefined) {
+          payloadTicket[field] = value;
+        }
+      }
+    }
+
+    const optionalStringFields = ['external_id', 'type', 'priority', 'status', 'due_at'];
+    for (let i = 0; i < optionalStringFields.length; i++) {
+      const field = optionalStringFields[i];
+      if (Object.prototype.hasOwnProperty.call(ticketConfig, field)) {
+        const value = resolveOptionalString(ticketConfig[field]);
+        if (value !== undefined) {
+          payloadTicket[field] = value;
+        }
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'collaborator_ids')) {
+      const collaborators = resolveNumberArray(ticketConfig.collaborator_ids, 'ticket.collaborator_ids');
+      if (collaborators) {
+        payloadTicket.collaborator_ids = collaborators;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'follower_ids')) {
+      const followers = resolveNumberArray(ticketConfig.follower_ids, 'ticket.follower_ids');
+      if (followers) {
+        payloadTicket.follower_ids = followers;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'email_cc_ids')) {
+      const ccIds = resolveNumberArray(ticketConfig.email_cc_ids, 'ticket.email_cc_ids');
+      if (ccIds) {
+        payloadTicket.email_cc_ids = ccIds;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'additional_collaborators')) {
+      const additionalCollaborators = ticketConfig.additional_collaborators;
+      if (Array.isArray(additionalCollaborators) && additionalCollaborators.length > 0) {
+        payloadTicket.additional_collaborators = additionalCollaborators;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'tags')) {
+      const tags = resolveStringArray(ticketConfig.tags);
+      if (tags) {
+        payloadTicket.tags = tags;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'custom_fields')) {
+      const customFields = normalizeCustomFields(ticketConfig.custom_fields);
+      if (customFields) {
+        payloadTicket.custom_fields = customFields;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(ticketConfig, 'safe_update')) {
+      payloadTicket.safe_update = !!ticketConfig.safe_update;
+    }
+
+    if (Object.keys(payloadTicket).length === 0) {
+      throw new Error('Zendesk update_ticket requires at least one ticket field to update.');
+    }
+
+    const updateResponse = rateLimitAware(() => fetchJson({
+      url: apiBase + '/tickets/' + encodeURIComponent(String(ticketIdValue)) + '.json',
+      method: 'PUT',
+      headers: buildHeaders(),
+      payload: JSON.stringify({ ticket: payloadTicket }),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const ticket = updateResponse && updateResponse.body && updateResponse.body.ticket ? updateResponse.body.ticket : null;
+    ctx.zendeskTicketId = ticket && ticket.id !== undefined ? ticket.id : ticketIdValue;
+    ctx.zendeskTicket = ticket;
+    logInfo('zendesk_update_ticket', { ticketId: ctx.zendeskTicketId || ticketIdValue });
+    return ctx;
+  } catch (error) {
+    const wrapped = normalizeZendeskError(error, 'Zendesk update_ticket failed');
+    logError('zendesk_update_ticket_failed', {
+      message: wrapped.message,
+      status: wrapped.status || null
+    });
+    throw wrapped;
+  }
 }`,
 
   'action.freshdesk:create_ticket': (c) => `
