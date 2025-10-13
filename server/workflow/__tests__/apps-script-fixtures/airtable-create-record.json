@@ -1,0 +1,103 @@
+{
+  "id": "airtable-create-record",
+  "description": "Creates an Airtable record and returns response metadata.",
+  "graph": {
+    "id": "fixture-airtable-create-record",
+    "name": "Airtable create record",
+    "nodes": [
+      {
+        "id": "airtable-create",
+        "type": "action.airtable",
+        "app": "airtable",
+        "name": "Create Airtable contact",
+        "op": "action.airtable:create_record",
+        "params": {
+          "operation": "create_record",
+          "baseId": "{{airtableBase}}",
+          "tableId": "Contacts",
+          "fields": {
+            "Name": "{{fullName}}",
+            "Email": "{{email}}",
+            "Status": "New"
+          },
+          "typecast": true
+        },
+        "data": {
+          "operation": "create_record",
+          "config": {
+            "baseId": "{{airtableBase}}",
+            "tableId": "Contacts",
+            "fields": {
+              "Name": "{{fullName}}",
+              "Email": "{{email}}",
+              "Status": "New"
+            },
+            "typecast": true
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "airtableBase": "appBase123",
+      "fullName": "Ada Lovelace",
+      "email": "ada@example.com"
+    }
+  },
+  "secrets": {
+    "AIRTABLE_API_KEY": "key-test",
+    "AIRTABLE_BASE_ID": "appBase123"
+  },
+  "http": [
+    {
+      "name": "airtable-create",
+      "request": {
+        "url": "https://api.airtable.com/v0/appBase123/Contacts",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer key-test",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "fields": {
+            "Name": "Ada Lovelace",
+            "Email": "ada@example.com",
+            "Status": "New"
+          },
+          "typecast": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Airtable-Request-Id": "req-airtable-create-1"
+        },
+        "body": {
+          "id": "rec001",
+          "createdTime": "2024-01-02T12:00:00.000Z",
+          "fields": {
+            "Name": "Ada Lovelace",
+            "Email": "ada@example.com",
+            "Status": "New"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "airtableBase": "appBase123",
+      "fullName": "Ada Lovelace",
+      "email": "ada@example.com",
+      "airtableRecordId": "rec001"
+    },
+    "httpCalls": [
+      {
+        "url": "https://api.airtable.com/v0/appBase123/Contacts",
+        "method": "POST"
+      }
+    ]
+  }
+}

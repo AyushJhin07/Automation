@@ -94,7 +94,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | mongodb | `MONGODB_CONNECTION_STRING` | — | — |
 | mysql | `MYSQL_CONNECTION_STRING` | — | — |
 | new-relic | `NEWRELIC_ACCOUNT_ID`<br>`NEWRELIC_API_KEY` | — | — |
-| Notion | `NOTION_ACCESS_TOKEN` | — | — |
+| Notion | `NOTION_ACCESS_TOKEN`<br>`NOTION_DATABASE_ID`<br>`NOTION_PAGE_ID` | — | — |
 | OneDrive | `ONEDRIVE_ACCESS_TOKEN` | — | — |
 | oracle | `ORACLE_CONNECTION_STRING` | — | — |
 | pandadoc | `PANDADOC_API_KEY` | — | — |
