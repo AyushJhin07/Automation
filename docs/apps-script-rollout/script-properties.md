@@ -145,6 +145,7 @@ Salesforce workflows must populate both properties before deployment. Access tok
 | WooCommerce | `WOOCOMMERCE_CONSUMER_KEY`<br>`WOOCOMMERCE_CONSUMER_SECRET`<br>`WOOCOMMERCE_STORE_URL` | — | — |
 | wordpress | `WORDPRESS_PASSWORD`<br>`WORDPRESS_SITE_URL`<br>`WORDPRESS_USERNAME` | — | — |
 | Workday | `WORKDAY_PASSWORD`<br>`WORKDAY_USERNAME` | — | — |
+| Workfront | `WORKFRONT_API_KEY`<br>`WORKFRONT_DOMAIN` | — | `WORKFRONT_DOMAIN` |
 | Xero | `XERO_ACCESS_TOKEN` | — | — |
 | youtube | `YOUTUBE_ACCESS_TOKEN` | — | — |
 | zapier | `ZAPIER_WEBHOOK_URL` | — | — |
