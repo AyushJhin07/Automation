@@ -1,0 +1,78 @@
+exports[`Apps Script Trello REAL_OPS builds action.trello:create_card 1`] = `
+function step_createTrelloCard(ctx) {
+  const apiKey = getSecret('TRELLO_API_KEY');
+  const token = getSecret('TRELLO_TOKEN');
+
+  if (!apiKey || !token) {
+    logWarn('trello_missing_credentials', { message: 'Trello credentials not configured' });
+    return ctx;
+  }
+
+  const nameTemplate = 'Prep launch assets for {{product_name}}';
+  const descriptionTemplate = 'Include legal review and creative sign-off before publishing.';
+  const listTemplate = '5d5ea62b8b5aba1234567890';
+
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Trello create_card requires a name. Configure the Card Name field or provide a template that resolves to text.');
+  }
+
+  const listId = listTemplate ? interpolate(listTemplate, ctx).trim() : '';
+  if (!listId) {
+    throw new Error('Trello create_card requires a list ID. Configure the List field with a Trello list identifier.');
+  }
+
+  const description = descriptionTemplate ? interpolate(descriptionTemplate, ctx) : '';
+
+  const cardData = {
+    name: name,
+    desc: description,
+    idList: listId
+  };
+
+  try {
+    const response = rateLimitAware(() => fetchJson(\`https://api.trello.com/1/cards?key=\${apiKey}&token=\${token}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify(cardData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const card = response.body || null;
+    ctx.trelloCardId = card && card.id ? card.id : null;
+    ctx.trelloCardUrl = card && card.shortUrl ? card.shortUrl : (card && card.url ? card.url : null);
+    logInfo('trello_create_card', { cardId: ctx.trelloCardId || null, cardUrl: ctx.trelloCardUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+      }
+    }
+
+    const message = 'Trello create_card failed for list ' + listId + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+}
+`;

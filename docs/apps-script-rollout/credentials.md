@@ -118,6 +118,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `ASANA_ACCESS_TOKEN` | Yes | Personal access token used for task automation | `apps_script__asana__access_token` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Script Property tips: Generate a PAT that includes `tasks:write` and store it verbatim in Script Properties. The REAL_OPS handler validates the configured project GID, so mismatched environments surface clear errors before the API call.
+- Rate limits: Asana enforces per-user and per-app quotas. The handler now uses `rateLimitAware`, which automatically honors `Retry-After` headers and retries with backoff—plan workflows assuming the default 150 requests/minute ceiling.
 
 #### Box
 
@@ -176,6 +178,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `JIRA_EMAIL` | Yes | Account email paired with the API token | `apps_script__jira__email` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Script Property tips: Store `JIRA_BASE_URL` without a trailing slash—the Apps Script runtime reuses it to build browse links that get persisted to context logs. When tokens are missing, the handler raises actionable errors that mention the canonical Script Property names.
+- Rate limits: Atlassian returns granular `errorMessages` and field-level `errors`. Wrapping calls in `rateLimitAware` means the handler respects `Retry-After` hints and surfaces those payloads in the thrown exception for rapid debugging.
 
 #### Notion
 
@@ -212,6 +216,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 - Runbook: [Trello webhook registration](../webhooks-trello.md)
 - Troubleshooting: [Playbook](../troubleshooting-playbook.md)
+- Script Property tips: Generate the key/token pair from the same Trello account and scope the token for board access. Successful runs persist the created card ID and URL to the workflow context so downstream steps can link back to Trello.
+- Rate limits: Trello may reply with `Retry-After` headers when bursting. The REAL_OPS handler now delegates to `rateLimitAware`, which waits for those windows and rethrows descriptive errors that include Trello's response payload.
 
 #### Twilio
 
