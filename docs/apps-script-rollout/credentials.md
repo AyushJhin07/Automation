@@ -82,18 +82,16 @@ The helper automatically infers connector keys from the property prefix, so addi
 
 ### Tier-0 and Tier-1 connector reference
 
-Tier-0/Tier-1 connectors ship in the first rollout batches and must have their Script Properties documented with consistent aliases. Use the tables below when wiring Apps Script properties, populating Vault exports, or configuring `SECRET_HELPER_OVERRIDES`. Each table lists the canonical property requested by generated workflows, the `apps_script__` alias that keeps Script Properties namespaced, and the operational docs to reference during rollout.
+Tier-0/Tier-1 connectors ship in the first rollout batches and must have their Script Properties documented with consistent aliases. Use the tables below when wiring Apps Script properties, populating Vault exports, or configuring `SECRET_HELPER_OVERRIDES`. Each table lists the canonical property requested by generated workflows and the `apps_script__` alias that keeps Script Properties namespaced. Run `tsx scripts/verify-apps-script-properties.ts --write` whenever connector handlers change so this reference, the generated JSON report, and the lint rules remain synchronized. Connector-specific runbooks called out below should also be updated when property requirements evolve.
 
-The Apps Script runtime now seeds these aliases as defaults, so deployments can rely on the `apps_script__<connector>__...` property names without declaring custom overrides.
-
-When preferring namespaced properties, declare overrides similar to:
+The Apps Script runtime now seeds these aliases as defaults, so deployments can rely on the `apps_script__<connector>__...` property names without declaring custom overrides. When preferring namespaced properties, declare overrides similar to:
 
 ```js
 var SECRET_HELPER_OVERRIDES = {
   connectors: {
     hubspot: {
-      HUBSPOT_API_KEY: {
-        aliases: ['apps_script__hubspot__api_key']
+      HUBSPOT_ACCESS_TOKEN: {
+        aliases: ['apps_script__hubspot__access_token', 'HUBSPOT_API_KEY', 'apps_script__hubspot__api_key']
       }
     }
   }
@@ -106,32 +104,13 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
-| `AIRTABLE_API_KEY` | Yes | API key for REST calls | `apps_script__airtable__api_key` |
+| `AIRTABLE_API_KEY` | Yes | Personal access token for REST calls | `apps_script__airtable__api_key` |
 | `AIRTABLE_BASE_ID` | Yes | Default base identifier used by triggers/actions | `apps_script__airtable__base_id` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Script Property tips: `AIRTABLE_BASE_ID` seeds the pagination cursor for `list_records`, so workflows resume from the last offset even after the Apps Script runtime restarts.
-
-#### Slack
-
-| Script property | Required? | Purpose | Preferred aliases |
-| --- | --- | --- | --- |
-| `SLACK_BOT_TOKEN` | Yes | OAuth access token used for `chat.postMessage`, channel management, reactions, file uploads, and history polling. Must include `chat:write`, `channels:manage`, `channels:read`, `groups:history`, `mpim:history`, `im:history`, `users:read`, `reactions:write`, and `files:write` scopes. | `apps_script__slack__bot_token`, historical `SLACK_ACCESS_TOKEN` |
-| `SLACK_WEBHOOK_URL` | No | Fallback incoming webhook URL for legacy automations that still rely on webhooks when OAuth tokens are unavailable. | `apps_script__slack__webhook_url` |
-
-- Script Property tips: Configure the Apps Script deployment with a bot token that includes the scopes listed above. The runtime calls `requireOAuthToken('slack', …)` for every action and trigger, so missing scopes surface before the API call. Incoming webhooks remain supported as a safety valve but are only used when explicitly configured alongside the OAuth token.
-
-#### Salesforce
-
-| Script property | Required? | Purpose | Preferred aliases |
-| --- | --- | --- | --- |
-| `SALESFORCE_ACCESS_TOKEN` | Yes | Short-lived OAuth access token for REST calls | `apps_script__salesforce__access_token` |
-| `SALESFORCE_INSTANCE_URL` | Yes | Instance base URL (for example, `https://example.my.salesforce.com`) used to compose REST endpoints | `apps_script__salesforce__instance_url` |
-
-- Script Property tips: Salesforce access tokens typically expire within 12 hours. Automations must refresh the token via a scheduled job (or another CI system) and overwrite `SALESFORCE_ACCESS_TOKEN` before it expires. The Apps Script handler validates that both the access token and instance URL are present, so missing properties fail fast during execution.
-- OAuth refresh expectations: Configure the connected app with `offline_access` and persist the issued refresh token outside of Apps Script. Use that token to rotate the access token on a cadence and update Script Properties so deployments stay authorized.
-- Rate limits: Responses often include `errorCode`, `message`, and `fields` arrays. The handler wraps API calls in `rateLimitAware`, surfaces those arrays in the thrown error, and reuses Salesforce's suggested backoff hints.
-
+- **OAuth/API scopes:** Airtable personal access tokens must include the base(s) the workflow touches plus the required tables.
+- **Refresh strategy:** Tokens do not expire automatically, but rotate quarterly and revoke unused keys inside Airtable admin.
+- **API key naming:** Store the canonical value as `AIRTABLE_API_KEY`; the helper resolves namespaced `apps_script__airtable__api_key` automatically.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Asana
 
@@ -139,9 +118,10 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `ASANA_ACCESS_TOKEN` | Yes | Personal access token used for task automation | `apps_script__asana__access_token` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Script Property tips: Generate a PAT that includes `tasks:write` and store it verbatim in Script Properties. The REAL_OPS handler validates the configured project GID, so mismatched environments surface clear errors before the API call.
-- Rate limits: Asana enforces per-user and per-app quotas. The handler now uses `rateLimitAware`, which automatically honors `Retry-After` headers and retries with backoff—plan workflows assuming the default 150 requests/minute ceiling.
+- **OAuth/API scopes:** Generate PATs with at least `default` and `tasks:write` scopes so handlers can create/update work.
+- **Refresh strategy:** PATs behave like long-lived tokens; recreate them when team members change or permissions shift.
+- **API key naming:** Keep the canonical key as `ASANA_ACCESS_TOKEN`; `apps_script__asana__access_token` resolves automatically.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Box
 
@@ -149,9 +129,23 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `BOX_ACCESS_TOKEN` | Yes | OAuth access token for Box API requests | `apps_script__box__access_token` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- The token must include the `item_upload` scope (or equivalent enterprise permission) so upload sessions can create files in the target folders.
-- Apps Script uploads under 45 MB use the standard multipart endpoint. Larger payloads transparently switch to [chunked upload sessions](https://developer.box.com/guides/uploads/chunked/)—ensure the Box account tier supports them and allow a small buffer for the session `part_size` overhead when sizing payloads.
+- **OAuth scopes:** Include `item_upload`, `item_read`, and retention scopes for workflows that archive or move files.
+- **Refresh strategy:** OAuth Manager issues one-hour tokens—schedule a backend job to refresh and push updated values daily.
+- **API key naming:** Always write the refreshed token back to `BOX_ACCESS_TOKEN`; the namespaced alias resolves automatically.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### DocuSign
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `DOCUSIGN_ACCESS_TOKEN` | Yes | OAuth/JWT token for envelope lifecycle APIs | `apps_script__docusign__access_token` |
+| `DOCUSIGN_ACCOUNT_ID` | Yes | Target account GUID used in REST endpoints | `apps_script__docusign__account_id` |
+| `DOCUSIGN_BASE_URI` | Optional | Override base URI when routing outside the default shard | `apps_script__docusign__base_uri` |
+
+- **OAuth scopes:** Grant `signature`, `impersonation`, and any product-specific scopes the workflow exercises.
+- **Refresh strategy:** JWT tokens expire quickly—rotate them on each deployment or persist refresh tokens in the Vault bundle.
+- **API key naming:** Keep Script Properties in canonical casing; aliases allow `apps_script__docusign__…` overrides.
+- **Runbook:** Keep the DocuSign section of the [Troubleshooting Playbook](../troubleshooting-playbook.md) aligned with these properties.
 
 #### Dropbox
 
@@ -159,9 +153,10 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `DROPBOX_ACCESS_TOKEN` | Yes | OAuth access token for Dropbox file operations | `apps_script__dropbox__access_token` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Generate the token with the `files.content.write` scope so workflows can create or overwrite files in Dropbox.
-- Direct uploads are capped at 150 MB; the compiler automatically falls back to upload sessions for larger files. Configure Script Properties with tokens that can initiate sessions and confirm the Apps Script project has enough execution quota to stream the chunks.
+- **OAuth scopes:** Provision tokens with `files.content.write` and `files.content.read` for uploads, downloads, and metadata.
+- **Refresh strategy:** Dropbox short-lived tokens last four hours—schedule refreshes that overwrite Script Properties hourly.
+- **API key naming:** Store the value under `DROPBOX_ACCESS_TOKEN`; the helper reads the namespaced alias without overrides.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### GitHub
 
@@ -169,10 +164,22 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `GITHUB_ACCESS_TOKEN` | Yes | Personal access token or GitHub App installation token | `apps_script__github__access_token` |
 
-- **Script Property expectations:** Store a token that includes the `repo` scope. The Apps Script runtime now calls `requireOAuthToken('github')`, so missing or scope-limited tokens surface descriptive errors that mention the canonical Script Property name and its aliases. Repositories are validated in `owner/repo` format; misconfigured values will stop execution before a failing API call.
+- **OAuth scopes:** Tokens must include `repo` and, when managing issues/projects, the corresponding `project` scopes.
+- **Refresh strategy:** PATs rarely expire but should be rotated when org policies change; GitHub App tokens expire hourly—use the server-side signer to refresh and push updated Script Properties during deployment.
+- **API key naming:** Never rename the Script Property; the helper resolves `apps_script__github__access_token` automatically for namespaced deployments.
+- **Runbooks:** Keep [Troubleshooting Playbook](../troubleshooting-playbook.md) and connector-specific runbooks aligned; update recipes like [GitHub → Slack](../recipes/github-issue-to-slack.md#recipe-github-issue--slack-notification-webhook) when scopes change.
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Additional guidance: [GitHub → Slack automation recipe](../recipes/github-issue-to-slack.md#recipe-github-issue--slack-notification-webhook)
+#### Google Admin
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `GOOGLE_ADMIN_ACCESS_TOKEN` | Yes | OAuth token for Admin Directory APIs | `apps_script__google_admin__access_token` |
+| `GOOGLE_ADMIN_CUSTOMER_ID` | Optional | Overrides the default `my_customer` tenant | `apps_script__google_admin__customer_id` |
+
+- **OAuth scopes:** Align with the handlers in use (for example `https://www.googleapis.com/auth/admin.directory.user` and `…group` scopes for CRUD actions).
+- **Refresh strategy:** Tokens expire in one hour—use delegated domain-wide credentials or a refresh service to keep values current.
+- **API key naming:** Maintain the canonical property names; aliases ensure namespaced variants resolve without additional overrides.
+- **Runbook:** Document changes in the Google Admin section of the [Troubleshooting Playbook](../troubleshooting-playbook.md).
 
 #### Google Drive
 
@@ -181,19 +188,34 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `GOOGLE_DRIVE_ACCESS_TOKEN` | Yes (unless service account configured) | OAuth access token resolved by `requireOAuthToken('google-drive')` | `apps_script__google_drive__access_token` |
 | `GOOGLE_DRIVE_SERVICE_ACCOUNT` | Optional | JSON service-account key used when OAuth tokens are unavailable | `apps_script__google_drive__service_account` |
 
-- Runbook: [OAuth setup — Google](../phases/oauth-setup.md#google-drivecalendar)
-- Apps Script now issues REST calls with `rateLimitAware` and `requireOAuthToken`. Store an access token scoped to `https://www.googleapis.com/auth/drive.file` (or broader) in Script Properties before deploying Tier‑0 automations.
-- Service accounts are supported for back-office automations. Save the raw JSON key in `GOOGLE_DRIVE_SERVICE_ACCOUNT`; the handler exchanges it for an access token at runtime. The account must have access to the destination folders.
-- Parent folder IDs are validated via the Drive API before creation. Misconfigured IDs surface structured errors in workflow logs—double-check shared-drive permissions if validation fails.
+- **OAuth scopes:** Use `https://www.googleapis.com/auth/drive.file` (minimum) or broader scopes when managing shared drives.
+- **Refresh strategy:** Treat user tokens as one-hour credentials; refresh them automatically and overwrite Script Properties.
+- **API key naming:** Service account blobs must remain in `GOOGLE_DRIVE_SERVICE_ACCOUNT` to align with the helper overrides.
+- **Runbook:** [OAuth setup — Google](../phases/oauth-setup.md#google-drivecalendar)
+
+#### Google Sheets
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `GOOGLE_SHEETS_ACCESS_TOKEN` | Yes (unless service account configured) | OAuth token for Sheets API requests | `apps_script__sheets__access_token`, `apps_script__google_sheets__access_token` |
+| `GOOGLE_SHEETS_SERVICE_ACCOUNT` | Optional | Service-account JSON used for headless updates | `apps_script__sheets__service_account`, `apps_script__google_sheets__service_account` |
+| `GOOGLE_SHEETS_DELEGATED_EMAIL` | Optional | Delegated user email when impersonating via service accounts | `apps_script__sheets__delegated_email`, `apps_script__google_sheets__delegated_email` |
+
+- **OAuth scopes:** Require `https://www.googleapis.com/auth/spreadsheets` for write access (handlers downshift to read-only automatically when possible).
+- **Refresh strategy:** User tokens expire hourly—refresh centrally and update Script Properties; service accounts should be rotated quarterly and re-shared with the relevant spreadsheets.
+- **API key naming:** Maintain canonical property names; the helper already maps both `apps_script__sheets__…` and `apps_script__google_sheets__…` aliases.
+- **Runbook:** Capture scope updates in the Google Sheets rollout checklist within the connector runbook.
 
 #### HubSpot
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
-| `HUBSPOT_API_KEY` | Yes | Private app token for CRM endpoints | `apps_script__hubspot__api_key` |
+| `HUBSPOT_ACCESS_TOKEN` | Yes | OAuth token issued by OAuth Manager or private app | `apps_script__hubspot__access_token`, historical `HUBSPOT_API_KEY`, `apps_script__hubspot__api_key` |
 
-- Runbook: [OAuth setup — HubSpot](../phases/oauth-setup.md#hubspot)
-- Additional guidance: [Typeform → HubSpot recipe](../recipes/hubspot-contact-from-typeform.md#recipe-create-hubspot-contact-from-typeform-submission)
+- **OAuth scopes:** Follow the [HubSpot OAuth setup guide](../phases/oauth-setup.md#hubspot); typical flows need the CRM read/write scopes listed there.
+- **Refresh strategy:** OAuth Manager refreshes tokens nightly; ensure the rotation job writes the latest token into Script Properties for staging and production.
+- **API key naming:** Use `HUBSPOT_ACCESS_TOKEN` going forward. The helper keeps backwards compatibility with `HUBSPOT_API_KEY` via aliases.
+- **Runbooks:** Update both the HubSpot OAuth guide and connector runbooks when scopes or property expectations change.
 
 #### Jira
 
@@ -203,40 +225,85 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `JIRA_BASE_URL` | Yes | Cloud site base URL (e.g., `https://acme.atlassian.net`) | `apps_script__jira__base_url` |
 | `JIRA_EMAIL` | Yes | Account email paired with the API token | `apps_script__jira__email` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Script Property tips: Store `JIRA_BASE_URL` without a trailing slash—the Apps Script runtime reuses it to build browse links that get persisted to context logs. When tokens are missing, the handler raises actionable errors that mention the canonical Script Property names.
-- Rate limits: Atlassian returns granular `errorMessages` and field-level `errors`. Wrapping calls in `rateLimitAware` means the handler respects `Retry-After` hints and surfaces those payloads in the thrown exception for rapid debugging.
+- **OAuth scopes:** Jira Cloud tokens inherit permissions from the user; ensure the account has project-admin rights when creating issues or managing workflows.
+- **Refresh strategy:** Atlassian API tokens do not expire automatically but should be regenerated when admins rotate credentials.
+- **API key naming:** Store values under the canonical Script Property names to satisfy the verification script.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Notion
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
 | `NOTION_ACCESS_TOKEN` | Yes | Internal integration token or OAuth access token for Notion API | `apps_script__notion__access_token` |
-| `NOTION_DATABASE_ID` | Optional | Default database ID used when a manifest omits `parent.database_id` | `apps_script__notion__database_id` |
-| `NOTION_PAGE_ID` | Optional | Default page ID used when a manifest sets `parent.type` to `page_id` without a value | `apps_script__notion__page_id` |
+| `NOTION_DATABASE_ID` | Optional | Default database ID when manifests omit `parent.database_id` | `apps_script__notion__database_id` |
+| `NOTION_PAGE_ID` | Optional | Default page ID for page-centric workflows | `apps_script__notion__page_id` |
 
-- OAuth guidance: Create an internal integration in Notion (or complete the OAuth handshake) and share the target databases/pages with that integration so the token stored in `NOTION_ACCESS_TOKEN` can create content. Populate `NOTION_DATABASE_ID` or `NOTION_PAGE_ID` when workflows rely on those defaults.
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- **OAuth scopes:** Internal integrations cover the needed scopes automatically; OAuth flows should request `databases.read`, `databases.write`, `pages.read`, and `pages.write` for Tier‑1 workflows.
+- **Refresh strategy:** Tokens are long-lived; rotate when the integration owner changes or when a security review triggers new tokens.
+- **API key naming:** Document defaults in the runbook whenever `NOTION_DATABASE_ID`/`NOTION_PAGE_ID` change so verify script output stays current.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Salesforce
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SALESFORCE_ACCESS_TOKEN` | Yes | Short-lived OAuth access token for REST calls | `apps_script__salesforce__access_token` |
+| `SALESFORCE_INSTANCE_URL` | Yes | Instance base URL (for example, `https://example.my.salesforce.com`) | `apps_script__salesforce__instance_url` |
+
+- **OAuth scopes:** Request `refresh_token`, `api`, and any object-specific scopes required by the workflow.
+- **Refresh strategy:** Access tokens typically expire within 12 hours—use the stored refresh token outside Apps Script to rotate and overwrite `SALESFORCE_ACCESS_TOKEN` before expiry.
+- **API key naming:** Keep the canonical Script Property names in sync with `scripts/verify-apps-script-properties.ts`.
+- **Runbook:** Update the Salesforce entry in the [Troubleshooting Playbook](../troubleshooting-playbook.md) when scopes or rotation cadences change.
 
 #### Shopify
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
 | `SHOPIFY_ACCESS_TOKEN` | Yes | Private app or custom storefront access token | `apps_script__shopify__access_token` |
+| `SHOPIFY_API_KEY` | Optional | Legacy API key used alongside storefront tokens | `apps_script__shopify__api_key` |
 | `SHOPIFY_SHOP_DOMAIN` | Yes | Shop domain used to resolve REST endpoints | `apps_script__shopify__shop_domain` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Required scopes: Apps Script order creation expects an access token authorized for `write_orders` so draft orders can be created, plus `read_customers`/`write_customers` when the workflow enriches or upserts customer profiles alongside the order payload.
-- Script Property tips: Populate `SHOPIFY_SHOP_DOMAIN` without the `https://` prefix (for example `acme-store`) so generated handlers can construct both Admin URLs and customer-facing order status links.
+- **OAuth scopes:** Ensure tokens cover `write_orders`, `read_orders`, and customer scopes when workflows sync order/customer data.
+- **Refresh strategy:** Private app tokens are long-lived; rotate when regenerating credentials or migrating to OAuth.
+- **API key naming:** Store domains without protocol (`acme-store`) and keep API keys under the canonical property names to satisfy automation checks.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Slack
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SLACK_BOT_TOKEN` | Yes | OAuth access token used for `chat.postMessage`, channel management, reactions, file uploads, and history polling | `apps_script__slack__bot_token`, historical `SLACK_ACCESS_TOKEN` |
+| `SLACK_WEBHOOK_URL` | No | Fallback incoming webhook URL for legacy automations | `apps_script__slack__webhook_url` |
+
+- **OAuth scopes:** Include `chat:write`, `channels:manage`, `channels:read`, `groups:history`, `mpim:history`, `im:history`, `users:read`, `reactions:write`, and `files:write`.
+- **Refresh strategy:** Slack issues bot tokens that remain valid until revoked; coordinate regenerations with the Slack connector runbook and update Script Properties immediately.
+- **API key naming:** Migrate away from `SLACK_ACCESS_TOKEN` in configs—the helper keeps it as an alias for backwards compatibility.
+- **Runbooks:** Keep [OAuth Setup — Slack](../phases/oauth-setup.md#slack) and troubleshooting guides aligned with the property list.
+
+#### Square
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SQUARE_ACCESS_TOKEN` | Yes | OAuth access token for Square REST APIs | `apps_script__square__access_token` |
+| `SQUARE_APPLICATION_ID` | Yes | Square application identifier used for webhook signatures | `apps_script__square__application_id` |
+| `SQUARE_ENVIRONMENT` | Optional | Overrides between `sandbox` and `production` | `apps_script__square__environment` |
+
+- **OAuth scopes:** Request `PAYMENTS_READ`, `PAYMENTS_WRITE`, and other capability scopes the workflow requires.
+- **Refresh strategy:** Tokens expire after 30 days of inactivity—refresh via OAuth Manager and overwrite Script Properties on rotation.
+- **API key naming:** Set `SQUARE_ENVIRONMENT` explicitly in staging to avoid sandbox leaks; verification scripts expect the canonical property names.
+- **Runbook:** Note Square environment/scope updates inside the [Troubleshooting Playbook](../troubleshooting-playbook.md).
 
 #### Stripe
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
 | `STRIPE_SECRET_KEY` | Yes | Secret API key for payments, refunds, and subscription automation | `apps_script__stripe__secret_key` |
+| `STRIPE_ACCOUNT_OVERRIDE` | Optional | Supplies the `Stripe-Account` header for Connect workflows | `apps_script__stripe__account_override` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Additional guidance: [Stripe payment succeeded → Slack recipe](../recipes/stripe-payment-succeeded-to-slack.md#recipe-stripe-payment-succeeded-%E2%86%92-slack-notification)
+- **OAuth scopes:** Standard secret keys cover the Stripe API; Connect flows may require restricted keys with explicit object permissions.
+- **Refresh strategy:** Rotate keys when mandated by Stripe security reviews and immediately update Script Properties (and sealed bundles).
+- **API key naming:** Keep keys in canonical properties so `scripts/verify-apps-script-properties.ts` continues to validate deployments.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Trello
 
@@ -245,10 +312,10 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `TRELLO_API_KEY` | Yes | REST API key from Trello developer portal | `apps_script__trello__api_key` |
 | `TRELLO_TOKEN` | Yes | OAuth token tied to the API key | `apps_script__trello__token` |
 
-- Runbook: [Trello webhook registration](../webhooks-trello.md)
-- Troubleshooting: [Playbook](../troubleshooting-playbook.md)
-- Script Property tips: Generate the key/token pair from the same Trello account and scope the token for board access. Successful runs persist the created card ID and URL to the workflow context so downstream steps can link back to Trello.
-- Rate limits: Trello may reply with `Retry-After` headers when bursting. The REAL_OPS handler now delegates to `rateLimitAware`, which waits for those windows and rethrows descriptive errors that include Trello's response payload.
+- **OAuth scopes:** Generate tokens with `read`, `write`, and `account` scopes to cover Tier‑1 automations.
+- **Refresh strategy:** Tokens can be long-lived when `expiration=never`; audit them quarterly and reissue when membership changes.
+- **API key naming:** Keep the canonical property names in sync; the alias removes the need for manual overrides.
+- **Runbooks:** [Trello webhook registration](../webhooks-trello.md) and [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Twilio
 
@@ -258,7 +325,10 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `TWILIO_AUTH_TOKEN` | Yes | Secret token for API authentication | `apps_script__twilio__auth_token` |
 | `TWILIO_FROM_NUMBER` | Yes | Default sending phone number for outbound messages | `apps_script__twilio__from_number` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- **OAuth scopes:** Twilio uses basic auth—ensure the API key has `Programmable SMS` permissions for messaging workflows.
+- **Refresh strategy:** Rotate auth tokens whenever they are reissued in the Twilio console; update Script Properties immediately to avoid auth failures.
+- **API key naming:** Keep the canonical property names for compatibility with verification tooling.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Typeform
 
@@ -266,8 +336,10 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `TYPEFORM_ACCESS_TOKEN` | Yes | Personal token for form management APIs | `apps_script__typeform__access_token` |
 
-- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
-- Additional guidance: [Typeform webhook workflow recipe](../recipes/hubspot-contact-from-typeform.md#recipe-create-hubspot-contact-from-typeform-submission)
+- **OAuth scopes:** Generate tokens with `forms:read`, `forms:write`, and `responses:read` scopes to enable trigger + action flows.
+- **Refresh strategy:** Tokens are revocable; audit them monthly and rotate if inactivity warnings appear in the Typeform console.
+- **API key naming:** Store values in the canonical property name; namespaced aliases resolve automatically during runtime.
+- **Runbook:** [Troubleshooting Playbook](../troubleshooting-playbook.md) and [Typeform → HubSpot recipe](../recipes/hubspot-contact-from-typeform.md#recipe-create-hubspot-contact-from-typeform-submission)
 
 ## Vault export payloads
 
