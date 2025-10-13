@@ -55,6 +55,15 @@ When implementing polling or time-driven triggers:
 - Call `syncTriggerRegistry(activeKeys)` inside `setupTriggers()` after registering new triggers via `buildTimeTrigger`. This ensures removed triggers are cleaned up and avoids duplicate schedules.
 - Set `ephemeral: true` on one-off delay triggers so they are not recorded in the persistent registry.
 
+### Google Sheets authentication requirements
+
+Apps Script handlers that call the Google Sheets REST API now require explicit Script Properties so deployments can choose between delegated OAuth tokens and service accounts:
+
+- **Delegated OAuth:** populate `GOOGLE_SHEETS_ACCESS_TOKEN` (or its aliased `apps_script__sheets__access_token`) with a user token that includes the `https://www.googleapis.com/auth/spreadsheets` scope. The handler automatically downgrades read-only calls to `https://www.googleapis.com/auth/spreadsheets.readonly` when possible.
+- **Service accounts:** provide `GOOGLE_SHEETS_SERVICE_ACCOUNT` containing the JSON key and, when using domain-wide delegation, set `GOOGLE_SHEETS_DELEGATED_EMAIL` to the impersonated user. The runtime exchanges the JWT for an access token on every execution and surfaces structured errors when the payload is malformed.
+
+Document the chosen credential type in rollout plans and double-check that staging/production Script Properties include the same scopes before promoting Tier-0 automations.
+
 ## Concrete examples
 
 ### Slack `send_message`

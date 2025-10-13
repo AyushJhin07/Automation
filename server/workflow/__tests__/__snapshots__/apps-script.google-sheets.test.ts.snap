@@ -1,0 +1,724 @@
+exports[`Apps Script Google Sheets REAL_OPS builds trigger.sheets:onEdit 1`] = `
+function onEdit(e) {
+  return buildPollingWrapper('trigger.sheets:onEdit', function (runtime) {
+    var spreadsheetIdTemplate = '';
+    var spreadsheetUrlTemplate = '';
+    var sheetNameTemplate = '';
+    var rangeTemplate = '';
+    var renderOptionTemplate = 'FORMATTED_VALUE';
+
+    function resolveSpreadsheetId(context) {
+      var id = spreadsheetIdTemplate ? interpolate(spreadsheetIdTemplate, context).trim() : '';
+      if (!id && spreadsheetUrlTemplate) {
+        var urlCandidate = interpolate(spreadsheetUrlTemplate, context).trim();
+        if (urlCandidate) {
+          var match = urlCandidate.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+          if (match && match[1]) {
+            id = match[1];
+          }
+        }
+      }
+      if (!id) {
+        throw new Error('trigger.sheets:onEdit requires a spreadsheetId or spreadsheetUrl');
+      }
+      return id;
+    }
+
+    function resolveSheetName(context, fallback) {
+      if (sheetNameTemplate) {
+        var configured = interpolate(sheetNameTemplate, context).trim();
+        if (configured) {
+          return configured;
+        }
+      }
+      if (fallback) {
+        return fallback;
+      }
+      return 'Sheet1';
+    }
+
+    function resolveRange(context, sheet, startRow, endRow) {
+      if (rangeTemplate) {
+        var raw = interpolate(rangeTemplate, context).trim();
+        if (raw) {
+          if (raw.indexOf('!') === -1 && sheet) {
+            return sheet + '!' + raw;
+          }
+          return raw;
+        }
+      }
+      if (!startRow || !endRow) {
+        throw new Error('trigger.sheets:onEdit requires a configured range or event rows');
+      }
+      var prefix = sheet ? sheet + '!' : '';
+      return prefix + startRow + ':' + endRow;
+    }
+
+    function getSheetsAccessToken(scopeList) {
+      var scopes = Array.isArray(scopeList) && scopeList.length ? scopeList : ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+      try {
+        return requireOAuthToken('google-sheets', { scopes: scopes });
+      } catch (oauthError) {
+        var properties = PropertiesService.getScriptProperties();
+        var rawServiceAccount = properties.getProperty('GOOGLE_SHEETS_SERVICE_ACCOUNT');
+        if (!rawServiceAccount) {
+          throw oauthError;
+        }
+        var delegatedUser = properties.getProperty('GOOGLE_SHEETS_DELEGATED_EMAIL');
+
+        function base64UrlEncode(value) {
+          if (Object.prototype.toString.call(value) === '[object Array]') {
+            return Utilities.base64EncodeWebSafe(value).replace(/=+$/, '');
+          }
+          return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8).replace(/=+$/, '');
+        }
+
+        try {
+          var parsed = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+          if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Service account payload must be valid JSON.');
+          }
+          var clientEmail = parsed.client_email;
+          var privateKey = parsed.private_key;
+          if (!clientEmail || !privateKey) {
+            throw new Error('Service account JSON must include client_email and private_key.');
+          }
+
+          var now = Math.floor(Date.now() / 1000);
+          var headerSegment = base64UrlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+          var claimPayload = {
+            iss: clientEmail,
+            scope: scopes.join(' '),
+            aud: 'https://oauth2.googleapis.com/token',
+            exp: now + 3600,
+            iat: now
+          };
+          if (delegatedUser) {
+            claimPayload.sub = delegatedUser;
+          }
+          var claimSegment = base64UrlEncode(JSON.stringify(claimPayload));
+          var signingInput = headerSegment + '.' + claimSegment;
+          var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, privateKey);
+          var signatureSegment = base64UrlEncode(signatureBytes);
+          var assertion = signingInput + '.' + signatureSegment;
+
+          var tokenResponse = rateLimitAware(function () {
+            return fetchJson({
+              url: 'https://oauth2.googleapis.com/token',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+              },
+              payload: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion),
+              contentType: 'application/x-www-form-urlencoded'
+            });
+          }, { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+          var token = tokenResponse.body && tokenResponse.body.access_token;
+          if (!token) {
+            throw new Error('Service account token exchange did not return an access_token.');
+          }
+          return token;
+        } catch (serviceError) {
+          var serviceMessage = serviceError && serviceError.message ? serviceError.message : String(serviceError);
+          throw new Error('Google Sheets service account authentication failed: ' + serviceMessage);
+        }
+      }
+    }
+
+    function fetchEditedRows(spreadsheetId, range, accessToken, valueRenderOption) {
+      var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(range) + '?majorDimension=ROWS&valueRenderOption=' + encodeURIComponent(valueRenderOption || 'FORMATTED_VALUE');
+      var response = rateLimitAware(function () {
+        return fetchJson({
+          url: url,
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + accessToken,
+            'Accept': 'application/json'
+          }
+        });
+      }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+      return response.body && response.body.values ? response.body.values : [];
+    }
+
+    if (!e || !e.range || typeof e.range.getRow !== 'function') {
+      runtime.summary({ skipped: true, reason: 'missing_range' });
+      return { skipped: true, reason: 'missing_range' };
+    }
+
+    var interpolationContext = {};
+    var runtimeState = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    for (var stateKey in runtimeState) {
+      if (Object.prototype.hasOwnProperty.call(runtimeState, stateKey)) {
+        interpolationContext[stateKey] = runtimeState[stateKey];
+      }
+    }
+
+    var spreadsheetId = resolveSpreadsheetId(interpolationContext);
+    var activeSheetName = null;
+    if (typeof e.range.getSheet === 'function') {
+      var activeSheet = e.range.getSheet();
+      if (activeSheet && typeof activeSheet.getName === 'function') {
+        activeSheetName = activeSheet.getName();
+      }
+    }
+
+    var sheetName = resolveSheetName(interpolationContext, activeSheetName);
+    var startRow = e.range.getRow();
+    var rowCount = typeof e.range.getNumRows === 'function' ? e.range.getNumRows() : 1;
+    var endRow = startRow + Math.max(rowCount, 1) - 1;
+    var resolvedRange = resolveRange(interpolationContext, sheetName, startRow, endRow);
+    var valueRenderOption = renderOptionTemplate || 'FORMATTED_VALUE';
+
+    try {
+      var accessToken = getSheetsAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+      var values = fetchEditedRows(spreadsheetId, resolvedRange, accessToken, valueRenderOption);
+      var items = [];
+
+      for (var offset = 0; offset < Math.max(rowCount, 1); offset++) {
+        var rowNumber = startRow + offset;
+        var rowValues = values[offset] || [];
+        var singleRange = sheetName ? sheetName + '!' + rowNumber + ':' + rowNumber : rowNumber + ':' + rowNumber;
+        items.push({
+          spreadsheetId: spreadsheetId,
+          sheetName: sheetName,
+          rowNumber: rowNumber,
+          range: singleRange,
+          values: rowValues
+        });
+      }
+
+      var batch = runtime.dispatchBatch(items, function (entry) {
+        return {
+          spreadsheetId: entry.spreadsheetId,
+          sheetName: entry.sheetName,
+          rowNumber: entry.rowNumber,
+          range: entry.range,
+          values: entry.values
+        };
+      });
+
+      runtime.state.lastSpreadsheetId = spreadsheetId;
+      runtime.state.lastSheet = sheetName;
+      runtime.state.lastProcessedRange = resolvedRange;
+      runtime.state.lastRow = endRow;
+      runtime.state.lastRowCount = rowCount;
+
+      runtime.summary({
+        spreadsheetId: spreadsheetId,
+        sheet: sheetName,
+        range: resolvedRange,
+        rowsAttempted: batch.attempted,
+        rowsDispatched: batch.succeeded,
+        rowsFailed: batch.failed
+      });
+
+      logInfo('google_sheets_onedit_success', {
+        spreadsheetId: spreadsheetId,
+        sheet: sheetName,
+        range: resolvedRange,
+        rowsAttempted: batch.attempted,
+        rowsDispatched: batch.succeeded,
+        rowsFailed: batch.failed
+      });
+
+      return {
+        spreadsheetId: spreadsheetId,
+        sheet: sheetName,
+        range: resolvedRange,
+        rowsAttempted: batch.attempted,
+        rowsDispatched: batch.succeeded,
+        rowsFailed: batch.failed,
+        lastRow: endRow
+      };
+    } catch (error) {
+      var message = error && error.message ? error.message : String(error);
+      logError('google_sheets_onedit_failure', {
+        spreadsheetId: spreadsheetId,
+        sheet: sheetName,
+        range: resolvedRange,
+        message: message
+      });
+      throw error;
+    }
+  });
+}
+`;
+
+exports[`Apps Script Google Sheets REAL_OPS builds action.sheets:getRow 1`] = `
+function step_getRow(ctx) {
+  ctx = ctx || {};
+
+  var spreadsheetIdTemplate = '';
+  var spreadsheetUrlTemplate = '';
+  var sheetNameTemplate = '';
+  var rangeTemplate = '';
+  var valueRenderOption = 'FORMATTED_VALUE';
+  var majorDimension = 'ROWS';
+  var rowNumberConfig = "";
+
+  function resolveSpreadsheetId(context) {
+    var id = spreadsheetIdTemplate ? interpolate(spreadsheetIdTemplate, context).trim() : '';
+    if (!id && spreadsheetUrlTemplate) {
+      var urlCandidate = interpolate(spreadsheetUrlTemplate, context).trim();
+      if (urlCandidate) {
+        var match = urlCandidate.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+          id = match[1];
+        }
+      }
+    }
+    if (!id) {
+      throw new Error('action.sheets:getRow requires a spreadsheetId or spreadsheetUrl');
+    }
+    return id;
+  }
+
+  function resolveSheetName(context) {
+    if (sheetNameTemplate) {
+      var configured = interpolate(sheetNameTemplate, context).trim();
+      if (configured) {
+        return configured;
+      }
+    }
+    if (context.sheetName) {
+      return String(context.sheetName);
+    }
+    if (context.sheet) {
+      return String(context.sheet);
+    }
+    return 'Sheet1';
+  }
+
+  function resolveRowNumber(context) {
+    var candidate = rowNumberConfig;
+    if (typeof candidate === 'string') {
+      var interpolated = interpolate(candidate, context).trim();
+      if (interpolated) {
+        candidate = interpolated;
+      }
+    }
+    if (candidate === null || candidate === undefined || candidate === '') {
+      if (context.rowNumber !== undefined && context.rowNumber !== null) {
+        candidate = context.rowNumber;
+      } else if (context.row !== undefined && context.row !== null) {
+        candidate = context.row;
+      }
+    }
+    var parsed = Number(candidate);
+    if (!parsed || isNaN(parsed) || parsed < 1) {
+      throw new Error('action.sheets:getRow requires a positive rowNumber');
+    }
+    return Math.floor(parsed);
+  }
+
+  function resolveRange(context, sheetName, rowNumber) {
+    if (rangeTemplate) {
+      var raw = interpolate(rangeTemplate, context).trim();
+      if (raw) {
+        if (raw.indexOf('!') === -1 && sheetName) {
+          return sheetName + '!' + raw;
+        }
+        return raw;
+      }
+    }
+    var prefix = sheetName ? sheetName + '!' : '';
+    return prefix + rowNumber + ':' + rowNumber;
+  }
+
+  function getSheetsAccessToken(scopeList) {
+    var scopes = Array.isArray(scopeList) && scopeList.length ? scopeList : ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+    try {
+      return requireOAuthToken('google-sheets', { scopes: scopes });
+    } catch (oauthError) {
+      var properties = PropertiesService.getScriptProperties();
+      var rawServiceAccount = properties.getProperty('GOOGLE_SHEETS_SERVICE_ACCOUNT');
+      if (!rawServiceAccount) {
+        throw oauthError;
+      }
+      var delegatedUser = properties.getProperty('GOOGLE_SHEETS_DELEGATED_EMAIL');
+
+      function base64UrlEncode(value) {
+        if (Object.prototype.toString.call(value) === '[object Array]') {
+          return Utilities.base64EncodeWebSafe(value).replace(/=+$/, '');
+        }
+        return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8).replace(/=+$/, '');
+      }
+
+      try {
+        var parsed = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Service account payload must be valid JSON.');
+        }
+        var clientEmail = parsed.client_email;
+        var privateKey = parsed.private_key;
+        if (!clientEmail || !privateKey) {
+          throw new Error('Service account JSON must include client_email and private_key.');
+        }
+
+        var now = Math.floor(Date.now() / 1000);
+        var headerSegment = base64UrlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+        var claimPayload = {
+          iss: clientEmail,
+          scope: scopes.join(' '),
+          aud: 'https://oauth2.googleapis.com/token',
+          exp: now + 3600,
+          iat: now
+        };
+        if (delegatedUser) {
+          claimPayload.sub = delegatedUser;
+        }
+        var claimSegment = base64UrlEncode(JSON.stringify(claimPayload));
+        var signingInput = headerSegment + '.' + claimSegment;
+        var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, privateKey);
+        var signatureSegment = base64UrlEncode(signatureBytes);
+        var assertion = signingInput + '.' + signatureSegment;
+
+        var tokenResponse = rateLimitAware(function () {
+          return fetchJson({
+            url: 'https://oauth2.googleapis.com/token',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            payload: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion),
+            contentType: 'application/x-www-form-urlencoded'
+          });
+        }, { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+        var token = tokenResponse.body && tokenResponse.body.access_token;
+        if (!token) {
+          throw new Error('Service account token exchange did not return an access_token.');
+        }
+        return token;
+      } catch (serviceError) {
+        var serviceMessage = serviceError && serviceError.message ? serviceError.message : String(serviceError);
+        throw new Error('Google Sheets service account authentication failed: ' + serviceMessage);
+      }
+    }
+  }
+
+  var spreadsheetId = resolveSpreadsheetId(ctx);
+  var sheetName = resolveSheetName(ctx);
+  var rowNumber = resolveRowNumber(ctx);
+  var resolvedRange = resolveRange(ctx, sheetName, rowNumber);
+  var accessToken = getSheetsAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+
+  var requestUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(resolvedRange) + '?majorDimension=' + encodeURIComponent(majorDimension || 'ROWS') + '&valueRenderOption=' + encodeURIComponent(valueRenderOption || 'FORMATTED_VALUE');
+
+  try {
+    var response = rateLimitAware(function () {
+      return fetchJson({
+        url: requestUrl,
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Accept': 'application/json'
+        }
+      });
+    }, { attempts: 3, initialDelayMs: 500, jitter: 0.2 });
+
+    var values = response.body && response.body.values ? response.body.values : [];
+    var rowValues = [];
+    if (majorDimension === 'COLUMNS') {
+      for (var colIndex = 0; colIndex < values.length; colIndex++) {
+        var column = values[colIndex];
+        if (Array.isArray(column)) {
+          rowValues.push(column[0] !== undefined ? column[0] : null);
+        } else {
+          rowValues.push(column);
+        }
+      }
+    } else {
+      rowValues = values.length > 0 && Array.isArray(values[0]) ? values[0] : [];
+    }
+
+    var result = {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      rowNumber: rowNumber,
+      range: resolvedRange,
+      values: rowValues,
+      valueRenderOption: valueRenderOption || 'FORMATTED_VALUE'
+    };
+
+    ctx.rowNumber = rowNumber;
+    ctx.row = rowNumber;
+    ctx.sheetName = sheetName;
+    ctx.rowValues = rowValues;
+    ctx.googleSheetsRowValues = rowValues;
+    ctx.googleSheetsLastRead = result;
+
+    logInfo('google_sheets_get_row_success', {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      rowNumber: rowNumber,
+      range: resolvedRange
+    });
+
+    return ctx;
+  } catch (error) {
+    var status = error && typeof error.status === 'number' ? error.status : null;
+    if (status && status >= 400 && status < 500 && status !== 429) {
+      error.retryable = false;
+    }
+    var message = error && error.message ? error.message : String(error);
+    logError('google_sheets_get_row_failure', {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      rowNumber: rowNumber,
+      range: resolvedRange,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+}
+`;
+
+exports[`Apps Script Google Sheets REAL_OPS builds action.sheets:append_row 1`] = `
+function step_appendRow(ctx) {
+  ctx = ctx || {};
+
+  var spreadsheetIdTemplate = '';
+  var spreadsheetUrlTemplate = '';
+  var sheetNameTemplate = '';
+  var rangeTemplate = '';
+  var valueInputOption = 'USER_ENTERED';
+  var insertDataOption = 'INSERT_ROWS';
+  var includeValuesInResponse = true;
+  var valuesConfig = ["{{email}}","{{status}}"];
+
+  function resolveSpreadsheetId(context) {
+    var id = spreadsheetIdTemplate ? interpolate(spreadsheetIdTemplate, context).trim() : '';
+    if (!id && spreadsheetUrlTemplate) {
+      var urlCandidate = interpolate(spreadsheetUrlTemplate, context).trim();
+      if (urlCandidate) {
+        var match = urlCandidate.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+          id = match[1];
+        }
+      }
+    }
+    if (!id) {
+      throw new Error('action.sheets:append_row requires a spreadsheetId or spreadsheetUrl');
+    }
+    return id;
+  }
+
+  function resolveSheetName(context) {
+    if (sheetNameTemplate) {
+      var configured = interpolate(sheetNameTemplate, context).trim();
+      if (configured) {
+        return configured;
+      }
+    }
+    if (context.sheetName) {
+      return String(context.sheetName);
+    }
+    if (context.sheet) {
+      return String(context.sheet);
+    }
+    return 'Sheet1';
+  }
+
+  function resolveRange(context, sheetName) {
+    if (rangeTemplate) {
+      var raw = interpolate(rangeTemplate, context).trim();
+      if (raw) {
+        if (raw.indexOf('!') === -1 && sheetName) {
+          return sheetName + '!' + raw;
+        }
+        return raw;
+      }
+    }
+    if (sheetName) {
+      return sheetName;
+    }
+    throw new Error('action.sheets:append_row requires a sheetName when range is not provided');
+  }
+
+  function resolveValues(context) {
+    var rawValues = Array.isArray(valuesConfig) ? valuesConfig : [];
+    var resolved = [];
+    for (var index = 0; index < rawValues.length; index++) {
+      var entry = rawValues[index];
+      var value = entry;
+      if (typeof value === 'string') {
+        value = interpolate(value, context);
+      } else if (value && typeof value === 'object' && typeof value.value !== 'undefined' && value.mode === 'static') {
+        value = value.value;
+      }
+      resolved.push(value);
+    }
+    return resolved;
+  }
+
+  function getSheetsAccessToken(scopeList) {
+    var scopes = Array.isArray(scopeList) && scopeList.length ? scopeList : ['https://www.googleapis.com/auth/spreadsheets'];
+    try {
+      return requireOAuthToken('google-sheets', { scopes: scopes });
+    } catch (oauthError) {
+      var properties = PropertiesService.getScriptProperties();
+      var rawServiceAccount = properties.getProperty('GOOGLE_SHEETS_SERVICE_ACCOUNT');
+      if (!rawServiceAccount) {
+        throw oauthError;
+      }
+      var delegatedUser = properties.getProperty('GOOGLE_SHEETS_DELEGATED_EMAIL');
+
+      function base64UrlEncode(value) {
+        if (Object.prototype.toString.call(value) === '[object Array]') {
+          return Utilities.base64EncodeWebSafe(value).replace(/=+$/, '');
+        }
+        return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8).replace(/=+$/, '');
+      }
+
+      try {
+        var parsed = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Service account payload must be valid JSON.');
+        }
+        var clientEmail = parsed.client_email;
+        var privateKey = parsed.private_key;
+        if (!clientEmail || !privateKey) {
+          throw new Error('Service account JSON must include client_email and private_key.');
+        }
+
+        var now = Math.floor(Date.now() / 1000);
+        var headerSegment = base64UrlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+        var claimPayload = {
+          iss: clientEmail,
+          scope: scopes.join(' '),
+          aud: 'https://oauth2.googleapis.com/token',
+          exp: now + 3600,
+          iat: now
+        };
+        if (delegatedUser) {
+          claimPayload.sub = delegatedUser;
+        }
+        var claimSegment = base64UrlEncode(JSON.stringify(claimPayload));
+        var signingInput = headerSegment + '.' + claimSegment;
+        var signatureBytes = Utilities.computeRsaSha256Signature(signingInput, privateKey);
+        var signatureSegment = base64UrlEncode(signatureBytes);
+        var assertion = signingInput + '.' + signatureSegment;
+
+        var tokenResponse = rateLimitAware(function () {
+          return fetchJson({
+            url: 'https://oauth2.googleapis.com/token',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            payload: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion),
+            contentType: 'application/x-www-form-urlencoded'
+          });
+        }, { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+        var token = tokenResponse.body && tokenResponse.body.access_token;
+        if (!token) {
+          throw new Error('Service account token exchange did not return an access_token.');
+        }
+        return token;
+      } catch (serviceError) {
+        var serviceMessage = serviceError && serviceError.message ? serviceError.message : String(serviceError);
+        throw new Error('Google Sheets service account authentication failed: ' + serviceMessage);
+      }
+    }
+  }
+
+  var spreadsheetId = resolveSpreadsheetId(ctx);
+  var sheetName = resolveSheetName(ctx);
+  var targetRange = resolveRange(ctx, sheetName);
+  var rowValues = resolveValues(ctx);
+
+  if (!Array.isArray(rowValues) || rowValues.length === 0) {
+    throw new Error('action.sheets:append_row requires a non-empty values array');
+  }
+
+  var accessToken = getSheetsAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  var baseUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(targetRange) + ':append';
+  var query = '?valueInputOption=' + encodeURIComponent(valueInputOption || 'USER_ENTERED') + '&insertDataOption=' + encodeURIComponent(insertDataOption || 'INSERT_ROWS');
+  if (includeValuesInResponse) {
+    query += '&includeValuesInResponse=true';
+  }
+
+  var requestBody = { values: [rowValues] };
+
+  try {
+    var response = rateLimitAware(function () {
+      return fetchJson({
+        url: baseUrl + query,
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        payload: JSON.stringify(requestBody),
+        contentType: 'application/json'
+      });
+    }, { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+    var updates = response.body && response.body.updates ? response.body.updates : {};
+    var updatedRange = updates.updatedRange || (updates.updatedData && updates.updatedData.range) || null;
+    var updatedRows = typeof updates.updatedRows === 'number' ? updates.updatedRows : Number(updates.updatedRows || 0);
+    var appendedValues = updates.updatedData && updates.updatedData.values && updates.updatedData.values[0]
+      ? updates.updatedData.values[0]
+      : rowValues;
+
+    var appendedRowNumber = null;
+    if (updatedRange) {
+      var rowMatch = String(updatedRange).match(/(\d+)/);
+      if (rowMatch && rowMatch[1]) {
+        appendedRowNumber = Number(rowMatch[1]);
+      }
+    }
+
+    var appendSummary = {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      range: targetRange,
+      updatedRange: updatedRange,
+      updatedRows: updatedRows,
+      values: appendedValues,
+      rowNumber: appendedRowNumber
+    };
+
+    ctx.googleSheetsLastAppend = appendSummary;
+    ctx.googleSheetsRowValues = appendedValues;
+    ctx.rowValues = appendedValues;
+    if (appendedRowNumber !== null) {
+      ctx.googleSheetsRowNumber = appendedRowNumber;
+      ctx.rowNumber = appendedRowNumber;
+      ctx.row = appendedRowNumber;
+    }
+
+    logInfo('google_sheets_append_row_success', {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      range: targetRange,
+      updatedRange: updatedRange,
+      updatedRows: updatedRows
+    });
+
+    return ctx;
+  } catch (error) {
+    var status = error && typeof error.status === 'number' ? error.status : null;
+    if (status && status >= 400 && status < 500 && status !== 429) {
+      error.retryable = false;
+    }
+    var message = error && error.message ? error.message : String(error);
+    logError('google_sheets_append_row_failure', {
+      spreadsheetId: spreadsheetId,
+      sheetName: sheetName,
+      range: targetRange,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+}
+`;
