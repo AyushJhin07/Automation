@@ -535,34 +535,125 @@ function buildTimeTrigger(config) {
 
 function buildPollingWrapper(triggerKey, executor) {
   var metadata = typeof __WORKFLOW_LOG_METADATA !== 'undefined' ? __WORKFLOW_LOG_METADATA : null;
-  var connectorIds = [];
+  var initialConnectors = [];
   if (metadata && metadata.connectors && metadata.connectors.length) {
     for (var i = 0; i < metadata.connectors.length; i++) {
-      var entry = metadata.connectors[i];
-      if (!entry) {
-        continue;
-      }
-      if (typeof entry === 'string') {
-        connectorIds.push(entry);
-        continue;
-      }
-      if (entry.normalizedId) {
-        connectorIds.push(entry.normalizedId);
-        continue;
-      }
-      if (entry.id) {
-        connectorIds.push(entry.id);
+      if (metadata.connectors[i]) {
+        initialConnectors.push(metadata.connectors[i]);
       }
     }
   }
 
+  var connectorMap = {};
+  var connectorList = [];
+
+  function coerceConnectorMetadata(entry) {
+    if (!entry) {
+      return null;
+    }
+    if (typeof entry === 'string') {
+      var trimmed = entry.trim();
+      if (!trimmed) {
+        return null;
+      }
+      return {
+        id: trimmed,
+        normalizedId: trimmed,
+        name: trimmed,
+        displayName: trimmed,
+      };
+    }
+    if (typeof entry !== 'object') {
+      return null;
+    }
+
+    var normalized = '';
+    if (typeof entry.normalizedId === 'string' && entry.normalizedId.trim()) {
+      normalized = entry.normalizedId.trim();
+    } else if (typeof entry.id === 'string' && entry.id.trim()) {
+      normalized = entry.id.trim();
+    } else if (typeof entry.key === 'string' && entry.key.trim()) {
+      normalized = entry.key.trim();
+    } else if (typeof entry.connectorKey === 'string' && entry.connectorKey.trim()) {
+      normalized = entry.connectorKey.trim();
+    }
+
+    if (!normalized) {
+      return null;
+    }
+
+    var candidateNames = [entry.displayName, entry.name, entry.title, entry.label];
+    var displayName = normalized;
+    for (var n = 0; n < candidateNames.length; n++) {
+      var candidate = candidateNames[n];
+      if (typeof candidate === 'string' && candidate.trim()) {
+        displayName = candidate.trim();
+        break;
+      }
+    }
+
+    var identifier = typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : normalized;
+
+    return {
+      id: identifier,
+      normalizedId: normalized,
+      name: displayName,
+      displayName: displayName,
+    };
+  }
+
+  function mergeConnectors(value) {
+    if (!value) {
+      return;
+    }
+
+    var additions = Array.isArray(value) ? value : [value];
+    var updated = false;
+
+    for (var c = 0; c < additions.length; c++) {
+      var metadataEntry = coerceConnectorMetadata(additions[c]);
+      if (!metadataEntry) {
+        continue;
+      }
+
+      var key = metadataEntry.normalizedId || metadataEntry.id;
+      if (!key) {
+        continue;
+      }
+
+      var existing = connectorMap[key];
+      if (existing) {
+        var existingName = existing.displayName || existing.name || existing.normalizedId;
+        if (metadataEntry.displayName && metadataEntry.displayName !== existingName) {
+          existing.displayName = metadataEntry.displayName;
+          existing.name = metadataEntry.displayName;
+          updated = true;
+        }
+        if (!existing.id && metadataEntry.id) {
+          existing.id = metadataEntry.id;
+          updated = true;
+        }
+      } else {
+        connectorList.push(metadataEntry);
+        connectorMap[key] = metadataEntry;
+        updated = true;
+      }
+    }
+
+    if (updated || !stats.connectors) {
+      stats.connectors = connectorList.slice();
+    }
+  }
+
   var stats = { processed: 0, succeeded: 0, failed: 0 };
-  if (connectorIds.length > 0) {
-    stats.connectors = connectorIds.slice();
+
+  if (initialConnectors.length > 0) {
+    mergeConnectors(initialConnectors);
   }
 
   var startedAtMs = Date.now();
   var startedAtIso = new Date(startedAtMs).toISOString();
+  stats.startedAt = startedAtIso;
   var properties = PropertiesService.getScriptProperties();
   var stateKey = '__studio_trigger_state__:' + triggerKey;
   var state = {};
@@ -589,40 +680,6 @@ function buildPollingWrapper(triggerKey, executor) {
 
   state.lastRunStartedAt = startedAtIso;
 
-  function mergeConnectors(value) {
-    if (!value) {
-      return;
-    }
-    var next = Array.isArray(value) ? value : [value];
-    if (!stats.connectors) {
-      stats.connectors = connectorIds.slice();
-    }
-    for (var c = 0; c < next.length; c++) {
-      var candidate = next[c];
-      if (!candidate) {
-        continue;
-      }
-      var normalized = candidate;
-      if (typeof candidate === 'object') {
-        normalized = candidate.normalizedId || candidate.id || null;
-      }
-      if (!normalized) {
-        continue;
-      }
-      normalized = String(normalized);
-      var already = false;
-      for (var existingIndex = 0; existingIndex < stats.connectors.length; existingIndex++) {
-        if (stats.connectors[existingIndex] === normalized) {
-          already = true;
-          break;
-        }
-      }
-      if (!already) {
-        stats.connectors.push(normalized);
-      }
-    }
-  }
-
   function finalizeStats(status) {
     var completedAtMs = Date.now();
     stats.completedAt = new Date(completedAtMs).toISOString();
@@ -644,7 +701,9 @@ function buildPollingWrapper(triggerKey, executor) {
       stats.throughputPerMinute = stats.processed * 60;
     }
     stats.status = status;
-    mergeConnectors(connectorIds);
+    if (connectorList.length > 0 && (!stats.connectors || stats.connectors.length !== connectorList.length)) {
+      stats.connectors = connectorList.slice();
+    }
   }
 
   function persistState() {
@@ -660,7 +719,7 @@ function buildPollingWrapper(triggerKey, executor) {
 
   logInfo('trigger_poll_start', {
     key: triggerKey,
-    connectors: connectorIds,
+    connectors: connectorList.slice(),
     state: state
   });
 
@@ -689,53 +748,6 @@ function buildPollingWrapper(triggerKey, executor) {
         throw error;
       }
     },
-    dispatchBatch: function (items, mapFn) {
-      var result = { attempted: 0, succeeded: 0, failed: 0, errors: [] };
-      if (!items || (typeof items.length !== 'number' && !Array.isArray(items))) {
-        return result;
-      }
-
-      for (var index = 0; index < items.length; index++) {
-        var item = items[index];
-        result.attempted += 1;
-        var payload = item;
-
-        if (mapFn) {
-          try {
-            payload = mapFn(item, index);
-          } catch (mapError) {
-            var mapMessage = mapError && mapError.message ? mapError.message : String(mapError);
-            result.failed += 1;
-            stats.failed += 1;
-            result.errors.push(mapMessage);
-            logError('trigger_dispatch_map_failed', {
-              key: triggerKey,
-              index: index,
-              message: mapMessage
-            });
-            continue;
-          }
-        }
-
-        try {
-          runtime.dispatch(payload);
-          result.succeeded += 1;
-        } catch (dispatchError) {
-          var dispatchMessage = dispatchError && dispatchError.message ? dispatchError.message : String(dispatchError);
-          result.failed += 1;
-          result.errors.push(dispatchMessage);
-        }
-      }
-
-      stats.batches = (stats.batches || 0) + 1;
-      stats.lastBatch = {
-        attempted: result.attempted,
-        succeeded: result.succeeded,
-        failed: result.failed
-      };
-
-      return result;
-    },
     summary: function (partial) {
       if (!partial || typeof partial !== 'object') {
         return;
@@ -752,6 +764,56 @@ function buildPollingWrapper(triggerKey, executor) {
       }
     }
   };
+
+  function dispatchBatch(items, mapFn) {
+    var result = { attempted: 0, succeeded: 0, failed: 0, errors: [] };
+    if (!items || (typeof items.length !== 'number' && !Array.isArray(items))) {
+      return result;
+    }
+
+    for (var index = 0; index < items.length; index++) {
+      var item = items[index];
+      result.attempted += 1;
+      var payload = item;
+
+      if (mapFn) {
+        try {
+          payload = mapFn(item, index);
+        } catch (mapError) {
+          var mapMessage = mapError && mapError.message ? mapError.message : String(mapError);
+          result.failed += 1;
+          stats.failed += 1;
+          result.errors.push(mapMessage);
+          logError('trigger_dispatch_map_failed', {
+            key: triggerKey,
+            index: index,
+            message: mapMessage
+          });
+          continue;
+        }
+      }
+
+      try {
+        runtime.dispatch(payload);
+        result.succeeded += 1;
+      } catch (dispatchError) {
+        var dispatchMessage = dispatchError && dispatchError.message ? dispatchError.message : String(dispatchError);
+        result.failed += 1;
+        result.errors.push(dispatchMessage);
+      }
+    }
+
+    stats.batches = (stats.batches || 0) + 1;
+    stats.lastBatch = {
+      attempted: result.attempted,
+      succeeded: result.succeeded,
+      failed: result.failed
+    };
+
+    return result;
+  }
+
+  runtime.dispatchBatch = dispatchBatch;
 
   try {
     var result = executor(runtime);
