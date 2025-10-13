@@ -5,9 +5,17 @@ describe('appsScriptHttpHelpers', () => {
     const helpers = appsScriptHttpHelpers();
     expect(helpers).toContain('function withRetries');
     expect(helpers).toContain('function fetchJson');
+    expect(helpers).toContain('var request = config.request');
+    expect(helpers).toContain('muteHttpExceptions: !!muteHttpExceptionsValue');
+    expect(helpers).toContain('if (typeof followRedirects !== \'undefined\') {');
+    expect(helpers).toContain('if (typeof timeout !== \'undefined\') {');
     expect(helpers).toContain('function rateLimitAware');
     expect(helpers).toContain('function requireOAuthToken');
     expect(helpers).toContain('dispatchBatch: function');
+    expect(helpers).toContain('var __HTTP_RETRY_DEFAULTS = {');
+    expect(helpers).toContain('maxAttempts: 5');
+    expect(helpers).toContain('initialDelayMs: 500');
+    expect(helpers).toContain('maxDelayMs: 60000');
     expect(helpers).toContain(
       "var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;"
     );
@@ -17,7 +25,21 @@ describe('appsScriptHttpHelpers', () => {
     expect(helpers).toContain('var transport = __resolveLogTransport();');
     expect(helpers).toContain('UrlFetchApp.fetch(transport.url');
     expect(helpers).toContain("'CENTRAL_TELEMETRY_ENDPOINT'");
+    expect(helpers).toContain("'CENTRAL_LOG_TRANSPORT'");
+    expect(helpers).toContain("'CENTRAL_TELEMETRY_TRANSPORT'");
+    expect(helpers).toContain("'LOG_TRANSPORT_URL'");
+    expect(helpers).toContain("'APPS_SCRIPT_LOG_TRANSPORT'");
+    expect(helpers).toContain("'CENTRAL_LOG_TRANSPORT_URL'");
+    expect(helpers).toContain("'APPS_SCRIPT_LOG_TRANSPORT_URL'");
+    expect(helpers).toContain("'CENTRAL_LOGGING_ENDPOINT'");
+    expect(helpers).toContain("'LOGGING_ENDPOINT'");
     expect(helpers).toContain("logStructured('INFO', event, mask(details));");
+    expect(helpers).toContain("logStructured('ERROR', 'http_failure'");
+    expect(helpers).toContain("logWarn('http_retry'");
+    expect(helpers).toContain("logError('http_retry_exhausted'");
+    expect(helpers).toContain("logWarn('http_retry_callback_failed'");
+    expect(helpers).toContain("logWarn('http_parse_failure'");
+    expect(helpers).toContain("logError('secret_missing'");
     expect(helpers.trim()).toMatchInlineSnapshot(
 `var __HTTP_RETRY_DEFAULTS = {
   maxAttempts: 5,
