@@ -22,6 +22,10 @@ Script rollout squad, QA, and support so the response playbook stays visible.
     responders can jump straight to ownership context.
   - `APPS_SCRIPT_QA_ALERT_WEBHOOK` and `APPS_SCRIPT_SUPPORT_ALERT_WEBHOOK` —
     Slack/webhook endpoints that receive paging notifications on failure.
+  - `APPS_SCRIPT_ENABLED_<CONNECTOR>` (default `true`) — override to `false` to
+    short-circuit Apps Script compilation/execution for a specific connector.
+    For example, export `APPS_SCRIPT_ENABLED_SLACK=false` to force the compiler
+    and runtime to reject Slack nodes until the rollout resumes.
 - Use `--once` (or set `APPS_SCRIPT_DRY_RUN_RUN_ONCE=true`) for ad-hoc reruns
   during incident response without mutating the scheduler.
 

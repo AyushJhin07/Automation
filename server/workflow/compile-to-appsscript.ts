@@ -1,5 +1,6 @@
 import { CompileResult, WorkflowGraph, WorkflowNode } from '../../common/workflow-types';
 import webhookCapabilityReport from '../../production/reports/webhook-capability.json' assert { type: 'json' };
+import { getAppsScriptConnectorFlag } from '../runtime/appsScriptConnectorFlags.js';
 import { GENERATED_REAL_OPS } from './realOps.generated.js';
 
 type WebhookCapabilityRecord = {
@@ -80,6 +81,83 @@ function getWebhookConnectorsFromGraph(graph: WorkflowGraph): WebhookConnector[]
   }
 
   return Array.from(connectors.values());
+}
+
+type GraphConnectorUsage = {
+  normalizedId: string;
+  displayName: string;
+};
+
+function collectGraphConnectorUsage(graph: WorkflowGraph): Map<string, GraphConnectorUsage> {
+  const connectors = new Map<string, GraphConnectorUsage>();
+
+  const register = (candidate: unknown) => {
+    if (typeof candidate !== 'string') {
+      return;
+    }
+
+    const normalized = normalizeConnectorId(candidate);
+    if (!normalized) {
+      return;
+    }
+
+    if (!connectors.has(normalized)) {
+      const trimmed = candidate.trim();
+      connectors.set(normalized, {
+        normalizedId: normalized,
+        displayName: trimmed.length > 0 ? trimmed : normalized,
+      });
+    }
+  };
+
+  const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
+  for (const node of nodes) {
+    register((node as any)?.app);
+    register((node?.data as any)?.app);
+
+    if (typeof node?.type === 'string') {
+      const parts = node.type.split('.');
+      if (parts.length > 1) {
+        register(parts[1]);
+      }
+    }
+
+    if (typeof node?.op === 'string') {
+      const [prefix] = node.op.split(':');
+      if (prefix) {
+        const opParts = prefix.split('.');
+        register(opParts[opParts.length - 1]);
+      }
+    }
+  }
+
+  return connectors;
+}
+
+function enforceAppsScriptConnectorFlags(graph: WorkflowGraph): void {
+  const connectors = collectGraphConnectorUsage(graph);
+  const disabled: Array<GraphConnectorUsage & { envKey: string; rawValue?: string }> = [];
+
+  for (const entry of connectors.values()) {
+    const flag = getAppsScriptConnectorFlag(entry.normalizedId);
+    if (!flag.enabled) {
+      disabled.push({ ...entry, envKey: flag.envKey, rawValue: flag.rawValue });
+    }
+  }
+
+  if (disabled.length === 0) {
+    return;
+  }
+
+  const plural = disabled.length === 1 ? 'connector' : 'connectors';
+  const descriptors = disabled
+    .map(entry => {
+      const suffix = entry.rawValue ? `; current value ${entry.rawValue}` : '';
+      return `${entry.displayName} (set ${entry.envKey}=true${suffix})`;
+    })
+    .join(', ');
+
+  throw new Error(`Apps Script runtime disabled for ${plural}: ${descriptors}.`);
 }
 
 function pascalCaseFromId(value: string): string {
@@ -1163,6 +1241,8 @@ function computeRootNodeIds(nodes: any[], edges: any[]): string[] {
 
 
 export function compileToAppsScript(graph: WorkflowGraph): CompileResult {
+  enforceAppsScriptConnectorFlags(graph);
+
   const triggers   = graph.nodes.filter(n => n.type === 'trigger').length;
   const actions    = graph.nodes.filter(n => n.type === 'action').length;
   const transforms = graph.nodes.filter(n => n.type === 'transform').length;
