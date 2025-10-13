@@ -1,0 +1,431 @@
+exports[`Apps Script Airtable REAL_OPS builds action.airtable:create_record 1`] = `
+function step_action_airtable_create_record(ctx) {
+  ctx = ctx || {};
+
+  const apiKey = getSecret('AIRTABLE_API_KEY', { connectorKey: 'airtable' });
+
+  const baseIdConfig = "{{airtableBase}}";
+  const tableIdConfig = "Contacts";
+  const fieldsConfig = {"Name":"{{fullName}}","Email":"{{email}}","Status":"New"};
+  const typecastConfig = true;
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    if (typeof template !== 'string') {
+      return String(template);
+    }
+    const trimmed = template.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    const resolved = interpolate(trimmed, ctx).trim();
+    if (!resolved && options && options.fallbackSecret) {
+      try {
+        const secret = getSecret(options.fallbackSecret, { connectorKey: 'airtable' });
+        if (secret) {
+          return String(secret).trim();
+        }
+      } catch (error) {
+        // Ignore missing secret fallback
+      }
+    }
+    return resolved;
+  }
+
+  function resolveStructured(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          result[key] = resolveStructured(value[key]);
+        }
+      }
+      return result;
+    }
+    if (typeof value === 'string') {
+      return interpolate(value, ctx);
+    }
+    return value;
+  }
+
+  const baseId = resolveString(baseIdConfig ?? '', { fallbackSecret: 'AIRTABLE_BASE_ID' });
+  if (!baseId) {
+    throw new Error('Airtable create_record requires a baseId in the manifest or the AIRTABLE_BASE_ID script property.');
+  }
+
+  const tableId = resolveString(tableIdConfig ?? '', {});
+  if (!tableId) {
+    throw new Error('Airtable create_record requires tableId (table name) to be configured.');
+  }
+
+  const fields = resolveStructured(fieldsConfig);
+  if (!fields || Object.keys(fields).length === 0) {
+    throw new Error('Airtable create_record requires at least one field mapping in the manifest.');
+  }
+
+  const requestBody = { fields: fields };
+  const typecast = typeof typecastConfig === 'boolean' ? typecastConfig : String(typecastConfig || '').toLowerCase() === 'true';
+  if (typecast) {
+    requestBody.typecast = true;
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://api.airtable.com/v0/' + encodeURIComponent(baseId) + '/' + encodeURIComponent(tableId),
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(requestBody),
+        contentType: 'application/json'
+      }),
+      { attempts: 5, initialDelayMs: 600, maxDelayMs: 8000, jitter: 0.3 }
+    );
+
+    const record = response.body || {};
+    const headers = response.headers || {};
+    const requestId = headers['x-airtable-request-id'] || headers['X-Airtable-Request-Id'] || headers['x-request-id'] || headers['X-Request-Id'] || null;
+
+    ctx.airtableRecordId = record.id || null;
+    ctx.airtableRecord = record.fields || null;
+    ctx.airtableCreateRecordResponse = {
+      status: response.status,
+      requestId: requestId,
+      baseId: baseId,
+      tableId: tableId,
+      headers: headers,
+      body: record
+    };
+
+    logInfo('airtable_create_record_success', {
+      recordId: ctx.airtableRecordId || null,
+      baseId: baseId,
+      tableId: tableId,
+      requestId: requestId || undefined
+    });
+
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    let providerMessage = error && error.message ? error.message : String(error);
+    if (body && typeof body === 'object') {
+      if (body.error && Array.isArray(body.error.details)) {
+        providerMessage = body.error.details.map(function (item) {
+          if (!item) {
+            return '';
+          }
+          if (item.message) {
+            return String(item.message);
+          }
+          return typeof item === 'string' ? item : JSON.stringify(item);
+        }).filter(Boolean).join(' | ') || providerMessage;
+      }
+      if (body.error && body.error.message) {
+        providerMessage = body.error.message;
+      }
+    }
+
+    logError('airtable_create_record_failed', {
+      status: status,
+      baseId: baseId,
+      tableId: tableId,
+      message: providerMessage
+    });
+
+    throw new Error('Airtable create_record failed: ' + providerMessage);
+  }
+}`;
+
+exports[`Apps Script Airtable REAL_OPS builds action.airtable:list_records 1`] = `
+function step_action_airtable_list_records(ctx) {
+  ctx = ctx || {};
+
+  if (ctx.__airtableListRecordsDispatched) {
+    delete ctx.__airtableListRecordsDispatched;
+    return ctx;
+  }
+
+  const apiKey = getSecret('AIRTABLE_API_KEY', { connectorKey: 'airtable' });
+
+  const baseIdConfig = "{{airtableBase}}";
+  const tableIdConfig = "Tasks";
+  const fieldsConfig = ["Name","Status"];
+  const filterConfig = "FIND('Critical', {Tags})";
+  const maxRecordsConfig = 3;
+  const pageSizeConfig = 2;
+  const sortConfig = [{"field":"Status","direction":"asc"}];
+  const viewConfig = "All tasks";
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    if (typeof template !== 'string') {
+      return String(template);
+    }
+    const trimmed = template.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    const resolved = interpolate(trimmed, ctx).trim();
+    if (!resolved && options && options.fallbackSecret) {
+      try {
+        const secret = getSecret(options.fallbackSecret, { connectorKey: 'airtable' });
+        if (secret) {
+          return String(secret).trim();
+        }
+      } catch (error) {
+        // Ignore missing secret fallback
+      }
+    }
+    return resolved;
+  }
+
+  function resolveArray(values) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    const resolved = [];
+    for (let i = 0; i < values.length; i++) {
+      const item = values[i];
+      if (item === null || item === undefined) {
+        continue;
+      }
+      if (typeof item === 'string') {
+        const value = interpolate(item, ctx).trim();
+        if (value) {
+          resolved.push(value);
+        }
+        continue;
+      }
+      resolved.push(item);
+    }
+    return resolved;
+  }
+
+  function resolveSort(config) {
+    if (!Array.isArray(config)) {
+      return [];
+    }
+    const resolved = [];
+    for (let i = 0; i < config.length; i++) {
+      const entry = config[i] || {};
+      const field = typeof entry.field === 'string' ? interpolate(entry.field, ctx).trim() : '';
+      if (!field) {
+        continue;
+      }
+      let direction = typeof entry.direction === 'string' ? entry.direction.trim().toLowerCase() : 'asc';
+      if (direction !== 'asc' && direction !== 'desc') {
+        direction = 'asc';
+      }
+      resolved.push({ field: field, direction: direction });
+    }
+    return resolved;
+  }
+
+  function cloneContext(source) {
+    const target = {};
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    }
+    return target;
+  }
+
+  const baseId = resolveString(baseIdConfig ?? '', { fallbackSecret: 'AIRTABLE_BASE_ID' });
+  if (!baseId) {
+    throw new Error('Airtable list_records requires a baseId in the manifest or the AIRTABLE_BASE_ID script property.');
+  }
+
+  const tableId = resolveString(tableIdConfig ?? '', {});
+  if (!tableId) {
+    throw new Error('Airtable list_records requires tableId (table name) to be configured.');
+  }
+
+  const requestedFields = resolveArray(fieldsConfig);
+  const filterFormula = resolveString(filterConfig ?? '', { allowEmpty: true });
+  const view = resolveString(viewConfig ?? '', { allowEmpty: true });
+  const sortEntries = resolveSort(sortConfig);
+
+  const maxRecordsRaw = typeof maxRecordsConfig === 'number' ? maxRecordsConfig : Number(maxRecordsConfig);
+  const maxRecords = Number.isFinite(maxRecordsRaw) && maxRecordsRaw > 0 ? Math.min(Math.floor(maxRecordsRaw), 100) : null;
+  const pageSizeRaw = typeof pageSizeConfig === 'number' ? pageSizeConfig : Number(pageSizeConfig);
+  const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(Math.floor(pageSizeRaw), 100) : null;
+
+  const baseParams = [];
+  if (requestedFields.length > 0) {
+    for (let i = 0; i < requestedFields.length; i++) {
+      baseParams.push('fields%5B%5D=' + encodeURIComponent(requestedFields[i]));
+    }
+  }
+  if (filterFormula) {
+    baseParams.push('filterByFormula=' + encodeURIComponent(filterFormula));
+  }
+  if (pageSize !== null) {
+    baseParams.push('pageSize=' + encodeURIComponent(String(pageSize)));
+  }
+  if (view) {
+    baseParams.push('view=' + encodeURIComponent(view));
+  }
+  if (sortEntries.length > 0) {
+    for (let i = 0; i < sortEntries.length; i++) {
+      const entry = sortEntries[i];
+      baseParams.push('sort%5B' + i + '%5D%5Bfield%5D=' + encodeURIComponent(entry.field));
+      baseParams.push('sort%5B' + i + '%5D%5Bdirection%5D=' + encodeURIComponent(entry.direction));
+    }
+  }
+
+  const baseContext = cloneContext(ctx);
+
+  const stats = buildPollingWrapper('action.airtable:list_records', function (runtime) {
+    runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+
+    const responseMetadata = [];
+    const collectedRecords = [];
+    let offset = typeof runtime.state.cursor.offset === 'string' ? runtime.state.cursor.offset : null;
+    let remaining = maxRecords !== null ? maxRecords : null;
+    let pageCount = 0;
+    const maxPages = 5;
+
+    do {
+      const queryParts = baseParams.slice();
+      if (offset) {
+        queryParts.push('offset=' + encodeURIComponent(offset));
+      }
+      const queryString = queryParts.length > 0 ? '?' + queryParts.join('&') : '';
+
+      const response = rateLimitAware(
+        () => fetchJson({
+          url: 'https://api.airtable.com/v0/' + encodeURIComponent(baseId) + '/' + encodeURIComponent(tableId) + queryString,
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + apiKey,
+            'Accept': 'application/json'
+          }
+        }),
+        { attempts: 5, initialDelayMs: 600, maxDelayMs: 8000, jitter: 0.3 }
+      );
+
+      const body = response.body || {};
+      let records = Array.isArray(body.records) ? body.records.slice() : [];
+
+      if (remaining !== null && records.length > remaining) {
+        records = records.slice(0, remaining);
+      }
+
+      collectedRecords.push.apply(collectedRecords, records);
+
+      responseMetadata.push({
+        status: response.status,
+        recordCount: records.length,
+        offset: body.offset || null,
+        requestId: (response.headers && (response.headers['x-airtable-request-id'] || response.headers['X-Airtable-Request-Id'] || response.headers['x-request-id'] || response.headers['X-Request-Id'])) || null
+      });
+
+      pageCount += 1;
+      if (remaining !== null) {
+        remaining -= records.length;
+      }
+
+      offset = remaining !== null && remaining <= 0 ? null : (body.offset || null);
+    } while (offset && pageCount < maxPages && (remaining === null || remaining > 0));
+
+    if (offset) {
+      runtime.state.cursor.offset = offset;
+    } else if (runtime.state.cursor.offset) {
+      delete runtime.state.cursor.offset;
+    }
+    runtime.state.cursor.lastFetchedAt = new Date().toISOString();
+
+    if (collectedRecords.length === 0) {
+      runtime.summary({
+        processed: 0,
+        cursor: runtime.state.cursor.offset || null,
+        baseId: baseId,
+        tableId: tableId,
+        responseMetadata: responseMetadata
+      });
+      logInfo('airtable_list_records_empty', {
+        baseId: baseId,
+        tableId: tableId,
+        cursor: runtime.state.cursor.offset || null
+      });
+      return {
+        processed: 0,
+        failed: 0,
+        cursor: runtime.state.cursor.offset || null,
+        baseId: baseId,
+        tableId: tableId,
+        responseMetadata: responseMetadata
+      };
+    }
+
+    const batch = runtime.dispatchBatch(collectedRecords, function (record) {
+      const nextContext = cloneContext(baseContext);
+      nextContext.airtableRecord = record;
+      nextContext.airtableBaseId = baseId;
+      nextContext.airtableTableId = tableId;
+      nextContext.__airtableListRecordsDispatched = true;
+      nextContext.airtableListCursor = runtime.state.cursor.offset || null;
+      return nextContext;
+    });
+
+    runtime.summary({
+      processed: batch.succeeded,
+      failed: batch.failed,
+      cursor: runtime.state.cursor.offset || null,
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      responseMetadata: responseMetadata
+    });
+
+    logInfo('airtable_list_records_success', {
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      remainingOffset: runtime.state.cursor.offset || null
+    });
+
+    return {
+      processed: batch.succeeded,
+      failed: batch.failed,
+      cursor: runtime.state.cursor.offset || null,
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      responseMetadata: responseMetadata
+    };
+  });
+
+  ctx.airtableListRecordsStats = stats;
+  ctx.airtableBaseId = baseId;
+  ctx.airtableTableId = tableId;
+  if (stats && typeof stats === 'object') {
+    if (Object.prototype.hasOwnProperty.call(stats, 'cursor')) {
+      ctx.airtableListCursor = stats.cursor || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(stats, 'responseMetadata')) {
+      ctx.airtableListRecordsMeta = stats.responseMetadata;
+    }
+  }
+
+  return ctx;
+}`;

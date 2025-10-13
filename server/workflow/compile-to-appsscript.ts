@@ -955,6 +955,8 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
     JIRA_EMAIL: { aliases: ['apps_script__jira__email'] },
     NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] },
+    NOTION_DATABASE_ID: { aliases: ['apps_script__notion__database_id'] },
+    NOTION_PAGE_ID: { aliases: ['apps_script__notion__page_id'] },
     SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
     SALESFORCE_INSTANCE_URL: { aliases: ['apps_script__salesforce__instance_url'] },
     SHOPIFY_ACCESS_TOKEN: { aliases: ['apps_script__shopify__access_token'] },
@@ -1029,7 +1031,9 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
       JIRA_EMAIL: { aliases: ['apps_script__jira__email'] }
     },
     notion: {
-      NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] }
+      NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] },
+      NOTION_DATABASE_ID: { aliases: ['apps_script__notion__database_id'] },
+      NOTION_PAGE_ID: { aliases: ['apps_script__notion__page_id'] }
     },
     salesforce: {
       SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
@@ -16318,72 +16322,616 @@ function step_sendSendGridEmail(ctx) {
 
   // BATCH 6: Productivity Applications
   'action.notion:create_page': (c) => `
-function step_createNotionPage(ctx) {
-  const accessToken = getSecret('NOTION_ACCESS_TOKEN');
+function step_action_notion_create_page(ctx) {
+  ctx = ctx || {};
 
-  if (!accessToken) {
-    logWarn('notion_missing_access_token', { message: 'Notion access token not configured' });
-    return ctx;
+  const accessToken = requireOAuthToken('notion', { scopes: ['read_content', 'update_content', 'insert_content'] });
+
+  const parentConfig = ${JSON.stringify(c.parent ?? null)};
+  const propertiesConfig = ${JSON.stringify(c.properties ?? null)};
+  const childrenConfig = ${JSON.stringify(c.children ?? null)};
+  const iconConfig = ${JSON.stringify(c.icon ?? null)};
+  const coverConfig = ${JSON.stringify(c.cover ?? null)};
+
+  function optionalSecret(name) {
+    try {
+      const value = getSecret(name, { connectorKey: 'notion' });
+      return typeof value === 'string' ? value.trim() : String(value || '').trim();
+    } catch (error) {
+      return '';
+    }
   }
-  
-  const pageData = {
-    parent: { database_id: '${c.databaseId || ''}' },
-    properties: {
-      Name: {
-        title: [{
-          text: { content: interpolate('${c.title || 'Automated Page'}', ctx) }
-        }]
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    if (typeof template !== 'string') {
+      return String(template);
+    }
+    const trimmed = template.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    const resolved = interpolate(trimmed, ctx).trim();
+    if (!resolved && options && options.fallbackSecret) {
+      const fallback = optionalSecret(options.fallbackSecret);
+      if (fallback) {
+        return fallback;
       }
     }
-  };
-  
-  const response = withRetries(() => fetchJson('https://api.notion.com/v1/pages', {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${accessToken}\`,
-      'Content-Type': 'application/json',
-      'Notion-Version': '2022-06-28'
-    },
-    payload: JSON.stringify(pageData),
-    contentType: 'application/json'
-  }));
+    return resolved;
+  }
 
-  ctx.notionPageId = response.body && response.body.id;
-  logInfo('notion_create_page', { pageId: ctx.notionPageId || null });
-  return ctx;
+  function resolveStructured(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          result[key] = resolveStructured(value[key]);
+        }
+      }
+      return result;
+    }
+    if (typeof value === 'string') {
+      return interpolate(value, ctx);
+    }
+    return value;
+  }
+
+  function ensureParent(config) {
+    if (!config || typeof config !== 'object') {
+      throw new Error('Notion create_page requires a parent configuration.');
+    }
+    const type = typeof config.type === 'string' ? config.type.trim().toLowerCase() : '';
+    if (!type) {
+      throw new Error("Notion create_page requires parent.type set to 'database_id', 'page_id', or 'workspace'.");
+    }
+
+    if (type === 'database_id') {
+      const raw = config.database_id !== undefined ? config.database_id : (config.databaseId !== undefined ? config.databaseId : null);
+      const databaseId = resolveString(raw ?? '', { fallbackSecret: 'NOTION_DATABASE_ID' });
+      if (!databaseId) {
+        throw new Error('Notion create_page requires a database_id in the manifest or the NOTION_DATABASE_ID script property.');
+      }
+      return { database_id: databaseId };
+    }
+
+    if (type === 'page_id') {
+      const raw = config.page_id !== undefined ? config.page_id : (config.pageId !== undefined ? config.pageId : null);
+      const pageId = resolveString(raw ?? '', { fallbackSecret: 'NOTION_PAGE_ID' });
+      if (!pageId) {
+        throw new Error('Notion create_page requires a page_id in the manifest or the NOTION_PAGE_ID script property.');
+      }
+      return { page_id: pageId };
+    }
+
+    if (type === 'workspace') {
+      return { workspace: true };
+    }
+
+    throw new Error('Unsupported Notion parent type: ' + type + '.');
+  }
+
+  const parent = ensureParent(parentConfig);
+  const properties = resolveStructured(propertiesConfig);
+  if (!properties || Object.keys(properties).length === 0) {
+    throw new Error('Notion create_page requires at least one property. Configure the Properties block in the manifest.');
+  }
+
+  const requestBody = {
+    parent: parent,
+    properties: properties
+  };
+
+  const children = resolveStructured(childrenConfig);
+  if (children && Array.isArray(children) && children.length > 0) {
+    requestBody.children = children;
+  }
+
+  const icon = resolveStructured(iconConfig);
+  if (icon && typeof icon === 'object' && Object.keys(icon).length > 0) {
+    requestBody.icon = icon;
+  }
+
+  const cover = resolveStructured(coverConfig);
+  if (cover && typeof cover === 'object' && Object.keys(cover).length > 0) {
+    requestBody.cover = cover;
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://api.notion.com/v1/pages',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28'
+        },
+        payload: JSON.stringify(requestBody),
+        contentType: 'application/json'
+      }),
+      { attempts: 4, initialDelayMs: 750, maxDelayMs: 6000, jitter: 0.25 }
+    );
+
+    const page = response.body || {};
+    const headers = response.headers || {};
+    const requestId = headers['x-request-id'] || headers['X-Request-Id'] || null;
+
+    ctx.notionPageId = page.id || null;
+    ctx.notionPageUrl = page.url || null;
+    ctx.notionPage = page;
+    ctx.notionCreatePageResponse = {
+      status: response.status,
+      requestId: requestId,
+      parent: parent,
+      headers: headers,
+      body: page
+    };
+
+    logInfo('notion_create_page_success', {
+      pageId: ctx.notionPageId || null,
+      parentType: parent.database_id ? 'database_id' : parent.page_id ? 'page_id' : 'workspace',
+      requestId: requestId || undefined
+    });
+
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const providerCode = body && typeof body === 'object' ? body.code || null : null;
+    const providerMessage = body && typeof body === 'object' && body.message ? body.message : (error && error.message ? error.message : String(error));
+
+    logError('notion_create_page_failed', {
+      status: status,
+      providerCode: providerCode,
+      message: providerMessage
+    });
+
+    throw new Error('Notion create_page failed: ' + (providerCode ? providerCode + ' ' : '') + providerMessage);
+  }
 }`,
 
   'action.airtable:create_record': (c) => `
-function step_createAirtableRecord(ctx) {
-  const apiKey = getSecret('AIRTABLE_API_KEY');
-  const baseId = getSecret('AIRTABLE_BASE_ID');
+function step_action_airtable_create_record(ctx) {
+  ctx = ctx || {};
 
-  if (!apiKey || !baseId) {
-    logWarn('airtable_missing_credentials', { message: 'Airtable credentials not configured' });
+  const apiKey = getSecret('AIRTABLE_API_KEY', { connectorKey: 'airtable' });
+
+  const baseIdConfig = ${JSON.stringify(c.baseId ?? null)};
+  const tableIdConfig = ${JSON.stringify((c.tableId ?? c.tableName) ?? null)};
+  const fieldsConfig = ${JSON.stringify(c.fields ?? null)};
+  const typecastConfig = ${JSON.stringify(c.typecast ?? null)};
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    if (typeof template !== 'string') {
+      return String(template);
+    }
+    const trimmed = template.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    const resolved = interpolate(trimmed, ctx).trim();
+    if (!resolved && options && options.fallbackSecret) {
+      try {
+        const secret = getSecret(options.fallbackSecret, { connectorKey: 'airtable' });
+        if (secret) {
+          return String(secret).trim();
+        }
+      } catch (error) {
+        // Ignore missing secret fallback
+      }
+    }
+    return resolved;
+  }
+
+  function resolveStructured(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          result[key] = resolveStructured(value[key]);
+        }
+      }
+      return result;
+    }
+    if (typeof value === 'string') {
+      return interpolate(value, ctx);
+    }
+    return value;
+  }
+
+  const baseId = resolveString(baseIdConfig ?? '', { fallbackSecret: 'AIRTABLE_BASE_ID' });
+  if (!baseId) {
+    throw new Error('Airtable create_record requires a baseId in the manifest or the AIRTABLE_BASE_ID script property.');
+  }
+
+  const tableId = resolveString(tableIdConfig ?? '', {});
+  if (!tableId) {
+    throw new Error('Airtable create_record requires tableId (table name) to be configured.');
+  }
+
+  const fields = resolveStructured(fieldsConfig);
+  if (!fields || Object.keys(fields).length === 0) {
+    throw new Error('Airtable create_record requires at least one field mapping in the manifest.');
+  }
+
+  const requestBody = { fields: fields };
+  const typecast = typeof typecastConfig === 'boolean' ? typecastConfig : String(typecastConfig || '').toLowerCase() === 'true';
+  if (typecast) {
+    requestBody.typecast = true;
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://api.airtable.com/v0/' + encodeURIComponent(baseId) + '/' + encodeURIComponent(tableId),
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(requestBody),
+        contentType: 'application/json'
+      }),
+      { attempts: 5, initialDelayMs: 600, maxDelayMs: 8000, jitter: 0.3 }
+    );
+
+    const record = response.body || {};
+    const headers = response.headers || {};
+    const requestId = headers['x-airtable-request-id'] || headers['X-Airtable-Request-Id'] || headers['x-request-id'] || headers['X-Request-Id'] || null;
+
+    ctx.airtableRecordId = record.id || null;
+    ctx.airtableRecord = record.fields || null;
+    ctx.airtableCreateRecordResponse = {
+      status: response.status,
+      requestId: requestId,
+      baseId: baseId,
+      tableId: tableId,
+      headers: headers,
+      body: record
+    };
+
+    logInfo('airtable_create_record_success', {
+      recordId: ctx.airtableRecordId || null,
+      baseId: baseId,
+      tableId: tableId,
+      requestId: requestId || undefined
+    });
+
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const body = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    let providerMessage = error && error.message ? error.message : String(error);
+    if (body && typeof body === 'object') {
+      if (body.error && Array.isArray(body.error.details)) {
+        providerMessage = body.error.details.map(function (item) {
+          if (!item) {
+            return '';
+          }
+          if (item.message) {
+            return String(item.message);
+          }
+          return typeof item === 'string' ? item : JSON.stringify(item);
+        }).filter(Boolean).join(' | ') || providerMessage;
+      }
+      if (body.error && body.error.message) {
+        providerMessage = body.error.message;
+      }
+    }
+
+    logError('airtable_create_record_failed', {
+      status: status,
+      baseId: baseId,
+      tableId: tableId,
+      message: providerMessage
+    });
+
+    throw new Error('Airtable create_record failed: ' + providerMessage);
+  }
+}`,
+
+  'action.airtable:list_records': (c) => `
+function step_action_airtable_list_records(ctx) {
+  ctx = ctx || {};
+
+  if (ctx.__airtableListRecordsDispatched) {
+    delete ctx.__airtableListRecordsDispatched;
     return ctx;
   }
-  
-  const recordData = {
-    fields: {
-      Name: interpolate('${c.name || 'Automated Record'}', ctx),
-      Email: interpolate('${c.email || '{{email}}'}', ctx),
-      Notes: interpolate('${c.notes || 'Created by automation'}', ctx)
-    }
-  };
-  
-  const tableName = '${c.tableName || 'Table 1'}';
-  const response = withRetries(() => fetchJson(\`https://api.airtable.com/v0/\${baseId}/\${tableName}\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${apiKey}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(recordData),
-    contentType: 'application/json'
-  }));
 
-  ctx.airtableRecordId = response.body && response.body.id;
-  logInfo('airtable_create_record', { recordId: ctx.airtableRecordId || null });
+  const apiKey = getSecret('AIRTABLE_API_KEY', { connectorKey: 'airtable' });
+
+  const baseIdConfig = ${JSON.stringify(c.baseId ?? null)};
+  const tableIdConfig = ${JSON.stringify((c.tableId ?? c.tableName) ?? null)};
+  const fieldsConfig = ${JSON.stringify(c.fields ?? null)};
+  const filterConfig = ${JSON.stringify(c.filterByFormula ?? null)};
+  const maxRecordsConfig = ${JSON.stringify(c.maxRecords ?? null)};
+  const pageSizeConfig = ${JSON.stringify(c.pageSize ?? null)};
+  const sortConfig = ${JSON.stringify(c.sort ?? null)};
+  const viewConfig = ${JSON.stringify(c.view ?? null)};
+
+  function resolveString(template, options) {
+    if (template === null || template === undefined) {
+      return '';
+    }
+    if (typeof template !== 'string') {
+      return String(template);
+    }
+    const trimmed = template.trim();
+    if (!trimmed && options && options.allowEmpty) {
+      return '';
+    }
+    const resolved = interpolate(trimmed, ctx).trim();
+    if (!resolved && options && options.fallbackSecret) {
+      try {
+        const secret = getSecret(options.fallbackSecret, { connectorKey: 'airtable' });
+        if (secret) {
+          return String(secret).trim();
+        }
+      } catch (error) {
+        // Ignore missing secret fallback
+      }
+    }
+    return resolved;
+  }
+
+  function resolveArray(values) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+    const resolved = [];
+    for (let i = 0; i < values.length; i++) {
+      const item = values[i];
+      if (item === null || item === undefined) {
+        continue;
+      }
+      if (typeof item === 'string') {
+        const value = interpolate(item, ctx).trim();
+        if (value) {
+          resolved.push(value);
+        }
+        continue;
+      }
+      resolved.push(item);
+    }
+    return resolved;
+  }
+
+  function resolveSort(config) {
+    if (!Array.isArray(config)) {
+      return [];
+    }
+    const resolved = [];
+    for (let i = 0; i < config.length; i++) {
+      const entry = config[i] || {};
+      const field = typeof entry.field === 'string' ? interpolate(entry.field, ctx).trim() : '';
+      if (!field) {
+        continue;
+      }
+      let direction = typeof entry.direction === 'string' ? entry.direction.trim().toLowerCase() : 'asc';
+      if (direction !== 'asc' && direction !== 'desc') {
+        direction = 'asc';
+      }
+      resolved.push({ field: field, direction: direction });
+    }
+    return resolved;
+  }
+
+  function cloneContext(source) {
+    const target = {};
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    }
+    return target;
+  }
+
+  const baseId = resolveString(baseIdConfig ?? '', { fallbackSecret: 'AIRTABLE_BASE_ID' });
+  if (!baseId) {
+    throw new Error('Airtable list_records requires a baseId in the manifest or the AIRTABLE_BASE_ID script property.');
+  }
+
+  const tableId = resolveString(tableIdConfig ?? '', {});
+  if (!tableId) {
+    throw new Error('Airtable list_records requires tableId (table name) to be configured.');
+  }
+
+  const requestedFields = resolveArray(fieldsConfig);
+  const filterFormula = resolveString(filterConfig ?? '', { allowEmpty: true });
+  const view = resolveString(viewConfig ?? '', { allowEmpty: true });
+  const sortEntries = resolveSort(sortConfig);
+
+  const maxRecordsRaw = typeof maxRecordsConfig === 'number' ? maxRecordsConfig : Number(maxRecordsConfig);
+  const maxRecords = Number.isFinite(maxRecordsRaw) && maxRecordsRaw > 0 ? Math.min(Math.floor(maxRecordsRaw), 100) : null;
+  const pageSizeRaw = typeof pageSizeConfig === 'number' ? pageSizeConfig : Number(pageSizeConfig);
+  const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(Math.floor(pageSizeRaw), 100) : null;
+
+  const baseParams = [];
+  if (requestedFields.length > 0) {
+    for (let i = 0; i < requestedFields.length; i++) {
+      baseParams.push('fields%5B%5D=' + encodeURIComponent(requestedFields[i]));
+    }
+  }
+  if (filterFormula) {
+    baseParams.push('filterByFormula=' + encodeURIComponent(filterFormula));
+  }
+  if (pageSize !== null) {
+    baseParams.push('pageSize=' + encodeURIComponent(String(pageSize)));
+  }
+  if (view) {
+    baseParams.push('view=' + encodeURIComponent(view));
+  }
+  if (sortEntries.length > 0) {
+    for (let i = 0; i < sortEntries.length; i++) {
+      const entry = sortEntries[i];
+      baseParams.push('sort%5B' + i + '%5D%5Bfield%5D=' + encodeURIComponent(entry.field));
+      baseParams.push('sort%5B' + i + '%5D%5Bdirection%5D=' + encodeURIComponent(entry.direction));
+    }
+  }
+
+  const baseContext = cloneContext(ctx);
+
+  const stats = buildPollingWrapper('action.airtable:list_records', function (runtime) {
+    runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+
+    const responseMetadata = [];
+    const collectedRecords = [];
+    let offset = typeof runtime.state.cursor.offset === 'string' ? runtime.state.cursor.offset : null;
+    let remaining = maxRecords !== null ? maxRecords : null;
+    let pageCount = 0;
+    const maxPages = 5;
+
+    do {
+      const queryParts = baseParams.slice();
+      if (offset) {
+        queryParts.push('offset=' + encodeURIComponent(offset));
+      }
+      const queryString = queryParts.length > 0 ? '?' + queryParts.join('&') : '';
+
+      const response = rateLimitAware(
+        () => fetchJson({
+          url: 'https://api.airtable.com/v0/' + encodeURIComponent(baseId) + '/' + encodeURIComponent(tableId) + queryString,
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + apiKey,
+            'Accept': 'application/json'
+          }
+        }),
+        { attempts: 5, initialDelayMs: 600, maxDelayMs: 8000, jitter: 0.3 }
+      );
+
+      const body = response.body || {};
+      let records = Array.isArray(body.records) ? body.records.slice() : [];
+
+      if (remaining !== null && records.length > remaining) {
+        records = records.slice(0, remaining);
+      }
+
+      collectedRecords.push.apply(collectedRecords, records);
+
+      responseMetadata.push({
+        status: response.status,
+        recordCount: records.length,
+        offset: body.offset || null,
+        requestId: (response.headers && (response.headers['x-airtable-request-id'] || response.headers['X-Airtable-Request-Id'] || response.headers['x-request-id'] || response.headers['X-Request-Id'])) || null
+      });
+
+      pageCount += 1;
+      if (remaining !== null) {
+        remaining -= records.length;
+      }
+
+      offset = remaining !== null && remaining <= 0 ? null : (body.offset || null);
+    } while (offset && pageCount < maxPages && (remaining === null || remaining > 0));
+
+    if (offset) {
+      runtime.state.cursor.offset = offset;
+    } else if (runtime.state.cursor.offset) {
+      delete runtime.state.cursor.offset;
+    }
+    runtime.state.cursor.lastFetchedAt = new Date().toISOString();
+
+    if (collectedRecords.length === 0) {
+      runtime.summary({
+        processed: 0,
+        cursor: runtime.state.cursor.offset || null,
+        baseId: baseId,
+        tableId: tableId,
+        responseMetadata: responseMetadata
+      });
+      logInfo('airtable_list_records_empty', {
+        baseId: baseId,
+        tableId: tableId,
+        cursor: runtime.state.cursor.offset || null
+      });
+      return {
+        processed: 0,
+        failed: 0,
+        cursor: runtime.state.cursor.offset || null,
+        baseId: baseId,
+        tableId: tableId,
+        responseMetadata: responseMetadata
+      };
+    }
+
+    const batch = runtime.dispatchBatch(collectedRecords, function (record) {
+      const nextContext = cloneContext(baseContext);
+      nextContext.airtableRecord = record;
+      nextContext.airtableBaseId = baseId;
+      nextContext.airtableTableId = tableId;
+      nextContext.__airtableListRecordsDispatched = true;
+      nextContext.airtableListCursor = runtime.state.cursor.offset || null;
+      return nextContext;
+    });
+
+    runtime.summary({
+      processed: batch.succeeded,
+      failed: batch.failed,
+      cursor: runtime.state.cursor.offset || null,
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      responseMetadata: responseMetadata
+    });
+
+    logInfo('airtable_list_records_success', {
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      remainingOffset: runtime.state.cursor.offset || null
+    });
+
+    return {
+      processed: batch.succeeded,
+      failed: batch.failed,
+      cursor: runtime.state.cursor.offset || null,
+      baseId: baseId,
+      tableId: tableId,
+      dispatched: batch.succeeded,
+      responseMetadata: responseMetadata
+    };
+  });
+
+  ctx.airtableListRecordsStats = stats;
+  ctx.airtableBaseId = baseId;
+  ctx.airtableTableId = tableId;
+  if (stats && typeof stats === 'object') {
+    if (Object.prototype.hasOwnProperty.call(stats, 'cursor')) {
+      ctx.airtableListCursor = stats.cursor || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(stats, 'responseMetadata')) {
+      ctx.airtableListRecordsMeta = stats.responseMetadata;
+    }
+  }
+
   return ctx;
 }`,
 

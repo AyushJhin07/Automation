@@ -1,0 +1,148 @@
+{
+  "id": "airtable-list-records",
+  "description": "Lists Airtable records across multiple pages and dispatches each record with cursor tracking.",
+  "graph": {
+    "id": "fixture-airtable-list-records",
+    "name": "Airtable list records",
+    "nodes": [
+      {
+        "id": "airtable-list",
+        "type": "action.airtable",
+        "app": "airtable",
+        "name": "List Airtable tasks",
+        "op": "action.airtable:list_records",
+        "params": {
+          "operation": "list_records",
+          "baseId": "{{airtableBase}}",
+          "tableId": "Tasks",
+          "fields": ["Name", "Status"],
+          "filterByFormula": "FIND('Critical', {Tags})",
+          "maxRecords": 3,
+          "pageSize": 2,
+          "sort": [
+            {
+              "field": "Status",
+              "direction": "asc"
+            }
+          ],
+          "view": "All tasks"
+        },
+        "data": {
+          "operation": "list_records",
+          "config": {
+            "baseId": "{{airtableBase}}",
+            "tableId": "Tasks",
+            "fields": ["Name", "Status"],
+            "filterByFormula": "FIND('Critical', {Tags})",
+            "maxRecords": 3,
+            "pageSize": 2,
+            "sort": [
+              {
+                "field": "Status",
+                "direction": "asc"
+              }
+            ],
+            "view": "All tasks"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "airtableBase": "appBase123"
+    }
+  },
+  "secrets": {
+    "AIRTABLE_API_KEY": "key-test",
+    "AIRTABLE_BASE_ID": "appBase123"
+  },
+  "http": [
+    {
+      "name": "airtable-list-page-1",
+      "request": {
+        "url": "https://api.airtable.com/v0/appBase123/Tasks?fields%5B%5D=Name&fields%5B%5D=Status&filterByFormula=FIND%28%27Critical%27%2C%20%7BTags%7D%29&pageSize=2&view=All%20tasks&sort%5B0%5D%5Bfield%5D=Status&sort%5B0%5D%5Bdirection%5D=asc",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer key-test",
+          "accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Airtable-Request-Id": "req-airtable-list-1"
+        },
+        "body": {
+          "records": [
+            {
+              "id": "recA",
+              "createdTime": "2024-01-03T09:00:00.000Z",
+              "fields": {
+                "Name": "Critical outage",
+                "Status": "Open"
+              }
+            },
+            {
+              "id": "recB",
+              "createdTime": "2024-01-03T10:00:00.000Z",
+              "fields": {
+                "Name": "Critical bug",
+                "Status": "In Progress"
+              }
+            }
+          ],
+          "offset": "itrNext"
+        }
+      }
+    },
+    {
+      "name": "airtable-list-page-2",
+      "request": {
+        "url": "https://api.airtable.com/v0/appBase123/Tasks?fields%5B%5D=Name&fields%5B%5D=Status&filterByFormula=FIND%28%27Critical%27%2C%20%7BTags%7D%29&pageSize=2&view=All%20tasks&sort%5B0%5D%5Bfield%5D=Status&sort%5B0%5D%5Bdirection%5D=asc&offset=itrNext",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer key-test",
+          "accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Airtable-Request-Id": "req-airtable-list-2"
+        },
+        "body": {
+          "records": [
+            {
+              "id": "recC",
+              "createdTime": "2024-01-03T11:00:00.000Z",
+              "fields": {
+                "Name": "Critical follow-up",
+                "Status": "Closed"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "airtableBase": "appBase123",
+      "airtableListRecordsStats": {
+        "processed": 3
+      }
+    },
+    "httpCalls": [
+      {
+        "url": "https://api.airtable.com/v0/appBase123/Tasks?fields%5B%5D=Name&fields%5B%5D=Status&filterByFormula=FIND%28%27Critical%27%2C%20%7BTags%7D%29&pageSize=2&view=All%20tasks&sort%5B0%5D%5Bfield%5D=Status&sort%5B0%5D%5Bdirection%5D=asc",
+        "method": "GET"
+      },
+      {
+        "url": "https://api.airtable.com/v0/appBase123/Tasks?fields%5B%5D=Name&fields%5B%5D=Status&filterByFormula=FIND%28%27Critical%27%2C%20%7BTags%7D%29&pageSize=2&view=All%20tasks&sort%5B0%5D%5Bfield%5D=Status&sort%5B0%5D%5Bdirection%5D=asc&offset=itrNext",
+        "method": "GET"
+      }
+    ]
+  }
+}

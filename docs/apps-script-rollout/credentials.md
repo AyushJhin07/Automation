@@ -110,6 +110,7 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `AIRTABLE_BASE_ID` | Yes | Default base identifier used by triggers/actions | `apps_script__airtable__base_id` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Script Property tips: `AIRTABLE_BASE_ID` seeds the pagination cursor for `list_records`, so workflows resume from the last offset even after the Apps Script runtime restarts.
 
 #### Asana
 
@@ -189,8 +190,11 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
-| `NOTION_ACCESS_TOKEN` | Yes | Internal integration token for Notion API | `apps_script__notion__access_token` |
+| `NOTION_ACCESS_TOKEN` | Yes | Internal integration token or OAuth access token for Notion API | `apps_script__notion__access_token` |
+| `NOTION_DATABASE_ID` | Optional | Default database ID used when a manifest omits `parent.database_id` | `apps_script__notion__database_id` |
+| `NOTION_PAGE_ID` | Optional | Default page ID used when a manifest sets `parent.type` to `page_id` without a value | `apps_script__notion__page_id` |
 
+- OAuth guidance: Create an internal integration in Notion (or complete the OAuth handshake) and share the target databases/pages with that integration so the token stored in `NOTION_ACCESS_TOKEN` can create content. Populate `NOTION_DATABASE_ID` or `NOTION_PAGE_ID` when workflows rely on those defaults.
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
 
 #### Shopify
