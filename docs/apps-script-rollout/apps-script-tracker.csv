@@ -1,7 +1,7 @@
 connector,total ops,Apps Script implemented ops,owner,squad,runtime owner,connector squad owner,QA automation owner,program manager,status,PR link,test link
 adobesign,2,2,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
 adp,0,0,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
-adyen,0,0,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
+adyen,5,5,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
 airtable,0,0,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
 airtable-enhanced,0,0,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,
 ansible,0,0,TBD,TBD,TBD,TBD,TBD,TBD,TBD,,

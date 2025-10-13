@@ -13054,6 +13054,415 @@ function ${functionName}(inputData, params) {
 }`;
 }
 
+function adyenHelpersBlock(): string {
+  return `
+if (typeof adyenExecuteOperation !== 'function') {
+  function adyenSanitizePayload(payload) {
+    if (typeof payload === 'undefined') {
+      return undefined;
+    }
+    try {
+      return JSON.parse(JSON.stringify(payload, function(key, value) {
+        if (value === undefined || value === null) {
+          return undefined;
+        }
+        return value;
+      }));
+    } catch (error) {
+      return payload;
+    }
+  }
+
+  function adyenEnsureAmount(amount) {
+    if (!amount || typeof amount !== 'object') {
+      throw new Error('Adyen amount requires currency and value.');
+    }
+    var currency = amount.currency;
+    var value = amount.value;
+    if (!currency) {
+      throw new Error('Adyen amount.currency is required.');
+    }
+    var numeric = Number(value);
+    if (isNaN(numeric)) {
+      throw new Error('Adyen amount.value must be numeric.');
+    }
+    return { currency: currency, value: Math.round(numeric) };
+  }
+
+  function adyenBuildHeaders(apiKey, idempotencyKey) {
+    var headers = {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey
+    };
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    return headers;
+  }
+
+  function adyenNormalizeSuccess(value) {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return !!value;
+  }
+
+  function adyenExtractNotification(payload) {
+    if (!payload) {
+      return {};
+    }
+    if (payload.notificationItems && payload.notificationItems.length) {
+      var first = payload.notificationItems[0];
+      if (first && first.NotificationRequestItem) {
+        return first.NotificationRequestItem;
+      }
+      return first;
+    }
+    if (payload.data && payload.data.object) {
+      return payload.data.object;
+    }
+    return payload;
+  }
+
+  function adyenRequireMerchantAccount(merchantAccount, operation) {
+    if (!merchantAccount) {
+      throw new Error('Missing Adyen merchant account for ' + operation + '. Provide merchantAccount in the node configuration or configure ADYEN_MERCHANT_ACCOUNT in Script Properties.');
+    }
+    return merchantAccount;
+  }
+
+  function adyenHandleTestConnection(baseUrl, apiKey, merchantAccount, params, inputData) {
+    adyenRequireMerchantAccount(merchantAccount, 'test_connection');
+    var response = rateLimitAware(() => fetchJson({
+      url: baseUrl + '/paymentMethods',
+      method: 'POST',
+      headers: adyenBuildHeaders(apiKey),
+      payload: JSON.stringify(adyenSanitizePayload({
+        merchantAccount: merchantAccount,
+        channel: params && params.channel ? params.channel : 'Web'
+      })),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    var methods = [];
+    if (response && response.body && Array.isArray(response.body.paymentMethods)) {
+      methods = response.body.paymentMethods;
+    }
+
+    var next = Object.assign({}, inputData || {});
+    next.connectionTest = 'success';
+    next.adyenPaymentMethods = methods;
+    next.adyenMerchantAccount = merchantAccount;
+    logInfo('adyen_test_connection', { paymentMethods: methods.length, merchantAccount: merchantAccount });
+    return next;
+  }
+
+  function adyenResolveReturnUrl(params, inputData) {
+    if (params && params.returnUrl) {
+      return params.returnUrl;
+    }
+    if (params && params.return_url) {
+      return params.return_url;
+    }
+    if (inputData && inputData.returnUrl) {
+      return inputData.returnUrl;
+    }
+    if (inputData && inputData.return_url) {
+      return inputData.return_url;
+    }
+    return null;
+  }
+
+  function adyenHandleCreatePayment(baseUrl, apiKey, merchantAccount, params, inputData) {
+    adyenRequireMerchantAccount(merchantAccount, 'create_payment');
+    var amountSource = params && params.amount ? params.amount : (inputData && inputData.amount ? inputData.amount : null);
+    var amount = adyenEnsureAmount(amountSource);
+    var paymentMethod = params && params.paymentMethod ? params.paymentMethod : (inputData && inputData.paymentMethod ? inputData.paymentMethod : null);
+    if (!paymentMethod || typeof paymentMethod !== 'object') {
+      throw new Error('Adyen create_payment requires paymentMethod details.');
+    }
+
+    var returnUrl = adyenResolveReturnUrl(params, inputData);
+    if (!returnUrl) {
+      throw new Error('Adyen create_payment requires a returnUrl.');
+    }
+
+    var reference = params && params.reference ? params.reference : (inputData && inputData.reference ? inputData.reference : ('adyen-' + new Date().getTime()));
+    var idempotencyKey = (params && (params.idempotencyKey || params.idempotency_key)) || Utilities.getUuid();
+
+    var payload = adyenSanitizePayload({
+      amount: amount,
+      reference: reference,
+      paymentMethod: paymentMethod,
+      returnUrl: returnUrl,
+      merchantAccount: merchantAccount,
+      shopperEmail: params && (params.shopperEmail || params.shopper_email) ? (params.shopperEmail || params.shopper_email) : (inputData && (inputData.shopperEmail || inputData.shopper_email) ? (inputData.shopperEmail || inputData.shopper_email) : undefined),
+      shopperReference: params && (params.shopperReference || params.shopper_reference) ? (params.shopperReference || params.shopper_reference) : (inputData && (inputData.shopperReference || inputData.shopper_reference) ? (inputData.shopperReference || inputData.shopper_reference) : undefined),
+      countryCode: params && (params.countryCode || params.country_code) ? (params.countryCode || params.country_code) : (inputData && (inputData.countryCode || inputData.country_code) ? (inputData.countryCode || inputData.country_code) : undefined)
+    });
+
+    var response = rateLimitAware(() => fetchJson({
+      url: baseUrl + '/payments',
+      method: 'POST',
+      headers: adyenBuildHeaders(apiKey, idempotencyKey),
+      payload: JSON.stringify(payload),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 750, jitter: 0.3 });
+
+    var body = response && response.body ? response.body : {};
+    logInfo('adyen_create_payment', { pspReference: body.pspReference || null, resultCode: body.resultCode || null });
+
+    var next = Object.assign({}, inputData || {});
+    next.adyenPayment = body;
+    next.adyenPspReference = body.pspReference || null;
+    next.adyenResultCode = body.resultCode || null;
+    next.adyenPaymentIdempotencyKey = idempotencyKey;
+    return next;
+  }
+
+  function adyenResolvePaymentReference(params, inputData) {
+    if (params && (params.paymentPspReference || params.payment_psp_reference)) {
+      return params.paymentPspReference || params.payment_psp_reference;
+    }
+    if (inputData && (inputData.paymentPspReference || inputData.pspReference)) {
+      return inputData.paymentPspReference || inputData.pspReference;
+    }
+    return null;
+  }
+
+  function adyenHandleCapturePayment(baseUrl, apiKey, merchantAccount, params, inputData) {
+    adyenRequireMerchantAccount(merchantAccount, 'capture_payment');
+    var paymentReference = adyenResolvePaymentReference(params, inputData);
+    if (!paymentReference) {
+      throw new Error('Adyen capture_payment requires paymentPspReference.');
+    }
+
+    var amountSource = params && params.amount ? params.amount : (inputData && inputData.amount ? inputData.amount : null);
+    var amount = adyenEnsureAmount(amountSource);
+    var reference = params && params.reference ? params.reference : ('capture-' + paymentReference);
+    var idempotencyKey = (params && (params.idempotencyKey || params.idempotency_key)) || Utilities.getUuid();
+
+    var response = rateLimitAware(() => fetchJson({
+      url: baseUrl + '/payments/' + encodeURIComponent(paymentReference) + '/captures',
+      method: 'POST',
+      headers: adyenBuildHeaders(apiKey, idempotencyKey),
+      payload: JSON.stringify(adyenSanitizePayload({
+        merchantAccount: merchantAccount,
+        amount: amount,
+        reference: reference
+      })),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 750, jitter: 0.3 });
+
+    var body = response && response.body ? response.body : {};
+    logInfo('adyen_capture_payment', { pspReference: paymentReference, capturePspReference: body.pspReference || null });
+
+    var next = Object.assign({}, inputData || {});
+    next.adyenCapture = body;
+    next.adyenCaptureIdempotencyKey = idempotencyKey;
+    next.adyenCaptureReference = body.pspReference || null;
+    next.adyenPspReference = paymentReference;
+    return next;
+  }
+
+  function adyenHandleRefundPayment(baseUrl, apiKey, merchantAccount, params, inputData) {
+    adyenRequireMerchantAccount(merchantAccount, 'refund_payment');
+    var paymentReference = adyenResolvePaymentReference(params, inputData);
+    if (!paymentReference) {
+      throw new Error('Adyen refund_payment requires paymentPspReference.');
+    }
+
+    var amountSource = params && params.amount ? params.amount : (inputData && inputData.amount ? inputData.amount : null);
+    var amount = adyenEnsureAmount(amountSource);
+    var reference = params && params.reference ? params.reference : ('refund-' + paymentReference);
+    var idempotencyKey = (params && (params.idempotencyKey || params.idempotency_key)) || Utilities.getUuid();
+
+    var response = rateLimitAware(() => fetchJson({
+      url: baseUrl + '/payments/' + encodeURIComponent(paymentReference) + '/refunds',
+      method: 'POST',
+      headers: adyenBuildHeaders(apiKey, idempotencyKey),
+      payload: JSON.stringify(adyenSanitizePayload({
+        merchantAccount: merchantAccount,
+        amount: amount,
+        reference: reference
+      })),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 750, jitter: 0.3 });
+
+    var body = response && response.body ? response.body : {};
+    logInfo('adyen_refund_payment', { pspReference: paymentReference, refundPspReference: body.pspReference || null });
+
+    var next = Object.assign({}, inputData || {});
+    next.adyenRefund = body;
+    next.adyenRefundIdempotencyKey = idempotencyKey;
+    next.adyenRefundReference = body.pspReference || null;
+    next.adyenPspReference = paymentReference;
+    return next;
+  }
+
+  function adyenHandlePaymentTrigger(params, inputData) {
+    var payload = params && params.payload ? params.payload : (inputData && inputData.payload ? inputData.payload : inputData);
+    var event = adyenExtractNotification(payload);
+    var success = adyenNormalizeSuccess(event && event.success);
+    logInfo('adyen_payment_trigger', {
+      pspReference: event && event.pspReference ? event.pspReference : null,
+      eventCode: event && event.eventCode ? event.eventCode : null,
+      success: success
+    });
+
+    var next = Object.assign({}, inputData || {});
+    next.adyenEvent = event;
+    next.adyenPaymentSuccess = success;
+    next.adyenPspReference = event && event.pspReference ? event.pspReference : next.adyenPspReference || null;
+    next.adyenMerchantReference = event && event.merchantReference ? event.merchantReference : next.adyenMerchantReference || null;
+    next.adyenEventCode = event && event.eventCode ? event.eventCode : next.adyenEventCode || null;
+    return next;
+  }
+
+  function adyenExecuteOperation(operation, inputData, params) {
+    params = params || {};
+    inputData = inputData || {};
+
+    var apiKey = getSecret('ADYEN_API_KEY', { connectorKey: 'adyen' });
+    var merchantAccount = params.merchantAccount || params.merchant_account || null;
+    if (!merchantAccount) {
+      try {
+        merchantAccount = getSecret('ADYEN_MERCHANT_ACCOUNT', { connectorKey: 'adyen' });
+      } catch (error) {
+        if (operation === 'payment_success') {
+          merchantAccount = null;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    var baseUrl = 'https://checkout-test.adyen.com/v70';
+
+    if (operation === 'test_connection') {
+      return adyenHandleTestConnection(baseUrl, apiKey, merchantAccount, params, inputData);
+    }
+    if (operation === 'create_payment') {
+      return adyenHandleCreatePayment(baseUrl, apiKey, merchantAccount, params, inputData);
+    }
+    if (operation === 'capture_payment') {
+      return adyenHandleCapturePayment(baseUrl, apiKey, merchantAccount, params, inputData);
+    }
+    if (operation === 'refund_payment') {
+      return adyenHandleRefundPayment(baseUrl, apiKey, merchantAccount, params, inputData);
+    }
+    if (operation === 'payment_success') {
+      return adyenHandlePaymentTrigger(params, inputData);
+    }
+
+    throw new Error('Unsupported Adyen operation: ' + operation);
+  }
+}
+`;
+}
+
+function adyenResolveConfigBlock(): string {
+  return `
+if (typeof adyenResolveConfig !== 'function') {
+  function adyenResolveConfig(config, ctx) {
+    if (config === null || config === undefined) {
+      return {};
+    }
+    if (Array.isArray(config)) {
+      var arr = [];
+      for (var i = 0; i < config.length; i++) {
+        arr.push(adyenResolveConfig(config[i], ctx));
+      }
+      return arr;
+    }
+    if (typeof config === 'object') {
+      var obj = {};
+      for (var key in config) {
+        if (!Object.prototype.hasOwnProperty.call(config, key)) continue;
+        obj[key] = adyenResolveConfig(config[key], ctx);
+      }
+      return obj;
+    }
+    if (typeof config === 'string') {
+      var trimmed = config.trim();
+      if (!trimmed) {
+        return '';
+      }
+      return interpolate(trimmed, ctx);
+    }
+    return config;
+  }
+}
+`;
+}
+
+function buildAdyenAction(operation: string, config: any): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const errorKey = `adyen_${operation}_failed`;
+  const functionName = `step_action_adyen_${operation}`;
+
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const params = adyenResolveConfig(config, ctx);
+  try {
+    return adyenExecuteOperation('${operation}', ctx, params);
+  } catch (error) {
+    logError('${errorKey}', { message: error && error.message ? error.message : String(error) });
+    throw error;
+  }
+}
+${adyenResolveConfigBlock()}
+${adyenHelpersBlock()}
+`;
+}
+
+function buildAdyenTrigger(config: any): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  return `
+function trigger_trigger_adyen_payment_success(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const params = adyenResolveConfig(config, ctx);
+  try {
+    return adyenExecuteOperation('payment_success', ctx, params);
+  } catch (error) {
+    logError('adyen_payment_success_trigger_failed', { message: error && error.message ? error.message : String(error) });
+    throw error;
+  }
+}
+${adyenResolveConfigBlock()}
+${adyenHelpersBlock()}
+`;
+}
+
+function generateAdyenFunction(functionName: string, node: WorkflowNode): string {
+  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_payment';
+
+  return `
+function ${functionName}(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  const operation = params.operation || '${operation}';
+  console.log('💶 Executing Adyen: ${node.name || operation}');
+
+  try {
+    return adyenExecuteOperation(operation, inputData, params);
+  } catch (error) {
+    console.error('❌ Adyen ' + operation + ' failed:', error);
+    const result = Object.assign({}, inputData || {});
+    result.adyenError = error && error.message ? error.message : String(error);
+    return result;
+  }
+}
+${adyenHelpersBlock()}
+`;
+}
+
 function generateRazorpayFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'create_payment';
   
@@ -15806,6 +16215,11 @@ ${payloadBlock}
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
+  'action.adyen:test_connection': (c) => buildAdyenAction('test_connection', c),
+  'action.adyen:create_payment': (c) => buildAdyenAction('create_payment', c),
+  'action.adyen:capture_payment': (c) => buildAdyenAction('capture_payment', c),
+  'action.adyen:refund_payment': (c) => buildAdyenAction('refund_payment', c),
+  'trigger.adyen:payment_success': (c) => buildAdyenTrigger(c),
   'trigger.gmail:email_received': (c) => `
 function onNewEmail() {
   return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
