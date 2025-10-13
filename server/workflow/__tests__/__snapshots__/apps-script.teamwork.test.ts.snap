@@ -1,0 +1,2629 @@
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:create_project 1`] = `
+
+function step_createTeamworkProject(ctx) {
+  ctx = ctx || {};
+  const config = {"name":"Launch {{product_name}} initiative","description":"Coordinate go-to-market tasks for {{product_name}}.","company_id":"{{company_id}}","category_id":"42","start_date":"2024-01-08","end_date":"2024-03-29","budget":125000,"status":"active","privacy":"open","tags":"launch,priority"};
+
+  const operationLabel = 'create_project';
+  const operationLogKey = 'teamwork_create_project';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const projectName = resolveRequired(config.name, 'a project name');
+  const projectData = { name: projectName };
+  const description = resolveOptional(config.description);
+  if (description) { projectData.description = description; }
+  const companyId = resolveOptional(config.company_id);
+  if (companyId) { projectData.companyId = companyId; }
+  const categoryId = resolveOptional(config.category_id);
+  if (categoryId) { projectData.categoryId = categoryId; }
+  const startDate = formatDateValue(config.start_date, 'start date');
+  if (startDate) { projectData.startDate = startDate; }
+  const endDate = formatDateValue(config.end_date, 'end date');
+  if (endDate) { projectData.endDate = endDate; }
+  const budget = resolveNumberValue(config.budget, 'budget');
+  if (budget !== undefined) { projectData.budget = budget; }
+  const status = resolveOptional(config.status);
+  if (status) { projectData.status = status.toLowerCase(); }
+  const privacy = resolveOptional(config.privacy);
+  if (privacy) { projectData.privacy = privacy.toLowerCase(); }
+  const tags = resolveOptional(config.tags);
+  if (tags) { projectData.tags = tags; }
+  const payload = { project: projectData };
+  try {
+    const response = teamworkRequest({\n      method: 'POST',\n      endpoint: '/projects.json',\n      body: payload\n    });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const project = body && body.project ? body.project : (body && body.data ? body.data : body);
+    const projectId = project && (project.id || project.ID) ? (project.id || project.ID) : (body && (body.projectId || body.id) ? (body.projectId || body.id) : null);
+    ctx.teamworkProjectId = projectId || null;
+    ctx.teamworkProject = project || null;
+    logInfo('teamwork_create_project', { projectId: projectId || null });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork create_project failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:update_project 1`] = `
+
+function step_updateTeamworkProject(ctx) {
+  ctx = ctx || {};
+  const config = {"project_id":"{{teamwork_project_id}}","name":"Updated {{project_name}} plan","status":"active","privacy":"private","tags":"updated,review"};
+
+  const operationLabel = 'update_project';
+  const operationLogKey = 'teamwork_update_project';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const projectId = resolveId(config.project_id, 'a project ID');
+  const projectData = {};
+  const name = resolveOptional(config.name);
+  if (name) { projectData.name = name; }
+  const description = resolveOptional(config.description);
+  if (description) { projectData.description = description; }
+  const companyId = resolveOptional(config.company_id);
+  if (companyId) { projectData.companyId = companyId; }
+  const categoryId = resolveOptional(config.category_id);
+  if (categoryId) { projectData.categoryId = categoryId; }
+  const startDate = formatDateValue(config.start_date, 'start date');
+  if (startDate) { projectData.startDate = startDate; }
+  const endDate = formatDateValue(config.end_date, 'end date');
+  if (endDate) { projectData.endDate = endDate; }
+  const budget = resolveNumberValue(config.budget, 'budget');
+  if (budget !== undefined) { projectData.budget = budget; }
+  const status = resolveOptional(config.status);
+  if (status) { projectData.status = status.toLowerCase(); }
+  const privacy = resolveOptional(config.privacy);
+  if (privacy) { projectData.privacy = privacy.toLowerCase(); }
+  const tags = resolveOptional(config.tags);
+  if (tags) { projectData.tags = tags; }
+  if (Object.keys(projectData).length === 0) { logWarn('teamwork_update_project_skipped', { projectId: projectId }); return ctx; }
+  const payload = { project: projectData };
+  try {
+    const response = teamworkRequest({\n      method: 'PUT',\n      endpoint: '/projects/' + encodeURIComponent(projectId) + '.json',\n      body: payload\n    });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const project = body && body.project ? body.project : (body && body.data ? body.data : body);
+    const returnedId = project && (project.id || project.ID) ? (project.id || project.ID) : (body && (body.projectId || body.id) ? (body.projectId || body.id) : projectId);
+    ctx.teamworkProjectId = returnedId || projectId;
+    ctx.teamworkProject = project || null;
+    logInfo('teamwork_update_project', { projectId: projectId, updated: true });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork update_project failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:get_project 1`] = `
+
+function step_getTeamworkProject(ctx) {
+  ctx = ctx || {};
+  const config = {"project_id":"{{teamwork_project_id}}"};
+
+  const operationLabel = 'get_project';
+  const operationLogKey = 'teamwork_get_project';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const projectId = resolveId(config.project_id, 'a project ID');
+  try {
+    const response = teamworkRequest({ method: 'GET', endpoint: '/projects/' + encodeURIComponent(projectId) + '.json' });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const project = body && body.project ? body.project : (body && body.data ? body.data : body);
+    ctx.teamworkProjectId = projectId;
+    ctx.teamworkProject = project || null;
+    logInfo('teamwork_get_project', { projectId: projectId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork get_project failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:list_projects 1`] = `
+
+function step_listTeamworkProjects(ctx) {
+  ctx = ctx || {};
+  const config = {"status":"active","company_id":"1234","category_id":"42","created_after":"2024-01-01","created_before":"2024-03-31","updated_after":"2024-02-01","updated_before":"2024-02-28","page":2,"page_size":50};
+
+  const operationLabel = 'list_projects';
+  const operationLogKey = 'teamwork_list_projects';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const query = {};
+  const status = resolveOptional(config.status);
+  if (status) { query.status = status.toLowerCase(); }
+  const companyId = resolveOptional(config.company_id);
+  if (companyId) { query.companyId = companyId; }
+  const categoryId = resolveOptional(config.category_id);
+  if (categoryId) { query.categoryId = categoryId; }
+  const createdAfter = formatDateValue(config.created_after, 'created_after');
+  if (createdAfter) { query.createdAfter = createdAfter; }
+  const createdBefore = formatDateValue(config.created_before, 'created_before');
+  if (createdBefore) { query.createdBefore = createdBefore; }
+  const updatedAfter = formatDateValue(config.updated_after, 'updated_after');
+  if (updatedAfter) { query.updatedAfter = updatedAfter; }
+  const updatedBefore = formatDateValue(config.updated_before, 'updated_before');
+  if (updatedBefore) { query.updatedBefore = updatedBefore; }
+  const page = resolveNumberValue(config.page, 'page');
+  if (page !== undefined) { query.page = page; }
+  const pageSize = resolveNumberValue(config.page_size, 'page_size');
+  if (pageSize !== undefined) { query.pageSize = pageSize; }
+  try {
+    const response = teamworkRequest({ method: 'GET', endpoint: '/projects.json', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const projects = body && Array.isArray(body.projects) ? body.projects : (body && Array.isArray(body.data) ? body.data : []);
+    ctx.teamworkProjects = projects;
+    ctx.teamworkProjectsMeta = body && body.meta ? body.meta : null;
+    logInfo('teamwork_list_projects', { count: Array.isArray(projects) ? projects.length : 0 });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork list_projects failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:create_task 1`] = `
+
+function step_createTeamworkTask(ctx) {
+  ctx = ctx || {};
+  const config = {"project_id":"{{teamwork_project_id}}","content":"Draft kickoff brief for {{product_name}}","description":"Outline goals, deliverables, and owners before the kickoff.","responsible_party_id":"{{owner_id}}","task_list_id":"8765","priority":"high","due_date":"2024-02-05","start_date":"2024-01-15","estimated_minutes":240,"tags":"kickoff,brief","private":false};
+
+  const operationLabel = 'create_task';
+  const operationLogKey = 'teamwork_create_task';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const projectId = resolveId(config.project_id, 'a project ID');
+  const content = resolveRequired(config.content, 'task content');
+  const taskData = { content: content, projectId: projectId };
+  const description = resolveOptional(config.description);
+  if (description) { taskData.description = description; }
+  const responsible = resolveOptional(config.responsible_party_id);
+  if (responsible) { taskData.responsiblePartyId = responsible; }
+  const taskListId = resolveOptional(config.task_list_id);
+  if (taskListId) { taskData.tasklistId = taskListId; }
+  const priority = resolveOptional(config.priority);
+  if (priority) { taskData.priority = priority.toLowerCase(); }
+  const dueDate = formatDateValue(config.due_date, 'due date');
+  if (dueDate) { taskData.dueDate = dueDate; }
+  const startDate = formatDateValue(config.start_date, 'start date');
+  if (startDate) { taskData.startDate = startDate; }
+  const estimated = resolveNumberValue(config.estimated_minutes, 'estimated_minutes');
+  if (estimated !== undefined) { taskData.estimatedMinutes = estimated; }
+  const tags = resolveOptional(config.tags);
+  if (tags) { taskData.tags = tags; }
+  const privateFlag = resolveBooleanValue(config.private);
+  if (privateFlag !== undefined) { taskData['private'] = privateFlag; }
+  const payload = { 'todo-item': taskData };
+  try {
+    const response = teamworkRequest({\n      method: 'POST',\n      endpoint: '/tasks.json',\n      body: payload\n    });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);
+    const taskId = task && (task.id || task.ID) ? (task.id || task.ID) : (body && (body.taskId || body.id) ? (body.taskId || body.id) : null);
+    ctx.teamworkTaskId = taskId || null;
+    ctx.teamworkTask = task || null;
+    logInfo('teamwork_create_task', { taskId: taskId || null, projectId: projectId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork create_task failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:update_task 1`] = `
+
+function step_updateTeamworkTask(ctx) {
+  ctx = ctx || {};
+  const config = {"task_id":"{{teamwork_task_id}}","content":"Finalize kickoff brief","priority":"medium","completed":true,"tags":"kickoff,brief,done"};
+
+  const operationLabel = 'update_task';
+  const operationLogKey = 'teamwork_update_task';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const taskId = resolveId(config.task_id, 'a task ID');
+  const taskData = {};
+  const content = resolveOptional(config.content);
+  if (content) { taskData.content = content; }
+  const description = resolveOptional(config.description);
+  if (description) { taskData.description = description; }
+  const responsible = resolveOptional(config.responsible_party_id);
+  if (responsible) { taskData.responsiblePartyId = responsible; }
+  const priority = resolveOptional(config.priority);
+  if (priority) { taskData.priority = priority.toLowerCase(); }
+  const dueDate = formatDateValue(config.due_date, 'due date');
+  if (dueDate) { taskData.dueDate = dueDate; }
+  const startDate = formatDateValue(config.start_date, 'start date');
+  if (startDate) { taskData.startDate = startDate; }
+  const estimated = resolveNumberValue(config.estimated_minutes, 'estimated_minutes');
+  if (estimated !== undefined) { taskData.estimatedMinutes = estimated; }
+  const tags = resolveOptional(config.tags);
+  if (tags) { taskData.tags = tags; }
+  const privateFlag = resolveBooleanValue(config.private);
+  if (privateFlag !== undefined) { taskData['private'] = privateFlag; }
+  const completedFlag = resolveBooleanValue(config.completed);
+  if (completedFlag !== undefined) { taskData.completed = completedFlag; }
+  if (Object.keys(taskData).length === 0) { logWarn('teamwork_update_task_skipped', { taskId: taskId }); return ctx; }
+  const payload = { 'todo-item': taskData };
+  try {
+    const response = teamworkRequest({\n      method: 'PUT',\n      endpoint: '/tasks/' + encodeURIComponent(taskId) + '.json',\n      body: payload\n    });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);
+    ctx.teamworkTaskId = taskId;
+    ctx.teamworkTask = task || null;
+    logInfo('teamwork_update_task', { taskId: taskId, updated: true });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork update_task failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:get_task 1`] = `
+
+function step_getTeamworkTask(ctx) {
+  ctx = ctx || {};
+  const config = {"task_id":"{{teamwork_task_id}}"};
+
+  const operationLabel = 'get_task';
+  const operationLogKey = 'teamwork_get_task';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const taskId = resolveId(config.task_id, 'a task ID');
+  try {
+    const response = teamworkRequest({ method: 'GET', endpoint: '/tasks/' + encodeURIComponent(taskId) + '.json' });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);
+    ctx.teamworkTaskId = taskId;
+    ctx.teamworkTask = task || null;
+    logInfo('teamwork_get_task', { taskId: taskId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork get_task failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:list_tasks 1`] = `
+
+function step_listTeamworkTasks(ctx) {
+  ctx = ctx || {};
+  const config = {"project_id":"{{teamwork_project_id}}","task_list_id":"8765","responsible_party_id":"{{owner_id}}","tag":"kickoff","completed":false,"updated_after":"2024-01-01","updated_before":"2024-02-01","page":3,"page_size":100};
+
+  const operationLabel = 'list_tasks';
+  const operationLogKey = 'teamwork_list_tasks';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const query = {};
+  const projectFilter = resolveOptional(config.project_id);
+  if (projectFilter) { query.projectId = projectFilter; }
+  const taskListFilter = resolveOptional(config.task_list_id);
+  if (taskListFilter) { query.tasklistId = taskListFilter; }
+  const responsible = resolveOptional(config.responsible_party_id);
+  if (responsible) { query.responsiblePartyId = responsible; }
+  const tagFilter = resolveOptional(config.tag);
+  if (tagFilter) { query.tag = tagFilter; }
+  const completedFilter = resolveBooleanValue(config.completed);
+  if (completedFilter !== undefined) { query.completed = completedFilter ? 'true' : 'false'; }
+  const updatedAfter = formatDateValue(config.updated_after, 'updated_after');
+  if (updatedAfter) { query.updatedAfter = updatedAfter; }
+  const updatedBefore = formatDateValue(config.updated_before, 'updated_before');
+  if (updatedBefore) { query.updatedBefore = updatedBefore; }
+  const page = resolveNumberValue(config.page, 'page');
+  if (page !== undefined) { query.page = page; }
+  const pageSize = resolveNumberValue(config.page_size, 'page_size');
+  if (pageSize !== undefined) { query.pageSize = pageSize; }
+  try {
+    const response = teamworkRequest({ method: 'GET', endpoint: '/tasks.json', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const tasks = body && Array.isArray(body['todo-items']) ? body['todo-items'] : (body && Array.isArray(body.tasks) ? body.tasks : []);
+    ctx.teamworkTasks = tasks;
+    ctx.teamworkTasksMeta = body && body.meta ? body.meta : null;
+    logInfo('teamwork_list_tasks', { count: Array.isArray(tasks) ? tasks.length : 0 });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork list_tasks failed');
+  }
+}
+`;
+exports[`Apps Script Teamwork REAL_OPS builds action.teamwork:create_time_entry 1`] = `
+
+function step_createTeamworkTimeEntry(ctx) {
+  ctx = ctx || {};
+  const config = {"project_id":"{{teamwork_project_id}}","task_id":"{{teamwork_task_id}}","person_id":"{{teamwork_user_id}}","description":"Planning session for {{product_name}} launch","hours":2,"minutes":30,"date":"2024-01-22","time":"09:30","is_billable":true,"tags":"planning,launch"};
+
+  const operationLabel = 'create_time_entry';
+  const operationLogKey = 'teamwork_create_time_entry';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+  const projectId = resolveId(config.project_id, 'a project ID');
+  const personId = resolveId(config.person_id, 'a person ID');
+  const description = resolveRequired(config.description, 'a description');
+  const hours = resolveNumberValue(config.hours, 'hours');
+  if (hours === undefined) { throw new Error('Teamwork create_time_entry requires hours.'); }
+  const minutes = resolveNumberValue(config.minutes, 'minutes');
+  const taskId = resolveOptional(config.task_id);
+  const dateValue = formatDateValue(config.date, 'date');
+  if (!dateValue) { throw new Error('Teamwork create_time_entry requires a date.'); }
+  const timeValue = resolveTimeValue(config.time, 'time');
+  const isBillable = resolveBooleanValue(config.is_billable);
+  const tags = resolveOptional(config.tags);
+  const payload = { 'time-entry': { description: description, 'project-id': projectId, 'person-id': personId, hours: hours } };
+  if (minutes !== undefined) { payload['time-entry'].minutes = minutes; }
+  if (taskId) { payload['time-entry']['task-id'] = taskId; }
+  if (dateValue) { payload['time-entry'].date = dateValue; }
+  if (timeValue) { payload['time-entry'].time = timeValue; }
+  if (isBillable !== undefined) { payload['time-entry']['is-billable'] = isBillable; }
+  if (tags) { payload['time-entry'].tags = tags; }
+  try {
+    const response = teamworkRequest({\n      method: 'POST',\n      endpoint: '/time_entries.json',\n      body: payload\n    });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const entry = body && (body['time-entry'] || body.timeEntry) ? (body['time-entry'] || body.timeEntry) : (body && body.data ? body.data : body);
+    const entryId = entry && (entry.id || entry.ID) ? (entry.id || entry.ID) : (body && (body.id || body.timeEntryId) ? (body.id || body.timeEntryId) : null);
+    ctx.teamworkTimeEntryId = entryId || null;
+    ctx.teamworkTimeEntry = entry || null;
+    logInfo('teamwork_create_time_entry', { timeEntryId: entryId || null, projectId: projectId, personId: personId });
+    return ctx;
+  } catch (error) {
+    handleError(error, 'Teamwork create_time_entry failed');
+  }
+}
+`;

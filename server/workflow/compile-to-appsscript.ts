@@ -15060,6 +15060,599 @@ ${tryLines}
 `;
 }
 
+
+interface TeamworkActionOptions {
+  operationId: string;
+  logKey: string;
+  preludeLines?: string[];
+  requestExpression: string;
+  successLines: string[];
+  errorContext: string;
+}
+
+function teamworkCommonPrelude(operationId: string, logKey: string): string {
+  const operationLabel = esc(operationId);
+  const logKeyLabel = esc(logKey);
+  return `
+  const operationLabel = '${operationLabel}';
+  const operationLogKey = '${logKeyLabel}';
+
+  const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+  const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+  if (!apiToken) {
+    logWarn('teamwork_missing_api_token', { operation: operationLogKey });
+    return ctx;
+  }
+
+  if (!siteUrlSecret) {
+    logWarn('teamwork_missing_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  function normalizeSiteUrl(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+    if (!value) {
+      return '';
+    }
+    if (!/^https?:\\/\\//i.test(value)) {
+      if (/^[a-z0-9-]+$/i.test(value)) {
+        value = 'https://' + value + '.teamwork.com';
+      } else {
+        value = 'https://' + value;
+      }
+    }
+    value = value.replace(/\\/+$/, '');
+    return value;
+  }
+
+  const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+  if (!normalizedSiteUrl) {
+    logWarn('teamwork_invalid_site_url', { operation: operationLogKey });
+    return ctx;
+  }
+
+  const baseUrl = normalizedSiteUrl.replace(/\\/+$/, '');
+  const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+  const defaultHeaders = {
+    'Authorization': 'Basic ' + encodedToken,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  function teamworkRequest(options) {
+    options = options || {};
+    const endpoint = options.endpoint ? String(options.endpoint) : '';
+    const method = options.method ? options.method : 'GET';
+    const query = options.query && typeof options.query === 'object' ? options.query : null;
+    let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    if (query) {
+      const parts = [];
+      for (const key in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, key)) {
+          continue;
+        }
+        const value = query[key];
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+      }
+      if (parts.length > 0) {
+        url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+      }
+    }
+    const requestConfig = {
+      url: url,
+      method: method,
+      headers: Object.assign({}, defaultHeaders, options.headers || {}),
+      muteHttpExceptions: true
+    };
+    if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+      requestConfig.payload = JSON.stringify(options.body);
+      requestConfig.contentType = 'application/json';
+    } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+      requestConfig.payload = options.payload;
+      if (options.contentType) {
+        requestConfig.contentType = options.contentType;
+      }
+    }
+    return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+  }
+
+  function handleError(error, context) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+        if (payload.ERROR) {
+          details.push(String(payload.ERROR));
+        }
+        if (payload.STATUS) {
+          details.push('STATUS ' + payload.STATUS);
+        }
+        if (Array.isArray(payload.errors)) {
+          for (let i = 0; i < payload.errors.length; i++) {
+            const entry = payload.errors[i];
+            if (!entry) {
+              continue;
+            }
+            details.push(typeof entry === 'string' ? entry : JSON.stringify(entry));
+          }
+        }
+      }
+    }
+    const message = (context || ('Teamwork ' + operationLabel + ' failed')) + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+  function resolveTemplate(template, options) {
+    options = options || {};
+    if (template === null || template === undefined) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return String(options.defaultValue);
+      }
+      return '';
+    }
+    if (typeof template === 'number') {
+      return String(template);
+    }
+    if (typeof template === 'boolean') {
+      return template ? 'true' : 'false';
+    }
+    const raw = typeof template === 'string' ? template : String(template);
+    const resolved = interpolate(raw, ctx);
+    if (options.keepWhitespace) {
+      return resolved;
+    }
+    const trimmed = resolved.trim();
+    if (!trimmed && options.allowEmpty) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function resolveOptional(template) {
+    const value = resolveTemplate(template, { allowEmpty: true });
+    return value ? value : undefined;
+  }
+
+  function resolveRequired(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveId(template, fieldLabel) {
+    const value = resolveTemplate(template);
+    if (!value) {
+      throw new Error('Teamwork ' + operationLabel + ' requires ' + fieldLabel + '.');
+    }
+    return value;
+  }
+
+  function resolveNumberValue(template, fieldLabel) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'number') {
+      return template;
+    }
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const value = Number(resolved);
+    if (!isFinite(value)) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be numeric.');
+    }
+    return value;
+  }
+
+  function resolveBooleanValue(template) {
+    if (template === null || template === undefined || template === '') {
+      return undefined;
+    }
+    if (typeof template === 'boolean') {
+      return template;
+    }
+    const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    throw new Error('Teamwork ' + operationLabel + ' boolean fields must be true/false.');
+  }
+
+  function formatDateValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const digits = resolved.replace(/[^0-9]/g, '');
+    if (/^\\d{8}$/.test(digits)) {
+      return digits;
+    }
+    const parsed = new Date(resolved);
+    if (isNaN(parsed.getTime())) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be a valid date (YYYY-MM-DD).');
+    }
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    return '' + year + month + day;
+  }
+
+  function resolveTimeValue(template, fieldLabel) {
+    const resolved = resolveTemplate(template, { allowEmpty: true });
+    if (!resolved) {
+      return undefined;
+    }
+    const match = resolved.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/);
+    if (!match) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = match[3] ? Number(match[3]) : null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || (seconds !== null && (seconds < 0 || seconds > 59))) {
+      throw new Error('Teamwork ' + operationLabel + ' field "' + fieldLabel + '" must be in HH:MM format.');
+    }
+    return (hours < 10 ? '0' + hours : String(hours)) + ':' + (minutes < 10 ? '0' + minutes : String(minutes)) + (seconds !== null ? ':' + (seconds < 10 ? '0' + seconds : String(seconds)) : '');
+  }
+`;
+}
+
+function buildTeamworkAction(slug: string, config: any, options: TeamworkActionOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const preludeBlock = preludeLines.length > 0 ? preludeLines.map(line => `  ${line}`).join('\n') + '\n' : '';
+  const requestLines = options.requestExpression.split('\n');
+  const requestBlock = requestLines.length === 1
+    ? `    const response = ${requestLines[0]};`
+    : `    const response = ${requestLines[0]}\n${requestLines.slice(1).map(line => `      ${line}`).join('\n')};`;
+  const successBlock = options.successLines.map(line => `    ${line}`).join('\n');
+
+  return `
+function step_${slug}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+
+${teamworkCommonPrelude(options.operationId, options.logKey)}${preludeBlock}  try {
+${requestBlock}
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+${successBlock}
+    return ctx;
+  } catch (error) {
+    handleError(error, '${esc(options.errorContext)}');
+  }
+}
+`;
+}
+
+interface TeamworkTriggerOptions {
+  triggerKey: string;
+  logKey: string;
+  eventType: string;
+  endpoint: string;
+  itemExpression: string;
+  timestampFields: string[];
+  cursorKey: string;
+  cursorParam: string;
+  preludeLines?: string[];
+  payloadLines: string[];
+  initialPageSize?: number;
+}
+
+function buildTeamworkTrigger(functionName: string, config: any, options: TeamworkTriggerOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const preludeBlock = preludeLines.length > 0 ? preludeLines.map(line => `    ${line}`).join('\n') + '\n' : '';
+  const payloadBlock = options.payloadLines.map(line => `        ${line}`).join('\n');
+  const timestampFieldsLiteral = JSON.stringify(options.timestampFields ?? []);
+  const itemExpression = options.itemExpression;
+  const initialPageSize = options.initialPageSize ?? 50;
+
+  return `
+function ${functionName}() {
+  const config = ${configLiteral};
+  return buildPollingWrapper('${options.triggerKey}', function (runtime) {
+    const apiToken = getSecret('TEAMWORK_API_TOKEN', { connectorKey: 'teamwork' });
+    const siteUrlSecret = getSecret('TEAMWORK_SITE_URL', { connectorKey: 'teamwork' });
+
+    if (!apiToken) {
+      logWarn('teamwork_missing_api_token', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    if (!siteUrlSecret) {
+      logWarn('teamwork_missing_site_url', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    function normalizeSiteUrl(raw) {
+      if (raw === null || raw === undefined) {
+        return '';
+      }
+      var value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+      if (!value) {
+        return '';
+      }
+      if (!/^https?:\\/\\//i.test(value)) {
+        if (/^[a-z0-9-]+$/i.test(value)) {
+          value = 'https://' + value + '.teamwork.com';
+        } else {
+          value = 'https://' + value;
+        }
+      }
+      value = value.replace(/\\/+$/, '');
+      return value;
+    }
+
+    const normalizedSiteUrl = normalizeSiteUrl(siteUrlSecret);
+    if (!normalizedSiteUrl) {
+      logWarn('teamwork_invalid_site_url', { trigger: '${options.triggerKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    const baseUrl = normalizedSiteUrl.replace(/\\/+$/, '');
+    const encodedToken = Utilities.base64Encode(String(apiToken).trim() + ':x');
+    const defaultHeaders = {
+      'Authorization': 'Basic ' + encodedToken,
+      'Accept': 'application/json'
+    };
+
+    function teamworkRequest(options) {
+      options = options || {};
+      const endpoint = options.endpoint ? String(options.endpoint) : '';
+      const method = options.method ? options.method : 'GET';
+      const query = options.query && typeof options.query === 'object' ? options.query : null;
+      let url = baseUrl + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      if (query) {
+        const parts = [];
+        for (const key in query) {
+          if (!Object.prototype.hasOwnProperty.call(query, key)) {
+            continue;
+          }
+          const value = query[key];
+          if (value === null || value === undefined || value === '') {
+            continue;
+          }
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        }
+        if (parts.length > 0) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+      }
+      const requestConfig = {
+        url: url,
+        method: method,
+        headers: Object.assign({}, defaultHeaders, options.headers || {}),
+        muteHttpExceptions: true
+      };
+      if (Object.prototype.hasOwnProperty.call(options, 'body')) {
+        requestConfig.payload = JSON.stringify(options.body);
+        requestConfig.contentType = 'application/json';
+      } else if (Object.prototype.hasOwnProperty.call(options, 'payload')) {
+        requestConfig.payload = options.payload;
+        if (options.contentType) {
+          requestConfig.contentType = options.contentType;
+        }
+      }
+      return rateLimitAware(() => fetchJson(requestConfig), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+    }
+
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    const interpolationContext = state.lastPayload || {};
+    const lastCursor = cursorState['${options.cursorKey}'] || null;
+
+    function resolveTemplate(template, options) {
+      options = options || {};
+      if (template === null || template === undefined) {
+        if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+          return String(options.defaultValue);
+        }
+        return '';
+      }
+      if (typeof template === 'number') {
+        return String(template);
+      }
+      if (typeof template === 'boolean') {
+        return template ? 'true' : 'false';
+      }
+      const raw = typeof template === 'string' ? template : String(template);
+      const resolved = interpolate(raw, interpolationContext);
+      const trimmed = resolved.trim();
+      if (!trimmed && options.allowEmpty) {
+        return '';
+      }
+      return trimmed || resolved;
+    }
+
+    function resolveOptional(template) {
+      const value = resolveTemplate(template, { allowEmpty: true });
+      return value ? value : undefined;
+    }
+
+    function resolveBooleanValue(template) {
+      if (template === null || template === undefined || template === '') {
+        return undefined;
+      }
+      if (typeof template === 'boolean') {
+        return template;
+      }
+      const normalized = resolveTemplate(template, { allowEmpty: true }).toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+      }
+      if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+      }
+      throw new Error('Teamwork ${options.triggerKey} boolean filter must resolve to true/false.');
+    }
+
+    function formatDateValue(template, fieldLabel) {
+      const resolved = resolveTemplate(template, { allowEmpty: true });
+      if (!resolved) {
+        return undefined;
+      }
+      if (/^\\d{8}$/.test(resolved)) {
+        return resolved;
+      }
+      const parsed = new Date(resolved);
+      if (isNaN(parsed.getTime())) {
+        throw new Error('Teamwork ${options.triggerKey} filter "' + fieldLabel + '" must be a valid date.');
+      }
+      const year = parsed.getUTCFullYear();
+      const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(parsed.getUTCDate()).padStart(2, '0');
+      return '' + year + month + day;
+    }
+
+    const query = {};
+${preludeBlock}    if (lastCursor) {
+      query['${options.cursorParam}'] = lastCursor;
+    } else {
+      query.pageSize = ${initialPageSize};
+    }
+
+    const response = teamworkRequest({ method: 'GET', endpoint: '${options.endpoint}', query: query });
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = ${itemExpression};
+    const arrayItems = Array.isArray(items) ? items : [];
+    if (arrayItems.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: '${options.logKey}' });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    function extractTimestamp(item) {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const candidates = ${timestampFieldsLiteral};
+      for (let i = 0; i < candidates.length; i++) {
+        const key = candidates[i];
+        if (!key) {
+          continue;
+        }
+        const value = item[key];
+        if (!value) {
+          continue;
+        }
+        if (typeof value === 'number') {
+          const millis = value > 1000000000000 ? value : value * 1000;
+          const fromNumber = new Date(millis);
+          if (!isNaN(fromNumber.getTime())) {
+            return fromNumber.toISOString();
+          }
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (!trimmed) {
+            continue;
+          }
+          if (/^\\d{8}$/.test(trimmed)) {
+            const iso = trimmed.slice(0, 4) + '-' + trimmed.slice(4, 6) + '-' + trimmed.slice(6, 8) + 'T00:00:00Z';
+            const parsedDigits = new Date(iso);
+            if (!isNaN(parsedDigits.getTime())) {
+              return parsedDigits.toISOString();
+            }
+          }
+          const parsed = new Date(trimmed);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+          }
+          const normalized = trimmed.replace(' ', 'T');
+          const parsedNormalized = new Date(normalized);
+          if (!isNaN(parsedNormalized.getTime())) {
+            return parsedNormalized.toISOString();
+          }
+        }
+      }
+      return null;
+    }
+
+    const collected = [];
+    for (let index = 0; index < arrayItems.length; index++) {
+      const item = arrayItems[index];
+      if (!item) {
+        continue;
+      }
+      const timestamp = extractTimestamp(item);
+      if (!timestamp) {
+        continue;
+      }
+      if (lastCursor && timestamp <= lastCursor) {
+        continue;
+      }
+      collected.push({ item: item, timestamp: timestamp });
+    }
+
+    if (collected.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: '${options.logKey}', cursor: lastCursor || null });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: lastCursor || null };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.timestamp < b.timestamp) { return -1; }
+      if (a.timestamp > b.timestamp) { return 1; }
+      return 0;
+    });
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+${payloadBlock}
+    });
+
+    const newest = collected[collected.length - 1].timestamp;
+    state.cursor = cursorState;
+    state.cursor['${options.cursorKey}'] = newest;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({ eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, resource: '${options.logKey}', cursor: newest });
+    logInfo('${options.logKey}_poll', { dispatched: batch.succeeded, cursor: newest });
+
+    return { eventsAttempted: batch.attempted, eventsDispatched: batch.succeeded, eventsFailed: batch.failed, cursor: newest };
+  });
+}
+`;
+}
+
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
@@ -20351,7 +20944,545 @@ function step_createAsanaTask(ctx) {
   }
 }`,
 
-  'action.trello:create_card': (c) => `
+  'trigger.teamwork:project_created': (c) =>
+    buildTeamworkTrigger('onTeamworkProjectCreated', c, {
+      triggerKey: 'trigger.teamwork:project_created',
+      logKey: 'teamwork_project_created',
+      eventType: 'teamwork.project_created',
+      endpoint: '/projects.json',
+      itemExpression: '(body && Array.isArray(body.projects) ? body.projects : (body && Array.isArray(body.data) ? body.data : []))',
+      timestampFields: ['created_at', 'createdAt', 'created-on', 'createdOn', 'created'],
+      cursorKey: 'teamwork_project_created_cursor',
+      cursorParam: 'createdAfter',
+      preludeLines: [
+        "const companyId = resolveOptional(config.company_id);",
+        "if (companyId) { query.companyId = companyId; }",
+        "const categoryId = resolveOptional(config.category_id);",
+        "if (categoryId) { query.categoryId = categoryId; }"
+      ],
+      payloadLines: [
+        "const project = entry.item;",
+        "const payload = {",
+        "  event: 'teamwork.project_created',",
+        "  project: project,",
+        "  cursor: entry.timestamp",
+        "};",
+        "lastPayloadDispatched = payload;",
+        "return payload;"
+      ],
+      initialPageSize: 50,
+    }),
+  'trigger.teamwork:task_created': (c) =>
+    buildTeamworkTrigger('onTeamworkTaskCreated', c, {
+      triggerKey: 'trigger.teamwork:task_created',
+      logKey: 'teamwork_task_created',
+      eventType: 'teamwork.task_created',
+      endpoint: '/tasks.json',
+      itemExpression: '(body && Array.isArray(body[\'todo-items\']) ? body[\'todo-items\'] : (body && Array.isArray(body.tasks) ? body.tasks : []))',
+      timestampFields: ['created_at', 'createdAt', 'created-on', 'createdOn', 'created'],
+      cursorKey: 'teamwork_task_created_cursor',
+      cursorParam: 'createdAfter',
+      preludeLines: [
+        "query.completed = 'false';",
+        "const projectFilter = resolveOptional(config.project_id);",
+        "if (projectFilter) { query.projectId = projectFilter; }",
+        "const responsibleFilter = resolveOptional(config.responsible_party_id);",
+        "if (responsibleFilter) { query.responsiblePartyId = responsibleFilter; }",
+        "const priorityFilter = resolveOptional(config.priority);",
+        "if (priorityFilter) { query.priority = priorityFilter.toLowerCase(); }"
+      ],
+      payloadLines: [
+        "const task = entry.item;",
+        "const payload = {",
+        "  event: 'teamwork.task_created',",
+        "  task: task,",
+        "  cursor: entry.timestamp",
+        "};",
+        "lastPayloadDispatched = payload;",
+        "return payload;"
+      ],
+      initialPageSize: 50,
+    }),
+  'trigger.teamwork:task_completed': (c) =>
+    buildTeamworkTrigger('onTeamworkTaskCompleted', c, {
+      triggerKey: 'trigger.teamwork:task_completed',
+      logKey: 'teamwork_task_completed',
+      eventType: 'teamwork.task_completed',
+      endpoint: '/tasks.json',
+      itemExpression: '(body && Array.isArray(body[\'todo-items\']) ? body[\'todo-items\'] : (body && Array.isArray(body.tasks) ? body.tasks : []))',
+      timestampFields: ['completed_at', 'completedAt', 'completed-on', 'completedOn', 'updated_at', 'updatedAt'],
+      cursorKey: 'teamwork_task_completed_cursor',
+      cursorParam: 'updatedAfter',
+      preludeLines: [
+        "query.completed = 'true';",
+        "const projectFilter = resolveOptional(config.project_id);",
+        "if (projectFilter) { query.projectId = projectFilter; }",
+        "const responsibleFilter = resolveOptional(config.responsible_party_id);",
+        "if (responsibleFilter) { query.responsiblePartyId = responsibleFilter; }",
+        "const priorityFilter = resolveOptional(config.priority);",
+        "if (priorityFilter) { query.priority = priorityFilter.toLowerCase(); }"
+      ],
+      payloadLines: [
+        "const task = entry.item;",
+        "const payload = {",
+        "  event: 'teamwork.task_completed',",
+        "  task: task,",
+        "  cursor: entry.timestamp",
+        "};",
+        "lastPayloadDispatched = payload;",
+        "return payload;"
+      ],
+      initialPageSize: 50,
+    }),
+  'trigger.teamwork:time_entry_created': (c) =>
+    buildTeamworkTrigger('onTeamworkTimeEntryCreated', c, {
+      triggerKey: 'trigger.teamwork:time_entry_created',
+      logKey: 'teamwork_time_entry_created',
+      eventType: 'teamwork.time_entry_created',
+      endpoint: '/time_entries.json',
+      itemExpression: '(body && Array.isArray(body[\'time-entries\']) ? body[\'time-entries\'] : (body && Array.isArray(body.timeEntries) ? body.timeEntries : []))',
+      timestampFields: ['updated_at', 'updatedAt', 'created_at', 'createdAt', 'date'],
+      cursorKey: 'teamwork_time_entry_cursor',
+      cursorParam: 'updatedAfter',
+      preludeLines: [
+        "const projectFilter = resolveOptional(config.project_id);",
+        "if (projectFilter) { query.projectId = projectFilter; }",
+        "const taskFilter = resolveOptional(config.task_id);",
+        "if (taskFilter) { query.taskId = taskFilter; }",
+        "const personFilter = resolveOptional(config.person_id);",
+        "if (personFilter) { query.personId = personFilter; }",
+        "const billableFilter = resolveBooleanValue(config.billable);",
+        "if (billableFilter !== undefined) { query.billable = billableFilter ? 'true' : 'false'; }"
+      ],
+      payloadLines: [
+        "const timeEntry = entry.item;",
+        "const payload = {",
+        "  event: 'teamwork.time_entry_created',",
+        "  timeEntry: timeEntry,",
+        "  cursor: entry.timestamp",
+        "};",
+        "lastPayloadDispatched = payload;",
+        "return payload;"
+      ],
+      initialPageSize: 50,
+    }),
+
+  'action.teamwork:test_connection': (c) =>
+    buildTeamworkAction('testTeamworkConnection', c, {
+      operationId: 'test_connection',
+      logKey: 'teamwork_test_connection',
+      requestExpression: "teamworkRequest({ endpoint: '/authenticate.json', method: 'GET' })",
+      successLines: [
+        "const status = body && (body.STATUS || body.status) ? (body.STATUS || body.status) : 'OK';",
+        "ctx.teamworkConnection = status;",
+        "logInfo('teamwork_test_connection', { status: status });"
+      ],
+      errorContext: 'Teamwork test_connection failed',
+    }),
+  'action.teamwork:create_project': (c) =>
+    buildTeamworkAction('createTeamworkProject', c, {
+      operationId: 'create_project',
+      logKey: 'teamwork_create_project',
+      preludeLines: [
+        "const projectName = resolveRequired(config.name, 'a project name');",
+        "const projectData = { name: projectName };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { projectData.description = description; }",
+        "const companyId = resolveOptional(config.company_id);",
+        "if (companyId) { projectData.companyId = companyId; }",
+        "const categoryId = resolveOptional(config.category_id);",
+        "if (categoryId) { projectData.categoryId = categoryId; }",
+        "const startDate = formatDateValue(config.start_date, 'start date');",
+        "if (startDate) { projectData.startDate = startDate; }",
+        "const endDate = formatDateValue(config.end_date, 'end date');",
+        "if (endDate) { projectData.endDate = endDate; }",
+        "const budget = resolveNumberValue(config.budget, 'budget');",
+        "if (budget !== undefined) { projectData.budget = budget; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { projectData.status = status.toLowerCase(); }",
+        "const privacy = resolveOptional(config.privacy);",
+        "if (privacy) { projectData.privacy = privacy.toLowerCase(); }",
+        "const tags = resolveOptional(config.tags);",
+        "if (tags) { projectData.tags = tags; }",
+        "const payload = { project: projectData };"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'POST',\n      endpoint: '/projects.json',\n      body: payload\n    })",
+      successLines: [
+        "const project = body && body.project ? body.project : (body && body.data ? body.data : body);",
+        "const projectId = project && (project.id || project.ID) ? (project.id || project.ID) : (body && (body.projectId || body.id) ? (body.projectId || body.id) : null);",
+        "ctx.teamworkProjectId = projectId || null;",
+        "ctx.teamworkProject = project || null;",
+        "logInfo('teamwork_create_project', { projectId: projectId || null });"
+      ],
+      errorContext: 'Teamwork create_project failed',
+    }),
+  'action.teamwork:update_project': (c) =>
+    buildTeamworkAction('updateTeamworkProject', c, {
+      operationId: 'update_project',
+      logKey: 'teamwork_update_project',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');",
+        "const projectData = {};",
+        "const name = resolveOptional(config.name);",
+        "if (name) { projectData.name = name; }",
+        "const description = resolveOptional(config.description);",
+        "if (description) { projectData.description = description; }",
+        "const companyId = resolveOptional(config.company_id);",
+        "if (companyId) { projectData.companyId = companyId; }",
+        "const categoryId = resolveOptional(config.category_id);",
+        "if (categoryId) { projectData.categoryId = categoryId; }",
+        "const startDate = formatDateValue(config.start_date, 'start date');",
+        "if (startDate) { projectData.startDate = startDate; }",
+        "const endDate = formatDateValue(config.end_date, 'end date');",
+        "if (endDate) { projectData.endDate = endDate; }",
+        "const budget = resolveNumberValue(config.budget, 'budget');",
+        "if (budget !== undefined) { projectData.budget = budget; }",
+        "const status = resolveOptional(config.status);",
+        "if (status) { projectData.status = status.toLowerCase(); }",
+        "const privacy = resolveOptional(config.privacy);",
+        "if (privacy) { projectData.privacy = privacy.toLowerCase(); }",
+        "const tags = resolveOptional(config.tags);",
+        "if (tags) { projectData.tags = tags; }",
+        "if (Object.keys(projectData).length === 0) { logWarn('teamwork_update_project_skipped', { projectId: projectId }); return ctx; }",
+        "const payload = { project: projectData };"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'PUT',\n      endpoint: '/projects/' + encodeURIComponent(projectId) + '.json',\n      body: payload\n    })",
+      successLines: [
+        "const project = body && body.project ? body.project : (body && body.data ? body.data : body);",
+        "const returnedId = project && (project.id || project.ID) ? (project.id || project.ID) : (body && (body.projectId || body.id) ? (body.projectId || body.id) : projectId);",
+        "ctx.teamworkProjectId = returnedId || projectId;",
+        "ctx.teamworkProject = project || null;",
+        "logInfo('teamwork_update_project', { projectId: projectId, updated: true });"
+      ],
+      errorContext: 'Teamwork update_project failed',
+    }),
+  'action.teamwork:get_project': (c) =>
+    buildTeamworkAction('getTeamworkProject', c, {
+      operationId: 'get_project',
+      logKey: 'teamwork_get_project',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/projects/' + encodeURIComponent(projectId) + '.json' })",
+      successLines: [
+        "const project = body && body.project ? body.project : (body && body.data ? body.data : body);",
+        "ctx.teamworkProjectId = projectId;",
+        "ctx.teamworkProject = project || null;",
+        "logInfo('teamwork_get_project', { projectId: projectId });"
+      ],
+      errorContext: 'Teamwork get_project failed',
+    }),
+  'action.teamwork:list_projects': (c) =>
+    buildTeamworkAction('listTeamworkProjects', c, {
+      operationId: 'list_projects',
+      logKey: 'teamwork_list_projects',
+      preludeLines: [
+        "const query = {};",
+        "const status = resolveOptional(config.status);",
+        "if (status) { query.status = status.toLowerCase(); }",
+        "const companyId = resolveOptional(config.company_id);",
+        "if (companyId) { query.companyId = companyId; }",
+        "const categoryId = resolveOptional(config.category_id);",
+        "if (categoryId) { query.categoryId = categoryId; }",
+        "const createdAfter = formatDateValue(config.created_after, 'created_after');",
+        "if (createdAfter) { query.createdAfter = createdAfter; }",
+        "const createdBefore = formatDateValue(config.created_before, 'created_before');",
+        "if (createdBefore) { query.createdBefore = createdBefore; }",
+        "const updatedAfter = formatDateValue(config.updated_after, 'updated_after');",
+        "if (updatedAfter) { query.updatedAfter = updatedAfter; }",
+        "const updatedBefore = formatDateValue(config.updated_before, 'updated_before');",
+        "if (updatedBefore) { query.updatedBefore = updatedBefore; }",
+        "const page = resolveNumberValue(config.page, 'page');",
+        "if (page !== undefined) { query.page = page; }",
+        "const pageSize = resolveNumberValue(config.page_size, 'page_size');",
+        "if (pageSize !== undefined) { query.pageSize = pageSize; }"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/projects.json', query: query })",
+      successLines: [
+        "const projects = body && Array.isArray(body.projects) ? body.projects : (body && Array.isArray(body.data) ? body.data : []);",
+        "ctx.teamworkProjects = projects;",
+        "ctx.teamworkProjectsMeta = body && body.meta ? body.meta : null;",
+        "logInfo('teamwork_list_projects', { count: Array.isArray(projects) ? projects.length : 0 });"
+      ],
+      errorContext: 'Teamwork list_projects failed',
+    }),
+  'action.teamwork:create_task': (c) =>
+    buildTeamworkAction('createTeamworkTask', c, {
+      operationId: 'create_task',
+      logKey: 'teamwork_create_task',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');",
+        "const content = resolveRequired(config.content, 'task content');",
+        "const taskData = { content: content, projectId: projectId };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { taskData.description = description; }",
+        "const responsible = resolveOptional(config.responsible_party_id);",
+        "if (responsible) { taskData.responsiblePartyId = responsible; }",
+        "const taskListId = resolveOptional(config.task_list_id);",
+        "if (taskListId) { taskData.tasklistId = taskListId; }",
+        "const priority = resolveOptional(config.priority);",
+        "if (priority) { taskData.priority = priority.toLowerCase(); }",
+        "const dueDate = formatDateValue(config.due_date, 'due date');",
+        "if (dueDate) { taskData.dueDate = dueDate; }",
+        "const startDate = formatDateValue(config.start_date, 'start date');",
+        "if (startDate) { taskData.startDate = startDate; }",
+        "const estimated = resolveNumberValue(config.estimated_minutes, 'estimated_minutes');",
+        "if (estimated !== undefined) { taskData.estimatedMinutes = estimated; }",
+        "const tags = resolveOptional(config.tags);",
+        "if (tags) { taskData.tags = tags; }",
+        "const privateFlag = resolveBooleanValue(config.private);",
+        "if (privateFlag !== undefined) { taskData['private'] = privateFlag; }",
+        "const payload = { 'todo-item': taskData };"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'POST',\n      endpoint: '/tasks.json',\n      body: payload\n    })",
+      successLines: [
+        "const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);",
+        "const taskId = task && (task.id || task.ID) ? (task.id || task.ID) : (body && (body.taskId || body.id) ? (body.taskId || body.id) : null);",
+        "ctx.teamworkTaskId = taskId || null;",
+        "ctx.teamworkTask = task || null;",
+        "logInfo('teamwork_create_task', { taskId: taskId || null, projectId: projectId });"
+      ],
+      errorContext: 'Teamwork create_task failed',
+    }),
+  'action.teamwork:update_task': (c) =>
+    buildTeamworkAction('updateTeamworkTask', c, {
+      operationId: 'update_task',
+      logKey: 'teamwork_update_task',
+      preludeLines: [
+        "const taskId = resolveId(config.task_id, 'a task ID');",
+        "const taskData = {};",
+        "const content = resolveOptional(config.content);",
+        "if (content) { taskData.content = content; }",
+        "const description = resolveOptional(config.description);",
+        "if (description) { taskData.description = description; }",
+        "const responsible = resolveOptional(config.responsible_party_id);",
+        "if (responsible) { taskData.responsiblePartyId = responsible; }",
+        "const priority = resolveOptional(config.priority);",
+        "if (priority) { taskData.priority = priority.toLowerCase(); }",
+        "const dueDate = formatDateValue(config.due_date, 'due date');",
+        "if (dueDate) { taskData.dueDate = dueDate; }",
+        "const startDate = formatDateValue(config.start_date, 'start date');",
+        "if (startDate) { taskData.startDate = startDate; }",
+        "const estimated = resolveNumberValue(config.estimated_minutes, 'estimated_minutes');",
+        "if (estimated !== undefined) { taskData.estimatedMinutes = estimated; }",
+        "const tags = resolveOptional(config.tags);",
+        "if (tags) { taskData.tags = tags; }",
+        "const privateFlag = resolveBooleanValue(config.private);",
+        "if (privateFlag !== undefined) { taskData['private'] = privateFlag; }",
+        "const completedFlag = resolveBooleanValue(config.completed);",
+        "if (completedFlag !== undefined) { taskData.completed = completedFlag; }",
+        "if (Object.keys(taskData).length === 0) { logWarn('teamwork_update_task_skipped', { taskId: taskId }); return ctx; }",
+        "const payload = { 'todo-item': taskData };"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'PUT',\n      endpoint: '/tasks/' + encodeURIComponent(taskId) + '.json',\n      body: payload\n    })",
+      successLines: [
+        "const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);",
+        "ctx.teamworkTaskId = taskId;",
+        "ctx.teamworkTask = task || null;",
+        "logInfo('teamwork_update_task', { taskId: taskId, updated: true });"
+      ],
+      errorContext: 'Teamwork update_task failed',
+    }),
+  'action.teamwork:get_task': (c) =>
+    buildTeamworkAction('getTeamworkTask', c, {
+      operationId: 'get_task',
+      logKey: 'teamwork_get_task',
+      preludeLines: [
+        "const taskId = resolveId(config.task_id, 'a task ID');"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/tasks/' + encodeURIComponent(taskId) + '.json' })",
+      successLines: [
+        "const task = body && (body['todo-item'] || body.task) ? (body['todo-item'] || body.task) : (body && body.data ? body.data : body);",
+        "ctx.teamworkTaskId = taskId;",
+        "ctx.teamworkTask = task || null;",
+        "logInfo('teamwork_get_task', { taskId: taskId });"
+      ],
+      errorContext: 'Teamwork get_task failed',
+    }),
+  'action.teamwork:list_tasks': (c) =>
+    buildTeamworkAction('listTeamworkTasks', c, {
+      operationId: 'list_tasks',
+      logKey: 'teamwork_list_tasks',
+      preludeLines: [
+        "const query = {};",
+        "const projectFilter = resolveOptional(config.project_id);",
+        "if (projectFilter) { query.projectId = projectFilter; }",
+        "const taskListFilter = resolveOptional(config.task_list_id);",
+        "if (taskListFilter) { query.tasklistId = taskListFilter; }",
+        "const responsibleFilter = resolveOptional(config.responsible_party_id);",
+        "if (responsibleFilter) { query.responsiblePartyId = responsibleFilter; }",
+        "const completedFilter = resolveBooleanValue(config.completed);",
+        "if (completedFilter !== undefined) { query.completed = completedFilter ? 'true' : 'false'; }",
+        "const priorityFilter = resolveOptional(config.priority);",
+        "if (priorityFilter) { query.priority = priorityFilter.toLowerCase(); }",
+        "const dueDateFrom = formatDateValue(config.due_date_from, 'due_date_from');",
+        "if (dueDateFrom) { query.dueDateFrom = dueDateFrom; }",
+        "const dueDateTo = formatDateValue(config.due_date_to, 'due_date_to');",
+        "if (dueDateTo) { query.dueDateTo = dueDateTo; }",
+        "const createdAfter = formatDateValue(config.created_after, 'created_after');",
+        "if (createdAfter) { query.createdAfter = createdAfter; }",
+        "const createdBefore = formatDateValue(config.created_before, 'created_before');",
+        "if (createdBefore) { query.createdBefore = createdBefore; }",
+        "const updatedAfter = formatDateValue(config.updated_after, 'updated_after');",
+        "if (updatedAfter) { query.updatedAfter = updatedAfter; }",
+        "const updatedBefore = formatDateValue(config.updated_before, 'updated_before');",
+        "if (updatedBefore) { query.updatedBefore = updatedBefore; }",
+        "const page = resolveNumberValue(config.page, 'page');",
+        "if (page !== undefined) { query.page = page; }",
+        "const pageSize = resolveNumberValue(config.page_size, 'page_size');",
+        "if (pageSize !== undefined) { query.pageSize = pageSize; }"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/tasks.json', query: query })",
+      successLines: [
+        "const tasks = body && Array.isArray(body['todo-items']) ? body['todo-items'] : (body && Array.isArray(body.tasks) ? body.tasks : []);",
+        "ctx.teamworkTasks = tasks;",
+        "ctx.teamworkTasksMeta = body && body.meta ? body.meta : null;",
+        "logInfo('teamwork_list_tasks', { count: Array.isArray(tasks) ? tasks.length : 0 });"
+      ],
+      errorContext: 'Teamwork list_tasks failed',
+    }),
+  'action.teamwork:create_time_entry': (c) =>
+    buildTeamworkAction('createTeamworkTimeEntry', c, {
+      operationId: 'create_time_entry',
+      logKey: 'teamwork_create_time_entry',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');",
+        "const personId = resolveId(config.person_id, 'a person ID');",
+        "const description = resolveRequired(config.description, 'a description');",
+        "const hours = resolveNumberValue(config.hours, 'hours');",
+        "if (hours === undefined) { throw new Error('Teamwork create_time_entry requires hours.'); }",
+        "const minutes = resolveNumberValue(config.minutes, 'minutes');",
+        "const taskId = resolveOptional(config.task_id);",
+        "const dateValue = formatDateValue(config.date, 'date');",
+        "if (!dateValue) { throw new Error('Teamwork create_time_entry requires a date.'); }",
+        "const timeValue = resolveTimeValue(config.time, 'time');",
+        "const isBillable = resolveBooleanValue(config.is_billable);",
+        "const tags = resolveOptional(config.tags);",
+        "const payload = { 'time-entry': { description: description, 'project-id': projectId, 'person-id': personId, hours: hours } };",
+        "if (minutes !== undefined) { payload['time-entry'].minutes = minutes; }",
+        "if (taskId) { payload['time-entry']['task-id'] = taskId; }",
+        "if (dateValue) { payload['time-entry'].date = dateValue; }",
+        "if (timeValue) { payload['time-entry'].time = timeValue; }",
+        "if (isBillable !== undefined) { payload['time-entry']['is-billable'] = isBillable; }",
+        "if (tags) { payload['time-entry'].tags = tags; }"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'POST',\n      endpoint: '/time_entries.json',\n      body: payload\n    })",
+      successLines: [
+        "const entry = body && (body['time-entry'] || body.timeEntry) ? (body['time-entry'] || body.timeEntry) : (body && body.data ? body.data : body);",
+        "const entryId = entry && (entry.id || entry.ID) ? (entry.id || entry.ID) : (body && (body.id || body.timeEntryId) ? (body.id || body.timeEntryId) : null);",
+        "ctx.teamworkTimeEntryId = entryId || null;",
+        "ctx.teamworkTimeEntry = entry || null;",
+        "logInfo('teamwork_create_time_entry', { timeEntryId: entryId || null, projectId: projectId, personId: personId });"
+      ],
+      errorContext: 'Teamwork create_time_entry failed',
+    }),
+  'action.teamwork:get_time_entry': (c) =>
+    buildTeamworkAction('getTeamworkTimeEntry', c, {
+      operationId: 'get_time_entry',
+      logKey: 'teamwork_get_time_entry',
+      preludeLines: [
+        "const timeEntryId = resolveId(config.time_entry_id, 'a time entry ID');"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/time_entries/' + encodeURIComponent(timeEntryId) + '.json' })",
+      successLines: [
+        "const entry = body && (body['time-entry'] || body.timeEntry) ? (body['time-entry'] || body.timeEntry) : (body && body.data ? body.data : body);",
+        "ctx.teamworkTimeEntryId = timeEntryId;",
+        "ctx.teamworkTimeEntry = entry || null;",
+        "logInfo('teamwork_get_time_entry', { timeEntryId: timeEntryId });"
+      ],
+      errorContext: 'Teamwork get_time_entry failed',
+    }),
+  'action.teamwork:list_time_entries': (c) =>
+    buildTeamworkAction('listTeamworkTimeEntries', c, {
+      operationId: 'list_time_entries',
+      logKey: 'teamwork_list_time_entries',
+      preludeLines: [
+        "const query = {};",
+        "const projectFilter = resolveOptional(config.project_id);",
+        "if (projectFilter) { query.projectId = projectFilter; }",
+        "const taskFilter = resolveOptional(config.task_id);",
+        "if (taskFilter) { query.taskId = taskFilter; }",
+        "const personFilter = resolveOptional(config.person_id);",
+        "if (personFilter) { query.personId = personFilter; }",
+        "const fromDate = formatDateValue(config.from_date, 'from_date');",
+        "if (fromDate) { query.fromDate = fromDate; }",
+        "const toDate = formatDateValue(config.to_date, 'to_date');",
+        "if (toDate) { query.toDate = toDate; }",
+        "const billableFilter = resolveBooleanValue(config.billable);",
+        "if (billableFilter !== undefined) { query.billable = billableFilter ? 'true' : 'false'; }",
+        "const page = resolveNumberValue(config.page, 'page');",
+        "if (page !== undefined) { query.page = page; }",
+        "const pageSize = resolveNumberValue(config.page_size, 'page_size');",
+        "if (pageSize !== undefined) { query.pageSize = pageSize; }"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/time_entries.json', query: query })",
+      successLines: [
+        "const entries = body && Array.isArray(body['time-entries']) ? body['time-entries'] : (body && Array.isArray(body.timeEntries) ? body.timeEntries : []);",
+        "ctx.teamworkTimeEntries = entries;",
+        "ctx.teamworkTimeEntriesMeta = body && body.meta ? body.meta : null;",
+        "logInfo('teamwork_list_time_entries', { count: Array.isArray(entries) ? entries.length : 0 });"
+      ],
+      errorContext: 'Teamwork list_time_entries failed',
+    }),
+  'action.teamwork:create_milestone': (c) =>
+    buildTeamworkAction('createTeamworkMilestone', c, {
+      operationId: 'create_milestone',
+      logKey: 'teamwork_create_milestone',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');",
+        "const title = resolveRequired(config.title, 'a milestone title');",
+        "const milestoneData = { title: title, 'project-id': projectId };",
+        "const description = resolveOptional(config.description);",
+        "if (description) { milestoneData.description = description; }",
+        "const deadline = formatDateValue(config.deadline, 'deadline');",
+        "if (deadline) { milestoneData.deadline = deadline; }",
+        "const responsible = resolveOptional(config.responsible_party_id);",
+        "if (responsible) { milestoneData['responsible-party-id'] = responsible; }",
+        "const notifyEveryone = resolveBooleanValue(config.notify_everyone);",
+        "if (notifyEveryone !== undefined) { milestoneData.notify = notifyEveryone; }",
+        "const privateFlag = resolveBooleanValue(config.private);",
+        "if (privateFlag !== undefined) { milestoneData['private'] = privateFlag; }",
+        "const tags = resolveOptional(config.tags);",
+        "if (tags) { milestoneData.tags = tags; }",
+        "const payload = { milestone: milestoneData };"
+      ],
+      requestExpression: "teamworkRequest({\n      method: 'POST',\n      endpoint: '/milestones.json',\n      body: payload\n    })",
+      successLines: [
+        "const milestone = body && body.milestone ? body.milestone : (body && body.data ? body.data : body);",
+        "const milestoneId = milestone && (milestone.id || milestone.ID) ? (milestone.id || milestone.ID) : (body && (body.milestoneId || body.id) ? (body.milestoneId || body.id) : null);",
+        "ctx.teamworkMilestoneId = milestoneId || null;",
+        "ctx.teamworkMilestone = milestone || null;",
+        "logInfo('teamwork_create_milestone', { milestoneId: milestoneId || null, projectId: projectId });"
+      ],
+      errorContext: 'Teamwork create_milestone failed',
+    }),
+  'action.teamwork:list_milestones': (c) =>
+    buildTeamworkAction('listTeamworkMilestones', c, {
+      operationId: 'list_milestones',
+      logKey: 'teamwork_list_milestones',
+      preludeLines: [
+        "const projectId = resolveId(config.project_id, 'a project ID');",
+        "const query = { projectId: projectId };",
+        "const completedFilter = resolveBooleanValue(config.completed);",
+        "if (completedFilter !== undefined) { query.completed = completedFilter ? 'true' : 'false'; }",
+        "const responsible = resolveOptional(config.responsible_party_id);",
+        "if (responsible) { query.responsiblePartyId = responsible; }",
+        "const deadlineFrom = formatDateValue(config.deadline_from, 'deadline_from');",
+        "if (deadlineFrom) { query.deadlineFrom = deadlineFrom; }",
+        "const deadlineTo = formatDateValue(config.deadline_to, 'deadline_to');",
+        "if (deadlineTo) { query.deadlineTo = deadlineTo; }"
+      ],
+      requestExpression: "teamworkRequest({ method: 'GET', endpoint: '/milestones.json', query: query })",
+      successLines: [
+        "const milestones = body && Array.isArray(body.milestones) ? body.milestones : (body && Array.isArray(body.data) ? body.data : []);",
+        "ctx.teamworkMilestones = milestones;",
+        "ctx.teamworkMilestonesProjectId = projectId;",
+        "logInfo('teamwork_list_milestones', { count: Array.isArray(milestones) ? milestones.length : 0, projectId: projectId });"
+      ],
+      errorContext: 'Teamwork list_milestones failed',
+    }),
+
+    'action.trello:create_card': (c) => `
 function step_createTrelloCard(ctx) {
   const apiKey = getSecret('TRELLO_API_KEY');
   const token = getSecret('TRELLO_TOKEN');

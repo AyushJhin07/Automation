@@ -128,6 +128,7 @@ Salesforce workflows must populate both properties before deployment. Access tok
 | Stripe | `STRIPE_SECRET_KEY` | `STRIPE_ACCOUNT_OVERRIDE` | — |
 | substack | `SUBSTACK_API_KEY` | — | — |
 | SurveyMonkey | `SURVEYMONKEY_ACCESS_TOKEN` | — | — |
+| Teamwork | `TEAMWORK_API_TOKEN`<br>`TEAMWORK_SITE_URL` | — | `TEAMWORK_SITE_URL` |
 | telegram | `TELEGRAM_BOT_TOKEN`<br>`TELEGRAM_CHAT_ID` | — | — |
 | tiktok | `TIKTOK_ACCESS_TOKEN` | — | — |
 | Toggl Track | `TOGGL_API_TOKEN` | — | — |
