@@ -64,6 +64,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
+| Google Docs | `GOOGLE_DOCS_ACCESS_TOKEN` *(Docs + Drive metadata scopes)* | — | — |
 | Greenhouse | `GREENHOUSE_API_KEY` | — | — |
 | HelloSign | `HELLOSIGN_API_KEY` | — | — |
 | hootsuite | `HOOTSUITE_ACCESS_TOKEN` | — | — |
