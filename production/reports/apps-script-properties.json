@@ -311,7 +311,27 @@
         "trigger.airtable-enhanced:record_created",
         "trigger.airtable-enhanced:record_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_SLIDES_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-slides:batch_update",
+            "action.google-slides:create_image",
+            "action.google-slides:create_presentation",
+            "action.google-slides:create_shape",
+            "action.google-slides:create_slide",
+            "action.google-slides:delete_object",
+            "action.google-slides:get_presentation",
+            "action.google-slides:insert_text",
+            "action.google-slides:replace_all_text",
+            "action.google-slides:test_connection"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {
@@ -2170,7 +2190,36 @@
         "trigger.google-slides:presentation_created",
         "trigger.google-slides:presentation_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_SLIDES_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-slides:batch_update",
+            "action.google-slides:create_image",
+            "action.google-slides:create_presentation",
+            "action.google-slides:create_shape",
+            "action.google-slides:create_slide",
+            "action.google-slides:delete_object",
+            "action.google-slides:get_presentation",
+            "action.google-slides:insert_text",
+            "action.google-slides:replace_all_text",
+            "action.google-slides:test_connection"
+          ],
+          "triggers": [
+            "trigger.google-slides:presentation_created",
+            "trigger.google-slides:presentation_updated"
+          ],
+          "contexts": [
+            "requireOAuthToken"
+          ],
+          "metadata": {
+            "scopes": [
+              "https://www.googleapis.com/auth/presentations"
+            ]
+          }
+        }
+      ],
       "environmentProperties": []
     },
     {

@@ -10,3 +10,13 @@ asana,create_task,action,in_progress
 asana,list_projects,action,planned
 hubspot,create_contact,action,done
 hubspot,update_contact,action,in_review
+google-slides,test_connection,action,done
+google-slides,create_presentation,action,done
+google-slides,get_presentation,action,done
+google-slides,batch_update,action,done
+google-slides,create_slide,action,done
+google-slides,delete_object,action,done
+google-slides,insert_text,action,done
+google-slides,replace_all_text,action,done
+google-slides,create_shape,action,done
+google-slides,create_image,action,done

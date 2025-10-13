@@ -1,0 +1,617 @@
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:test_connection 1`] = `
+
+function step_action_google_slides_test_connection(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('test_connection', ctx, config);
+}
+if (typeof __googleSlidesRunOperation !== 'function') {
+  function __googleSlidesRunOperation(operation, ctx, config) {
+    ctx = ctx || {};
+    var baseConfig = config && typeof config === 'object' ? config : {};
+    var resolved = __googleSlidesResolveConfig(baseConfig, ctx);
+    var overridesSource = ctx.googleSlidesParams || ctx.googleSlidesRequest || ctx.googleSlidesConfig || ctx.googleSlides;
+    if (overridesSource && typeof overridesSource === 'object') {
+      resolved = __googleSlidesMerge(resolved, __googleSlidesResolveConfig(overridesSource, ctx));
+    }
+    switch (operation) {
+      case 'test_connection':
+        return __googleSlidesTestConnection(ctx);
+      case 'create_presentation':
+        return __googleSlidesCreatePresentation(ctx, resolved);
+      case 'get_presentation':
+        return __googleSlidesGetPresentation(ctx, resolved);
+      case 'batch_update':
+        return __googleSlidesBatchUpdateAction(ctx, resolved);
+      case 'create_slide':
+        return __googleSlidesCreateSlide(ctx, resolved);
+      case 'delete_object':
+        return __googleSlidesDeleteObject(ctx, resolved);
+      case 'insert_text':
+        return __googleSlidesInsertText(ctx, resolved);
+      case 'replace_all_text':
+        return __googleSlidesReplaceAllText(ctx, resolved);
+      case 'create_shape':
+        return __googleSlidesCreateShape(ctx, resolved);
+      case 'create_image':
+        return __googleSlidesCreateImage(ctx, resolved);
+      default:
+        throw new Error('Unsupported Google Slides operation: ' + operation);
+    }
+  }
+
+  function __googleSlidesResolveConfig(template, ctx) {
+    if (template === null || template === undefined) {
+      return template;
+    }
+    if (typeof template === 'string') {
+      return interpolate(template, ctx);
+    }
+    if (Array.isArray(template)) {
+      var arr = [];
+      for (var i = 0; i < template.length; i++) {
+        arr.push(__googleSlidesResolveConfig(template[i], ctx));
+      }
+      return arr;
+    }
+    if (typeof template === 'object') {
+      var result = {};
+      for (var key in template) {
+        if (!Object.prototype.hasOwnProperty.call(template, key)) continue;
+        result[key] = __googleSlidesResolveConfig(template[key], ctx);
+      }
+      return result;
+    }
+    return template;
+  }
+
+  function __googleSlidesMerge(base, override) {
+    if (!override || typeof override !== 'object') {
+      return base;
+    }
+    if (Array.isArray(override)) {
+      return override.slice();
+    }
+    var result = {};
+    if (base && typeof base === 'object' && !Array.isArray(base)) {
+      for (var key in base) {
+        if (Object.prototype.hasOwnProperty.call(base, key)) {
+          result[key] = base[key];
+        }
+      }
+    }
+    for (var key2 in override) {
+      if (!Object.prototype.hasOwnProperty.call(override, key2)) continue;
+      var overrideValue = override[key2];
+      if (overrideValue === undefined) continue;
+      var baseValue = result[key2];
+      if (
+        overrideValue &&
+        typeof overrideValue === 'object' &&
+        !Array.isArray(overrideValue) &&
+        baseValue &&
+        typeof baseValue === 'object' &&
+        !Array.isArray(baseValue)
+      ) {
+        result[key2] = __googleSlidesMerge(baseValue, overrideValue);
+      } else {
+        result[key2] = overrideValue;
+      }
+    }
+    return result;
+  }
+
+  function __googleSlidesRequireToken(scopes) {
+    var list = Array.isArray(scopes) && scopes.length ? scopes : ['https://www.googleapis.com/auth/presentations'];
+    return requireOAuthToken('google-slides', { scopes: list });
+  }
+
+  function __googleSlidesBaseHeaders(token) {
+    return {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    };
+  }
+
+  function __googleSlidesFetch(method, path, token, body) {
+    var root = 'https://slides.googleapis.com/v1';
+    var normalizedPath = path || '';
+    if (normalizedPath && normalizedPath.charAt(0) !== '/') {
+      normalizedPath = '/' + normalizedPath;
+    }
+    var url = root + normalizedPath;
+    var options = {
+      method: method,
+      headers: __googleSlidesBaseHeaders(token)
+    };
+    if (body !== undefined && body !== null) {
+      options.payload = JSON.stringify(body);
+    }
+    return fetchJson({ url: url, method: method, headers: options.headers, body: options.payload });
+  }
+
+  function __googleSlidesBatchUpdate(token, presentationId, payload) {
+    var requests = __googleSlidesNormalizeRequests(payload && payload.requests);
+    if (!requests.length) {
+      throw new Error('At least one request entry is required for batchUpdate');
+    }
+    var safePayload = { requests: requests };
+    var writeControl = payload && payload.writeControl && typeof payload.writeControl === 'object'
+      ? __googleSlidesCompact(payload.writeControl)
+      : undefined;
+    if (writeControl && typeof writeControl === 'object') {
+      safePayload.writeControl = writeControl;
+    }
+    var response = __googleSlidesFetch(
+      'POST',
+      '/presentations/' + encodeURIComponent(presentationId) + ':batchUpdate',
+      token,
+      safePayload
+    );
+    return response && response.body ? response.body : {};
+  }
+
+  function __googleSlidesNormalizeRequests(requests) {
+    var result = [];
+    if (!Array.isArray(requests)) {
+      return result;
+    }
+    for (var i = 0; i < requests.length; i++) {
+      var entry = requests[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      var sanitized = __googleSlidesCompact(entry);
+      if (sanitized && typeof sanitized === 'object' && Object.keys(sanitized).length > 0) {
+        result.push(sanitized);
+      }
+    }
+    return result;
+  }
+
+  function __googleSlidesEnsurePresentationId(params, ctx) {
+    if (params && params.presentationId) {
+      return String(params.presentationId);
+    }
+    var candidates = [
+      ctx.googleSlidesPresentationId,
+      ctx.googleSlidesId,
+      ctx.presentationId,
+      ctx.presentation && ctx.presentation.id,
+      ctx.googleSlidesPresentation && ctx.googleSlidesPresentation.presentationId
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      var value = candidates[i];
+      if (value) {
+        return String(value);
+      }
+    }
+    throw new Error('Google Slides operation requires a presentationId.');
+  }
+
+  function __googleSlidesCompact(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      var arr = [];
+      for (var i = 0; i < value.length; i++) {
+        var entry = value[i];
+        if (entry === undefined || entry === null) {
+          continue;
+        }
+        if (typeof entry === 'object') {
+          var nested = __googleSlidesCompact(entry);
+          if (nested !== undefined) {
+            arr.push(nested);
+          }
+        } else {
+          arr.push(entry);
+        }
+      }
+      return arr.length > 0 ? arr : undefined;
+    }
+    if (typeof value === 'object') {
+      var result = {};
+      for (var key in value) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+        var sanitized = __googleSlidesCompact(value[key]);
+        if (sanitized !== undefined) {
+          result[key] = sanitized;
+        }
+      }
+      return Object.keys(result).length > 0 ? result : undefined;
+    }
+    return value;
+  }
+
+  function __googleSlidesFilterObjectArray(list) {
+    if (!Array.isArray(list)) {
+      return undefined;
+    }
+    var result = [];
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      var sanitized = __googleSlidesCompact(entry);
+      if (sanitized && typeof sanitized === 'object' && Object.keys(sanitized).length > 0) {
+        result.push(sanitized);
+      }
+    }
+    return result.length > 0 ? result : undefined;
+  }
+
+  function __googleSlidesFilterStringArray(list) {
+    if (!Array.isArray(list)) {
+      return undefined;
+    }
+    var result = [];
+    for (var i = 0; i < list.length; i++) {
+      var value = list[i];
+      if (typeof value === 'string' && value) {
+        result.push(value);
+      }
+    }
+    return result.length > 0 ? result : undefined;
+  }
+
+  function __googleSlidesResolveElementProperties(params) {
+    var base = params && params.elementProperties && typeof params.elementProperties === 'object'
+      ? __googleSlidesCompact(params.elementProperties)
+      : undefined;
+    var merged = {};
+    if (base && typeof base === 'object') {
+      for (var key in base) {
+        if (Object.prototype.hasOwnProperty.call(base, key)) {
+          merged[key] = base[key];
+        }
+      }
+    }
+    if (params && params.pageId && !merged.pageObjectId) {
+      merged.pageObjectId = params.pageId;
+    }
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
+  function __googleSlidesToNumber(value, fallback) {
+    if (value === undefined || value === null || value === '') {
+      return fallback;
+    }
+    var num = Number(value);
+    return isNaN(num) ? fallback : num;
+  }
+
+  function __googleSlidesExecuteSingleRequest(ctx, params, operation, payload) {
+    var token = __googleSlidesRequireToken();
+    var presentationId = __googleSlidesEnsurePresentationId(params, ctx);
+    var request = {};
+    request[operation] = __googleSlidesCompact(payload) || {};
+    var body = __googleSlidesBatchUpdate(token, presentationId, { requests: [request] });
+    var replies = Array.isArray(body.replies) ? body.replies : [];
+    ctx.googleSlidesPresentationId = presentationId;
+    ctx.googleSlidesBatchUpdate = body;
+    ctx.googleSlidesReplies = replies;
+    return { presentationId: presentationId, body: body, replies: replies };
+  }
+
+  function __googleSlidesLogSuccess(event, details) {
+    logInfo(event, details || {});
+  }
+
+  function __googleSlidesTestConnection(ctx) {
+    var token = __googleSlidesRequireToken(['https://www.googleapis.com/auth/presentations.readonly']);
+    var response = withRetries(function () {
+      return fetchJson({
+        url: 'https://slides.googleapis.com/$discovery/rest?version=v1',
+        method: 'GET',
+        headers: __googleSlidesBaseHeaders(token)
+      });
+    }, { attempts: 3, backoffMs: 500 });
+    ctx.googleSlidesTestConnection = true;
+    ctx.googleSlidesLastStatus = response && typeof response.status === 'number' ? response.status : null;
+    __googleSlidesLogSuccess('google_slides_test_connection_success', { status: ctx.googleSlidesLastStatus });
+    return ctx;
+  }
+
+  function __googleSlidesCreatePresentation(ctx, params) {
+    var token = __googleSlidesRequireToken();
+    var title = params && params.title ? String(params.title) : 'Automated Presentation';
+    if (!title) {
+      title = 'Automated Presentation';
+    }
+    var response = __googleSlidesFetch('POST', '/presentations', token, { title: title });
+    var body = response && response.body ? response.body : {};
+    var presentationId = body.presentationId || body.presentation_id || null;
+    ctx.googleSlidesPresentation = body;
+    ctx.googleSlidesPresentationId = presentationId;
+    if (presentationId) {
+      ctx.googleSlidesId = presentationId;
+    }
+    __googleSlidesLogSuccess('google_slides_create_presentation_success', { presentationId: presentationId, title: title });
+    return ctx;
+  }
+
+  function __googleSlidesGetPresentation(ctx, params) {
+    var token = __googleSlidesRequireToken();
+    var presentationId = __googleSlidesEnsurePresentationId(params, ctx);
+    var response = __googleSlidesFetch('GET', '/presentations/' + encodeURIComponent(presentationId), token);
+    var body = response && response.body ? response.body : {};
+    ctx.googleSlidesPresentationId = presentationId;
+    ctx.googleSlidesPresentation = body;
+    ctx.googleSlidesId = presentationId;
+    __googleSlidesLogSuccess('google_slides_get_presentation_success', { presentationId: presentationId });
+    return ctx;
+  }
+
+  function __googleSlidesBatchUpdateAction(ctx, params) {
+    var token = __googleSlidesRequireToken();
+    var presentationId = __googleSlidesEnsurePresentationId(params, ctx);
+    var payload = {
+      requests: __googleSlidesNormalizeRequests(params && params.requests),
+      writeControl: params && params.writeControl && typeof params.writeControl === 'object'
+        ? __googleSlidesCompact(params.writeControl)
+        : undefined
+    };
+    var body = __googleSlidesBatchUpdate(token, presentationId, payload);
+    ctx.googleSlidesPresentationId = presentationId;
+    ctx.googleSlidesBatchUpdate = body;
+    ctx.googleSlidesReplies = Array.isArray(body.replies) ? body.replies : [];
+    __googleSlidesLogSuccess('google_slides_batch_update_success', {
+      presentationId: presentationId,
+      replies: ctx.googleSlidesReplies.length
+    });
+    return ctx;
+  }
+
+  function __googleSlidesCreateSlide(ctx, params) {
+    var payload = __googleSlidesCompact({
+      objectId: params && params.objectId,
+      slideLayoutReference: params && params.slideLayoutReference && typeof params.slideLayoutReference === 'object'
+        ? __googleSlidesCompact(params.slideLayoutReference)
+        : undefined,
+      insertionIndex: __googleSlidesToNumber(params && params.insertionIndex, undefined),
+      placeholderIdMappings: __googleSlidesFilterObjectArray(params && params.placeholderIdMappings)
+    }) || {};
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'createSlide', payload);
+    var replies = meta.replies;
+    var createSlideReply = replies.length > 0 && replies[0] && replies[0].createSlide ? replies[0].createSlide : null;
+    if (createSlideReply && createSlideReply.objectId) {
+      ctx.googleSlidesSlideId = createSlideReply.objectId;
+    }
+    __googleSlidesLogSuccess('google_slides_create_slide_success', {
+      presentationId: meta.presentationId,
+      objectId: createSlideReply && createSlideReply.objectId ? createSlideReply.objectId : null
+    });
+    return ctx;
+  }
+
+  function __googleSlidesDeleteObject(ctx, params) {
+    if (!params || !params.objectId) {
+      throw new Error('Google Slides delete_object requires an objectId.');
+    }
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'deleteObject', { objectId: params.objectId });
+    ctx.googleSlidesDeletedObjectId = params.objectId;
+    __googleSlidesLogSuccess('google_slides_delete_object_success', {
+      presentationId: meta.presentationId,
+      objectId: params.objectId
+    });
+    return ctx;
+  }
+
+  function __googleSlidesInsertText(ctx, params) {
+    if (!params || !params.objectId || !params.text) {
+      throw new Error('Google Slides insert_text requires objectId and text.');
+    }
+    var insertionIndex = __googleSlidesToNumber(params && params.insertionIndex, 0);
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'insertText', {
+      objectId: params.objectId,
+      text: params.text,
+      insertionIndex: insertionIndex
+    });
+    var replies = meta.replies;
+    var insertReply = replies.length > 0 && replies[0] && replies[0].insertText ? replies[0].insertText : null;
+    ctx.googleSlidesInsertedText = params.text;
+    ctx.googleSlidesInsertTextReply = insertReply;
+    __googleSlidesLogSuccess('google_slides_insert_text_success', {
+      presentationId: meta.presentationId,
+      objectId: params.objectId,
+      charactersInserted: insertReply && typeof insertReply.charactersInserted === 'number'
+        ? insertReply.charactersInserted
+        : null
+    });
+    return ctx;
+  }
+
+  function __googleSlidesReplaceAllText(ctx, params) {
+    if (!params || !params.containsText || !params.replaceText) {
+      throw new Error('Google Slides replace_all_text requires containsText and replaceText.');
+    }
+    var payload = __googleSlidesCompact({
+      containsText: params && params.containsText && typeof params.containsText === 'object'
+        ? __googleSlidesCompact(params.containsText)
+        : undefined,
+      replaceText: params.replaceText,
+      pageObjectIds: __googleSlidesFilterStringArray(params && params.pageObjectIds)
+    }) || {};
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'replaceAllText', payload);
+    var replies = meta.replies;
+    var replaceReply = replies.length > 0 && replies[0] && replies[0].replaceAllText ? replies[0].replaceAllText : null;
+    var occurrences = replaceReply && typeof replaceReply.occurrencesChanged === 'number'
+      ? replaceReply.occurrencesChanged
+      : null;
+    ctx.googleSlidesReplacements = occurrences;
+    __googleSlidesLogSuccess('google_slides_replace_all_text_success', {
+      presentationId: meta.presentationId,
+      occurrencesChanged: occurrences
+    });
+    return ctx;
+  }
+
+  function __googleSlidesCreateShape(ctx, params) {
+    if (!params || !params.objectId || !params.shapeType) {
+      throw new Error('Google Slides create_shape requires objectId and shapeType.');
+    }
+    var elementProps = __googleSlidesResolveElementProperties(params);
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'createShape', {
+      objectId: params.objectId,
+      shapeType: params.shapeType,
+      elementProperties: elementProps
+    });
+    ctx.googleSlidesShapeId = params.objectId;
+    ctx.googleSlidesElementProperties = elementProps || {};
+    __googleSlidesLogSuccess('google_slides_create_shape_success', {
+      presentationId: meta.presentationId,
+      objectId: params.objectId,
+      shapeType: params.shapeType
+    });
+    return ctx;
+  }
+
+  function __googleSlidesCreateImage(ctx, params) {
+    if (!params || !params.objectId || !params.url) {
+      throw new Error('Google Slides create_image requires objectId and url.');
+    }
+    var elementProps = __googleSlidesResolveElementProperties(params);
+    var meta = __googleSlidesExecuteSingleRequest(ctx, params, 'createImage', {
+      objectId: params.objectId,
+      url: params.url,
+      elementProperties: elementProps
+    });
+    ctx.googleSlidesImageId = params.objectId;
+    ctx.googleSlidesElementProperties = elementProps || {};
+    __googleSlidesLogSuccess('google_slides_create_image_success', {
+      presentationId: meta.presentationId,
+      objectId: params.objectId,
+      url: params.url
+    });
+    return ctx;
+  }
+}
+`;
+}
+
+// Fallback codegen for unsupported nodes
+function generateFallbackForNode(n: any): { __key: string; code: string } | null {
+  const key = opKey(n);
+  const operation = String(n.data?.operation || n.op || '').toLowerCase();
+  const type = String(n.type || '').toLowerCase();
+  const app = String(n.app || n.data?.app || '').toLowerCase();
+  const params = n.data?.config || n.params || {};
+  const fn = funcName(n);
+
+  // HTTP-like action: use UrlFetchApp if url present
+  const url = params.url || params.endpoint || '';
+  if (type.startsWith('action') && (operation.includes('http') || url)) {
+    const method = (params.method || 'GET').toString().toUpperCase();
+    return {
+      __key: key,
+      code: `
+function ${fn}(ctx) {
+  try {
+    var url = '${url || (params.baseUrl || '')}'.trim();
+    var method = '${method}';
+    var headers = ${JSON.stringify(params.headers || {})};
+    var body = ${typeof params.body !== 'undefined' ? `(${JSON.stringify(params.body)})` : 'null'};
+    // Optional bearer token from Script Properties: ${app.toUpperCase()}_TOKEN
+    var token = PropertiesService.getScriptProperties().getProperty('${app.toUpperCase()}_TOKEN');
+    if (token) {
+      headers = headers || {}; headers['Authorization'] = 'Bearer ' + token;
+    }
+    var options = { method: method, headers: headers };
+    if (body) { options.contentType = 'application/json'; options.payload = (typeof body === 'string') ? body : JSON.stringify(body); }
+    var res = UrlFetchApp.fetch(url, options);
+    var text = res.getContentText();
+    var data; try { data = JSON.parse(text); } catch (e) { data = text; }
+    ctx.lastHttp = { status: res.getResponseCode(), data: data };
+    return ctx;
+  } catch (e) {
+    Logger.log('HTTP fallback failed: ' + e);
+    ctx.lastHttpError = String(e);
+    return ctx;
+  }
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:create_presentation 1`] = `
+
+function step_action_google_slides_create_presentation(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('create_presentation', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:get_presentation 1`] = `
+
+function step_action_google_slides_get_presentation(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('get_presentation', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:batch_update 1`] = `
+
+function step_action_google_slides_batch_update(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('batch_update', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:create_slide 1`] = `
+
+function step_action_google_slides_create_slide(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('create_slide', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:delete_object 1`] = `
+
+function step_action_google_slides_delete_object(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('delete_object', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:insert_text 1`] = `
+
+function step_action_google_slides_insert_text(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('insert_text', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:replace_all_text 1`] = `
+
+function step_action_google_slides_replace_all_text(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('replace_all_text', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:create_shape 1`] = `
+
+function step_action_google_slides_create_shape(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('create_shape', ctx, config);
+}
+`;
+
+exports[`Apps Script Google Slides REAL_OPS builds action.google-slides:create_image 1`] = `
+
+function step_action_google_slides_create_image(ctx) {
+  ctx = ctx || {};
+  var config = {};
+  return __googleSlidesRunOperation('create_image', ctx, config);
+}
+`;

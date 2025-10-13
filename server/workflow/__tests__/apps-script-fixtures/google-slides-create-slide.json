@@ -1,0 +1,116 @@
+{
+  "id": "google-slides-create-slide",
+  "description": "Creates a slide via Google Slides batchUpdate",
+  "graph": {
+    "id": "fixture-google-slides-create-slide",
+    "name": "Google Slides create slide",
+    "nodes": [
+      {
+        "id": "slides-action",
+        "type": "action.google-slides",
+        "app": "google-slides",
+        "name": "Create slide",
+        "op": "action.google-slides:create_slide",
+        "params": {
+          "operation": "create_slide",
+          "presentationId": "{{presentationId}}",
+          "objectId": "slide-002",
+          "slideLayoutReference": {
+            "predefinedLayout": "TITLE_AND_BODY"
+          },
+          "insertionIndex": 1
+        },
+        "data": {
+          "operation": "create_slide",
+          "config": {
+            "presentationId": "{{presentationId}}",
+            "objectId": "slide-002",
+            "slideLayoutReference": {
+              "predefinedLayout": "TITLE_AND_BODY"
+            },
+            "insertionIndex": 1
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "presentationId": "pres-123"
+    }
+  },
+  "secrets": {
+    "GOOGLE_SLIDES_ACCESS_TOKEN": "ya29.test-slides-token"
+  },
+  "http": [
+    {
+      "name": "slides-create-slide",
+      "request": {
+        "url": "https://slides.googleapis.com/v1/presentations/pres-123:batchUpdate",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-slides-token",
+          "content-type": "application/json",
+          "accept": "application/json"
+        },
+        "payload": {
+          "requests": [
+            {
+              "createSlide": {
+                "objectId": "slide-002",
+                "slideLayoutReference": {
+                  "predefinedLayout": "TITLE_AND_BODY"
+                },
+                "insertionIndex": 1
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "presentationId": "pres-123",
+          "replies": [
+            {
+              "createSlide": {
+                "objectId": "slide-002",
+                "slideId": "slide-002"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "googleSlidesPresentationId": "pres-123",
+      "googleSlidesSlideId": "slide-002",
+      "googleSlidesBatchUpdate": {
+        "presentationId": "pres-123",
+        "replies": [
+          {
+            "createSlide": {
+              "objectId": "slide-002",
+              "slideId": "slide-002"
+            }
+          }
+        ]
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "google_slides_create_slide_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://slides.googleapis.com/v1/presentations/pres-123:batchUpdate",
+        "method": "POST"
+      }
+    ]
+  }
+}
