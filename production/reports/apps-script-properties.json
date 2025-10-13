@@ -1704,7 +1704,32 @@
         "trigger.gmail:email_with_attachment",
         "trigger.gmail:new_email_received"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GMAIL_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.gmail:send_email",
+            "action.gmail:search_emails",
+            "trigger.gmail:email_received"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GMAIL_REFRESH_TOKEN",
+          "optional": true,
+          "operations": [
+            "action.gmail:send_email",
+            "action.gmail:search_emails",
+            "trigger.gmail:email_received"
+          ],
+          "contexts": [
+            "scriptProperties"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

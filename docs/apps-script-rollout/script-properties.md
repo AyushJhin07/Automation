@@ -58,6 +58,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | ghost | `GHOST_ADMIN_API_KEY`<br>`GHOST_API_URL` | — | — |
 | GitHub | `GITHUB_ACCESS_TOKEN` | — | — |
 | GitLab | `GITLAB_ACCESS_TOKEN` | — | — |
+| Gmail | `GMAIL_ACCESS_TOKEN` | `GMAIL_REFRESH_TOKEN` | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
@@ -149,6 +150,12 @@ The table below is regenerated automatically. Required properties appear in the 
 | zoom | `ZOOM_API_KEY`<br>`ZOOM_API_SECRET` | — | — |
 
 <!-- END GENERATED APPS SCRIPT PROPERTIES -->
+
+### Gmail token management
+
+- Apps Script Gmail handlers require `GMAIL_ACCESS_TOKEN` scopes `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/gmail.readonly` to cover send, search, and polling flows. Provision tokens with both scopes so the same credential supports triggers and actions.
+- Populate `GMAIL_REFRESH_TOKEN` alongside the access token. A rotation job should exchange the refresh token at least daily; the Apps Script runtime expects fresh access tokens because Gmail REST calls fail once the one-hour access token expires.
+- Store both secrets in Script Properties (production and staging) before deploying new handlers. Missing tokens cause structured `gmail_missing_access_token` errors during runtime, surfacing misconfigurations quickly.
 
 ## Machine-readable report
 

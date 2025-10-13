@@ -1,0 +1,526 @@
+exports[`Apps Script Gmail REAL_OPS builds trigger.gmail:email_received 1`] = `
+function onNewEmail() {
+  return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
+    const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+    if (!accessToken) {
+      logError('gmail_missing_access_token', { operation: 'trigger.gmail:email_received' });
+      throw new Error('Missing Gmail access token for gmail.email_received trigger');
+    }
+
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+    const query = interpolate('${esc(c.query || 'is:unread')}', interpolationContext).trim();
+    const labelIdsConfig = ${JSON.stringify(c.labelIds || [])};
+    const labelIds = [];
+    if (Array.isArray(labelIdsConfig)) {
+      for (let i = 0; i < labelIdsConfig.length; i++) {
+        const value = typeof labelIdsConfig[i] === 'string' ? interpolate(labelIdsConfig[i], interpolationContext).trim() : '';
+        if (value) {
+          labelIds.push(value);
+        }
+      }
+    }
+
+    const headers = { Authorization: 'Bearer ' + accessToken };
+    const baseUrl = 'https://gmail.googleapis.com/gmail/v1/users/me';
+    const cursor = (runtime.state && typeof runtime.state.cursor === 'object') ? runtime.state.cursor : {};
+    const lastInternalDate = cursor && cursor.internalDate ? Number(cursor.internalDate) : null;
+    const afterSeconds = lastInternalDate ? Math.floor(lastInternalDate / 1000) : null;
+    const effectiveQuery = afterSeconds ? ((query ? query + ' ' : '') + 'after:' + afterSeconds) : query;
+    const messages = [];
+    let pageToken = null;
+    let pageCount = 0;
+
+    function decodeBase64Url(data) {
+      if (!data) {
+        return '';
+      }
+      try {
+        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = Utilities.base64Decode(normalized);
+        return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+      } catch (error) {
+        logWarn('gmail_message_body_decode_failed', {
+          message: error && error.message ? error.message : String(error)
+        });
+        return '';
+      }
+    }
+
+    function extractHeader(all, name) {
+      if (!Array.isArray(all)) {
+        return '';
+      }
+      const target = name.toLowerCase();
+      for (let i = 0; i < all.length; i++) {
+        const header = all[i];
+        if (!header || typeof header.name !== 'string') {
+          continue;
+        }
+        if (header.name.toLowerCase() === target) {
+          return header.value || '';
+        }
+      }
+      return '';
+    }
+
+    function parseAddressList(value) {
+      if (!value) {
+        return [];
+      }
+      return value.split(',').map(part => part.trim()).filter(Boolean);
+    }
+
+    function collectAttachments(parts, bucket) {
+      if (!Array.isArray(parts)) {
+        return;
+      }
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (!part) {
+          continue;
+        }
+        if (part.filename && part.body && part.body.attachmentId) {
+          bucket.push({
+            attachmentId: part.body.attachmentId,
+            filename: part.filename,
+            mimeType: part.mimeType || 'application/octet-stream',
+            size: part.body.size || 0
+          });
+        }
+        if (Array.isArray(part.parts) && part.parts.length) {
+          collectAttachments(part.parts, bucket);
+        }
+      }
+    }
+
+    function extractBodies(payload) {
+      const result = {};
+      if (!payload) {
+        return result;
+      }
+
+      const queue = [payload];
+      while (queue.length > 0) {
+        const node = queue.shift();
+        if (!node) {
+          continue;
+        }
+        if (node.mimeType === 'text/plain' && node.body && node.body.data) {
+          result.plain = decodeBase64Url(node.body.data);
+        } else if (node.mimeType === 'text/html' && node.body && node.body.data) {
+          result.html = decodeBase64Url(node.body.data);
+        }
+        if (Array.isArray(node.parts)) {
+          for (let p = 0; p < node.parts.length; p++) {
+            queue.push(node.parts[p]);
+          }
+        }
+      }
+
+      if (!result.plain && payload.body && payload.body.data) {
+        result.plain = decodeBase64Url(payload.body.data);
+      }
+
+      return result;
+    }
+
+    try {
+      do {
+        const params = ['maxResults=25'];
+        if (effectiveQuery) {
+          params.push('q=' + encodeURIComponent(effectiveQuery));
+        }
+        if (Array.isArray(labelIds) && labelIds.length) {
+        for (let i = 0; i < labelIds.length; i++) {
+          params.push('labelIds=' + encodeURIComponent(labelIds[i]));
+        }
+      }
+      if (pageToken) {
+        params.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const listResponse = rateLimitAware(
+        () => fetchJson({
+          url: baseUrl + '/messages?' + params.join('&'),
+          method: 'GET',
+          headers: headers
+        }),
+        { attempts: 5, backoffMs: 500 }
+      );
+
+      const listBody = listResponse.body || {};
+      const candidates = Array.isArray(listBody.messages) ? listBody.messages : [];
+      for (let i = 0; i < candidates.length; i++) {
+        const messageId = candidates[i] && candidates[i].id;
+        if (!messageId) {
+          continue;
+        }
+
+        const messageResponse = rateLimitAware(
+          () => fetchJson({
+            url: baseUrl + '/messages/' + encodeURIComponent(messageId) + '?format=full',
+            method: 'GET',
+            headers: headers
+          }),
+          { attempts: 5, backoffMs: 500 }
+        );
+
+        const detail = messageResponse.body || {};
+        const payload = detail.payload || {};
+        const headersList = payload.headers || [];
+        const bodies = extractBodies(payload);
+        const attachments = [];
+        collectAttachments(payload.parts, attachments);
+
+        const internalDate = detail.internalDate ? Number(detail.internalDate) : null;
+        if (lastInternalDate && internalDate && internalDate <= lastInternalDate) {
+          continue;
+        }
+
+        const from = extractHeader(headersList, 'From');
+        const to = parseAddressList(extractHeader(headersList, 'To'));
+        const cc = parseAddressList(extractHeader(headersList, 'Cc'));
+        const bcc = parseAddressList(extractHeader(headersList, 'Bcc'));
+        const replyTo = parseAddressList(extractHeader(headersList, 'Reply-To'));
+        const deliveredTo = extractHeader(headersList, 'Delivered-To');
+        const subject = extractHeader(headersList, 'Subject') || null;
+        const historyId = detail.historyId ? String(detail.historyId) : null;
+
+        const fromName = from && from.indexOf('<') !== -1 ? from.split('<')[0].trim() : null;
+
+        messages.push({
+          internalDate: internalDate || Date.now(),
+          historyId: historyId,
+          payload: {
+            id: detail.id || messageId,
+            threadId: detail.threadId || null,
+            historyId: historyId,
+            labelIds: Array.isArray(detail.labelIds) ? detail.labelIds : [],
+            subject: subject,
+            snippet: detail.snippet || '',
+            from: from,
+            fromName: fromName,
+            to: to,
+            cc: cc,
+            bcc: bcc,
+            replyTo: replyTo,
+            deliveredTo: deliveredTo || null,
+            receivedAt: internalDate ? new Date(internalDate).toISOString() : new Date().toISOString(),
+            sizeEstimate: detail.sizeEstimate || null,
+            bodyPlain: bodies.plain || '',
+            bodyHtml: bodies.html || '',
+            attachments: attachments,
+            _meta: { raw: detail }
+          }
+        });
+      }
+
+      pageToken = listBody.nextPageToken || null;
+      pageCount += 1;
+    } while (pageToken && messages.length < 50 && pageCount < 5);
+
+      if (messages.length === 0) {
+        runtime.summary({
+          messagesAttempted: 0,
+          messagesDispatched: 0,
+          messagesFailed: 0,
+          query: effectiveQuery,
+          labelIds: labelIds
+        });
+        return { messagesAttempted: 0, messagesDispatched: 0, messagesFailed: 0, query: effectiveQuery, labelIds: labelIds };
+      }
+
+      messages.sort(function (a, b) {
+        return (a.internalDate || 0) - (b.internalDate || 0);
+      });
+
+      const batch = runtime.dispatchBatch(messages, function (entry) {
+        return entry.payload;
+      });
+
+      const last = messages[messages.length - 1];
+      runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+      runtime.state.cursor.internalDate = String(last.internalDate || Date.now());
+      if (last.historyId) {
+        runtime.state.cursor.historyId = last.historyId;
+      }
+      runtime.state.cursor.lastMessageId = last.payload.id;
+      runtime.state.lastPayload = last.payload;
+
+      runtime.summary({
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+        query: effectiveQuery,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      });
+
+      logInfo('gmail_email_received_success', {
+        query: effectiveQuery,
+        dispatched: batch.succeeded,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      });
+
+      return {
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+        query: effectiveQuery,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      };
+    } catch (error) {
+      const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+      const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+      const status = error && typeof error.status === 'number' ? error.status : null;
+      const message = providerMessage || (error && error.message ? error.message : String(error));
+      logError('gmail_email_received_failed', {
+        status: status,
+        providerCode: providerCode,
+        message: message
+      });
+      throw error;
+    }
+  });
+}
+`;
+
+exports[`Apps Script Gmail REAL_OPS builds action.gmail:send_email 1`] = `
+function step_action_gmail_send_email(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:send_email' });
+    throw new Error('Missing Gmail access token for gmail.send_email operation');
+  }
+
+  const to = interpolate('${esc(c.to || '')}', ctx).trim();
+  const subject = interpolate('${esc(c.subject || '')}', ctx).trim();
+  const body = interpolate('${esc(c.body || '')}', ctx);
+  const cc = interpolate('${esc(c.cc || '')}', ctx).trim();
+  const bcc = interpolate('${esc(c.bcc || '')}', ctx).trim();
+  const attachmentsConfig = ${JSON.stringify(c.attachments || [])};
+
+  function ensureParam(value, field) {
+    if (!value) {
+      logError('gmail_send_email_missing_param', { field: field });
+      throw new Error('Missing required Gmail send_email param: ' + field);
+    }
+    return value;
+  }
+
+  ensureParam(to, 'to');
+  ensureParam(subject, 'subject');
+  ensureParam(body, 'body');
+
+  const recipients = to.split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
+  const ccList = cc ? cc.split(',').map(function (entry) { return entry.trim(); }).filter(Boolean) : [];
+  const bccList = bcc ? bcc.split(',').map(function (entry) { return entry.trim(); }).filter(Boolean) : [];
+
+  const headerLines = ['To: ' + recipients.join(', ')];
+  if (ccList.length) {
+    headerLines.push('Cc: ' + ccList.join(', '));
+  }
+  if (bccList.length) {
+    headerLines.push('Bcc: ' + bccList.join(', '));
+  }
+  headerLines.push('Subject: ' + subject);
+  headerLines.push('MIME-Version: 1.0');
+
+  const attachments = [];
+  if (Array.isArray(attachmentsConfig)) {
+    for (let i = 0; i < attachmentsConfig.length; i++) {
+      const descriptor = attachmentsConfig[i] || {};
+      let filename = descriptor.filename;
+      if (typeof filename === 'string') {
+        filename = interpolate(filename, ctx).trim();
+      }
+      let mimeType = descriptor.mimeType || descriptor.contentType || 'application/octet-stream';
+      if (typeof mimeType === 'string') {
+        mimeType = interpolate(mimeType, ctx).trim() || 'application/octet-stream';
+      }
+      let content = descriptor.content;
+      if (typeof content === 'string') {
+        content = interpolate(content, ctx);
+      }
+      if (!filename || !content) {
+        continue;
+      }
+
+      let encoded = '';
+      try {
+        const decoded = Utilities.base64Decode(String(content));
+        encoded = Utilities.base64Encode(decoded);
+      } catch (error) {
+        logWarn('gmail_send_email_attachment_decode_failed', {
+          index: i,
+          message: error && error.message ? error.message : String(error)
+        });
+        const fallbackBytes = Utilities.newBlob(String(content)).getBytes();
+        encoded = Utilities.base64Encode(fallbackBytes);
+      }
+
+      attachments.push({ filename: filename, mimeType: mimeType, data: encoded });
+    }
+  }
+
+  let messageBody = '';
+  if (attachments.length === 0) {
+    headerLines.push('Content-Type: text/plain; charset="UTF-8"');
+    headerLines.push('Content-Transfer-Encoding: 7bit');
+    messageBody = headerLines.join('\r\n') + '\r\n\r\n' + body;
+  } else {
+    const boundary = 'apps-script-gmail-' + Utilities.getUuid();
+    headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+    const parts = [];
+    parts.push('--' + boundary);
+    parts.push('Content-Type: text/plain; charset="UTF-8"');
+    parts.push('Content-Transfer-Encoding: 7bit');
+    parts.push('');
+    parts.push(body);
+    parts.push('');
+    for (let a = 0; a < attachments.length; a++) {
+      const attachment = attachments[a];
+      parts.push('--' + boundary);
+      parts.push('Content-Type: ' + attachment.mimeType);
+      parts.push('Content-Disposition: attachment; filename="' + attachment.filename.replace(/"/g, '\\"') + '"');
+      parts.push('Content-Transfer-Encoding: base64');
+      parts.push('');
+      parts.push(attachment.data);
+      parts.push('');
+    }
+    parts.push('--' + boundary + '--');
+    messageBody = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+  }
+
+  const raw = Utilities.base64EncodeWebSafe(messageBody);
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify({ raw: raw })
+      }),
+      { attempts: 5, backoffMs: 500 }
+    );
+
+    const responseBody = response.body || {};
+    ctx.messageId = responseBody.id || ctx.messageId || null;
+    ctx.gmailMessageId = responseBody.id || null;
+    ctx.gmailThreadId = responseBody.threadId || null;
+    ctx.gmailLabelIds = Array.isArray(responseBody.labelIds) ? responseBody.labelIds : [];
+    ctx.gmailSendEmailResponse = responseBody;
+
+    logInfo('gmail_send_email_success', {
+      messageId: ctx.gmailMessageId || null,
+      threadId: ctx.gmailThreadId || null,
+      toCount: recipients.length,
+      ccCount: ccList.length,
+      bccCount: bccList.length,
+      attachments: attachments.length
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_send_email_failed', {
+      operation: 'action.gmail:send_email',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail send_email failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}
+`;
+
+exports[`Apps Script Gmail REAL_OPS builds action.gmail:search_emails 1`] = `
+function step_action_gmail_search_emails(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:search_emails' });
+    throw new Error('Missing Gmail access token for gmail.search_emails operation');
+  }
+
+  const query = interpolate('${esc(c.query || '')}', ctx).trim();
+  if (!query) {
+    logError('gmail_search_emails_missing_param', { field: 'query' });
+    throw new Error('Missing required Gmail search_emails param: query');
+  }
+
+  const rawMaxResults = interpolate('${esc(c.maxResults !== undefined ? String(c.maxResults) : '')}', ctx).trim();
+  let maxResults = rawMaxResults ? Number(rawMaxResults) : ${typeof c.maxResults === 'number' ? c.maxResults : 10};
+  if (isNaN(maxResults) || maxResults <= 0) {
+    maxResults = ${typeof c.maxResults === 'number' ? c.maxResults : 10};
+  }
+  maxResults = Math.max(1, Math.min(500, Math.floor(maxResults)));
+
+  const includeSpamRaw = interpolate('${esc(c.includeSpamTrash !== undefined ? String(c.includeSpamTrash) : '')}', ctx)
+    .trim()
+    .toLowerCase();
+  const includeSpamTrash = includeSpamRaw
+    ? includeSpamRaw === 'true' || includeSpamRaw === '1'
+    : ${c.includeSpamTrash ? 'true' : 'false'};
+
+  const pageToken = ctx.nextPageToken || ctx.gmailNextPageToken || null;
+  const params = ['maxResults=' + maxResults, 'q=' + encodeURIComponent(query)];
+  if (includeSpamTrash) {
+    params.push('includeSpamTrash=true');
+  }
+  if (pageToken) {
+    params.push('pageToken=' + encodeURIComponent(pageToken));
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params.join('&'),
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      { attempts: 5, backoffMs: 500 }
+    );
+
+    const body = response.body || {};
+    ctx.gmailMessages = Array.isArray(body.messages) ? body.messages : [];
+    ctx.gmailNextPageToken = body.nextPageToken || null;
+    ctx.nextPageToken = ctx.gmailNextPageToken;
+    ctx.resultSizeEstimate = typeof body.resultSizeEstimate === 'number' ? body.resultSizeEstimate : null;
+    ctx.gmailQuery = query;
+    ctx.gmailIncludeSpamTrash = includeSpamTrash;
+    ctx.gmailSearchResponse = body;
+
+    logInfo('gmail_search_emails_success', {
+      query: query,
+      returned: ctx.gmailMessages.length,
+      includeSpamTrash: includeSpamTrash,
+      hasNextPage: Boolean(ctx.gmailNextPageToken)
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_search_emails_failed', {
+      operation: 'action.gmail:search_emails',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail search_emails failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}
+`;
