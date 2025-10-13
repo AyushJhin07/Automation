@@ -260,6 +260,7 @@ function __resolveLogTransport() {
   }
   __LOG_TRANSPORT_RESOLVED = true;
   var candidate = null;
+
   try {
     if (typeof CENTRAL_LOG_TRANSPORT !== 'undefined' && CENTRAL_LOG_TRANSPORT) {
       candidate = CENTRAL_LOG_TRANSPORT;
@@ -14941,11 +14942,11 @@ function step_sendTeamsMessage(ctx) {
 
   'action.twilio:send_sms': (c) => `
 function step_sendTwilioSMS(ctx) {
-  const accountSid = getSecret('TWILIO_ACCOUNT_SID');
-  const authToken = getSecret('TWILIO_AUTH_TOKEN');
-  const fromNumber = getSecret('TWILIO_FROM_NUMBER');
+  const accountSid = getSecret('TWILIO_ACCOUNT_SID', { connectorKey: 'twilio' });
+  const authToken = requireOAuthToken('twilio');
+  const defaultFromNumber = getSecret('TWILIO_FROM_NUMBER', { connectorKey: 'twilio' });
 
-  if (!accountSid || !authToken || !fromNumber) {
+  if (!accountSid || !authToken || !defaultFromNumber) {
     logWarn('twilio_missing_credentials', { message: 'Twilio credentials not configured' });
     return ctx;
   }
@@ -14953,21 +14954,84 @@ function step_sendTwilioSMS(ctx) {
   const to = interpolate('${c.to || '{{phone}}'}', ctx);
   const body = interpolate('${c.message || 'Automated SMS'}', ctx);
   
-  const payload = \`From=\${fromNumber}&To=\${to}&Body=\${encodeURIComponent(body)}\`;
-  
-  const response = withRetries(() => fetchJson(\`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Messages.json\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Basic \${Utilities.base64Encode(accountSid + ':' + authToken)}\`,
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    payload: payload,
-    contentType: 'application/x-www-form-urlencoded'
-  }));
+  const fromOverrideTemplate = "${c.from || ''}";
+  const fromNumber = fromOverrideTemplate && fromOverrideTemplate.trim()
+    ? interpolate(fromOverrideTemplate, ctx)
+    : defaultFromNumber;
+  const idempotencyKey = ctx.twilioMessageIdempotencyKey || Utilities.getUuid();
 
-  ctx.twilioMessageSid = response.body && response.body.sid;
-  logInfo('twilio_send_sms', { sid: ctx.twilioMessageSid || null });
-  return ctx;
+  const payloadParts = [
+    'From=' + encodeURIComponent(fromNumber),
+    'To=' + encodeURIComponent(to),
+    'Body=' + encodeURIComponent(body)
+  ];
+  const mediaTemplate = "${c.mediaUrl || ''}";
+  if (mediaTemplate && mediaTemplate.trim()) {
+    payloadParts.push('MediaUrl=' + encodeURIComponent(interpolate(mediaTemplate, ctx)));
+  }
+  const payload = payloadParts.join('&');
+
+  ctx.twilioMessageIdempotencyKey = idempotencyKey;
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: \`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Messages.json\`,
+      method: 'POST',
+      headers: {
+        'Authorization': \`Basic \${Utilities.base64Encode(accountSid + ':' + authToken)}\`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': idempotencyKey
+      },
+      payload: payload,
+      contentType: 'application/x-www-form-urlencoded'
+    }), { attempts: 5, initialDelayMs: 1000, maxDelayMs: 10000, jitter: 0.2 });
+
+    const message = response.body || {};
+    ctx.twilioMessageSid = message.sid || null;
+    ctx.twilioMessageStatus = message.status || null;
+    ctx.twilioMessageIdempotencyKey = idempotencyKey;
+    ctx.twilioMessage = {
+      sid: message.sid || null,
+      status: message.status || null,
+      to: to,
+      from: fromNumber,
+      idempotencyKey: idempotencyKey
+    };
+    logInfo('twilio_send_sms', ctx.twilioMessage);
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const errorPayload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status !== null) {
+      details.push('status ' + status);
+    }
+    if (errorPayload && typeof errorPayload === 'object') {
+      if (errorPayload.code !== undefined) {
+        details.push('code ' + errorPayload.code);
+      }
+      if (errorPayload.message) {
+        details.push(errorPayload.message);
+      }
+      if (errorPayload.more_info) {
+        details.push('More info: ' + errorPayload.more_info);
+      }
+    } else if (errorPayload) {
+      details.push(String(errorPayload));
+    } else if (error && error.message) {
+      details.push(error.message);
+    }
+
+    const detailMessage = details.length > 0 ? details.join(' – ') : 'Unknown Twilio error';
+    logError('twilio_send_sms_failed', {
+      status: status,
+      to: to,
+      idempotencyKey: idempotencyKey,
+      details: detailMessage
+    });
+    throw new Error('Twilio send_sms failed: ' + detailMessage);
+  }
 }`,
 
   'action.zoom:create_meeting': (c) => `
