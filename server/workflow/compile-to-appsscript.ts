@@ -99,6 +99,77 @@ var __HTTP_RETRY_DEFAULTS = {
   maxDelayMs: 60000
 };
 
+function __normalizeHeaders(headers) {
+  var normalized = {};
+  if (!headers) {
+    return normalized;
+  }
+  for (var key in headers) {
+    if (Object.prototype.hasOwnProperty.call(headers, key)) {
+      normalized[String(key).toLowerCase()] = headers[key];
+    }
+  }
+  return normalized;
+}
+
+function __resolveRetryAfterMs(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (Array.isArray && Array.isArray(value) && value.length > 0) {
+    value = value[0];
+  }
+  var raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+  var asNumber = Number(raw);
+  var now = new Date().getTime();
+  if (!isNaN(asNumber)) {
+    if (asNumber > 1000000000000) {
+      return Math.max(0, Math.round(asNumber - now));
+    }
+    if (asNumber > 1000000000) {
+      return Math.max(0, Math.round(asNumber * 1000 - now));
+    }
+    return Math.max(0, Math.round(asNumber * 1000));
+  }
+  var parsedDate = new Date(raw);
+  if (!isNaN(parsedDate.getTime())) {
+    return Math.max(0, parsedDate.getTime() - now);
+  }
+  return null;
+}
+
+function __resolveResetDelayMs(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (Array.isArray && Array.isArray(value) && value.length > 0) {
+    value = value[0];
+  }
+  var raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+  var asNumber = Number(raw);
+  var now = new Date().getTime();
+  if (!isNaN(asNumber)) {
+    if (asNumber > 1000000000000) {
+      return Math.max(0, Math.round(asNumber - now));
+    }
+    if (asNumber > 1000000000) {
+      return Math.max(0, Math.round(asNumber * 1000 - now));
+    }
+    return Math.max(0, Math.round(asNumber * 1000));
+  }
+  var parsedDate = new Date(raw);
+  if (!isNaN(parsedDate.getTime())) {
+    return Math.max(0, parsedDate.getTime() - now);
+  }
+  return null;
+}
+
 function logStructured(level, event, details) {
   var payload = {
     level: level,
@@ -754,38 +825,195 @@ function getSecret(propertyName, opts) {
 
 function withRetries(fn, options) {
   var config = options || {};
-  var maxAttempts = config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
-  var initialDelayMs = config.initialDelayMs || __HTTP_RETRY_DEFAULTS.initialDelayMs;
+  var attempts = config.attempts || config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
+  var backoffMs = config.backoffMs || config.initialDelayMs || __HTTP_RETRY_DEFAULTS.initialDelayMs;
   var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;
   var maxDelayMs = config.maxDelayMs || __HTTP_RETRY_DEFAULTS.maxDelayMs;
+  var jitter = typeof config.jitter === 'number' ? config.jitter : 0;
+  var retryOn = typeof config.retryOn === 'function' ? config.retryOn : null;
   var attempt = 0;
-  var delay = initialDelayMs;
+  var delay = backoffMs;
 
-  while (true) {
+  while (attempt < attempts) {
     try {
       return fn(attempt + 1);
     } catch (error) {
       attempt++;
+      var status = error && typeof error.status === 'number' ? error.status : null;
+      var headers = error && error.headers ? error.headers : {};
+      var normalizedHeaders = __normalizeHeaders(headers);
+      var retryAfterMs = __resolveRetryAfterMs(normalizedHeaders['retry-after']);
       var message = error && error.message ? error.message : String(error);
-      if (attempt >= maxAttempts) {
-        logError('http_retry_exhausted', { attempts: attempt, message: message });
+      var shouldRetry = attempt < attempts && (status ? (status === 429 || (status >= 500 && status < 600)) : true);
+      var userDelay = null;
+
+      var context = {
+        attempt: attempt,
+        error: error,
+        response: status !== null ? { status: status, headers: headers || {}, body: error.body, text: error.text } : null,
+        delayMs: delay,
+        retryAfterMs: retryAfterMs
+      };
+
+      if (retryOn) {
+        try {
+          var decision = retryOn(context);
+          if (typeof decision === 'boolean') {
+            shouldRetry = attempt < attempts && decision;
+          } else if (decision && typeof decision === 'object') {
+            if (decision.retry !== undefined) {
+              shouldRetry = attempt < attempts && !!decision.retry;
+            }
+            if (decision.delayMs !== undefined) {
+              userDelay = Number(decision.delayMs);
+              if (isNaN(userDelay)) {
+                userDelay = null;
+              }
+            }
+          }
+        } catch (retryError) {
+          logWarn('http_retry_callback_failed', {
+            attempt: attempt,
+            message: retryError && retryError.message ? retryError.message : String(retryError)
+          });
+        }
+      }
+
+      if (!shouldRetry || attempt >= attempts) {
+        logError('http_retry_exhausted', { attempts: attempt, message: message, status: status });
         throw error;
       }
-      logWarn('http_retry', { attempt: attempt, delayMs: delay, message: message });
-      Utilities.sleep(delay);
-      delay = Math.min(delay * backoffFactor, maxDelayMs);
+
+      var waitMs = userDelay !== null ? userDelay : (retryAfterMs !== null ? retryAfterMs : delay);
+      if (typeof waitMs !== 'number' || isNaN(waitMs) || waitMs < 0) {
+        waitMs = delay;
+      }
+      waitMs = Math.min(waitMs, maxDelayMs);
+
+      if (jitter) {
+        var jitterRange = waitMs * jitter;
+        if (jitterRange > 0) {
+          waitMs = Math.min(maxDelayMs, waitMs + Math.floor(Math.random() * jitterRange));
+        }
+      }
+
+      logWarn('http_retry', { attempt: attempt, delayMs: waitMs, status: status, message: message });
+      Utilities.sleep(waitMs);
+      delay = Math.min(Math.max(backoffMs, waitMs) * backoffFactor, maxDelayMs);
     }
   }
+
+  throw new Error('withRetries exhausted without executing function');
 }
 
-function fetchJson(url, requestOptions) {
-  var options = requestOptions || {};
-  var method = options.method || 'GET';
-  var headers = options.headers || {};
-  var payload = options.payload;
-  var contentType = options.contentType || options['contentType'];
-  var muteHttpExceptions = options.muteHttpExceptions !== undefined ? options.muteHttpExceptions : true;
-  var followRedirects = options.followRedirects;
+function rateLimitAware(fn, options) {
+  var config = options || {};
+  var providedRetryOn = typeof config.retryOn === 'function' ? config.retryOn : null;
+  var mergedOptions = {};
+  for (var key in config) {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      mergedOptions[key] = config[key];
+    }
+  }
+
+  mergedOptions.retryOn = function(context) {
+    var headers = {};
+    if (context) {
+      if (context.response && context.response.headers) {
+        headers = context.response.headers;
+      } else if (context.error && context.error.headers) {
+        headers = context.error.headers;
+      }
+    }
+    var normalizedHeaders = __normalizeHeaders(headers);
+    var status = null;
+    if (context && context.response && typeof context.response.status === 'number') {
+      status = context.response.status;
+    } else if (context && context.error && typeof context.error.status === 'number') {
+      status = context.error.status;
+    }
+
+    var computedDelay = null;
+
+    if (normalizedHeaders['retry-after'] !== undefined) {
+      var retryDelay = __resolveRetryAfterMs(normalizedHeaders['retry-after']);
+      if (retryDelay !== null) {
+        computedDelay = retryDelay;
+      }
+    }
+
+    var remainingKeys = ['x-ratelimit-remaining', 'x-rate-limit-remaining'];
+    for (var i = 0; i < remainingKeys.length; i++) {
+      var remainingValue = normalizedHeaders[remainingKeys[i]];
+      if (remainingValue === undefined) {
+        continue;
+      }
+      var remaining = Number(String(remainingValue));
+      if (!isNaN(remaining) && remaining <= 0) {
+        var resetKey = remainingKeys[i] === 'x-ratelimit-remaining' ? 'x-ratelimit-reset' : 'x-rate-limit-reset';
+        var resetDelay = __resolveResetDelayMs(normalizedHeaders[resetKey]);
+        if (resetDelay !== null) {
+          computedDelay = computedDelay === null ? resetDelay : Math.max(computedDelay, resetDelay);
+        }
+      }
+    }
+
+    var result = {};
+    if (status === 429 || (status >= 500 && status < 600)) {
+      result.retry = true;
+    }
+
+    if (computedDelay !== null) {
+      result.delayMs = computedDelay;
+    }
+
+    if (providedRetryOn) {
+      var userDecision = providedRetryOn(context);
+      if (typeof userDecision === 'boolean') {
+        result.retry = userDecision;
+      } else if (userDecision && typeof userDecision === 'object') {
+        if (userDecision.retry !== undefined) {
+          result.retry = userDecision.retry;
+        }
+        if (userDecision.delayMs !== undefined) {
+          result.delayMs = userDecision.delayMs;
+        }
+      }
+    }
+
+    if (result.delayMs !== undefined && context && typeof context.delayMs === 'number') {
+      var numericDelay = Number(result.delayMs);
+      if (!isNaN(numericDelay)) {
+        result.delayMs = Math.max(numericDelay, context.delayMs);
+      }
+    }
+
+    return result;
+  };
+
+  return withRetries(fn, mergedOptions);
+}
+
+function fetchJson(request) {
+  var config = request || {};
+  if (typeof request === 'string') {
+    var legacyOptions = arguments.length > 1 ? (arguments[1] || {}) : {};
+    legacyOptions.url = request;
+    config = legacyOptions;
+  }
+
+  var url = config.url;
+  if (!url) {
+    throw new Error('fetchJson requires a url');
+  }
+
+  var method = config.method || 'GET';
+  var headers = config.headers || {};
+  var payload = config.payload;
+  var contentType = config.contentType || config['contentType'];
+  var muteHttpExceptions = config.muteHttpExceptions !== undefined ? config.muteHttpExceptions : true;
+  var followRedirects = config.followRedirects;
+  var escape = config.escape;
   var start = new Date().getTime();
 
   var fetchOptions = {
@@ -806,8 +1034,8 @@ function fetchJson(url, requestOptions) {
     fetchOptions.followRedirects = followRedirects;
   }
 
-  if (options.escape !== undefined) {
-    fetchOptions.escape = options.escape;
+  if (typeof escape !== 'undefined') {
+    fetchOptions.escape = escape;
   }
 
   var response = UrlFetchApp.fetch(url, fetchOptions);
@@ -815,6 +1043,7 @@ function fetchJson(url, requestOptions) {
   var status = response.getResponseCode();
   var text = response.getContentText();
   var allHeaders = response.getAllHeaders();
+  var normalizedHeaders = __normalizeHeaders(allHeaders);
   var success = status >= 200 && status < 300;
 
   var logDetails = {
@@ -830,15 +1059,18 @@ function fetchJson(url, requestOptions) {
 
   logStructured(success ? 'INFO' : 'ERROR', success ? 'http_success' : 'http_failure', logDetails);
 
-  var responseContentType = '';
-  if (allHeaders['Content-Type']) {
-    responseContentType = String(allHeaders['Content-Type']).toLowerCase();
-  } else if (allHeaders['content-type']) {
-    responseContentType = String(allHeaders['content-type']).toLowerCase();
-  }
-
   var body = text;
-  if (responseContentType.indexOf('application/json') !== -1) {
+  var isJson = false;
+  if (normalizedHeaders['content-type'] && normalizedHeaders['content-type'].indexOf('application/json') !== -1) {
+    isJson = true;
+  }
+  if (!isJson && text) {
+    var trimmed = text.trim();
+    if ((trimmed.charAt(0) === '{' && trimmed.charAt(trimmed.length - 1) === '}') || (trimmed.charAt(0) === '[' && trimmed.charAt(trimmed.length - 1) === ']')) {
+      isJson = true;
+    }
+  }
+  if (isJson) {
     try {
       body = text ? JSON.parse(text) : null;
     } catch (error) {
@@ -848,16 +1080,14 @@ function fetchJson(url, requestOptions) {
 
   if (!success) {
     var err = new Error('Request failed with status ' + status);
-    var errorWithDetails = err;
-    errorWithDetails.status = status;
-    errorWithDetails.body = body;
-    errorWithDetails.text = text;
-    errorWithDetails.headers = allHeaders;
-    throw errorWithDetails;
+    err.status = status;
+    err.headers = allHeaders;
+    err.body = body;
+    err.text = text;
+    throw err;
   }
 
   return {
-    ok: success,
     status: status,
     headers: allHeaders,
     body: body,
