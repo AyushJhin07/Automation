@@ -792,6 +792,7 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
     GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] },
     HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] },
+    HUBSPOT_ACCESS_TOKEN: { aliases: ['apps_script__hubspot__access_token', 'HUBSPOT_API_KEY', 'apps_script__hubspot__api_key'] },
     JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
     JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
     JIRA_EMAIL: { aliases: ['apps_script__jira__email'] },
@@ -842,7 +843,9 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
       GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] }
     },
     hubspot: {
-      HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] }
+      HUBSPOT_ACCESS_TOKEN: {
+        aliases: ['apps_script__hubspot__access_token', 'HUBSPOT_API_KEY', 'apps_script__hubspot__api_key']
+      }
     },
     jira: {
       JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
