@@ -680,14 +680,154 @@ function buildTimeTrigger(config) {
 }
 
 function buildPollingWrapper(triggerKey, executor) {
-  var stats = { processed: 0 };
-  logInfo('trigger_poll_start', { key: triggerKey });
+  var metadata = typeof __WORKFLOW_LOG_METADATA !== 'undefined' ? __WORKFLOW_LOG_METADATA : null;
+  var connectorIds = [];
+  if (metadata && metadata.connectors && metadata.connectors.length) {
+    for (var i = 0; i < metadata.connectors.length; i++) {
+      var entry = metadata.connectors[i];
+      if (!entry) {
+        continue;
+      }
+      if (typeof entry === 'string') {
+        connectorIds.push(entry);
+        continue;
+      }
+      if (entry.normalizedId) {
+        connectorIds.push(entry.normalizedId);
+        continue;
+      }
+      if (entry.id) {
+        connectorIds.push(entry.id);
+      }
+    }
+  }
+
+  var stats = { processed: 0, succeeded: 0, failed: 0 };
+  if (connectorIds.length > 0) {
+    stats.connectors = connectorIds.slice();
+  }
+
+  var startedAtMs = Date.now();
+  var startedAtIso = new Date(startedAtMs).toISOString();
+  var properties = PropertiesService.getScriptProperties();
+  var stateKey = '__studio_trigger_state__:' + triggerKey;
+  var state = {};
+
+  try {
+    var rawState = properties.getProperty(stateKey);
+    if (rawState) {
+      var parsedState = JSON.parse(rawState);
+      if (parsedState && typeof parsedState === 'object') {
+        state = parsedState;
+      }
+    }
+  } catch (error) {
+    logWarn('trigger_state_load_failed', {
+      key: triggerKey,
+      message: error && error.message ? error.message : String(error)
+    });
+    state = {};
+  }
+
+  if (!state || typeof state !== 'object') {
+    state = {};
+  }
+
+  state.lastRunStartedAt = startedAtIso;
+
+  function mergeConnectors(value) {
+    if (!value) {
+      return;
+    }
+    var next = Array.isArray(value) ? value : [value];
+    if (!stats.connectors) {
+      stats.connectors = connectorIds.slice();
+    }
+    for (var c = 0; c < next.length; c++) {
+      var candidate = next[c];
+      if (!candidate) {
+        continue;
+      }
+      var normalized = candidate;
+      if (typeof candidate === 'object') {
+        normalized = candidate.normalizedId || candidate.id || null;
+      }
+      if (!normalized) {
+        continue;
+      }
+      normalized = String(normalized);
+      var already = false;
+      for (var existingIndex = 0; existingIndex < stats.connectors.length; existingIndex++) {
+        if (stats.connectors[existingIndex] === normalized) {
+          already = true;
+          break;
+        }
+      }
+      if (!already) {
+        stats.connectors.push(normalized);
+      }
+    }
+  }
+
+  function finalizeStats(status) {
+    var completedAtMs = Date.now();
+    stats.completedAt = new Date(completedAtMs).toISOString();
+    stats.durationMs = completedAtMs - startedAtMs;
+    if (typeof stats.failed !== 'number') {
+      stats.failed = 0;
+    }
+    if (typeof stats.processed !== 'number') {
+      stats.processed = 0;
+    }
+    stats.attempted = (stats.processed || 0) + (stats.failed || 0);
+    if (stats.durationMs > 0) {
+      var perSecond = stats.processed / (stats.durationMs / 1000);
+      var perMinute = stats.processed / (stats.durationMs / 60000);
+      stats.throughputPerSecond = Math.round(perSecond * 1000) / 1000;
+      stats.throughputPerMinute = Math.round(perMinute * 1000) / 1000;
+    } else {
+      stats.throughputPerSecond = stats.processed;
+      stats.throughputPerMinute = stats.processed * 60;
+    }
+    stats.status = status;
+    mergeConnectors(connectorIds);
+  }
+
+  function persistState() {
+    try {
+      properties.setProperty(stateKey, JSON.stringify(state || {}));
+    } catch (error) {
+      logError('trigger_state_save_failed', {
+        key: triggerKey,
+        message: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
+  logInfo('trigger_poll_start', {
+    key: triggerKey,
+    connectors: connectorIds,
+    state: state
+  });
+
   var runtime = {
+    state: state,
+    setState: function (nextState) {
+      if (!nextState || typeof nextState !== 'object') {
+        return runtime.state;
+      }
+      state = nextState;
+      runtime.state = state;
+      return runtime.state;
+    },
     dispatch: function (payload) {
       try {
         main(payload || {});
         stats.processed += 1;
+        stats.succeeded += 1;
+        return true;
       } catch (error) {
+        stats.failed += 1;
         logError('trigger_dispatch_failed', {
           key: triggerKey,
           message: error && error.message ? error.message : String(error)
@@ -695,12 +835,66 @@ function buildPollingWrapper(triggerKey, executor) {
         throw error;
       }
     },
+    dispatchBatch: function (items, mapFn) {
+      var result = { attempted: 0, succeeded: 0, failed: 0, errors: [] };
+      if (!items || (typeof items.length !== 'number' && !Array.isArray(items))) {
+        return result;
+      }
+
+      for (var index = 0; index < items.length; index++) {
+        var item = items[index];
+        result.attempted += 1;
+        var payload = item;
+
+        if (mapFn) {
+          try {
+            payload = mapFn(item, index);
+          } catch (mapError) {
+            var mapMessage = mapError && mapError.message ? mapError.message : String(mapError);
+            result.failed += 1;
+            stats.failed += 1;
+            result.errors.push(mapMessage);
+            logError('trigger_dispatch_map_failed', {
+              key: triggerKey,
+              index: index,
+              message: mapMessage
+            });
+            continue;
+          }
+        }
+
+        try {
+          runtime.dispatch(payload);
+          result.succeeded += 1;
+        } catch (dispatchError) {
+          var dispatchMessage = dispatchError && dispatchError.message ? dispatchError.message : String(dispatchError);
+          result.failed += 1;
+          result.errors.push(dispatchMessage);
+        }
+      }
+
+      stats.batches = (stats.batches || 0) + 1;
+      stats.lastBatch = {
+        attempted: result.attempted,
+        succeeded: result.succeeded,
+        failed: result.failed
+      };
+
+      return result;
+    },
     summary: function (partial) {
       if (!partial || typeof partial !== 'object') {
         return;
       }
       for (var key in partial) {
-        stats[key] = partial[key];
+        if (!Object.prototype.hasOwnProperty.call(partial, key)) {
+          continue;
+        }
+        if (key === 'connectors') {
+          mergeConnectors(partial[key]);
+        } else {
+          stats[key] = partial[key];
+        }
       }
     }
   };
@@ -710,12 +904,28 @@ function buildPollingWrapper(triggerKey, executor) {
     if (result && typeof result === 'object') {
       runtime.summary(result);
     }
-    logInfo('trigger_poll_success', { key: triggerKey, stats: stats });
+    finalizeStats('success');
+    if (!Object.prototype.hasOwnProperty.call(state, 'lastRunAt')) {
+      state.lastRunAt = stats.completedAt;
+    }
+    state.lastSuccessStats = {
+      processed: stats.processed,
+      failed: stats.failed,
+      durationMs: stats.durationMs
+    };
+    persistState();
+    logInfo('trigger_poll_success', { key: triggerKey, stats: stats, state: state });
     return stats;
   } catch (error) {
+    var errorMessage = error && error.message ? error.message : String(error);
+    finalizeStats('error');
+    state.lastErrorAt = stats.completedAt;
+    state.lastErrorMessage = errorMessage;
+    persistState();
     logError('trigger_poll_error', {
       key: triggerKey,
-      message: error && error.message ? error.message : String(error)
+      message: errorMessage,
+      stats: stats
     });
     throw error;
   }
@@ -12741,24 +12951,47 @@ function onNewEmail() {
   return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
     const query = '${esc(c.query || 'is:unread')}';
     const threads = GmailApp.search(query, 0, 10);
-    let dispatched = 0;
+    const lastRunAt = runtime.state && runtime.state.lastRunAt ? new Date(runtime.state.lastRunAt) : null;
+    const items = [];
 
     threads.forEach(thread => {
       const messages = thread.getMessages();
       messages.forEach(message => {
-        const ctx = {
-          from: message.getFrom(),
-          subject: message.getSubject(),
-          body: message.getPlainBody(),
-          thread: thread
-        };
-        runtime.dispatch(ctx);
-        dispatched += 1;
+        const messageDate = typeof message.getDate === 'function' ? message.getDate() : null;
+        if (lastRunAt && messageDate && messageDate <= lastRunAt) {
+          return;
+        }
+        items.push({ thread: thread, message: message });
       });
     });
 
-    runtime.summary({ threads: threads.length, messages: dispatched, query: query });
-    return { threads: threads.length, messages: dispatched, query: query };
+    const batch = runtime.dispatchBatch(items, function (entry) {
+      const message = entry.message;
+      return {
+        from: message.getFrom(),
+        subject: message.getSubject(),
+        body: message.getPlainBody(),
+        thread: entry.thread
+      };
+    });
+
+    runtime.state.lastRunAt = new Date().toISOString();
+    runtime.state.lastMessageCount = batch.succeeded;
+
+    runtime.summary({
+      threads: threads.length,
+      messagesAttempted: batch.attempted,
+      messagesDispatched: batch.succeeded,
+      messagesFailed: batch.failed,
+      query: query
+    });
+    return {
+      threads: threads.length,
+      messagesAttempted: batch.attempted,
+      messagesDispatched: batch.succeeded,
+      messagesFailed: batch.failed,
+      query: query
+    };
   });
 }`,
 
@@ -13166,9 +13399,29 @@ function onEdit(e) {
     }
 
     const row = e.range.getRow();
-    runtime.summary({ sheet: activeSheetName || targetSheetName, row: row });
-    runtime.dispatch({ row: row, sheet: activeSheetName || targetSheetName });
-    return { rowsDispatched: 1, row: row, sheet: activeSheetName || targetSheetName };
+    const sheetName = activeSheetName || targetSheetName;
+    const batch = runtime.dispatchBatch([{ row: row, sheet: sheetName }], function (entry) {
+      return entry;
+    });
+
+    runtime.state.lastRunAt = new Date().toISOString();
+    runtime.state.lastSheet = sheetName;
+    runtime.state.lastRow = row;
+
+    runtime.summary({
+      sheet: sheetName,
+      row: row,
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed
+    });
+    return {
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed,
+      row: row,
+      sheet: sheetName
+    };
   });
 }`,
 
@@ -13258,9 +13511,29 @@ function scheduledTrigger() {
     var triggerTime = new Date().toISOString();
 
     logInfo('time_trigger_fired', { frequency: frequency, unit: unit, triggerTime: triggerTime });
-    runtime.summary({ frequency: frequency, unit: unit, triggerTime: triggerTime });
-    runtime.dispatch({ triggerTime: triggerTime, frequency: frequency, unit: unit });
-    return { dispatched: 1, triggerTime: triggerTime, frequency: frequency, unit: unit };
+    var batch = runtime.dispatchBatch([{ triggerTime: triggerTime, frequency: frequency, unit: unit }], function (entry) {
+      return entry;
+    });
+
+    runtime.state.lastRunAt = triggerTime;
+    runtime.state.lastSchedule = { frequency: frequency, unit: unit };
+
+    runtime.summary({
+      frequency: frequency,
+      unit: unit,
+      triggerTime: triggerTime,
+      runsAttempted: batch.attempted,
+      runsDispatched: batch.succeeded,
+      runsFailed: batch.failed
+    });
+    return {
+      triggerTime: triggerTime,
+      frequency: frequency,
+      unit: unit,
+      runsAttempted: batch.attempted,
+      runsDispatched: batch.succeeded,
+      runsFailed: batch.failed
+    };
   });
 }`,
 
@@ -13372,8 +13645,26 @@ function executeDelayedContext() {
     scriptProps.deleteProperty('short_delay_trigger');
 
     logInfo('delay_trigger_execute', { contextKey: contextKey });
-    runtime.dispatch(ctx);
-    return { resumed: true, contextKey: contextKey };
+    const batch = runtime.dispatchBatch([{ context: ctx, contextKey: contextKey }], function (entry) {
+      return entry.context;
+    });
+
+    runtime.state.lastRunAt = new Date().toISOString();
+    runtime.state.lastContextKey = contextKey;
+    runtime.state.lastResumeCount = batch.succeeded;
+
+    runtime.summary({
+      resumed: batch.succeeded > 0,
+      resumedCount: batch.succeeded,
+      contextKey: contextKey,
+      resumeFailures: batch.failed
+    });
+    return {
+      resumed: batch.succeeded > 0,
+      resumedCount: batch.succeeded,
+      resumeFailures: batch.failed,
+      contextKey: contextKey
+    };
   });
 }`,
 
