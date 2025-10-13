@@ -15118,30 +15118,106 @@ function step_createJiraIssue(ctx) {
     logWarn('jira_missing_credentials', { message: 'Jira credentials not configured' });
     return ctx;
   }
-  
-  const issueData = {
-    fields: {
-      project: { key: '${c.projectKey || 'TEST'}' },
-      summary: interpolate('${c.summary || 'Automated Issue'}', ctx),
-      description: interpolate('${c.description || 'Created by automation'}', ctx),
-      issuetype: { name: '${c.issueType || 'Task'}' }
-    }
-  };
-  
-  const auth = Utilities.base64Encode(email + ':' + apiToken);
-  const response = withRetries(() => fetchJson(\`\${baseUrl}/rest/api/3/issue\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Basic \${auth}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(issueData),
-    contentType: 'application/json'
-  }));
 
-  ctx.jiraIssueKey = response.body && response.body.key;
-  logInfo('jira_create_issue', { issueKey: ctx.jiraIssueKey || null });
-  return ctx;
+  const projectKeyTemplate = ${c.projectKey !== undefined ? `'${escapeForSingleQuotes(String(c.projectKey))}'` : "'{{project.key}}'"};
+  const summaryTemplate = ${c.summary !== undefined ? `'${escapeForSingleQuotes(String(c.summary))}'` : "'{{summary}}'"};
+  const descriptionTemplate = ${c.description !== undefined ? `'${escapeForSingleQuotes(String(c.description))}'` : "'Created by automation'"};
+  const issueTypeTemplate = ${c.issueType !== undefined ? `'${escapeForSingleQuotes(String(c.issueType))}'` : "'Task'"};
+
+  const projectKey = projectKeyTemplate ? interpolate(projectKeyTemplate, ctx).trim() : '';
+  if (!projectKey) {
+    throw new Error('Jira create_issue requires a project key. Configure the Project Key field (for example, "ENG").');
+  }
+
+  const summary = summaryTemplate ? interpolate(summaryTemplate, ctx).trim() : '';
+  if (!summary) {
+    throw new Error('Jira create_issue requires a summary. Provide a Summary or template expression that resolves to text.');
+  }
+
+  const description = descriptionTemplate ? interpolate(descriptionTemplate, ctx) : '';
+  const issueType = issueTypeTemplate ? interpolate(issueTypeTemplate, ctx).trim() : 'Task';
+  const normalizedIssueType = issueType || 'Task';
+
+  const fields = {
+    project: { key: projectKey },
+    summary: summary,
+    issuetype: { name: normalizedIssueType }
+  };
+
+  if (description && description.trim() !== '') {
+    fields.description = description;
+  }
+
+  const issueData = { fields: fields };
+  const auth = Utilities.base64Encode(email + ':' + apiToken);
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: normalizedBaseUrl + '/rest/api/3/issue',
+      method: 'POST',
+      headers: {
+        'Authorization': \`Basic \${auth}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(issueData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const issue = response.body || null;
+    ctx.jiraIssueKey = issue && issue.key ? issue.key : null;
+    ctx.jiraIssueId = issue && issue.id ? issue.id : null;
+    ctx.jiraIssueUrl = ctx.jiraIssueKey ? normalizedBaseUrl + '/browse/' + ctx.jiraIssueKey : (issue && issue.self ? issue.self : null);
+    logInfo('jira_create_issue', { issueKey: ctx.jiraIssueKey || null, issueUrl: ctx.jiraIssueUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (Array.isArray(payload.errorMessages)) {
+          for (let i = 0; i < payload.errorMessages.length; i++) {
+            const message = payload.errorMessages[i];
+            if (message) {
+              details.push(String(message));
+            }
+          }
+        }
+        if (payload.errors && typeof payload.errors === 'object') {
+          for (const key in payload.errors) {
+            if (!Object.prototype.hasOwnProperty.call(payload.errors, key)) {
+              continue;
+            }
+            const value = payload.errors[key];
+            if (!value) {
+              continue;
+            }
+            details.push(key + ': ' + value);
+          }
+        }
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+      }
+    }
+
+    const message = 'Jira create_issue failed for project ' + projectKey + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }`,
 
   'action.asana:create_task': (c) => `
@@ -15152,28 +15228,94 @@ function step_createAsanaTask(ctx) {
     logWarn('asana_missing_access_token', { message: 'Asana access token not configured' });
     return ctx;
   }
-  
+
+  const nameTemplate = ${c.name !== undefined ? `'${escapeForSingleQuotes(String(c.name))}'` : "'{{task.name}}'"};
+  const notesTemplate = ${c.notes !== undefined ? `'${escapeForSingleQuotes(String(c.notes))}'` : "'Created by automation'"};
+  const projectTemplate = ${c.projectId !== undefined ? `'${escapeForSingleQuotes(String(c.projectId))}'` : "''"};
+
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Asana create_task requires a task name. Configure the Name field or provide a template that resolves to text.');
+  }
+
+  const projectId = projectTemplate ? interpolate(projectTemplate, ctx).trim() : '';
+  if (!projectId) {
+    throw new Error('Asana create_task requires a project ID. Configure the Project field with a valid Asana project GID.');
+  }
+
+  const notes = notesTemplate ? interpolate(notesTemplate, ctx) : '';
+
   const taskData = {
     data: {
-      name: interpolate('${c.name || 'Automated Task'}', ctx),
-      notes: interpolate('${c.notes || 'Created by automation'}', ctx),
-      projects: ['${c.projectId || ''}'].filter(Boolean)
+      name: name,
+      notes: notes,
+      projects: [projectId]
     }
   };
-  
-  const response = withRetries(() => fetchJson('https://app.asana.com/api/1.0/tasks', {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${accessToken}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(taskData),
-    contentType: 'application/json'
-  }));
 
-  ctx.asanaTaskId = response.body && response.body.data ? response.body.data.gid : null;
-  logInfo('asana_create_task', { taskId: ctx.asanaTaskId || null });
-  return ctx;
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: 'https://app.asana.com/api/1.0/tasks',
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(taskData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const task = response.body && response.body.data ? response.body.data : null;
+    ctx.asanaTaskId = task && task.gid ? task.gid : null;
+    ctx.asanaTaskUrl = task && task.permalink_url ? task.permalink_url : (ctx.asanaTaskId ? 'https://app.asana.com/0/' + projectId + '/' + ctx.asanaTaskId : null);
+    logInfo('asana_create_task', { taskId: ctx.asanaTaskId || null, taskUrl: ctx.asanaTaskUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const item = payload.errors[i];
+          if (!item) {
+            continue;
+          }
+          const parts = [];
+          if (item.message) {
+            parts.push(String(item.message));
+          }
+          if (item.help) {
+            parts.push('Help: ' + item.help);
+          }
+          if (parts.length > 0) {
+            details.push(parts.join(' '));
+          }
+        }
+      }
+      if (payload.message) {
+        details.push(String(payload.message));
+      }
+    }
+
+    if (payload && typeof payload === 'string') {
+      details.push(payload);
+    }
+
+    const message = 'Asana create_task failed for project ' + projectId + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }`,
 
   'action.trello:create_card': (c) => `
@@ -15185,23 +15327,73 @@ function step_createTrelloCard(ctx) {
     logWarn('trello_missing_credentials', { message: 'Trello credentials not configured' });
     return ctx;
   }
-  
-  const cardData = {
-    name: interpolate('${c.name || 'Automated Card'}', ctx),
-    desc: interpolate('${c.description || 'Created by automation'}', ctx),
-    idList: '${c.listId || ''}'
-  };
-  
-  const response = withRetries(() => fetchJson(\`https://api.trello.com/1/cards?key=\${apiKey}&token=\${token}\`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    payload: JSON.stringify(cardData),
-    contentType: 'application/json'
-  }));
 
-  ctx.trelloCardId = response.body && response.body.id;
-  logInfo('trello_create_card', { cardId: ctx.trelloCardId || null });
-  return ctx;
+  const nameTemplate = ${c.name !== undefined ? `'${escapeForSingleQuotes(String(c.name))}'` : "'{{card.name}}'"};
+  const descriptionTemplate = ${c.description !== undefined ? `'${escapeForSingleQuotes(String(c.description))}'` : "'Created by automation'"};
+  const listTemplate = ${c.listId !== undefined ? `'${escapeForSingleQuotes(String(c.listId))}'` : "''"};
+
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Trello create_card requires a name. Configure the Card Name field or provide a template that resolves to text.');
+  }
+
+  const listId = listTemplate ? interpolate(listTemplate, ctx).trim() : '';
+  if (!listId) {
+    throw new Error('Trello create_card requires a list ID. Configure the List field with a Trello list identifier.');
+  }
+
+  const description = descriptionTemplate ? interpolate(descriptionTemplate, ctx) : '';
+
+  const cardData = {
+    name: name,
+    desc: description,
+    idList: listId
+  };
+
+  try {
+    const response = rateLimitAware(() => fetchJson(\`https://api.trello.com/1/cards?key=\${apiKey}&token=\${token}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify(cardData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const card = response.body || null;
+    ctx.trelloCardId = card && card.id ? card.id : null;
+    ctx.trelloCardUrl = card && card.shortUrl ? card.shortUrl : (card && card.url ? card.url : null);
+    logInfo('trello_create_card', { cardId: ctx.trelloCardId || null, cardUrl: ctx.trelloCardUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+        if (payload.error) {
+          details.push(String(payload.error));
+        }
+      }
+    }
+
+    const message = 'Trello create_card failed for list ' + listId + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }`,
 
   // BATCH 5: Marketing Applications

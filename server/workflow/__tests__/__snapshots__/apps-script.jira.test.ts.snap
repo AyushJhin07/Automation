@@ -1,0 +1,112 @@
+exports[`Apps Script Jira REAL_OPS builds action.jira:create_issue 1`] = `
+function step_createJiraIssue(ctx) {
+  const email = getSecret('JIRA_EMAIL');
+  const apiToken = getSecret('JIRA_API_TOKEN');
+  const baseUrl = getSecret('JIRA_BASE_URL');
+
+  if (!email || !apiToken || !baseUrl) {
+    logWarn('jira_missing_credentials', { message: 'Jira credentials not configured' });
+    return ctx;
+  }
+
+  const projectKeyTemplate = 'ENG';
+  const summaryTemplate = 'Resolve incident {{incident_id}}';
+  const descriptionTemplate = 'Automated follow-up created from the incident workflow.';
+  const issueTypeTemplate = 'Bug';
+
+  const projectKey = projectKeyTemplate ? interpolate(projectKeyTemplate, ctx).trim() : '';
+  if (!projectKey) {
+    throw new Error('Jira create_issue requires a project key. Configure the Project Key field (for example, "ENG").');
+  }
+
+  const summary = summaryTemplate ? interpolate(summaryTemplate, ctx).trim() : '';
+  if (!summary) {
+    throw new Error('Jira create_issue requires a summary. Provide a Summary or template expression that resolves to text.');
+  }
+
+  const description = descriptionTemplate ? interpolate(descriptionTemplate, ctx) : '';
+  const issueType = issueTypeTemplate ? interpolate(issueTypeTemplate, ctx).trim() : 'Task';
+  const normalizedIssueType = issueType || 'Task';
+
+  const fields = {
+    project: { key: projectKey },
+    summary: summary,
+    issuetype: { name: normalizedIssueType }
+  };
+
+  if (description && description.trim() !== '') {
+    fields.description = description;
+  }
+
+  const issueData = { fields: fields };
+  const auth = Utilities.base64Encode(email + ':' + apiToken);
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: normalizedBaseUrl + '/rest/api/3/issue',
+      method: 'POST',
+      headers: {
+        'Authorization': \`Basic \${auth}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(issueData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const issue = response.body || null;
+    ctx.jiraIssueKey = issue && issue.key ? issue.key : null;
+    ctx.jiraIssueId = issue && issue.id ? issue.id : null;
+    ctx.jiraIssueUrl = ctx.jiraIssueKey ? normalizedBaseUrl + '/browse/' + ctx.jiraIssueKey : (issue && issue.self ? issue.self : null);
+    logInfo('jira_create_issue', { issueKey: ctx.jiraIssueKey || null, issueUrl: ctx.jiraIssueUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload) {
+      if (typeof payload === 'string') {
+        details.push(payload);
+      } else if (typeof payload === 'object') {
+        if (Array.isArray(payload.errorMessages)) {
+          for (let i = 0; i < payload.errorMessages.length; i++) {
+            const message = payload.errorMessages[i];
+            if (message) {
+              details.push(String(message));
+            }
+          }
+        }
+        if (payload.errors && typeof payload.errors === 'object') {
+          for (const key in payload.errors) {
+            if (!Object.prototype.hasOwnProperty.call(payload.errors, key)) {
+              continue;
+            }
+            const value = payload.errors[key];
+            if (!value) {
+              continue;
+            }
+            details.push(key + ': ' + value);
+          }
+        }
+        if (payload.message) {
+          details.push(String(payload.message));
+        }
+      }
+    }
+
+    const message = 'Jira create_issue failed for project ' + projectKey + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+}
+`;

@@ -1,0 +1,98 @@
+exports[`Apps Script Asana REAL_OPS builds action.asana:create_task 1`] = `
+function step_createAsanaTask(ctx) {
+  const accessToken = getSecret('ASANA_ACCESS_TOKEN');
+
+  if (!accessToken) {
+    logWarn('asana_missing_access_token', { message: 'Asana access token not configured' });
+    return ctx;
+  }
+
+  const nameTemplate = 'Follow up with {{lead_name}}';
+  const notesTemplate = 'Schedule onboarding call once the deal closes.';
+  const projectTemplate = '1200012345678901';
+
+  const name = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!name) {
+    throw new Error('Asana create_task requires a task name. Configure the Name field or provide a template that resolves to text.');
+  }
+
+  const projectId = projectTemplate ? interpolate(projectTemplate, ctx).trim() : '';
+  if (!projectId) {
+    throw new Error('Asana create_task requires a project ID. Configure the Project field with a valid Asana project GID.');
+  }
+
+  const notes = notesTemplate ? interpolate(notesTemplate, ctx) : '';
+
+  const taskData = {
+    data: {
+      name: name,
+      notes: notes,
+      projects: [projectId]
+    }
+  };
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: 'https://app.asana.com/api/1.0/tasks',
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(taskData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const task = response.body && response.body.data ? response.body.data : null;
+    ctx.asanaTaskId = task && task.gid ? task.gid : null;
+    ctx.asanaTaskUrl = task && task.permalink_url ? task.permalink_url : (ctx.asanaTaskId ? 'https://app.asana.com/0/' + projectId + '/' + ctx.asanaTaskId : null);
+    logInfo('asana_create_task', { taskId: ctx.asanaTaskId || null, taskUrl: ctx.asanaTaskUrl || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.errors)) {
+        for (let i = 0; i < payload.errors.length; i++) {
+          const item = payload.errors[i];
+          if (!item) {
+            continue;
+          }
+          const parts = [];
+          if (item.message) {
+            parts.push(String(item.message));
+          }
+          if (item.help) {
+            parts.push('Help: ' + item.help);
+          }
+          if (parts.length > 0) {
+            details.push(parts.join(' '));
+          }
+        }
+      }
+      if (payload.message) {
+        details.push(String(payload.message));
+      }
+    }
+
+    if (payload && typeof payload === 'string') {
+      details.push(payload);
+    }
+
+    const message = 'Asana create_task failed for project ' + projectId + '. ' + (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+}
+`;
