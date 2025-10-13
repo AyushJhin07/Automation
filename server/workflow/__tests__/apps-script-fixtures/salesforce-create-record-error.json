@@ -1,0 +1,69 @@
+{
+  "id": "salesforce-create-record-error",
+  "description": "Fails to create a Salesforce Account and normalizes errors",
+  "graph": {
+    "id": "fixture-salesforce-create-record-error",
+    "name": "Salesforce create record error",
+    "nodes": [
+      {
+        "id": "salesforce-action",
+        "type": "action.salesforce",
+        "app": "salesforce",
+        "name": "Create account",
+        "op": "action.salesforce:create_record",
+        "params": {
+          "operation": "create_record",
+          "sobjectType": "Account",
+          "fields": {
+            "Name": "{{account_name}}"
+          }
+        },
+        "data": {
+          "operation": "create_record",
+          "config": {
+            "sobjectType": "Account",
+            "fields": {
+              "Name": "{{account_name}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "account_name": ""
+    }
+  },
+  "secrets": {
+    "SALESFORCE_ACCESS_TOKEN": "00Dxx0000000001!AQEAQ",
+    "SALESFORCE_INSTANCE_URL": "https://example.my.salesforce.com"
+  },
+  "http": [
+    {
+      "name": "salesforce-create-account-error",
+      "request": {
+        "url": "https://example.my.salesforce.com/services/data/v58.0/sobjects/Account/",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer 00Dxx0000000001!AQEAQ",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "Name": ""
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": [
+          {
+            "message": "Required fields are missing: [Name]",
+            "errorCode": "REQUIRED_FIELD_MISSING",
+            "fields": ["Name"]
+          }
+        ]
+      }
+    }
+  ]
+}

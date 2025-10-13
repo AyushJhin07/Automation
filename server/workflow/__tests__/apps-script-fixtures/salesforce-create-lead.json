@@ -70,7 +70,9 @@
   "expect": {
     "context": {
       "salesforceLeadCreated": true,
-      "leadId": "00Qxx0000000001EAA"
+      "salesforceLeadId": "00Qxx0000000001EAA",
+      "leadId": "00Qxx0000000001EAA",
+      "salesforceLead": { "id": "00Qxx0000000001EAA" }
     },
     "logs": [
       {
