@@ -22,6 +22,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | adobe-acrobat | `ADOBE_PDF_CLIENT_ID`<br>`ADOBE_PDF_CLIENT_SECRET` | — | — |
 | adobe-creative | `ADOBE_CREATIVE_ACCESS_TOKEN` | — | — |
 | adobe-sign | `ADOBE_SIGN_ACCESS_TOKEN` | — | — |
+| ADP Workforce Now | `ADP_ACCESS_TOKEN`<br>`ADP_CLIENT_ID`<br>`ADP_CLIENT_SECRET`<br>`ADP_COMPANY_CODES` | — | `ADP_COMPANY_CODES` accepts comma-separated codes when workflows span multiple company entities. |
 | Adyen | `ADYEN_API_KEY`<br>`ADYEN_MERCHANT_ACCOUNT` | — | — |
 | Airtable | `AIRTABLE_API_KEY`<br>`AIRTABLE_BASE_ID` | — | — |
 | amazon | `AMAZON_ACCESS_KEY`<br>`AMAZON_SECRET_KEY` | — | — |

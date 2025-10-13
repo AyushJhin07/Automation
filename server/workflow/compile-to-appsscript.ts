@@ -1403,6 +1403,12 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
   }
 };
 var __CONNECTOR_OAUTH_TOKEN_METADATA = {
+  adp: {
+    displayName: 'ADP Workforce Now',
+    property: 'ADP_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__adp__access_token']
+  },
   asana: {
     displayName: 'Asana',
     property: 'ASANA_ACCESS_TOKEN',
@@ -13413,6 +13419,466 @@ if (typeof adyenExecuteOperation !== 'function') {
 `;
 }
 
+
+function adpResolveConfigBlock(): string {
+  return `
+if (typeof adpResolveConfig !== 'function') {
+  function adpResolveConfig(config, ctx) {
+    if (config === null || config === undefined) {
+      return {};
+    }
+    if (Array.isArray(config)) {
+      var arr = [];
+      for (var i = 0; i < config.length; i++) {
+        arr.push(adpResolveConfig(config[i], ctx));
+      }
+      return arr;
+    }
+    if (typeof config === 'object') {
+      var obj = {};
+      for (var key in config) {
+        if (!Object.prototype.hasOwnProperty.call(config, key)) continue;
+        obj[key] = adpResolveConfig(config[key], ctx);
+      }
+      return obj;
+    }
+    if (typeof config === 'string') {
+      var trimmed = config.trim();
+      if (!trimmed) {
+        return '';
+      }
+      return interpolate(trimmed, ctx);
+    }
+    return config;
+  }
+}
+`;
+}
+
+function adpHelpersBlock(): string {
+  const scopes = ['api', 'hr.worker.read', 'hr.worker.write', 'payroll.payroll_processing', 'payroll.payroll_reports.read'];
+
+  return `
+if (typeof adpExecuteOperation !== 'function') {
+  function adpNormalizeBaseUrl(value) {
+    var url = (value && typeof value === 'string') ? value.trim() : '';
+    if (!url) {
+      return 'https://api.adp.com';
+    }
+    if (url.charAt(url.length - 1) === '/') {
+      url = url.slice(0, -1);
+    }
+    return url;
+  }
+
+  function adpParseCompanyCodes(value) {
+    var source = [];
+    if (Array.isArray(value)) {
+      source = value;
+    } else if (typeof value === 'string') {
+      source = value.split(',');
+    } else if (value !== null && value !== undefined) {
+      source = [value];
+    }
+
+    var codes = [];
+    for (var i = 0; i < source.length; i++) {
+      var code = source[i];
+      if (code === null || code === undefined) {
+        continue;
+      }
+      var trimmed = String(code).trim();
+      if (!trimmed) {
+        continue;
+      }
+      if (codes.indexOf(trimmed) === -1) {
+        codes.push(trimmed);
+      }
+    }
+    return codes;
+  }
+
+  function adpResolveCompanyCodes(params, inputData, secretValue) {
+    var codes = [];
+
+    function pushAll(value) {
+      var parsed = adpParseCompanyCodes(value);
+      for (var i = 0; i < parsed.length; i++) {
+        var code = parsed[i];
+        if (codes.indexOf(code) === -1) {
+          codes.push(code);
+        }
+      }
+    }
+
+    pushAll(secretValue);
+
+    if (params && params.companyCodes !== undefined) {
+      pushAll(params.companyCodes);
+    }
+    if (params && params.companyCode !== undefined) {
+      pushAll(params.companyCode);
+    }
+    if (params && params.company_codes !== undefined) {
+      pushAll(params.company_codes);
+    }
+    if (params && params.company_code !== undefined) {
+      pushAll(params.company_code);
+    }
+
+    if (inputData && inputData.companyCodes !== undefined) {
+      pushAll(inputData.companyCodes);
+    }
+    if (inputData && inputData.companyCode !== undefined) {
+      pushAll(inputData.companyCode);
+    }
+    if (inputData && inputData.adpCompanyCodes !== undefined) {
+      pushAll(inputData.adpCompanyCodes);
+    }
+    if (inputData && inputData.adpCompanyCode !== undefined) {
+      pushAll(inputData.adpCompanyCode);
+    }
+
+    return codes;
+  }
+
+  function adpSanitizePayload(payload) {
+    if (payload === null || payload === undefined) {
+      return {};
+    }
+    if (Array.isArray(payload)) {
+      var arr = [];
+      for (var i = 0; i < payload.length; i++) {
+        arr.push(adpSanitizePayload(payload[i]));
+      }
+      return arr;
+    }
+    if (typeof payload === 'object') {
+      var result = {};
+      for (var key in payload) {
+        if (!Object.prototype.hasOwnProperty.call(payload, key)) {
+          continue;
+        }
+        var value = payload[key];
+        if (value === undefined) {
+          continue;
+        }
+        result[key] = adpSanitizePayload(value);
+      }
+      return result;
+    }
+    return payload;
+  }
+
+  function adpSerializePayload(payload) {
+    if (payload === null || payload === undefined) {
+      return null;
+    }
+    if (typeof payload === 'string') {
+      return payload;
+    }
+    return JSON.stringify(payload);
+  }
+
+  function adpBuildHeaders(token, companyCodes, clientId) {
+    var headers = {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/json'
+    };
+
+    if (companyCodes && companyCodes.length) {
+      headers['ADP-CompanyCode'] = companyCodes[0];
+    }
+
+    if (clientId) {
+      headers['ADP-ClientId'] = clientId;
+    }
+
+    return headers;
+  }
+
+  function adpRequest(baseUrl, token, method, endpoint, payload, companyCodes, clientId) {
+    if (!endpoint) {
+      throw new Error('ADP endpoint is required');
+    }
+
+    var normalizedEndpoint = String(endpoint);
+    if (normalizedEndpoint.charAt(0) !== '/') {
+      normalizedEndpoint = '/' + normalizedEndpoint;
+    }
+
+    var url = adpNormalizeBaseUrl(baseUrl) + normalizedEndpoint;
+    var serializedPayload = adpSerializePayload(payload);
+    var headers = adpBuildHeaders(token, companyCodes, clientId);
+
+    var requestOptions = {
+      url: url,
+      method: method || 'GET',
+      headers: headers,
+      muteHttpExceptions: true
+    };
+
+    if (serializedPayload !== null) {
+      requestOptions.payload = serializedPayload;
+      requestOptions.contentType = 'application/json';
+    }
+
+    return rateLimitAware(function () {
+      return fetchJson(requestOptions);
+    }, { attempts: 4, initialDelayMs: 500, backoffFactor: 2 });
+  }
+
+  function adpHandleTestConnection(baseUrl, token, params, inputData, companyCodes, clientId) {
+    var response = adpRequest(baseUrl, token, 'GET', '/hr/v2/workers?$top=1', null, companyCodes, clientId);
+    var workers = [];
+    if (response && response.body && Array.isArray(response.body.workers)) {
+      workers = response.body.workers;
+    }
+    logInfo('adp_test_connection', { status: response ? response.status : null, workersPreview: workers.length });
+
+    var next = Object.assign({}, inputData || {});
+    next.success = true;
+    next.adpConnection = 'ok';
+    next.adpWorkersPreview = workers;
+    return next;
+  }
+
+  function adpResolveWorkerId(params, inputData) {
+    var candidates = [];
+    if (params && params.worker_id !== undefined) {
+      candidates.push(params.worker_id);
+    }
+    if (params && params.workerId !== undefined) {
+      candidates.push(params.workerId);
+    }
+    if (inputData && inputData.worker_id !== undefined) {
+      candidates.push(inputData.worker_id);
+    }
+    if (inputData && inputData.workerId !== undefined) {
+      candidates.push(inputData.workerId);
+    }
+
+    for (var i = 0; i < candidates.length; i++) {
+      var candidate = candidates[i];
+      if (candidate === null || candidate === undefined) {
+        continue;
+      }
+      var trimmed = String(candidate).trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+
+    return '';
+  }
+
+  function adpHandleGetWorker(baseUrl, token, params, inputData, companyCodes, clientId) {
+    var workerId = adpResolveWorkerId(params, inputData);
+    if (!workerId) {
+      throw new Error('worker_id is required for ADP get_worker');
+    }
+
+    var response = adpRequest(baseUrl, token, 'GET', '/hr/v2/workers/' + encodeURIComponent(workerId), null, companyCodes, clientId);
+    logInfo('adp_get_worker', { workerId: workerId, status: response ? response.status : null });
+
+    var next = Object.assign({}, inputData || {});
+    next.success = true;
+    next.worker = response ? response.body : null;
+    next.workerId = workerId;
+    return next;
+  }
+
+  function adpBuildCreatePayload(params) {
+    if (params && typeof params.payload === 'object') {
+      return adpSanitizePayload(params.payload);
+    }
+    if (params && typeof params.worker === 'object') {
+      return adpSanitizePayload(params.worker);
+    }
+
+    var allowed = ['associateOID', 'workerDates', 'person', 'workAssignments'];
+    var payload = {};
+    for (var i = 0; i < allowed.length; i++) {
+      var key = allowed[i];
+      if (params && Object.prototype.hasOwnProperty.call(params, key) && params[key] !== undefined) {
+        payload[key] = adpSanitizePayload(params[key]);
+      }
+    }
+    return payload;
+  }
+
+  function adpHandleCreateWorker(baseUrl, token, params, inputData, companyCodes, clientId) {
+    var payload = adpBuildCreatePayload(params || {});
+    var response = adpRequest(baseUrl, token, 'POST', '/hr/v2/workers', payload, companyCodes, clientId);
+    var workerId = response && response.body && response.body.id ? response.body.id : null;
+    logInfo('adp_create_worker', { status: response ? response.status : null, workerId: workerId });
+
+    var next = Object.assign({}, inputData || {});
+    next.success = true;
+    next.worker = (response && response.body) ? response.body : payload;
+    next.workerId = workerId;
+    return next;
+  }
+
+  function adpBuildUpdatePayload(params) {
+    if (params && typeof params.payload === 'object') {
+      return adpSanitizePayload(params.payload);
+    }
+    if (params && typeof params.worker === 'object') {
+      return adpSanitizePayload(params.worker);
+    }
+    if (params && typeof params.person === 'object') {
+      return adpSanitizePayload({ person: params.person });
+    }
+    return adpSanitizePayload({});
+  }
+
+  function adpHandleUpdateWorker(baseUrl, token, params, inputData, companyCodes, clientId) {
+    var workerId = adpResolveWorkerId(params, inputData);
+    if (!workerId) {
+      throw new Error('worker_id is required for ADP update_worker');
+    }
+
+    var payload = adpBuildUpdatePayload(params || {});
+    var response = adpRequest(baseUrl, token, 'PUT', '/hr/v2/workers/' + encodeURIComponent(workerId), payload, companyCodes, clientId);
+    logInfo('adp_update_worker', { workerId: workerId, status: response ? response.status : null });
+
+    var next = Object.assign({}, inputData || {});
+    next.success = true;
+    next.worker = (response && response.body) ? response.body : payload;
+    next.workerId = workerId;
+    return next;
+  }
+
+  function adpHandleWorkerHiredTrigger(params, inputData) {
+    var payload = params && params.payload ? params.payload : (inputData && inputData.payload ? inputData.payload : inputData);
+    var eventType = payload && payload.eventType ? payload.eventType : 'worker_hired';
+    var worker = null;
+    if (payload) {
+      if (payload.worker) {
+        worker = payload.worker;
+      } else if (payload.data && payload.data.worker) {
+        worker = payload.data.worker;
+      }
+    }
+
+    logInfo('adp_worker_hired_trigger', { eventType: eventType, hasWorker: !!worker });
+
+    var next = Object.assign({}, inputData || {});
+    next.success = true;
+    next.eventType = eventType;
+    next.worker = worker;
+    next.payload = payload;
+    return next;
+  }
+
+  function adpExecuteOperation(operation, inputData, params) {
+    params = params || {};
+    inputData = inputData || {};
+
+    var token = requireOAuthToken('adp', { scopes: ${JSON.stringify(scopes)} });
+    var clientId = getSecret('ADP_CLIENT_ID', { connectorKey: 'adp' });
+    var clientSecret = getSecret('ADP_CLIENT_SECRET', { connectorKey: 'adp' });
+    if (!clientSecret) {
+      throw new Error('Missing ADP client secret');
+    }
+    var companySecret = getSecret('ADP_COMPANY_CODES', { connectorKey: 'adp' });
+    var companyCodes = adpResolveCompanyCodes(params, inputData, companySecret);
+    if (!companyCodes.length) {
+      throw new Error('At least one ADP company code is required');
+    }
+
+    var baseUrl = params.baseUrl || params.base_url || 'https://api.adp.com';
+    var normalizedOperation = (operation || '').toLowerCase();
+
+    if (normalizedOperation === 'test_connection') {
+      return adpHandleTestConnection(baseUrl, token, params, inputData, companyCodes, clientId);
+    }
+    if (normalizedOperation === 'get_worker') {
+      return adpHandleGetWorker(baseUrl, token, params, inputData, companyCodes, clientId);
+    }
+    if (normalizedOperation === 'create_worker') {
+      return adpHandleCreateWorker(baseUrl, token, params, inputData, companyCodes, clientId);
+    }
+    if (normalizedOperation === 'update_worker') {
+      return adpHandleUpdateWorker(baseUrl, token, params, inputData, companyCodes, clientId);
+    }
+    if (normalizedOperation === 'worker_hired') {
+      return adpHandleWorkerHiredTrigger(params, inputData);
+    }
+
+    throw new Error('Unsupported ADP operation: ' + operation);
+  }
+}
+`;
+}
+
+function buildAdpAction(operation: string, config: any): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const errorKey = `adp_${operation}_failed`;
+  const functionName = `step_action_adp_${operation}`;
+
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const params = adpResolveConfig(config, ctx);
+  try {
+    return adpExecuteOperation('${operation}', ctx, params);
+  } catch (error) {
+    logError('${errorKey}', { message: error && error.message ? error.message : String(error) });
+    throw error;
+  }
+}
+${adpResolveConfigBlock()}
+${adpHelpersBlock()}
+`;
+}
+
+function buildAdpTrigger(config: any): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+
+  return `
+function trigger_trigger_adp_worker_hired(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const params = adpResolveConfig(config, ctx);
+  try {
+    return adpExecuteOperation('worker_hired', ctx, params);
+  } catch (error) {
+    logError('adp_worker_hired_trigger_failed', { message: error && error.message ? error.message : String(error) });
+    throw error;
+  }
+}
+${adpResolveConfigBlock()}
+${adpHelpersBlock()}
+`;
+}
+
+function generateADPFunction(functionName: string, node: WorkflowNode): string {
+  const defaultOperation = node.params?.operation || node.op?.split('.').pop() || 'test_connection';
+  const displayName = escapeForSingleQuotes(String(node.name || defaultOperation));
+  const fallbackOperation = escapeForSingleQuotes(String(defaultOperation));
+
+  return `
+function ${functionName}(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var operation = params.operation || '${fallbackOperation}';
+  console.log('🏢 Executing ADP: ${displayName}');
+  try {
+    return adpExecuteOperation(operation, inputData, params);
+  } catch (error) {
+    console.error('❌ ADP ' + operation + ' failed:', error);
+    var next = Object.assign({}, inputData || {});
+    next.adpError = error && error.message ? error.message : String(error);
+    return next;
+  }
+}
+${adpHelpersBlock()}
+`;
+}
+
 function adyenResolveConfigBlock(): string {
   return `
 if (typeof adyenResolveConfig !== 'function') {
@@ -16920,6 +17386,11 @@ ${payloadBlock}
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
+  'action.adp:test_connection': (c) => buildAdpAction('test_connection', c),
+  'action.adp:get_worker': (c) => buildAdpAction('get_worker', c),
+  'action.adp:create_worker': (c) => buildAdpAction('create_worker', c),
+  'action.adp:update_worker': (c) => buildAdpAction('update_worker', c),
+  'trigger.adp:worker_hired': (c) => buildAdpTrigger(c),
   'action.adyen:test_connection': (c) => buildAdyenAction('test_connection', c),
   'action.adyen:create_payment': (c) => buildAdyenAction('create_payment', c),
   'action.adyen:capture_payment': (c) => buildAdyenAction('capture_payment', c),
