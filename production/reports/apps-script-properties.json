@@ -2098,7 +2098,48 @@
         "trigger.google-contacts:contact_created",
         "trigger.google-contacts:contact_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_CONTACTS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-contacts:create_contact",
+            "action.google-contacts:create_contact_group",
+            "action.google-contacts:delete_contact",
+            "action.google-contacts:get_contact",
+            "action.google-contacts:list_contact_groups",
+            "action.google-contacts:list_contacts",
+            "action.google-contacts:search_contacts",
+            "action.google-contacts:test_connection",
+            "action.google-contacts:update_contact",
+            "trigger.google-contacts:contact_created",
+            "trigger.google-contacts:contact_updated"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_CONTACTS_OAUTH_SUBJECT",
+          "optional": true,
+          "operations": [
+            "action.google-contacts:create_contact",
+            "action.google-contacts:create_contact_group",
+            "action.google-contacts:delete_contact",
+            "action.google-contacts:get_contact",
+            "action.google-contacts:list_contact_groups",
+            "action.google-contacts:list_contacts",
+            "action.google-contacts:search_contacts",
+            "action.google-contacts:test_connection",
+            "action.google-contacts:update_contact",
+            "trigger.google-contacts:contact_created",
+            "trigger.google-contacts:contact_updated"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {
