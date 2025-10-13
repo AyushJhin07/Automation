@@ -6057,7 +6057,176 @@
         "trigger.zoom-enhanced:meeting_started",
         "trigger.zoom-enhanced:recording_completed"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "ZOOM_ENHANCED_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_CLIENT_ID",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_CLIENT_SECRET",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_ACCOUNT_ID",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_JWT_TOKEN",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_USER_ID",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_DEFAULT_MEETING_ID",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ZOOM_ENHANCED_DEFAULT_WEBINAR_ID",
+          "optional": true,
+          "operations": [
+            "action.zoom-enhanced:create_meeting",
+            "action.zoom-enhanced:create_webinar",
+            "action.zoom-enhanced:delete_meeting",
+            "action.zoom-enhanced:get_meeting",
+            "action.zoom-enhanced:get_recording",
+            "action.zoom-enhanced:list_meetings",
+            "action.zoom-enhanced:list_recordings",
+            "action.zoom-enhanced:test_connection",
+            "action.zoom-enhanced:update_meeting",
+            "trigger.zoom-enhanced:meeting_ended",
+            "trigger.zoom-enhanced:meeting_started",
+            "trigger.zoom-enhanced:recording_completed"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     }
   ]

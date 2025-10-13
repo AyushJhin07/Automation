@@ -8105,120 +8105,651 @@ function handlePayPalTestConnection(baseUrl, accessToken, params, inputData) {
 // Comprehensive Zoom Enhanced implementation
 function generateZoomEnhancedFunction(functionName: string, node: WorkflowNode): string {
   const operation = node.params?.operation || node.op?.split('.').pop() || 'create_meeting';
-  
-  return `
+  const displayName = escapeForSingleQuotes(String(node.name || operation));
+
+  return String.raw`
 function ${functionName}(inputData, params) {
-  console.log('🎥 Executing Zoom Enhanced: ${node.name || operation}');
-  
-  const operation = params.operation || '${operation}';
-  const accessToken = getSecret('ZOOM_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ Zoom access token not configured');
-    return { ...inputData, zoomSkipped: true, error: 'Missing access token' };
-  }
-  
-  try {
-    const baseUrl = 'https://api.zoom.us/v2';
-    
-    switch (operation) {
-      case 'create_meeting':
-        return handleCreateZoomMeeting(baseUrl, accessToken, params, inputData);
-      case 'get_meeting':
-        return handleGetZoomMeeting(baseUrl, accessToken, params, inputData);
-      case 'update_meeting':
-        return handleUpdateZoomMeeting(baseUrl, accessToken, params, inputData);
-      case 'delete_meeting':
-        return handleDeleteZoomMeeting(baseUrl, accessToken, params, inputData);
-      case 'list_meetings':
-        return handleListZoomMeetings(baseUrl, accessToken, params, inputData);
-      case 'create_webinar':
-        return handleCreateZoomWebinar(baseUrl, accessToken, params, inputData);
-      case 'get_recording':
-        return handleGetZoomRecording(baseUrl, accessToken, params, inputData);
-      case 'list_recordings':
-        return handleListZoomRecordings(baseUrl, accessToken, params, inputData);
-      case 'test_connection':
-        return handleZoomTestConnection(baseUrl, accessToken, params, inputData);
-      case 'meeting_started':
-        return handleZoomTrigger(baseUrl, accessToken, params, inputData);
-      default:
-        console.warn(\`⚠️ Unknown Zoom operation: \${operation}\`);
-        return { ...inputData, zoomWarning: \`Unsupported operation: \${operation}\` };
-    }
-    
-  } catch (error) {
-    console.error(\`❌ Zoom \${operation} failed:\`, error);
-    return { ...inputData, zoomError: error.toString(), zoomSuccess: false };
-  }
-}
+  inputData = inputData || {};
+  params = params || {};
+  var operation = params.operation || '${operation}';
+  console.log('🎥 Executing Zoom Enhanced: ${displayName}');
 
-function handleCreateZoomMeeting(baseUrl, accessToken, params, inputData) {
-  const userId = params.userId || 'me';
-  
-  const meetingData = {
-    topic: params.topic || params.title || 'Meeting from Automation',
-    type: params.type || 2, // Scheduled meeting
-    start_time: params.start_time || new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
-    duration: params.duration || 60,
-    timezone: params.timezone || 'UTC',
-    agenda: params.agenda || params.description || '',
-    password: params.password || '',
-    settings: {
-      host_video: params.host_video || true,
-      participant_video: params.participant_video || true,
-      join_before_host: params.join_before_host || false,
-      mute_upon_entry: params.mute_upon_entry || false,
-      waiting_room: params.waiting_room || false
-    }
-  };
-  
-  const response = UrlFetchApp.fetch(\`\${baseUrl}/users/\${userId}/meetings\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${accessToken}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(meetingData)
-  });
-  
-  if (response.getResponseCode() === 201) {
-    const data = JSON.parse(response.getContentText());
-    console.log(\`✅ Created Zoom meeting: \${data.topic} (ID: \${data.id})\`);
-    return { 
-      ...inputData, 
-      zoomMeetingCreated: true, 
-      meetingId: data.id, 
-      meetingUrl: data.join_url,
-      meetingPassword: data.password,
-      meetingTopic: data.topic
-    };
-  } else {
-    throw new Error(\`Create meeting failed: \${response.getResponseCode()}\`);
-  }
-}
-
-function handleZoomTestConnection(baseUrl, accessToken, params, inputData) {
-  try {
-    const response = UrlFetchApp.fetch(\`\${baseUrl}/users/me\`, {
-      method: 'GET',
-      headers: {
-        'Authorization': \`Bearer \${accessToken}\`
+  if (typeof __zoomEnhancedHelpers === 'undefined') {
+    __zoomEnhancedHelpers = (function () {
+      function optionalSecret(name) {
+        if (!name) {
+          return '';
+        }
+        try {
+          var value = getSecret(name, { connectorKey: 'zoom-enhanced' });
+          if (value === null || value === undefined) {
+            return '';
+          }
+          return String(value).trim();
+        } catch (error) {
+          return '';
+        }
       }
-    });
-    
-    if (response.getResponseCode() === 200) {
-      const data = JSON.parse(response.getContentText());
-      console.log(\`✅ Zoom connection test successful. User: \${data.display_name}\`);
-      return { ...inputData, connectionTest: 'success', userName: data.display_name, userEmail: data.email };
-    } else {
-      throw new Error(\`Test failed: \${response.getResponseCode()}\`);
-    }
-  } catch (error) {
-    console.error('❌ Zoom connection test failed:', error);
-    return { ...inputData, connectionTest: 'failed', error: error.toString() };
+
+      function numberValue(value) {
+        if (typeof value === 'number') {
+          return value;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          if (!trimmed) {
+            return undefined;
+          }
+          var parsed = Number(trimmed);
+          return isNaN(parsed) ? undefined : parsed;
+        }
+        return undefined;
+      }
+
+      function booleanValue(value) {
+        if (typeof value === 'boolean') {
+          return value;
+        }
+        if (typeof value === 'string') {
+          var normalized = value.trim().toLowerCase();
+          if (!normalized) {
+            return undefined;
+          }
+          if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+            return true;
+          }
+          if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+            return false;
+          }
+        }
+        return undefined;
+      }
+
+      function prune(value) {
+        if (value === null || value === undefined) {
+          return undefined;
+        }
+        if (Array.isArray(value)) {
+          var result = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = prune(value[i]);
+            if (entry !== undefined) {
+              result.push(entry);
+            }
+          }
+          return result;
+        }
+        if (typeof value === 'object') {
+          var objectResult = {};
+          var hasValue = false;
+          for (var key in value) {
+            if (Object.prototype.hasOwnProperty.call(value, key)) {
+              var nested = prune(value[key]);
+              if (nested !== undefined) {
+                objectResult[key] = nested;
+                hasValue = true;
+              }
+            }
+          }
+          return hasValue ? objectResult : undefined;
+        }
+        return value;
+      }
+
+      function doubleEncode(value) {
+        if (!value) {
+          return '';
+        }
+        return encodeURIComponent(encodeURIComponent(String(value)));
+      }
+
+      function buildQuery(params) {
+        var parts = [];
+        for (var key in params) {
+          if (!Object.prototype.hasOwnProperty.call(params, key)) {
+            continue;
+          }
+          var raw = params[key];
+          if (raw === null || raw === undefined || raw === '') {
+            continue;
+          }
+          var value = typeof raw === 'boolean' ? (raw ? 'true' : 'false') : String(raw);
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+        }
+        return parts.length ? '?' + parts.join('&') : '';
+      }
+
+      function resolveAccessToken(params) {
+        params = params || {};
+        var explicit = params.accessToken || params.access_token || params.token;
+        if (explicit) {
+          var trimmed = String(explicit).trim();
+          if (trimmed) {
+            return trimmed;
+          }
+        }
+
+        var jwtToken = params.jwtToken || params.jwt_token;
+        if (jwtToken) {
+          var jwtTrimmed = String(jwtToken).trim();
+          if (jwtTrimmed) {
+            return jwtTrimmed;
+          }
+        }
+
+        var stored = optionalSecret('ZOOM_ENHANCED_ACCESS_TOKEN');
+        if (!stored) {
+          stored = optionalSecret('ZOOM_ACCESS_TOKEN');
+        }
+        if (stored) {
+          return stored;
+        }
+
+        var fallbackJwt = optionalSecret('ZOOM_ENHANCED_JWT_TOKEN');
+        if (!fallbackJwt) {
+          fallbackJwt = optionalSecret('ZOOM_JWT_TOKEN');
+        }
+        if (fallbackJwt) {
+          return fallbackJwt;
+        }
+
+        var clientId = optionalSecret('ZOOM_ENHANCED_CLIENT_ID');
+        var clientSecret = optionalSecret('ZOOM_ENHANCED_CLIENT_SECRET');
+        var accountId = optionalSecret('ZOOM_ENHANCED_ACCOUNT_ID');
+
+        if (clientId && clientSecret && accountId) {
+          try {
+            var auth = Utilities.base64Encode(clientId + ':' + clientSecret);
+            var tokenResponse = UrlFetchApp.fetch('https://zoom.us/oauth/token?grant_type=account_credentials&account_id=' + encodeURIComponent(accountId), {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Basic ' + auth,
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              muteHttpExceptions: true
+            });
+
+            if (tokenResponse.getResponseCode() >= 200 && tokenResponse.getResponseCode() < 300) {
+              var tokenBody = {};
+              try {
+                tokenBody = JSON.parse(tokenResponse.getContentText() || '{}');
+              } catch (parseError) {
+                console.warn('⚠️ Zoom Enhanced token response parse error:', parseError);
+              }
+
+              if (tokenBody && tokenBody.access_token) {
+                return String(tokenBody.access_token).trim();
+              }
+            } else {
+              console.warn('⚠️ Zoom Enhanced token exchange failed: ' + tokenResponse.getResponseCode());
+            }
+          } catch (exchangeError) {
+            console.warn('⚠️ Zoom Enhanced token exchange error:', exchangeError);
+          }
+        }
+
+        return '';
+      }
+
+      function resolveUserId(params) {
+        params = params || {};
+        var direct = params.userId || params.user_id || params.email;
+        if (direct) {
+          var trimmed = String(direct).trim();
+          if (trimmed) {
+            return trimmed;
+          }
+        }
+        var fallback = optionalSecret('ZOOM_ENHANCED_USER_ID');
+        if (!fallback) {
+          fallback = optionalSecret('ZOOM_USER_ID');
+        }
+        return fallback || 'me';
+      }
+
+      function resolveMeetingId(params) {
+        params = params || {};
+        var direct = params.meetingId || params.meeting_id || params.id;
+        if (direct) {
+          var trimmed = String(direct).trim();
+          if (trimmed) {
+            return trimmed;
+          }
+        }
+        var fallback = optionalSecret('ZOOM_ENHANCED_DEFAULT_MEETING_ID');
+        return fallback || '';
+      }
+
+      function resolveWebinarId(params) {
+        params = params || {};
+        var direct = params.webinarId || params.webinar_id || params.id;
+        if (direct) {
+          var trimmed = String(direct).trim();
+          if (trimmed) {
+            return trimmed;
+          }
+        }
+        var fallback = optionalSecret('ZOOM_ENHANCED_DEFAULT_WEBINAR_ID');
+        return fallback || '';
+      }
+
+      function request(baseUrl, path, accessToken, options) {
+        options = options || {};
+        var url = baseUrl + path;
+        var headers = options.headers || {};
+        headers['Authorization'] = 'Bearer ' + accessToken;
+        if (!headers['Content-Type']) {
+          headers['Content-Type'] = 'application/json';
+        }
+
+        var requestOptions = {
+          method: options.method || 'GET',
+          headers: headers,
+          muteHttpExceptions: true
+        };
+
+        if (options.payload !== undefined) {
+          requestOptions.payload = typeof options.payload === 'string' ? options.payload : JSON.stringify(options.payload || {});
+        }
+
+        if (options.contentType) {
+          requestOptions.contentType = options.contentType;
+        }
+
+        if (options.query) {
+          url += buildQuery(options.query);
+        }
+
+        var response = UrlFetchApp.fetch(url, requestOptions);
+        var status = response.getResponseCode();
+        var text = response.getContentText() || '';
+        var body = null;
+
+        if (text) {
+          try {
+            body = JSON.parse(text);
+          } catch (error) {
+            body = text;
+          }
+        }
+
+        if (status >= 200 && status < 300) {
+          return { status: status, body: body, headers: response.getAllHeaders() };
+        }
+
+        var error = new Error('Zoom Enhanced request failed with status ' + status);
+        error.status = status;
+        error.body = body;
+        error.headers = response.getAllHeaders();
+        throw error;
+      }
+
+      function defaultDateRange(days) {
+        var now = new Date();
+        var start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        var from = Utilities.formatDate(start, 'GMT', 'yyyy-MM-dd');
+        var to = Utilities.formatDate(now, 'GMT', 'yyyy-MM-dd');
+        return { from: from, to: to };
+      }
+
+      function execute(operation, params, inputData) {
+        params = params || {};
+        inputData = inputData || {};
+        var baseUrl = 'https://api.zoom.us/v2';
+        var accessToken = resolveAccessToken(params);
+
+        if (!accessToken) {
+          console.warn('⚠️ Zoom Enhanced access token missing');
+          inputData.zoomEnhancedSkipped = true;
+          inputData.error = 'Missing access token';
+          return inputData;
+        }
+
+        try {
+          switch (operation) {
+            case 'test_connection': {
+              var testResponse = request(baseUrl, '/users/me', accessToken, { method: 'GET' });
+              var testBody = testResponse.body || {};
+              inputData.zoomEnhancedConnection = testBody;
+              inputData.connectionTest = 'success';
+              inputData.zoomEnhancedUserName = testBody.display_name || testBody.first_name || null;
+              inputData.zoomEnhancedUserEmail = testBody.email || null;
+              return inputData;
+            }
+            case 'create_meeting': {
+              var createUserId = resolveUserId(params);
+              var meetingPayload = prune({
+                topic: params.topic || params.title,
+                type: numberValue(params.type) || 2,
+                start_time: params.start_time,
+                duration: numberValue(params.duration),
+                timezone: params.timezone,
+                password: params.password,
+                agenda: params.agenda || params.description,
+                template_id: params.template_id,
+                schedule_for: params.schedule_for,
+                pre_schedule: booleanValue(params.pre_schedule),
+                calendar_type: numberValue(params.calendar_type),
+                recurrence: prune(params.recurrence),
+                tracking_fields: prune(params.tracking_fields),
+                settings: prune(params.settings)
+              });
+
+              var createResponse = request(baseUrl, '/users/' + encodeURIComponent(createUserId) + '/meetings', accessToken, {
+                method: 'POST',
+                payload: meetingPayload
+              });
+
+              var createBody = createResponse.body || {};
+              inputData.zoomEnhancedMeetingCreated = true;
+              inputData.zoomEnhancedMeetingId = createBody.id || null;
+              inputData.zoomEnhancedJoinUrl = createBody.join_url || null;
+              inputData.zoomEnhancedStartUrl = createBody.start_url || null;
+              inputData.zoomEnhancedMeeting = createBody;
+              return inputData;
+            }
+            case 'get_meeting': {
+              var getMeetingId = resolveMeetingId(params);
+              if (!getMeetingId) {
+                throw new Error('Zoom Enhanced get_meeting requires a meetingId or default meeting Script Property.');
+              }
+              var getQuery = {
+                occurrence_id: params.occurrence_id,
+                show_previous_occurrences: booleanValue(params.show_previous_occurrences)
+              };
+              var getResponse = request(baseUrl, '/meetings/' + doubleEncode(getMeetingId), accessToken, {
+                method: 'GET',
+                query: getQuery
+              });
+              inputData.zoomEnhancedMeeting = getResponse.body || {};
+              inputData.zoomEnhancedMeetingId = getMeetingId;
+              return inputData;
+            }
+            case 'update_meeting': {
+              var updateMeetingId = resolveMeetingId(params);
+              if (!updateMeetingId) {
+                throw new Error('Zoom Enhanced update_meeting requires a meetingId or default meeting Script Property.');
+              }
+              var updatePayload = prune({
+                topic: params.topic,
+                type: numberValue(params.type),
+                start_time: params.start_time,
+                duration: numberValue(params.duration),
+                timezone: params.timezone,
+                password: params.password,
+                agenda: params.agenda,
+                recurrence: prune(params.recurrence),
+                tracking_fields: prune(params.tracking_fields),
+                settings: prune(params.settings)
+              });
+              var updateQuery = {
+                occurrence_id: params.occurrence_id
+              };
+              request(baseUrl, '/meetings/' + doubleEncode(updateMeetingId), accessToken, {
+                method: 'PATCH',
+                payload: updatePayload,
+                query: updateQuery
+              });
+              inputData.zoomEnhancedMeetingUpdated = true;
+              inputData.zoomEnhancedMeetingId = updateMeetingId;
+              return inputData;
+            }
+            case 'delete_meeting': {
+              var deleteMeetingId = resolveMeetingId(params);
+              if (!deleteMeetingId) {
+                throw new Error('Zoom Enhanced delete_meeting requires a meetingId or default meeting Script Property.');
+              }
+              var deleteQuery = {
+                occurrence_id: params.occurrence_id,
+                schedule_for_reminder: booleanValue(params.schedule_for_reminder),
+                cancel_meeting_reminder: booleanValue(params.cancel_meeting_reminder)
+              };
+              request(baseUrl, '/meetings/' + doubleEncode(deleteMeetingId), accessToken, {
+                method: 'DELETE',
+                query: deleteQuery
+              });
+              inputData.zoomEnhancedMeetingDeleted = true;
+              inputData.zoomEnhancedMeetingId = deleteMeetingId;
+              return inputData;
+            }
+            case 'list_meetings': {
+              var listUserId = resolveUserId(params);
+              var listQuery = {
+                type: params.type,
+                page_size: numberValue(params.page_size),
+                next_page_token: params.next_page_token,
+                page_number: numberValue(params.page_number)
+              };
+              var listResponse = request(baseUrl, '/users/' + encodeURIComponent(listUserId) + '/meetings', accessToken, {
+                method: 'GET',
+                query: listQuery
+              });
+              var listBody = listResponse.body || {};
+              inputData.zoomEnhancedMeetings = listBody.meetings || [];
+              inputData.zoomEnhancedMeetingsMeta = listBody;
+              inputData.zoomEnhancedNextPageToken = listBody.next_page_token || null;
+              return inputData;
+            }
+            case 'create_webinar': {
+              var webinarUserId = resolveUserId(params);
+              var webinarPayload = prune({
+                topic: params.topic,
+                type: numberValue(params.type) || 5,
+                start_time: params.start_time,
+                duration: numberValue(params.duration),
+                timezone: params.timezone,
+                password: params.password,
+                agenda: params.agenda,
+                template_id: params.template_id,
+                recurrence: prune(params.recurrence),
+                tracking_fields: prune(params.tracking_fields),
+                settings: prune(params.settings)
+              });
+              var webinarResponse = request(baseUrl, '/users/' + encodeURIComponent(webinarUserId) + '/webinars', accessToken, {
+                method: 'POST',
+                payload: webinarPayload
+              });
+              var webinarBody = webinarResponse.body || {};
+              inputData.zoomEnhancedWebinar = webinarBody;
+              inputData.zoomEnhancedWebinarId = webinarBody.id || null;
+              inputData.zoomEnhancedWebinarJoinUrl = webinarBody.join_url || null;
+              return inputData;
+            }
+            case 'get_recording': {
+              var recordingMeetingId = resolveMeetingId(params);
+              if (!recordingMeetingId) {
+                throw new Error('Zoom Enhanced get_recording requires a meetingId or default meeting Script Property.');
+              }
+              var recordingQuery = {
+                include_fields: params.include_fields,
+                ttl: numberValue(params.ttl)
+              };
+              var recordingResponse = request(baseUrl, '/meetings/' + doubleEncode(recordingMeetingId) + '/recordings', accessToken, {
+                method: 'GET',
+                query: recordingQuery
+              });
+              inputData.zoomEnhancedRecording = recordingResponse.body || {};
+              inputData.zoomEnhancedRecordingMeetingId = recordingMeetingId;
+              return inputData;
+            }
+            case 'list_recordings': {
+              var recordingsUserId = resolveUserId(params);
+              var dateRange = {};
+              if (params.from && params.to) {
+                dateRange.from = params.from;
+                dateRange.to = params.to;
+              }
+              var recordingsQuery = {
+                page_size: numberValue(params.page_size),
+                next_page_token: params.next_page_token,
+                mc: params.mc,
+                trash: booleanValue(params.trash),
+                from: dateRange.from,
+                to: dateRange.to,
+                trash_type: params.trash_type,
+                meeting_id: params.meeting_id
+              };
+              var recordingsResponse = request(baseUrl, '/users/' + encodeURIComponent(recordingsUserId) + '/recordings', accessToken, {
+                method: 'GET',
+                query: recordingsQuery
+              });
+              var recordingsBody = recordingsResponse.body || {};
+              inputData.zoomEnhancedRecordings = recordingsBody.meetings || recordingsBody.recording_files || [];
+              inputData.zoomEnhancedRecordingsMeta = recordingsBody;
+              inputData.zoomEnhancedNextPageToken = recordingsBody.next_page_token || null;
+              return inputData;
+            }
+            case 'meeting_started': {
+              var startedUserId = resolveUserId(params);
+              var startedMeetingId = resolveMeetingId(params);
+              var startedQuery = {
+                type: 'live',
+                page_size: numberValue(params.page_size) || 30,
+                next_page_token: params.next_page_token
+              };
+              var startedResponse = request(baseUrl, '/metrics/meetings', accessToken, {
+                method: 'GET',
+                query: startedQuery
+              });
+              var startedBody = startedResponse.body || {};
+              var meetings = Array.isArray(startedBody.meetings) ? startedBody.meetings : [];
+              var filteredMeetings = meetings.filter(function (meeting) {
+                if (!meeting) {
+                  return false;
+                }
+                if (startedMeetingId) {
+                  var mid = meeting.id ? String(meeting.id) : '';
+                  var uuid = meeting.uuid ? String(meeting.uuid) : '';
+                  if (mid !== startedMeetingId && uuid !== startedMeetingId) {
+                    return false;
+                  }
+                }
+                if (startedUserId && startedUserId !== 'me') {
+                  var hostId = meeting.host_id ? String(meeting.host_id) : '';
+                  var hostEmail = meeting.user_email ? String(meeting.user_email) : '';
+                  if (hostId !== startedUserId && hostEmail !== startedUserId) {
+                    return false;
+                  }
+                }
+                return true;
+              });
+              inputData.zoomEnhancedMeetingStarted = filteredMeetings;
+              inputData.zoomEnhancedMeetingStartedMeta = startedBody;
+              inputData.zoomEnhancedNextPageToken = startedBody.next_page_token || null;
+              return inputData;
+            }
+            case 'meeting_ended': {
+              var endedUserId = resolveUserId(params);
+              if (endedUserId === 'me') {
+                var fallbackUser = optionalSecret('ZOOM_ENHANCED_USER_ID') || optionalSecret('ZOOM_USER_ID');
+                if (fallbackUser) {
+                  endedUserId = fallbackUser;
+                }
+              }
+              if (!endedUserId || endedUserId === 'me') {
+                throw new Error('Zoom Enhanced meeting_ended trigger requires a userId or the ZOOM_ENHANCED_USER_ID Script Property.');
+              }
+              var endedMeetingId = resolveMeetingId(params);
+              var endedRange = params.from && params.to ? { from: params.from, to: params.to } : defaultDateRange(7);
+              var endedQuery = {
+                page_size: numberValue(params.page_size) || 30,
+                next_page_token: params.next_page_token,
+                from: endedRange.from,
+                to: endedRange.to
+              };
+              var endedResponse = request(baseUrl, '/report/users/' + encodeURIComponent(endedUserId) + '/meetings', accessToken, {
+                method: 'GET',
+                query: endedQuery
+              });
+              var endedBody = endedResponse.body || {};
+              var endedMeetings = Array.isArray(endedBody.meetings) ? endedBody.meetings : [];
+              if (endedMeetingId) {
+                endedMeetings = endedMeetings.filter(function (meeting) {
+                  if (!meeting) {
+                    return false;
+                  }
+                  var mid = meeting.id ? String(meeting.id) : '';
+                  var uuid = meeting.uuid ? String(meeting.uuid) : '';
+                  return mid === endedMeetingId || uuid === endedMeetingId;
+                });
+              }
+              inputData.zoomEnhancedMeetingEnded = endedMeetings;
+              inputData.zoomEnhancedMeetingEndedMeta = endedBody;
+              inputData.zoomEnhancedNextPageToken = endedBody.next_page_token || null;
+              return inputData;
+            }
+            case 'recording_completed': {
+              var recordingUserId = resolveUserId(params);
+              var recordingMeetingFilter = resolveMeetingId(params);
+              var recordingRange = params.from && params.to ? { from: params.from, to: params.to } : defaultDateRange(7);
+              var recordingQuery = {
+                page_size: numberValue(params.page_size) || 30,
+                next_page_token: params.next_page_token,
+                from: recordingRange.from,
+                to: recordingRange.to
+              };
+              var recordingCompleteResponse = request(baseUrl, '/users/' + encodeURIComponent(recordingUserId) + '/recordings', accessToken, {
+                method: 'GET',
+                query: recordingQuery
+              });
+              var recordingCompleteBody = recordingCompleteResponse.body || {};
+              var recordingMeetings = Array.isArray(recordingCompleteBody.meetings) ? recordingCompleteBody.meetings : [];
+              if (recordingMeetingFilter) {
+                recordingMeetings = recordingMeetings.filter(function (meeting) {
+                  if (!meeting) {
+                    return false;
+                  }
+                  var mid = meeting.id ? String(meeting.id) : '';
+                  var uuid = meeting.uuid ? String(meeting.uuid) : '';
+                  return mid === recordingMeetingFilter || uuid === recordingMeetingFilter;
+                });
+              }
+              inputData.zoomEnhancedRecordingCompleted = recordingMeetings;
+              inputData.zoomEnhancedRecordingMeta = recordingCompleteBody;
+              inputData.zoomEnhancedNextPageToken = recordingCompleteBody.next_page_token || null;
+              return inputData;
+            }
+            default:
+              console.warn('⚠️ Unknown Zoom Enhanced operation: ' + operation);
+              inputData.zoomEnhancedWarning = 'Unsupported operation: ' + operation;
+              return inputData;
+          }
+        } catch (error) {
+          console.error('❌ Zoom Enhanced ' + operation + ' failed:', error);
+          inputData.zoomEnhancedError = error && error.message ? error.message : String(error);
+          inputData.zoomEnhancedSuccess = false;
+          return inputData;
+        }
+      }
+
+      return { execute: execute };
+    })();
   }
-}`;
+
+  try {
+    return __zoomEnhancedHelpers.execute(operation, params, inputData);
+  } catch (error) {
+    console.error('❌ Zoom Enhanced ' + operation + ' failed:', error);
+    inputData.zoomEnhancedError = error && error.message ? error.message : String(error);
+    inputData.zoomEnhancedSuccess = false;
+    return inputData;
+  }
+}
+
+var __zoomEnhancedHelpers;
+`;
+}
+
+function buildZoomEnhancedRealOps(operation: string, config: any, type: 'action' | 'trigger'): string {
+  const functionName = type === 'action' ? `step_action_zoom_enhanced_${operation}` : `trigger_zoom_enhanced_${operation}`;
+  const node: WorkflowNode = {
+    id: `zoom-enhanced-${type}-${operation}`,
+    name: '',
+    op: `${type}.zoom-enhanced:${operation}`,
+    params: config ?? {},
+  } as WorkflowNode;
+
+  return generateZoomEnhancedFunction(functionName, node);
 }
 
 // Comprehensive Google Chat implementation  
@@ -18310,12 +18841,12 @@ function step_sendTwilioSMS(ctx) {
 function step_createZoomMeeting(ctx) {
   const apiKey = getSecret('ZOOM_API_KEY');
   const apiSecret = getSecret('ZOOM_API_SECRET');
-  
+
   if (!apiKey || !apiSecret) {
     console.warn('⚠️ Zoom credentials not configured');
     return ctx;
   }
-  
+
   const meetingData = {
     topic: interpolate('${c.topic || 'Automated Meeting'}', ctx),
     type: 2, // Scheduled meeting
@@ -18330,6 +18861,19 @@ function step_createZoomMeeting(ctx) {
   ctx.zoomMeetingId = 'zoom_' + Date.now();
   return ctx;
 }`,
+
+  'action.zoom-enhanced:create_meeting': (c) => buildZoomEnhancedRealOps('create_meeting', c, 'action'),
+  'action.zoom-enhanced:get_meeting': (c) => buildZoomEnhancedRealOps('get_meeting', c, 'action'),
+  'action.zoom-enhanced:update_meeting': (c) => buildZoomEnhancedRealOps('update_meeting', c, 'action'),
+  'action.zoom-enhanced:delete_meeting': (c) => buildZoomEnhancedRealOps('delete_meeting', c, 'action'),
+  'action.zoom-enhanced:list_meetings': (c) => buildZoomEnhancedRealOps('list_meetings', c, 'action'),
+  'action.zoom-enhanced:create_webinar': (c) => buildZoomEnhancedRealOps('create_webinar', c, 'action'),
+  'action.zoom-enhanced:get_recording': (c) => buildZoomEnhancedRealOps('get_recording', c, 'action'),
+  'action.zoom-enhanced:list_recordings': (c) => buildZoomEnhancedRealOps('list_recordings', c, 'action'),
+  'action.zoom-enhanced:test_connection': (c) => buildZoomEnhancedRealOps('test_connection', c, 'action'),
+  'trigger.zoom-enhanced:meeting_started': (c) => buildZoomEnhancedRealOps('meeting_started', c, 'trigger'),
+  'trigger.zoom-enhanced:meeting_ended': (c) => buildZoomEnhancedRealOps('meeting_ended', c, 'trigger'),
+  'trigger.zoom-enhanced:recording_completed': (c) => buildZoomEnhancedRealOps('recording_completed', c, 'trigger'),
 
   // BATCH 3: E-commerce Applications
   'action.woocommerce:create_order': (c) => `
