@@ -14952,34 +14952,195 @@ function step_createXeroContact(ctx) {
   // BATCH 8: Developer Tools
   'action.github:create_issue': (c) => `
 function step_createGitHubIssue(ctx) {
-  const accessToken = getSecret('GITHUB_ACCESS_TOKEN');
+  const accessToken = requireOAuthToken('github', { scopes: ['repo'] });
 
-  if (!accessToken) {
-    logWarn('github_missing_access_token', { message: 'GitHub access token not configured' });
-    return ctx;
+  const repositoryTemplate = ${JSON.stringify(c.repository ?? '')};
+  const repositoryRaw = repositoryTemplate ? interpolate(repositoryTemplate, ctx).trim() : '';
+
+  if (!repositoryRaw) {
+    throw new Error('GitHub repository is required (format: owner/repo).');
   }
-  
-  const issueData = {
-    title: interpolate('${c.title || 'Automated Issue'}', ctx),
-    body: interpolate('${c.body || 'Created by automation'}', ctx),
-    labels: ['${c.labels || 'automation'}'].filter(Boolean)
-  };
-  
-  const repo = '${c.repository || 'owner/repo'}';
-  const response = withRetries(() => fetchJson(\`https://api.github.com/repos/\${repo}/issues\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${accessToken}\`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    payload: JSON.stringify(issueData),
-    contentType: 'application/json'
-  }));
 
-  ctx.githubIssueNumber = response.body && response.body.number;
-  logInfo('github_create_issue', { issueNumber: ctx.githubIssueNumber || null });
-  return ctx;
+  const sanitizedRepository = repositoryRaw
+    .replace(/^https?:\/\/github\.com\//i, '')
+    .replace(/\.git$/i, '');
+  const repoParts = sanitizedRepository.split('/');
+  const owner = (repoParts[0] || '').trim();
+  const repo = (repoParts[1] || '').trim();
+
+  if (!owner || !repo) {
+    throw new Error('GitHub repository must include both owner and repo (e.g. octocat/hello-world).');
+  }
+
+  const title = interpolate('${c.title || 'Automated Issue'}', ctx).trim();
+  if (!title) {
+    throw new Error('GitHub requires an issue title.');
+  }
+
+  const body = interpolate('${c.body || ''}', ctx);
+
+  const assigneesTemplate = ${JSON.stringify(c.assignees ?? null)};
+  const labelsTemplate = ${JSON.stringify(c.labels ?? null)};
+
+  function normalizeStringList(template, allowCsv) {
+    if (template === null || template === undefined) {
+      return undefined;
+    }
+
+    const appendValue = (values, raw) => {
+      if (raw === null || raw === undefined) {
+        return;
+      }
+      const resolved = typeof raw === 'string' ? interpolate(raw, ctx).trim() : String(raw).trim();
+      if (resolved) {
+        values.push(resolved);
+      }
+    };
+
+    if (Array.isArray(template)) {
+      const values = [];
+      for (let i = 0; i < template.length; i++) {
+        appendValue(values, template[i]);
+      }
+      return values.length > 0 ? values : undefined;
+    }
+
+    let resolved = typeof template === 'string' ? interpolate(template, ctx) : String(template);
+    if (!resolved) {
+      return undefined;
+    }
+
+    if (allowCsv) {
+      const pieces = String(resolved).split(',');
+      const values = [];
+      for (let i = 0; i < pieces.length; i++) {
+        appendValue(values, pieces[i]);
+      }
+      return values.length > 0 ? values : undefined;
+    }
+
+    resolved = String(resolved).trim();
+    return resolved ? [resolved] : undefined;
+  }
+
+  const issueData = { title: title };
+  if (body) {
+    issueData.body = body;
+  }
+
+  const assignees = normalizeStringList(assigneesTemplate, true);
+  if (assignees) {
+    issueData.assignees = assignees;
+  }
+
+  const labels = normalizeStringList(labelsTemplate, true);
+  if (labels) {
+    issueData.labels = labels;
+  }
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: \`https://api.github.com/repos/\${owner}/\${repo}/issues\`,
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${accessToken}\`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json'
+      },
+      payload: JSON.stringify(issueData),
+      contentType: 'application/json'
+    }), { attempts: 4, initialDelayMs: 1000, jitter: 0.2 });
+
+    const normalizedHeaders = __normalizeHeaders(response.headers || {});
+    if (normalizedHeaders['x-ratelimit-remaining'] !== undefined) {
+      logInfo('github_rate_limit', {
+        limit: normalizedHeaders['x-ratelimit-limit'] || null,
+        remaining: normalizedHeaders['x-ratelimit-remaining'] || null,
+        reset: normalizedHeaders['x-ratelimit-reset'] || null
+      });
+    }
+
+    const issue = response.body;
+    ctx.githubIssueNumber = issue && issue.number;
+    ctx.githubIssueUrl = issue && issue.html_url;
+    logInfo('github_create_issue', { repository: owner + '/' + repo, issueNumber: ctx.githubIssueNumber || null });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : {};
+    const normalizedHeaders = __normalizeHeaders(headers);
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+
+    const details = [];
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    if (payload && typeof payload === 'object') {
+      if (payload.message) {
+        details.push(payload.message);
+      }
+      if (payload.errors) {
+        const errors = payload.errors;
+        if (typeof errors === 'string') {
+          details.push(errors);
+        } else if (Array.isArray(errors)) {
+          for (let i = 0; i < errors.length; i++) {
+            const item = errors[i];
+            if (!item) {
+              continue;
+            }
+            if (typeof item === 'string') {
+              details.push(item);
+              continue;
+            }
+            const parts = [];
+            if (item.resource) {
+              parts.push('resource=' + item.resource);
+            }
+            if (item.field) {
+              parts.push('field=' + item.field);
+            }
+            if (item.code) {
+              parts.push('code=' + item.code);
+            }
+            if (item.message) {
+              parts.push(item.message);
+            }
+            if (parts.length > 0) {
+              details.push(parts.join(' '));
+            }
+          }
+        }
+      }
+      if (payload.documentation_url) {
+        details.push('Docs: ' + payload.documentation_url);
+      }
+    }
+
+    if (normalizedHeaders['x-ratelimit-remaining'] === '0') {
+      const resetHeader = normalizedHeaders['x-ratelimit-reset'];
+      if (resetHeader) {
+        const resetNumber = Number(resetHeader);
+        if (!isNaN(resetNumber)) {
+          const resetDate = new Date(resetNumber > 10000000000 ? resetNumber : resetNumber * 1000);
+          details.push('Rate limit resets at ' + resetDate.toISOString());
+        } else {
+          details.push('Rate limit exceeded');
+        }
+      } else {
+        details.push('Rate limit exceeded');
+      }
+    }
+
+    const message = 'GitHub create_issue failed for ' + owner + '/' + repo + ' (' + title + '). ' + (details.length ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    wrapped.headers = headers;
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }`,
 
   // BATCH 9: Forms & Surveys

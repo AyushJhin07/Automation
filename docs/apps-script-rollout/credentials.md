@@ -141,6 +141,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `GITHUB_ACCESS_TOKEN` | Yes | Personal access token or GitHub App installation token | `apps_script__github__access_token` |
 
+- **Script Property expectations:** Store a token that includes the `repo` scope. The Apps Script runtime now calls `requireOAuthToken('github')`, so missing or scope-limited tokens surface descriptive errors that mention the canonical Script Property name and its aliases. Repositories are validated in `owner/repo` format; misconfigured values will stop execution before a failing API call.
+
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
 - Additional guidance: [GitHub → Slack automation recipe](../recipes/github-issue-to-slack.md#recipe-github-issue--slack-notification-webhook)
 
