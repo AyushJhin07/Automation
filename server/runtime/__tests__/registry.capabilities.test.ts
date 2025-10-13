@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 process.env.GENERIC_EXECUTOR_ENABLED = 'false';
 
 const { getRuntimeCapabilities, resolveRuntime } = await import('../registry.js');
+const { resetAppsScriptConnectorFlagCache } = await import('../appsScriptConnectorFlags.js');
 
 {
   const capabilities = getRuntimeCapabilities();
@@ -48,6 +49,31 @@ process.env.GENERIC_EXECUTOR_ENABLED = 'true';
     slackResolution.enabledNativeRuntimes.includes('node'),
     'native runtimes should include node when generic executor is enabled',
   );
+}
+
+{
+  process.env.APPS_SCRIPT_ENABLED_SLACK = 'false';
+  resetAppsScriptConnectorFlagCache();
+
+  const gatedResolution = resolveRuntime({
+    kind: 'action',
+    appId: 'slack',
+    operationId: 'send_message',
+  });
+
+  assert.equal(
+    gatedResolution.enabledNativeRuntimes.includes('appsScript'),
+    false,
+    'Apps Script runtime should be disabled when the connector flag is false',
+  );
+  assert.equal(gatedResolution.runtime, 'node');
+  assert.ok(
+    gatedResolution.issues.some(issue => issue.code === 'runtime.apps_script_connector_disabled'),
+    'resolution issues should include connector-level Apps Script gating',
+  );
+
+  delete process.env.APPS_SCRIPT_ENABLED_SLACK;
+  resetAppsScriptConnectorFlagCache();
 }
 
 process.env.GENERIC_EXECUTOR_ENABLED = 'false';

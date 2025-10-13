@@ -8,6 +8,7 @@ import {
   type EnabledRuntimeSet,
   type RuntimeIdentifier,
 } from './capabilities.js';
+import { getAppsScriptConnectorFlag } from './appsScriptConnectorFlags.js';
 
 interface GenericConnectorOperation {
   type: 'action' | 'trigger';
@@ -867,13 +868,65 @@ export function resolveRuntime(definition: RuntimeOperationDefinition): RuntimeR
     fallbackRuntimes: sortRuntimes(entry.fallbackRuntimes),
   };
 
-  const nativeRuntimes = capability.nativeRuntimes;
-  const fallbackRuntimes = capability.fallbackRuntimes;
+  let nativeRuntimes = capability.nativeRuntimes.slice();
+  let fallbackRuntimes = capability.fallbackRuntimes.slice();
+
+  const connectorDisabledNative = new Set<RuntimeIdentifier>();
+  const connectorDisabledFallback = new Set<RuntimeIdentifier>();
+  const issues: RuntimeResolutionIssue[] = [];
+
+  const hasAppsScriptCandidate =
+    nativeRuntimes.includes('appsScript') || fallbackRuntimes.includes('appsScript');
+
+  if (hasAppsScriptCandidate) {
+    const flag = getAppsScriptConnectorFlag(capability.normalizedAppId);
+    if (!flag.enabled) {
+      const filterWithTracking = (
+        collection: RuntimeIdentifier[],
+        bucket: Set<RuntimeIdentifier>,
+      ): RuntimeIdentifier[] =>
+        collection.filter(runtime => {
+          if (runtime === 'appsScript') {
+            bucket.add(runtime);
+            return false;
+          }
+          return true;
+        });
+
+      nativeRuntimes = filterWithTracking(nativeRuntimes, connectorDisabledNative);
+      fallbackRuntimes = filterWithTracking(fallbackRuntimes, connectorDisabledFallback);
+
+      const severity: 'error' | 'warning' =
+        nativeRuntimes.length === 0 && fallbackRuntimes.length === 0 ? 'error' : 'warning';
+
+      issues.push({
+        severity,
+        code: 'runtime.apps_script_connector_disabled',
+        message: `Apps Script runtime disabled for ${capability.appId}.${capability.operationId}; set ${flag.envKey}=true to enable.`,
+      });
+    }
+  }
 
   const enabledNativeRuntimes = nativeRuntimes.filter(runtime => runtimeIsEnabled(runtime, enabledFlags));
   const enabledFallbackRuntimes = fallbackRuntimes.filter(runtime => runtimeIsEnabled(runtime, enabledFlags));
-  const disabledNativeRuntimes = nativeRuntimes.filter(runtime => !runtimeIsEnabled(runtime, enabledFlags));
-  const disabledFallbackRuntimes = fallbackRuntimes.filter(runtime => !runtimeIsEnabled(runtime, enabledFlags));
+
+  const disabledNativeSet = new Set<RuntimeIdentifier>();
+  for (const runtime of nativeRuntimes) {
+    if (!runtimeIsEnabled(runtime, enabledFlags)) {
+      disabledNativeSet.add(runtime);
+    }
+  }
+  connectorDisabledNative.forEach(runtime => disabledNativeSet.add(runtime));
+  const disabledNativeRuntimes = sortRuntimes(disabledNativeSet);
+
+  const disabledFallbackSet = new Set<RuntimeIdentifier>();
+  for (const runtime of fallbackRuntimes) {
+    if (!runtimeIsEnabled(runtime, enabledFlags)) {
+      disabledFallbackSet.add(runtime);
+    }
+  }
+  connectorDisabledFallback.forEach(runtime => disabledFallbackSet.add(runtime));
+  const disabledFallbackRuntimes = sortRuntimes(disabledFallbackSet);
 
   const pickRuntime = (candidates: RuntimeIdentifier[]): RuntimeIdentifier | null => {
     for (const runtime of RUNTIME_PRIORITY) {
@@ -883,8 +936,6 @@ export function resolveRuntime(definition: RuntimeOperationDefinition): RuntimeR
     }
     return null;
   };
-
-  const issues: RuntimeResolutionIssue[] = [];
 
   const selectedNative = pickRuntime(nativeRuntimes);
   if (selectedNative) {
