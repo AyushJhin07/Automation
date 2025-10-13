@@ -121,6 +121,16 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 - Script Property tips: Configure the Apps Script deployment with a bot token that includes the scopes listed above. The runtime calls `requireOAuthToken('slack', …)` for every action and trigger, so missing scopes surface before the API call. Incoming webhooks remain supported as a safety valve but are only used when explicitly configured alongside the OAuth token.
 
+#### Trello Enhanced
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `TRELLO_API_KEY` | Yes | Public API key required for Trello REST requests. | `apps_script__trello_enhanced__api_key`, historical `apps_script__trello__api_key` |
+| `TRELLO_TOKEN` | Yes | Trello member token paired with the API key for authentication. | `apps_script__trello_enhanced__token`, historical `apps_script__trello__token` |
+| `TRELLO_WEBHOOK_CALLBACK_URL` | Conditional | Default callback URL used when webhook nodes omit an explicit `callbackURL`. Configure when building webhook-based automations. | `apps_script__trello_enhanced__webhook_callback_url`, legacy `apps_script__trello__webhook_callback_url` |
+
+- Script Property tips: API keys and tokens come from https://trello.com/app-key. Generate a member token with write access so actions can create cards, labels, checklists, and webhooks. Populate `TRELLO_WEBHOOK_CALLBACK_URL` with the HTTPS endpoint that receives Trello webhook payloads when the workflow relies on webhook triggers.
+
 #### Salesforce
 
 | Script property | Required? | Purpose | Preferred aliases |
@@ -244,10 +254,11 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | --- | --- | --- | --- |
 | `TRELLO_API_KEY` | Yes | REST API key from Trello developer portal | `apps_script__trello__api_key` |
 | `TRELLO_TOKEN` | Yes | OAuth token tied to the API key | `apps_script__trello__token` |
+| `TRELLO_WEBHOOK_CALLBACK_URL` | Conditional | Default callback URL for Trello Enhanced webhook registration | `apps_script__trello__webhook_callback_url`, `apps_script__trello_enhanced__webhook_callback_url` |
 
 - Runbook: [Trello webhook registration](../webhooks-trello.md)
 - Troubleshooting: [Playbook](../troubleshooting-playbook.md)
-- Script Property tips: Generate the key/token pair from the same Trello account and scope the token for board access. Successful runs persist the created card ID and URL to the workflow context so downstream steps can link back to Trello.
+- Script Property tips: Generate the key/token pair from the same Trello account and scope the token for board access. Populate `TRELLO_WEBHOOK_CALLBACK_URL` with the externally reachable HTTPS endpoint that Trello should call for webhook triggers or when workflows use the `create_webhook` action—runtime handlers fall back to this property when the node omits an explicit callback URL. Successful runs persist the created card ID and URL to the workflow context so downstream steps can link back to Trello.
 - Rate limits: Trello may reply with `Retry-After` headers when bursting. The REAL_OPS handler now delegates to `rateLimitAware`, which waits for those windows and rethrows descriptive errors that include Trello's response payload.
 
 #### Twilio

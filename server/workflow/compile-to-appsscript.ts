@@ -1232,6 +1232,7 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     STRIPE_ACCOUNT_OVERRIDE: { aliases: ['apps_script__stripe__account_override'] },
     TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
     TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] },
+    TRELLO_WEBHOOK_CALLBACK_URL: { aliases: ['apps_script__trello__webhook_callback_url', 'apps_script__trello_enhanced__webhook_callback_url'] },
     TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
     TWILIO_AUTH_TOKEN: { aliases: ['apps_script__twilio__auth_token'] },
     TWILIO_FROM_NUMBER: { aliases: ['apps_script__twilio__from_number'] },
@@ -1323,6 +1324,11 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     trello: {
       TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
       TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] }
+    },
+    'trello-enhanced': {
+      TRELLO_API_KEY: { aliases: ['apps_script__trello_enhanced__api_key', 'apps_script__trello__api_key'] },
+      TRELLO_TOKEN: { aliases: ['apps_script__trello_enhanced__token', 'apps_script__trello__token'] },
+      TRELLO_WEBHOOK_CALLBACK_URL: { aliases: ['apps_script__trello_enhanced__webhook_callback_url', 'apps_script__trello__webhook_callback_url'] }
     },
     twilio: {
       TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
@@ -2743,6 +2749,253 @@ function fetchJson(request) {
     body: body,
     text: text
   };
+}
+`;
+}
+
+interface TrelloEnhancedActionOptions {
+  preludeLines?: string[];
+  tryLines: string[];
+  errorMetadata?: string;
+}
+
+function trelloEnhancedActionHelpers(slug: string): string {
+  return `  const operationKey = '${slug}';
+  const apiKey = getSecret('TRELLO_API_KEY', { connectorKey: 'trello-enhanced', aliases: ['apps_script__trello__api_key', 'apps_script__trello_enhanced__api_key'] });
+  const token = getSecret('TRELLO_TOKEN', { connectorKey: 'trello-enhanced', aliases: ['apps_script__trello__token', 'apps_script__trello_enhanced__token'] });
+
+  if (!apiKey || !token) {
+    logWarn('trello_enhanced_missing_credentials', { operation: operationKey });
+    throw new Error('Trello Enhanced ' + operationKey + ' requires TRELLO_API_KEY and TRELLO_TOKEN script properties.');
+  }
+
+  const rateConfig = { attempts: 5, initialDelayMs: 700, maxDelayMs: 7000, jitter: 0.25 };
+
+  function resolveOptionalString(template, options) {
+    options = options || {};
+    if (template === undefined || template === null) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return options.defaultValue === undefined || options.defaultValue === null
+          ? ''
+          : String(options.defaultValue);
+      }
+      return '';
+    }
+
+    if (typeof template !== 'string') {
+      template = String(template);
+    }
+
+    const trimmed = template.trim();
+    if (!trimmed) {
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return options.defaultValue === undefined || options.defaultValue === null
+          ? ''
+          : String(options.defaultValue);
+      }
+      return options.allowEmpty ? '' : '';
+    }
+
+    const resolved = options.skipTrim ? interpolate(trimmed, ctx) : interpolate(trimmed, ctx).trim();
+    if (!resolved) {
+      if (options.fallbackSecret) {
+        try {
+          const secret = getSecret(options.fallbackSecret, { connectorKey: 'trello-enhanced', aliases: ['apps_script__trello_enhanced__webhook_callback_url', 'apps_script__trello__webhook_callback_url'] });
+          if (secret) {
+            return String(secret).trim();
+          }
+        } catch (error) {
+          // Ignore missing fallback secret
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(options, 'defaultValue')) {
+        return options.defaultValue === undefined || options.defaultValue === null
+          ? ''
+          : String(options.defaultValue);
+      }
+
+      return options.allowEmpty ? '' : '';
+    }
+
+    return options.skipTrim ? resolved : resolved.trim();
+  }
+
+  function resolveRequiredString(value, message, options) {
+    const resolved = resolveOptionalString(value, options);
+    if (!resolved) {
+      throw new Error(message);
+    }
+    return resolved;
+  }
+
+  function resolveCommaSeparated(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    if (Array.isArray(value)) {
+      const parts = [];
+      for (let i = 0; i < value.length; i++) {
+        const entry = resolveOptionalString(value[i], { allowEmpty: true });
+        if (entry) {
+          parts.push(entry);
+        }
+      }
+      return parts.join(',');
+    }
+    const resolved = resolveOptionalString(value, { allowEmpty: true });
+    if (!resolved) {
+      return '';
+    }
+    const items = resolved.split(',').map(part => part.trim()).filter(Boolean);
+    return items.join(',');
+  }
+
+  function resolveBoolean(value, defaultValue) {
+    if (value === undefined || value === null || value === '') {
+      return !!defaultValue;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const resolved = resolveOptionalString(value, { allowEmpty: true });
+    if (!resolved) {
+      return !!defaultValue;
+    }
+    const normalized = resolved.toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+    return !!defaultValue;
+  }
+
+  function resolveNumber(value, defaultValue) {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue === undefined ? null : Number(defaultValue);
+    }
+    if (typeof value === 'number') {
+      return value;
+    }
+    const resolved = resolveOptionalString(value, { allowEmpty: true });
+    if (!resolved) {
+      return defaultValue === undefined ? null : Number(defaultValue);
+    }
+    const numeric = Number(resolved);
+    if (isNaN(numeric)) {
+      throw new Error('Expected a numeric value but received "' + resolved + '".');
+    }
+    return numeric;
+  }
+
+  function buildQuery(params) {
+    const parts = [];
+    for (const key in params) {
+      if (!Object.prototype.hasOwnProperty.call(params, key)) {
+        continue;
+      }
+      const value = params[key];
+      if (value === undefined || value === null) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          const entry = value[i];
+          if (entry === undefined || entry === null || entry === '') {
+            continue;
+          }
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(entry)));
+        }
+        continue;
+      }
+      const stringValue = String(value);
+      if (!stringValue && stringValue !== '0') {
+        continue;
+      }
+      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(stringValue));
+    }
+    return parts.join('&');
+  }
+
+  function callTrello(path, options) {
+    options = options || {};
+    const query = options.query ? Object.assign({}, options.query) : {};
+    query.key = apiKey;
+    query.token = token;
+    const queryString = buildQuery(query);
+    const url = 'https://api.trello.com/1' + path + (queryString ? '?' + queryString : '');
+    const request = {
+      url: url,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      payload: options.payload,
+      contentType: options.contentType,
+      muteHttpExceptions: true,
+    };
+    return rateLimitAware(() => fetchJson(request), rateConfig);
+  }
+
+  function handleTrelloEnhancedError(error, metadata) {
+    metadata = metadata || {};
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+    if (metadata.boardId) {
+      details.push('board ' + metadata.boardId);
+    }
+    if (metadata.listId) {
+      details.push('list ' + metadata.listId);
+    }
+    if (metadata.cardId) {
+      details.push('card ' + metadata.cardId);
+    }
+    if (metadata.modelId) {
+      details.push('model ' + metadata.modelId);
+    }
+    if (status) {
+      details.push('status ' + status);
+    }
+    if (payload && typeof payload === 'object') {
+      if (payload.message) {
+        details.push(String(payload.message));
+      }
+      if (payload.error) {
+        details.push(String(payload.error));
+      }
+    }
+    const context = details.length ? ' (' + details.join('; ') + ')' : '';
+    const message = 'Trello Enhanced ' + (metadata.operation || operationKey) + ' failed' + context + '.';
+    const wrapped = new Error(message);
+    if (status !== null) {
+      wrapped.status = status;
+    }
+    if (payload !== undefined) {
+      wrapped.body = payload;
+    }
+    wrapped.cause = error;
+    throw wrapped;
+  }
+
+`;
+}
+
+function buildTrelloEnhancedAction(slug: string, config: any, options: TrelloEnhancedActionOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const prelude = preludeLines.length > 0 ? preludeLines.map(line => `  ${line}`).join('\n') + '\n' : '';
+  const tryLines = options.tryLines.map(line => `    ${line}`).join('\n');
+  const errorMetadata = options.errorMetadata ?? `{ operation: '${slug}' }`;
+  return `
+function step_action_trello_enhanced_${slug}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+${trelloEnhancedActionHelpers(slug)}${prelude}  try {
+${tryLines}
+  } catch (error) {
+    handleTrelloEnhancedError(error, ${errorMetadata});
+  }
 }
 `;
 }
@@ -9849,12 +10102,6 @@ function ${functionName}(inputData, params) {
         return handleCreateTrelloBoard(params, inputData, baseUrl, authParams);
       case 'create_card':
         return handleCreateTrelloCard(params, inputData, baseUrl, authParams);
-      case 'update_card':
-        return handleUpdateTrelloCard(params, inputData, baseUrl, authParams);
-      case 'get_card':
-        return handleGetTrelloCard(params, inputData, baseUrl, authParams);
-      case 'list_cards':
-        return handleListTrelloCards(params, inputData, baseUrl, authParams);
       case 'create_checklist':
         return handleCreateTrelloChecklist(params, inputData, baseUrl, authParams);
       case 'add_checklist_item':
@@ -9934,6 +10181,205 @@ function handleCreateTrelloCard(params, inputData, baseUrl, authParams) {
   const result = JSON.parse(response.getContentText());
   console.log('✅ Trello card created:', result.id);
   return { ...inputData, trelloCard: result, cardId: result.id };
+}
+
+function handleCreateTrelloChecklist(params, inputData, baseUrl, authParams) {
+  const cardId = params.card_id || params.idCard || params.cardId || inputData.cardId;
+  if (!cardId) {
+    throw new Error('Card ID is required to create checklist');
+  }
+
+  const checklistData = {
+    name: params.name || params.checklist_name || 'Checklist',
+    pos: params.pos || params.position || 'bottom'
+  };
+
+  const queryParams = new URLSearchParams({
+    ...checklistData,
+    ...Object.fromEntries(new URLSearchParams(authParams))
+  });
+
+  const response = UrlFetchApp.fetch(`${baseUrl}/cards/${encodeURIComponent(cardId)}/checklists?${queryParams}`, {
+    method: 'POST'
+  });
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello checklist created:', result.id);
+  return { ...inputData, trelloChecklist: result, checklistId: result.id };
+}
+
+function handleAddTrelloChecklistItem(params, inputData, baseUrl, authParams) {
+  const checklistId = params.idChecklist || params.checklistId || params.id || inputData.checklistId;
+  if (!checklistId) {
+    throw new Error('Checklist ID is required to add item');
+  }
+
+  const itemData = {
+    name: params.name || params.item_name || 'Checklist Item',
+    pos: params.pos || params.position || 'bottom',
+    checked: params.checked === true || params.checked === 'true'
+  };
+
+  const queryParams = new URLSearchParams({
+    ...itemData,
+    ...Object.fromEntries(new URLSearchParams(authParams))
+  });
+
+  const response = UrlFetchApp.fetch(`${baseUrl}/checklists/${encodeURIComponent(checklistId)}/checkItems?${queryParams}`, {
+    method: 'POST'
+  });
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello checklist item created:', result.id);
+  return { ...inputData, trelloChecklistItem: result, checkItemId: result.id };
+}
+
+function handleAddTrelloAttachment(params, inputData, baseUrl, authParams) {
+  const cardId = params.card_id || params.id || params.cardId || inputData.cardId;
+  if (!cardId) {
+    throw new Error('Card ID is required to add attachment');
+  }
+
+  const attachmentName = params.name || params.attachment_name || 'Attachment';
+  const attachmentUrl = params.url || params.attachment_url || '';
+  const attachmentFile = params.file || params.attachment_file || '';
+  const setCover = params.setCover === true || params.setCover === 'true';
+  const mimeType = params.mimeType || params.mime_type || 'application/octet-stream';
+  const endpoint = `${baseUrl}/cards/${encodeURIComponent(cardId)}/attachments`;
+
+  let response;
+
+  if (attachmentUrl) {
+    const queryParams = new URLSearchParams({
+      url: attachmentUrl,
+      name: attachmentName,
+      setCover: setCover,
+      ...Object.fromEntries(new URLSearchParams(authParams))
+    });
+
+    response = UrlFetchApp.fetch(`${endpoint}?${queryParams}`, {
+      method: 'POST'
+    });
+  } else {
+    if (!attachmentFile) {
+      throw new Error('Attachment requires either a URL or file contents');
+    }
+
+    const decoded = Utilities.base64Decode(attachmentFile);
+    const blob = Utilities.newBlob(decoded, mimeType, attachmentName);
+    const payload = {
+      file: blob,
+      name: attachmentName
+    };
+
+    if (setCover) {
+      payload.setCover = 'true';
+    }
+
+    response = UrlFetchApp.fetch(`${endpoint}?${authParams}`, {
+      method: 'POST',
+      payload
+    });
+  }
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello attachment uploaded:', result.id);
+  return { ...inputData, trelloAttachment: result, attachmentId: result.id };
+}
+
+function handleCreateTrelloLabel(params, inputData, baseUrl, authParams) {
+  const boardId = params.board_id || params.idBoard || params.boardId || inputData.boardId;
+  if (!boardId) {
+    throw new Error('Board ID is required to create label');
+  }
+
+  const labelData = {
+    idBoard: boardId,
+    name: params.name || params.label_name || 'Label',
+    color: params.color || params.label_color || null
+  };
+
+  const queryParams = new URLSearchParams({
+    ...labelData,
+    ...Object.fromEntries(new URLSearchParams(authParams))
+  });
+
+  const response = UrlFetchApp.fetch(`${baseUrl}/labels?${queryParams}`, {
+    method: 'POST'
+  });
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello label created:', result.id);
+  return { ...inputData, trelloLabel: result, labelId: result.id };
+}
+
+function handleSearchTrelloCards(params, inputData, baseUrl, authParams) {
+  const query = params.query || params.search || '';
+  if (!query) {
+    throw new Error('Search query is required');
+  }
+
+  const queryParams = new URLSearchParams({
+    query,
+    idBoards: params.idBoards || params.boardIds || undefined,
+    idOrganizations: params.idOrganizations || undefined,
+    idCards: params.idCards || undefined,
+    modelTypes: params.modelTypes || 'cards',
+    board_fields: params.board_fields || undefined,
+    boards_limit: params.boards_limit || undefined,
+    card_fields: params.card_fields || undefined,
+    cards_limit: params.cards_limit || undefined,
+    cards_page: params.cards_page || undefined,
+    card_board: params.card_board === true || params.card_board === 'true' ? 'true' : undefined,
+    card_list: params.card_list === true || params.card_list === 'true' ? 'true' : undefined,
+    card_members: params.card_members === true || params.card_members === 'true' ? 'true' : undefined,
+    card_stickers: params.card_stickers === true || params.card_stickers === 'true' ? 'true' : undefined,
+    card_attachments: params.card_attachments || undefined,
+    organization_fields: params.organization_fields || undefined,
+    organizations_limit: params.organizations_limit || undefined,
+    member_fields: params.member_fields || undefined,
+    members_limit: params.members_limit || undefined,
+    partial: params.partial === true || params.partial === 'true' ? 'true' : undefined,
+    ...Object.fromEntries(new URLSearchParams(authParams))
+  });
+
+  const response = UrlFetchApp.fetch(`${baseUrl}/search?${queryParams}`, {
+    method: 'GET'
+  });
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello search completed:', query);
+  return { ...inputData, trelloSearch: result, trelloCards: result.cards || [] };
+}
+
+function handleCreateTrelloWebhook(params, inputData, baseUrl, authParams) {
+  const callbackUrl = params.callbackURL || params.callbackUrl || params.callback_url || getSecret('TRELLO_WEBHOOK_CALLBACK_URL');
+  const modelId = params.idModel || params.modelId || params.id || '';
+
+  if (!callbackUrl) {
+    throw new Error('Webhook callback URL is required');
+  }
+
+  if (!modelId) {
+    throw new Error('Webhook model ID is required');
+  }
+
+  const payload = {
+    description: params.description || params.webhook_description || 'Trello Enhanced Webhook',
+    callbackURL: callbackUrl,
+    idModel: modelId,
+    active: params.active !== false
+  };
+
+  const response = UrlFetchApp.fetch(`${baseUrl}/webhooks?${authParams}`, {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload)
+  });
+
+  const result = JSON.parse(response.getContentText());
+  console.log('✅ Trello webhook created:', result.id);
+  return { ...inputData, trelloWebhook: result, webhookId: result.id };
 }
 
 function handleUpdateTrelloCard(params, inputData, baseUrl, authParams) {
@@ -19198,6 +19644,527 @@ function step_createAsanaTask(ctx) {
   }
 }`,
 
+  'action.trello-enhanced:add_attachment': (c) =>
+    buildTrelloEnhancedAction('add_attachment', c, {
+      preludeLines: [
+        "const cardId = resolveRequiredString(config && (config.id || config.cardId), 'Trello Enhanced add_attachment requires a card ID.');",
+        "const attachmentName = resolveOptionalString(config && config.name, { allowEmpty: true }) || 'Attachment';",
+        "const attachmentUrl = resolveOptionalString(config && config.url, { allowEmpty: true });",
+        "const attachmentFile = resolveOptionalString(config && config.file, { allowEmpty: true });",
+        "const attachmentMime = resolveOptionalString(config && config.mimeType, { allowEmpty: true }) || 'application/octet-stream';",
+        "const setCover = resolveBoolean(config && config.setCover, false);",
+        "if (!attachmentUrl && !attachmentFile) {",
+        "  throw new Error('Trello Enhanced add_attachment requires either a URL or base64 encoded file content.');",
+        "}"
+      ],
+      tryLines: [
+        "const endpoint = '/cards/' + encodeURIComponent(cardId) + '/attachments';",
+        "let response;",
+        "if (attachmentUrl) {",
+        "  response = callTrello(endpoint, {",
+        "    method: 'POST',",
+        "    query: {",
+        "      url: attachmentUrl,",
+        "      name: attachmentName || undefined,",
+        "      setCover: setCover",
+        "    }",
+        "  });",
+        "} else {",
+        "  const decoded = Utilities.base64Decode(attachmentFile);",
+        "  const blob = Utilities.newBlob(decoded, attachmentMime || 'application/octet-stream', attachmentName || 'attachment');",
+        "  const payload = {",
+        "    file: blob,",
+        "    name: attachmentName || 'attachment'",
+        "  };",
+        "  if (setCover) {",
+        "    payload.setCover = 'true';",
+        "  }",
+        "  response = callTrello(endpoint, {",
+        "    method: 'POST',",
+        "    payload: payload",
+        "  });",
+        "}",
+        "const attachment = response.body || {};",
+        "const attachmentId = attachment.id || null;",
+        "ctx.trelloEnhancedAttachment = attachment;",
+        "ctx.trelloEnhancedAttachmentId = attachmentId;",
+        "logInfo('trello_enhanced_add_attachment_success', { cardId: cardId, attachmentId: attachmentId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'add_attachment', cardId: cardId }",
+    }),
+  'action.trello-enhanced:add_checklist_item': (c) =>
+    buildTrelloEnhancedAction('add_checklist_item', c, {
+      preludeLines: [
+        "const checklistId = resolveRequiredString(config && (config.idChecklist || config.checklistId), 'Trello Enhanced add_checklist_item requires a checklist ID.');",
+        "const itemName = resolveRequiredString(config && config.name, 'Trello Enhanced add_checklist_item requires an item name.');",
+        "const itemPosition = resolveOptionalString(config && config.pos, { allowEmpty: true });",
+        "const itemChecked = resolveBoolean(config && config.checked, false);"
+      ],
+      tryLines: [
+        "const response = callTrello('/checklists/' + encodeURIComponent(checklistId) + '/checkItems', {",
+        "  method: 'POST',",
+        "  query: {",
+        "    name: itemName,",
+        "    pos: itemPosition || undefined,",
+        "    checked: itemChecked",
+        "  }",
+        "});",
+        "const checkItem = response.body || {};",
+        "const checkItemId = checkItem.id || null;",
+        "ctx.trelloEnhancedCheckItem = checkItem;",
+        "ctx.trelloEnhancedCheckItemId = checkItemId;",
+        "logInfo('trello_enhanced_add_checklist_item_success', { checklistId: checklistId, checkItemId: checkItemId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'add_checklist_item', checklistId: checklistId }",
+    }),
+  'action.trello-enhanced:create_board': (c) =>
+    buildTrelloEnhancedAction('create_board', c, {
+      preludeLines: [
+        "const boardName = resolveRequiredString(config && config.name, 'Trello Enhanced create_board requires a board name.');",
+        "const boardDescription = resolveOptionalString(config && config.desc, { allowEmpty: true });",
+        "const organizationId = resolveOptionalString(config && (config.idOrganization || config.organizationId), { allowEmpty: true });",
+        "const permissionLevel = resolveOptionalString(config && (config.prefs_permissionLevel || config.permissionLevel), { allowEmpty: true, defaultValue: 'private' }) || 'private';",
+        "const votingLevel = resolveOptionalString(config && config.prefs_voting, { allowEmpty: true, defaultValue: 'disabled' }) || 'disabled';",
+        "const commentLevel = resolveOptionalString(config && config.prefs_comments, { allowEmpty: true, defaultValue: 'members' }) || 'members';",
+        "const background = resolveOptionalString(config && config.prefs_background, { allowEmpty: true });"
+      ],
+      tryLines: [
+        "const response = callTrello('/boards', {",
+        "  method: 'POST',",
+        "  query: {",
+        "    name: boardName,",
+        "    desc: boardDescription || undefined,",
+        "    idOrganization: organizationId || undefined,",
+        "    prefs_permissionLevel: permissionLevel || undefined,",
+        "    prefs_voting: votingLevel || undefined,",
+        "    prefs_comments: commentLevel || undefined,",
+        "    prefs_background: background || undefined",
+        "  }",
+        "});",
+        "const board = response.body || {};",
+        "const boardId = board.id || null;",
+        "ctx.trelloEnhancedBoard = board;",
+        "ctx.trelloEnhancedBoardId = boardId;",
+        "if (!ctx.boardId && boardId) {",
+        "  ctx.boardId = boardId;",
+        "}",
+        "logInfo('trello_enhanced_create_board_success', { boardId: boardId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'create_board' }",
+    }),
+  'action.trello-enhanced:create_card': (c) =>
+    buildTrelloEnhancedAction('create_card', c, {
+      preludeLines: [
+        "let listId = resolveOptionalString(config && (config.idList || config.list_id || config.listId), { allowEmpty: true });",
+        "if (!listId && ctx.listId) {",
+        "  listId = String(ctx.listId);",
+        "}",
+        "if (!listId && ctx.trelloListId) {",
+        "  listId = String(ctx.trelloListId);",
+        "}",
+        "if (!listId) {",
+        "  throw new Error('Trello Enhanced create_card requires a list ID. Configure the List field or provide a template that resolves to a Trello list identifier.');",
+        "}",
+        "const cardName = resolveRequiredString(config && config.name, 'Trello Enhanced create_card requires a card name.');",
+        "const cardDescription = resolveOptionalString(config && (config.desc || config.description), { allowEmpty: true });",
+        "const cardPosition = resolveOptionalString(config && config.pos, { allowEmpty: true });",
+        "const dueDate = resolveOptionalString(config && config.due, { allowEmpty: true });",
+        "const dueComplete = resolveBoolean(config && config.dueComplete, false);",
+        "const memberIds = resolveCommaSeparated(config && config.idMembers);",
+        "const labelIds = resolveCommaSeparated(config && config.idLabels);",
+        "const checklistIds = resolveCommaSeparated(config && config.idChecklists);",
+        "const cardAddress = resolveOptionalString(config && config.address, { allowEmpty: true });",
+        "const locationName = resolveOptionalString(config && config.locationName, { allowEmpty: true });",
+        "const coordinates = resolveOptionalString(config && config.coordinates, { allowEmpty: true });"
+      ],
+      tryLines: [
+        "const response = callTrello('/cards', {",
+        "  method: 'POST',",
+        "  query: {",
+        "    idList: listId,",
+        "    name: cardName,",
+        "    desc: cardDescription || undefined,",
+        "    pos: cardPosition || undefined,",
+        "    due: dueDate || undefined,",
+        "    dueComplete: dueComplete,",
+        "    idMembers: memberIds || undefined,",
+        "    idLabels: labelIds || undefined,",
+        "    idChecklists: checklistIds || undefined,",
+        "    address: cardAddress || undefined,",
+        "    locationName: locationName || undefined,",
+        "    coordinates: coordinates || undefined",
+        "  }",
+        "});",
+        "const card = response.body || {};",
+        "const cardId = card.id || null;",
+        "ctx.trelloEnhancedCard = card;",
+        "ctx.trelloEnhancedCardId = cardId;",
+        "if (!ctx.cardId && cardId) {",
+        "  ctx.cardId = cardId;",
+        "}",
+        "if (!ctx.cardUrl && card && card.shortUrl) {",
+        "  ctx.cardUrl = card.shortUrl;",
+        "}",
+        "logInfo('trello_enhanced_create_card_success', { cardId: cardId, listId: listId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'create_card', listId: listId }",
+    }),
+  'action.trello-enhanced:create_checklist': (c) =>
+    buildTrelloEnhancedAction('create_checklist', c, {
+      preludeLines: [
+        "const cardId = resolveRequiredString(config && (config.idCard || config.cardId), 'Trello Enhanced create_checklist requires a card ID.');",
+        "const checklistName = resolveRequiredString(config && config.name, 'Trello Enhanced create_checklist requires a checklist name.');",
+        "const checklistPosition = resolveOptionalString(config && config.pos, { allowEmpty: true });"
+      ],
+      tryLines: [
+        "const response = callTrello('/cards/' + encodeURIComponent(cardId) + '/checklists', {",
+        "  method: 'POST',",
+        "  query: {",
+        "    name: checklistName,",
+        "    pos: checklistPosition || undefined",
+        "  }",
+        "});",
+        "const checklist = response.body || {};",
+        "const checklistId = checklist.id || null;",
+        "ctx.trelloEnhancedChecklist = checklist;",
+        "ctx.trelloEnhancedChecklistId = checklistId;",
+        "logInfo('trello_enhanced_create_checklist_success', { cardId: cardId, checklistId: checklistId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'create_checklist', cardId: cardId }",
+    }),
+  'action.trello-enhanced:create_label': (c) =>
+    buildTrelloEnhancedAction('create_label', c, {
+      preludeLines: [
+        "const boardId = resolveRequiredString(config && (config.idBoard || config.boardId), 'Trello Enhanced create_label requires a board ID.');",
+        "const labelName = resolveRequiredString(config && config.name, 'Trello Enhanced create_label requires a label name.');",
+        "const labelColor = resolveRequiredString(config && config.color, 'Trello Enhanced create_label requires a color.');"
+      ],
+      tryLines: [
+        "const response = callTrello('/labels', {",
+        "  method: 'POST',",
+        "  query: {",
+        "    idBoard: boardId,",
+        "    name: labelName,",
+        "    color: labelColor",
+        "  }",
+        "});",
+        "const label = response.body || {};",
+        "const labelId = label.id || null;",
+        "ctx.trelloEnhancedLabel = label;",
+        "ctx.trelloEnhancedLabelId = labelId;",
+        "logInfo('trello_enhanced_create_label_success', { boardId: boardId, labelId: labelId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'create_label', boardId: boardId }",
+    }),
+  'action.trello-enhanced:create_webhook': (c) =>
+    buildTrelloEnhancedAction('create_webhook', c, {
+      preludeLines: [
+        "const callbackUrl = resolveRequiredString(config && config.callbackURL, 'Trello Enhanced create_webhook requires a callback URL.', { fallbackSecret: 'TRELLO_WEBHOOK_CALLBACK_URL' });",
+        "const modelId = resolveRequiredString(config && config.idModel, 'Trello Enhanced create_webhook requires a model ID.');",
+        "const webhookDescription = resolveOptionalString(config && config.description, { allowEmpty: true }) || 'Trello Enhanced Webhook';",
+        "const webhookActive = resolveBoolean(config && config.active, true);"
+      ],
+      tryLines: [
+        "const payload = {",
+        "  description: webhookDescription || 'Trello Enhanced Webhook',",
+        "  callbackURL: callbackUrl,",
+        "  idModel: modelId,",
+        "  active: webhookActive",
+        "};",
+        "const response = callTrello('/webhooks', {",
+        "  method: 'POST',",
+        "  headers: { 'Content-Type': 'application/json' },",
+        "  payload: JSON.stringify(payload),",
+        "  contentType: 'application/json'",
+        "});",
+        "const webhook = response.body || {};",
+        "const webhookId = webhook.id || null;",
+        "ctx.trelloEnhancedWebhook = webhook;",
+        "ctx.trelloEnhancedWebhookId = webhookId;",
+        "logInfo('trello_enhanced_create_webhook_success', { webhookId: webhookId, modelId: modelId });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'create_webhook', modelId: modelId }",
+    }),
+  'action.trello-enhanced:search_cards': (c) =>
+    buildTrelloEnhancedAction('search_cards', c, {
+      preludeLines: [
+        "const queryText = resolveRequiredString(config && config.query, 'Trello Enhanced search_cards requires a query string.');",
+        "const boardFilter = resolveOptionalString(config && config.idBoards, { allowEmpty: true });",
+        "const organizationFilter = resolveOptionalString(config && config.idOrganizations, { allowEmpty: true });",
+        "const cardFilter = resolveOptionalString(config && config.idCards, { allowEmpty: true });",
+        "const modelTypes = resolveOptionalString(config && config.modelTypes, { allowEmpty: true, defaultValue: 'cards' }) || 'cards';",
+        "const boardFields = resolveOptionalString(config && config.board_fields, { allowEmpty: true });",
+        "const boardsLimit = resolveNumber(config && config.boards_limit, 10);",
+        "const cardFields = resolveOptionalString(config && config.card_fields, { allowEmpty: true });",
+        "const cardsLimit = resolveNumber(config && config.cards_limit, 10);",
+        "const cardsPage = resolveNumber(config && config.cards_page, null);",
+        "const includeCardBoard = resolveBoolean(config && config.card_board, false);",
+        "const includeCardList = resolveBoolean(config && config.card_list, false);",
+        "const includeCardMembers = resolveBoolean(config && config.card_members, false);",
+        "const includeCardStickers = resolveBoolean(config && config.card_stickers, false);",
+        "const cardAttachments = resolveOptionalString(config && config.card_attachments, { allowEmpty: true });",
+        "const organizationFields = resolveOptionalString(config && config.organization_fields, { allowEmpty: true });",
+        "const organizationsLimit = resolveNumber(config && config.organizations_limit, 10);",
+        "const memberFields = resolveOptionalString(config && config.member_fields, { allowEmpty: true });",
+        "const membersLimit = resolveNumber(config && config.members_limit, 10);",
+        "const allowPartial = resolveBoolean(config && config.partial, false);"
+      ],
+      tryLines: [
+        "const response = callTrello('/search', {",
+        "  method: 'GET',",
+        "  query: {",
+        "    query: queryText,",
+        "    idBoards: boardFilter || undefined,",
+        "    idOrganizations: organizationFilter || undefined,",
+        "    idCards: cardFilter || undefined,",
+        "    modelTypes: modelTypes || undefined,",
+        "    board_fields: boardFields || undefined,",
+        "    boards_limit: boardsLimit || undefined,",
+        "    card_fields: cardFields || undefined,",
+        "    cards_limit: cardsLimit || undefined,",
+        "    cards_page: cardsPage !== null ? cardsPage : undefined,",
+        "    card_board: includeCardBoard ? 'true' : undefined,",
+        "    card_list: includeCardList ? 'true' : undefined,",
+        "    card_members: includeCardMembers ? 'true' : undefined,",
+        "    card_stickers: includeCardStickers ? 'true' : undefined,",
+        "    card_attachments: cardAttachments || undefined,",
+        "    organization_fields: organizationFields || undefined,",
+        "    organizations_limit: organizationsLimit || undefined,",
+        "    member_fields: memberFields || undefined,",
+        "    members_limit: membersLimit || undefined,",
+        "    partial: allowPartial ? 'true' : undefined",
+        "  }",
+        "});",
+        "const body = response.body || {};",
+        "const cards = Array.isArray(body.cards) ? body.cards : [];",
+        "ctx.trelloEnhancedSearchResponse = body;",
+        "ctx.trelloEnhancedCards = cards;",
+        "ctx.trelloEnhancedSearchStats = {",
+        "  cards: cards.length,",
+        "  boards: Array.isArray(body.boards) ? body.boards.length : 0,",
+        "  query: queryText",
+        "};",
+        "logInfo('trello_enhanced_search_cards_success', { cards: cards.length, query: queryText });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'search_cards', query: queryText }",
+    }),
+  'action.trello-enhanced:test_connection': (c) =>
+    buildTrelloEnhancedAction('test_connection', c, {
+      preludeLines: [],
+      tryLines: [
+        "const response = callTrello('/members/me', { method: 'GET' });",
+        "const member = response.body || {};",
+        "ctx.trelloEnhancedConnectionVerified = true;",
+        "ctx.trelloEnhancedMember = member;",
+        "logInfo('trello_enhanced_test_connection_success', { memberId: member && member.id ? member.id : null });",
+        "return ctx;"
+      ],
+      errorMetadata: "{ operation: 'test_connection' }",
+    }),
+  'trigger.trello-enhanced:card_created': (c) => {
+    const configLiteral = JSON.stringify(prepareValueForCode(c ?? {}));
+    return `
+function trigger_trigger_trello_enhanced_card_created(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const payload = ctx.payload || ctx.webhookPayload || ctx.webhook || {};
+  const action = payload.action || {};
+  const actionType = action.type || '';
+
+  if (actionType !== 'createCard') {
+    logInfo('trello_enhanced_card_created_ignored', { actionType: actionType || null });
+    return ctx;
+  }
+
+  const data = action.data || {};
+  const card = data.card || {};
+  const list = data.list || {};
+  const board = data.board || payload.model || {};
+  const model = payload.model || {};
+  const boardId = board && board.id ? String(board.id) : (model && model.id ? String(model.id) : null);
+
+  const boardTemplate = config && (config.idBoard || config.boardId) ? String(config.idBoard || config.boardId) : '';
+  const boardFilter = boardTemplate && typeof interpolate === 'function' ? interpolate(boardTemplate, ctx).trim() : '';
+  if (boardFilter && boardId && boardId !== boardFilter) {
+    logInfo('trello_enhanced_card_created_skipped_board', { boardId: boardId, filter: boardFilter });
+    return ctx;
+  }
+
+  const dedupeId = action.id || (card && card.id ? card.id + ':' + (action.date || '') : null);
+  const event = {
+    trigger: 'card_created',
+    action: action,
+    card: card,
+    list: list,
+    board: board,
+    model: model,
+    raw: payload
+  };
+
+  if (!ctx.events || !Array.isArray(ctx.events)) {
+    ctx.events = [];
+  }
+  ctx.events.push({ dedupeId: dedupeId, data: event });
+
+  ctx.trelloEnhancedLastEvent = event;
+  ctx.trelloEnhancedTrigger = 'card_created';
+  ctx.trelloEnhancedDedupeId = dedupeId;
+
+  logInfo('trello_enhanced_card_created_received', {
+    cardId: card && card.id ? card.id : null,
+    boardId: boardId || null,
+    listId: list && list.id ? list.id : null
+  });
+
+  return ctx;
+}
+`;
+  },
+  'trigger.trello-enhanced:card_moved': (c) => {
+    const configLiteral = JSON.stringify(prepareValueForCode(c ?? {}));
+    return `
+function trigger_trigger_trello_enhanced_card_moved(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const payload = ctx.payload || ctx.webhookPayload || ctx.webhook || {};
+  const action = payload.action || {};
+  const actionType = action.type || '';
+
+  if (actionType !== 'updateCard') {
+    logInfo('trello_enhanced_card_moved_ignored', { actionType: actionType || null });
+    return ctx;
+  }
+
+  const data = action.data || {};
+  const card = data.card || {};
+  const listBefore = data.listBefore || {};
+  const listAfter = data.listAfter || data.list || {};
+  const board = data.board || payload.model || {};
+  const model = payload.model || {};
+  const boardId = board && board.id ? String(board.id) : (model && model.id ? String(model.id) : null);
+
+  if (!listBefore.id || !listAfter.id || listBefore.id === listAfter.id) {
+    logInfo('trello_enhanced_card_moved_noop', {
+      listBefore: listBefore && listBefore.id ? listBefore.id : null,
+      listAfter: listAfter && listAfter.id ? listAfter.id : null
+    });
+    return ctx;
+  }
+
+  const boardTemplate = config && (config.idBoard || config.boardId) ? String(config.idBoard || config.boardId) : '';
+  const boardFilter = boardTemplate && typeof interpolate === 'function' ? interpolate(boardTemplate, ctx).trim() : '';
+  if (boardFilter && boardId && boardId !== boardFilter) {
+    logInfo('trello_enhanced_card_moved_skipped_board', { boardId: boardId, filter: boardFilter });
+    return ctx;
+  }
+
+  const dedupeId = action.id || (card && card.id ? card.id + ':' + (listAfter.id || '') + ':' + (action.date || '') : null);
+  const event = {
+    trigger: 'card_moved',
+    action: action,
+    card: card,
+    listBefore: listBefore,
+    listAfter: listAfter,
+    board: board,
+    model: model,
+    raw: payload
+  };
+
+  if (!ctx.events || !Array.isArray(ctx.events)) {
+    ctx.events = [];
+  }
+  ctx.events.push({ dedupeId: dedupeId, data: event });
+
+  ctx.trelloEnhancedLastEvent = event;
+  ctx.trelloEnhancedTrigger = 'card_moved';
+  ctx.trelloEnhancedDedupeId = dedupeId;
+
+  logInfo('trello_enhanced_card_moved_received', {
+    cardId: card && card.id ? card.id : null,
+    listBefore: listBefore && listBefore.id ? listBefore.id : null,
+    listAfter: listAfter && listAfter.id ? listAfter.id : null,
+    boardId: boardId || null
+  });
+
+  return ctx;
+}
+`;
+  },
+  'trigger.trello-enhanced:checklist_item_completed': (c) => {
+    const configLiteral = JSON.stringify(prepareValueForCode(c ?? {}));
+    return `
+function trigger_trigger_trello_enhanced_checklist_item_completed(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const payload = ctx.payload || ctx.webhookPayload || ctx.webhook || {};
+  const action = payload.action || {};
+  const actionType = action.type || '';
+
+  if (actionType !== 'updateCheckItemStateOnCard') {
+    logInfo('trello_enhanced_checklist_item_completed_ignored', { actionType: actionType || null });
+    return ctx;
+  }
+
+  const data = action.data || {};
+  const card = data.card || {};
+  const checklist = data.checklist || {};
+  const checkItem = data.checkItem || {};
+  const board = data.board || payload.model || {};
+  const model = payload.model || {};
+  const boardId = board && board.id ? String(board.id) : (model && model.id ? String(model.id) : null);
+
+  if ((checkItem.state || '').toLowerCase() !== 'complete') {
+    logInfo('trello_enhanced_checklist_item_completed_not_complete', { state: checkItem.state || null });
+    return ctx;
+  }
+
+  const boardTemplate = config && (config.idBoard || config.boardId) ? String(config.idBoard || config.boardId) : '';
+  const boardFilter = boardTemplate && typeof interpolate === 'function' ? interpolate(boardTemplate, ctx).trim() : '';
+  if (boardFilter && boardId && boardId !== boardFilter) {
+    logInfo('trello_enhanced_checklist_item_completed_skipped_board', { boardId: boardId, filter: boardFilter });
+    return ctx;
+  }
+
+  const dedupeId = checkItem.id || action.id || (card && card.id ? card.id + ':' + (action.date || '') : null);
+  const event = {
+    trigger: 'checklist_item_completed',
+    action: action,
+    card: card,
+    checklist: checklist,
+    checkItem: checkItem,
+    board: board,
+    model: model,
+    raw: payload
+  };
+
+  if (!ctx.events || !Array.isArray(ctx.events)) {
+    ctx.events = [];
+  }
+  ctx.events.push({ dedupeId: dedupeId, data: event });
+
+  ctx.trelloEnhancedLastEvent = event;
+  ctx.trelloEnhancedTrigger = 'checklist_item_completed';
+  ctx.trelloEnhancedDedupeId = dedupeId;
+
+  logInfo('trello_enhanced_checklist_item_completed_received', {
+    cardId: card && card.id ? card.id : null,
+    checklistId: checklist && checklist.id ? checklist.id : null,
+    checkItemId: checkItem && checkItem.id ? checkItem.id : null,
+    boardId: boardId || null
+  });
+
+  return ctx;
+}
+`;
+  },
   'action.trello:create_card': (c) => `
 function step_createTrelloCard(ctx) {
   const apiKey = getSecret('TRELLO_API_KEY');
