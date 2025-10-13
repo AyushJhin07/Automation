@@ -1,0 +1,106 @@
+{
+  "id": "webflow-create-cms-item",
+  "description": "Creates a Webflow CMS item using the Apps Script runtime.",
+  "graph": {
+    "id": "fixture-webflow-create-cms-item",
+    "name": "Webflow create CMS item",
+    "nodes": [
+      {
+        "id": "webflow-create-item",
+        "type": "action.webflow",
+        "app": "webflow",
+        "name": "Create Webflow CMS item",
+        "op": "action.webflow:create_collection_item",
+        "params": {
+          "operation": "create_collection_item",
+          "collection_id": "collection-123",
+          "fields": {
+            "name": "{{lead.name}}",
+            "slug": "lead-{{lead.id}}"
+          },
+          "live": false
+        },
+        "data": {
+          "operation": "create_collection_item",
+          "config": {
+            "collection_id": "collection-123",
+            "fields": {
+              "name": "{{lead.name}}",
+              "slug": "lead-{{lead.id}}"
+            },
+            "live": false
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "lead": {
+        "id": "42",
+        "name": "Sam Customer"
+      }
+    }
+  },
+  "secrets": {
+    "WEBFLOW_API_TOKEN": "wf-token"
+  },
+  "http": [
+    {
+      "name": "webflow-create-collection-item",
+      "request": {
+        "url": "https://api.webflow.com/collections/collection-123/items?live=false",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer wf-token",
+          "accept-version": "1.0.0",
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "fields": {
+            "name": "Sam Customer",
+            "slug": "lead-42"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "_id": "item-987",
+          "collectionId": "collection-123",
+          "fields": {
+            "name": "Sam Customer",
+            "slug": "lead-42"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "lead": {
+        "id": "42",
+        "name": "Sam Customer"
+      },
+      "webflowCollectionId": "collection-123",
+      "webflowItemId": "item-987",
+      "webflowItem": {
+        "_id": "item-987",
+        "collectionId": "collection-123",
+        "fields": {
+          "name": "Sam Customer",
+          "slug": "lead-42"
+        }
+      },
+      "webflowItemPublished": false
+    },
+    "httpCalls": [
+      {
+        "url": "https://api.webflow.com/collections/collection-123/items?live=false",
+        "method": "POST"
+      }
+    ]
+  }
+}

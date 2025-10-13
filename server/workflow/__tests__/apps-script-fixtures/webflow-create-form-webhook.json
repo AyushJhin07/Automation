@@ -1,0 +1,102 @@
+{
+  "id": "webflow-create-form-webhook",
+  "description": "Registers a Webflow form submission webhook.",
+  "graph": {
+    "id": "fixture-webflow-create-form-webhook",
+    "name": "Webflow create webhook",
+    "nodes": [
+      {
+        "id": "webflow-create-webhook",
+        "type": "action.webflow",
+        "app": "webflow",
+        "name": "Create Webflow form webhook",
+        "op": "action.webflow:create_webhook",
+        "params": {
+          "operation": "create_webhook",
+          "site_id": "site-123",
+          "triggerType": "form_submission",
+          "url": "https://hooks.example.com/webflow",
+          "filter": {
+            "formId": "{{form.id}}"
+          }
+        },
+        "data": {
+          "operation": "create_webhook",
+          "config": {
+            "site_id": "site-123",
+            "triggerType": "form_submission",
+            "url": "https://hooks.example.com/webflow",
+            "filter": {
+              "formId": "{{form.id}}"
+            }
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "form": {
+        "id": "form-42"
+      }
+    }
+  },
+  "secrets": {
+    "WEBFLOW_API_TOKEN": "wf-token"
+  },
+  "http": [
+    {
+      "name": "webflow-create-webhook",
+      "request": {
+        "url": "https://api.webflow.com/sites/site-123/webhooks",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer wf-token",
+          "accept-version": "1.0.0",
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "triggerType": "form_submission",
+          "url": "https://hooks.example.com/webflow",
+          "filter": {
+            "formId": "form-42"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "_id": "wh_001",
+          "triggerType": "form_submission",
+          "siteId": "site-123",
+          "createdOn": "2024-05-10T16:15:00.000Z",
+          "url": "https://hooks.example.com/webflow"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "form": {
+        "id": "form-42"
+      },
+      "webflowSiteId": "site-123",
+      "webflowWebhookId": "wh_001",
+      "webflowWebhook": {
+        "_id": "wh_001",
+        "triggerType": "form_submission",
+        "siteId": "site-123",
+        "createdOn": "2024-05-10T16:15:00.000Z",
+        "url": "https://hooks.example.com/webflow"
+      }
+    },
+    "httpCalls": [
+      {
+        "url": "https://api.webflow.com/sites/site-123/webhooks",
+        "method": "POST"
+      }
+    ]
+  }
+}
