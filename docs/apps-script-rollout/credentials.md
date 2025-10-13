@@ -53,6 +53,17 @@ var SECRET_HELPER_OVERRIDES = {
 
 Overrides in `defaults` apply to every lookup for the matching property name. Entries inside `connectors` activate when the helper resolves the same connector key (either provided explicitly or inferred from the property prefix). This enables per-connector credential remapping without editing the generated workflow.
 
+## `requireOAuthToken(connectorKey, opts)`
+
+Workflows that rely on OAuth access tokens can call `requireOAuthToken` to enforce that the credential exists and surface clear configuration hints when it does not. The helper normalizes the connector key, forwards the lookup to `getSecret`, and raises a descriptive error that lists the canonical Script Property name plus any supported aliases. When provided, the optional `scopes` array is echoed back in the error message to highlight which OAuth grants the deployment expects.
+
+```js
+const slackToken = requireOAuthToken('slack', { scopes: ['chat:write'] });
+const jiraToken = requireOAuthToken('jira');
+```
+
+`requireOAuthToken` uses the same alias metadata as `getSecret`, so namespaced Script Properties like `apps_script__slack__bot_token` and historical synonyms such as `SLACK_ACCESS_TOKEN` resolve automatically.
+
 ## Script Properties expectations
 
 Before deploying a workflow, populate Script Properties with the credentials required by the connectors in use. Property names are uppercase with underscores and match the service being called. Common examples include:
@@ -72,6 +83,8 @@ The helper automatically infers connector keys from the property prefix, so addi
 ### Tier-0 and Tier-1 connector reference
 
 Tier-0/Tier-1 connectors ship in the first rollout batches and must have their Script Properties documented with consistent aliases. Use the tables below when wiring Apps Script properties, populating Vault exports, or configuring `SECRET_HELPER_OVERRIDES`. Each table lists the canonical property requested by generated workflows, the `apps_script__` alias that keeps Script Properties namespaced, and the operational docs to reference during rollout.
+
+The Apps Script runtime now seeds these aliases as defaults, so deployments can rely on the `apps_script__<connector>__...` property names without declaring custom overrides.
 
 When preferring namespaced properties, declare overrides similar to:
 
