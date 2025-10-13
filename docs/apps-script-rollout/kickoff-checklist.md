@@ -24,4 +24,8 @@ Product managers must complete this checklist before scheduling a new Apps Scrip
 - [ ] **Complete security architecture review.** Share the integration design and data flow diagrams with security. Record the review date, approver, and follow-up actions in the tracker, then set `APPS_SCRIPT_SECURITY_REVIEWED=approved`.
 - [ ] **Log privacy and compliance checks.** Confirm GDPR/CCPA impact assessments and data retention plans are documented. Upload links to the compliance artefacts in the tracker, note outstanding remediation tasks, and set `APPS_SCRIPT_COMPLIANCE_COMPLETE=true`.
 
+## Authoring Standards
+
+- [ ] **Circulate the handler authoring reference.** Share the [Handler Authoring Guide](handler-authoring.md) with the rollout squad, confirm parameter validation and trigger state expectations are incorporated into the design doc, and capture the review date in the tracker before marking `APPS_SCRIPT_HANDLER_GUIDE_SHARED=true`.
+
 Use `tsx scripts/print-apps-script-checklist.ts` to print this checklist with environment-based status hints.

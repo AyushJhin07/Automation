@@ -12,7 +12,7 @@ The helper module lives at the top of `compile-to-appsscript.ts` in the `appsScr
 
 ## Using the helpers in templates
 
-Refer to the [Handler Authoring Guide](handler-authoring.md) for end-to-end examples that demonstrate how the helpers work in practice. All `REAL_OPS` snippets that talk to third-party APIs must:
+Refer to the [Handler Authoring Guide](handler-authoring.md) for end-to-end examples that demonstrate how the helpers work in practice. The guide now consolidates helper usage, parameter validation, retry semantics, and trigger state management expectations for Tier‑0 connectors—link to it in design docs and rollout plans. All `REAL_OPS` snippets that talk to third-party APIs must:
 
 1. Call `withRetries(() => fetchJson(...))` instead of using `UrlFetchApp.fetch` directly.
 2. Provide `contentType`, `headers`, and stringified `payload` values explicitly so the helper can emit accurate logs.
