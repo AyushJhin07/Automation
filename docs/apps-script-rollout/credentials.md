@@ -69,6 +69,150 @@ Before deploying a workflow, populate Script Properties with the credentials req
 
 The helper automatically infers connector keys from the property prefix, so additional overrides can be added to `SECRET_HELPER_OVERRIDES.connectors` when bespoke aliases are required.
 
+### Tier-0 and Tier-1 connector reference
+
+Tier-0/Tier-1 connectors ship in the first rollout batches and must have their Script Properties documented with consistent aliases. Use the tables below when wiring Apps Script properties, populating Vault exports, or configuring `SECRET_HELPER_OVERRIDES`. Each table lists the canonical property requested by generated workflows, the `apps_script__` alias that keeps Script Properties namespaced, and the operational docs to reference during rollout.
+
+When preferring namespaced properties, declare overrides similar to:
+
+```js
+var SECRET_HELPER_OVERRIDES = {
+  connectors: {
+    hubspot: {
+      HUBSPOT_API_KEY: {
+        aliases: ['apps_script__hubspot__api_key']
+      }
+    }
+  }
+};
+```
+
+This keeps connector code unchanged while letting the helper resolve prefixed properties or sealed credential bundles (for example `apps_script__hubspot__sealed_credentials`) transparently.
+
+#### Airtable
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `AIRTABLE_API_KEY` | Yes | API key for REST calls | `apps_script__airtable__api_key` |
+| `AIRTABLE_BASE_ID` | Yes | Default base identifier used by triggers/actions | `apps_script__airtable__base_id` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Asana
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `ASANA_ACCESS_TOKEN` | Yes | Personal access token used for task automation | `apps_script__asana__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Box
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `BOX_ACCESS_TOKEN` | Yes | OAuth access token for Box API requests | `apps_script__box__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Dropbox
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `DROPBOX_ACCESS_TOKEN` | Yes | OAuth access token for Dropbox file operations | `apps_script__dropbox__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### GitHub
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `GITHUB_ACCESS_TOKEN` | Yes | Personal access token or GitHub App installation token | `apps_script__github__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Additional guidance: [GitHub → Slack automation recipe](../recipes/github-issue-to-slack.md#recipe-github-issue--slack-notification-webhook)
+
+#### Google Drive
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| _None_ | — | Drive workflows run with the Apps Script project's OAuth scopes via `DriveApp`. | — |
+
+- Runbook: [OAuth setup — Google](../phases/oauth-setup.md#google-drivecalendar)
+
+#### HubSpot
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `HUBSPOT_API_KEY` | Yes | Private app token for CRM endpoints | `apps_script__hubspot__api_key` |
+
+- Runbook: [OAuth setup — HubSpot](../phases/oauth-setup.md#hubspot)
+- Additional guidance: [Typeform → HubSpot recipe](../recipes/hubspot-contact-from-typeform.md#recipe-create-hubspot-contact-from-typeform-submission)
+
+#### Jira
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `JIRA_API_TOKEN` | Yes | API token created from Atlassian profile | `apps_script__jira__api_token` |
+| `JIRA_BASE_URL` | Yes | Cloud site base URL (e.g., `https://acme.atlassian.net`) | `apps_script__jira__base_url` |
+| `JIRA_EMAIL` | Yes | Account email paired with the API token | `apps_script__jira__email` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Notion
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `NOTION_ACCESS_TOKEN` | Yes | Internal integration token for Notion API | `apps_script__notion__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Shopify
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SHOPIFY_ACCESS_TOKEN` | Yes | Private app or custom storefront access token | `apps_script__shopify__access_token` |
+| `SHOPIFY_SHOP_DOMAIN` | Yes | Shop domain used to resolve REST endpoints | `apps_script__shopify__shop_domain` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Stripe
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `STRIPE_SECRET_KEY` | Yes | Secret API key for payments, refunds, and subscription automation | `apps_script__stripe__secret_key` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Additional guidance: [Stripe payment succeeded → Slack recipe](../recipes/stripe-payment-succeeded-to-slack.md#recipe-stripe-payment-succeeded-%E2%86%92-slack-notification)
+
+#### Trello
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `TRELLO_API_KEY` | Yes | REST API key from Trello developer portal | `apps_script__trello__api_key` |
+| `TRELLO_TOKEN` | Yes | OAuth token tied to the API key | `apps_script__trello__token` |
+
+- Runbook: [Trello webhook registration](../webhooks-trello.md)
+- Troubleshooting: [Playbook](../troubleshooting-playbook.md)
+
+#### Twilio
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `TWILIO_ACCOUNT_SID` | Yes | Account identifier for API authentication | `apps_script__twilio__account_sid` |
+| `TWILIO_AUTH_TOKEN` | Yes | Secret token for API authentication | `apps_script__twilio__auth_token` |
+| `TWILIO_FROM_NUMBER` | Yes | Default sending phone number for outbound messages | `apps_script__twilio__from_number` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+
+#### Typeform
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `TYPEFORM_ACCESS_TOKEN` | Yes | Personal token for form management APIs | `apps_script__typeform__access_token` |
+
+- Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Additional guidance: [Typeform webhook workflow recipe](../recipes/hubspot-contact-from-typeform.md#recipe-create-hubspot-contact-from-typeform-submission)
+
 ## Vault export payloads
 
 When IntegrationManager pushes secrets from Vault, the workflow expects one of the following Script Properties to contain a JSON export:
