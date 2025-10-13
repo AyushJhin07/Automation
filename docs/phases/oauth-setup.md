@@ -16,9 +16,15 @@ HubSpot
 
 - Create a Private App or OAuth App
 - Set Redirect URL: `${BASE_URL}/api/oauth/callback/hubspot`
-- Scopes (minimum for contacts): `contacts`, optionally `content`, `reports`, `timeline`
+- Scopes required for Apps Script HubSpot actions:
+  - `crm.objects.contacts.write` (and `crm.objects.contacts.read` for lookups)
+  - `crm.objects.deals.write` and `crm.objects.deals.read`
+  - `crm.objects.companies.write`
+  - `crm.objects.tickets.write`
+  - `crm.objects.notes.write`
 - Save into `.env`: `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`
 - Start flow: `POST /api/oauth/authorize` with `{ provider: "hubspot" }`
+- OAuth Manager persists the OAuth access token as `HUBSPOT_ACCESS_TOKEN` for Apps Script deployments
 
 Zendesk
 
