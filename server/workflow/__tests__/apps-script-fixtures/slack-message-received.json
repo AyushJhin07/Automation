@@ -1,0 +1,93 @@
+{
+  "id": "slack-message-received",
+  "description": "Polls Slack channel history and dispatches new messages while deduplicating timestamps.",
+  "graph": {
+    "id": "fixture-slack-message-received",
+    "name": "Slack message received",
+    "nodes": [
+      {
+        "id": "slack-trigger",
+        "type": "trigger.slack",
+        "app": "slack",
+        "name": "New Slack Message",
+        "op": "trigger.slack:message_received",
+        "params": {
+          "operation": "message_received",
+          "channel": "C12345678"
+        },
+        "data": {
+          "operation": "message_received",
+          "config": {
+            "channel": "C12345678"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "secrets": {
+    "SLACK_BOT_TOKEN": "xoxb-test-token"
+  },
+  "http": [
+    {
+      "name": "slack-history-initial",
+      "request": {
+        "url": "https://slack.com/api/conversations.history?channel=C12345678&limit=200",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer xoxb-test-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "messages": [
+            {
+              "type": "message",
+              "user": "U100",
+              "text": "Incident declared",
+              "ts": "1733756000.000100"
+            },
+            {
+              "type": "message",
+              "user": "U200",
+              "text": "Acknowledged",
+              "ts": "1733756020.000200"
+            }
+          ],
+          "has_more": false,
+          "response_metadata": {
+            "next_cursor": ""
+          }
+        }
+      }
+    },
+    {
+      "name": "slack-history-repeat",
+      "request": {
+        "url": "https://slack.com/api/conversations.history?channel=C12345678&limit=200&oldest=1733756020.0002",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer xoxb-test-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "messages": [
+            {
+              "type": "message",
+              "user": "U200",
+              "text": "Acknowledged",
+              "ts": "1733756020.000200"
+            }
+          ],
+          "has_more": false,
+          "response_metadata": {}
+        }
+      }
+    }
+  ]
+}

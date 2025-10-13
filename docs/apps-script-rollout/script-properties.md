@@ -118,7 +118,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | signrequest | `SIGNREQUEST_TOKEN` | — | — |
 | sketch | `SKETCH_API_KEY` | — | — |
 | skype | `SKYPE_ACCESS_TOKEN` | — | — |
-| Slack | `SLACK_WEBHOOK_URL` | — | — |
+| Slack | `SLACK_BOT_TOKEN` (required), optional `SLACK_WEBHOOK_URL` | Bot OAuth token with `chat:write`, `channels:manage`, `channels:read`, `reactions:write`, `files:write`, `users:read`, and history scopes. Webhook URL can be supplied for legacy fallbacks. | `apps_script__slack__bot_token`, `apps_script__slack__webhook_url` |
 | slideshare | `SLIDESHARE_API_KEY`<br>`SLIDESHARE_SHARED_SECRET` | — | — |
 | sprout-social | `SPROUT_SOCIAL_ACCESS_TOKEN` | — | — |
 | Square | `SQUARE_ACCESS_TOKEN` | — | — |

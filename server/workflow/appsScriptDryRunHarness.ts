@@ -292,7 +292,7 @@ class PropertiesStore {
   }
 }
 
-class AppsScriptSandbox {
+export class AppsScriptSandbox {
   private readonly consoleCapture = new ConsoleCapture();
   private readonly urlFetch: UrlFetchStub;
   private readonly properties: PropertiesStore;
@@ -371,6 +371,25 @@ class AppsScriptSandbox {
 
     return {
       context: contextResult,
+      logs: this.consoleCapture.logs,
+      httpCalls: this.urlFetch.calls,
+    };
+  }
+
+  async runFunction(functionName: string, ...args: any[]): Promise<SandboxRunResult> {
+    if (!functionName || typeof functionName !== 'string') {
+      throw new Error('runFunction requires a function name');
+    }
+
+    const target = (this.context as any)[functionName];
+    if (typeof target !== 'function') {
+      throw new Error(`Compiled Apps Script bundle did not expose a ${functionName} function`);
+    }
+
+    const result = await Promise.resolve(target.apply(undefined, args));
+
+    return {
+      context: result,
       logs: this.consoleCapture.logs,
       httpCalls: this.urlFetch.calls,
     };
