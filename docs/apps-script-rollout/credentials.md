@@ -73,7 +73,7 @@ Before deploying a workflow, populate Script Properties with the credentials req
 | Slack | `SLACK_BOT_TOKEN` (required), optional `SLACK_WEBHOOK_URL` |
 | Salesforce | `SALESFORCE_ACCESS_TOKEN`, `SALESFORCE_INSTANCE_URL` |
 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` |
-| Shopify | `SHOPIFY_API_KEY`, `SHOPIFY_SHOP_DOMAIN` |
+| Shopify | `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_SHOP_DOMAIN` |
 | Square | `SQUARE_ACCESS_TOKEN`, `SQUARE_APPLICATION_ID`, optional `SQUARE_ENVIRONMENT` (`sandbox` by default) |
 | Google Admin | `GOOGLE_ADMIN_ACCESS_TOKEN`, optional `GOOGLE_ADMIN_CUSTOMER_ID` (defaults to `my_customer`) |
 | DocuSign | `DOCUSIGN_ACCESS_TOKEN`, `DOCUSIGN_ACCOUNT_ID`, optional `DOCUSIGN_BASE_URI` |
@@ -214,6 +214,8 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 | `SHOPIFY_SHOP_DOMAIN` | Yes | Shop domain used to resolve REST endpoints | `apps_script__shopify__shop_domain` |
 
 - Runbook: [Troubleshooting Playbook](../troubleshooting-playbook.md)
+- Required scopes: Apps Script order creation expects an access token authorized for `write_orders` so draft orders can be created, plus `read_customers`/`write_customers` when the workflow enriches or upserts customer profiles alongside the order payload.
+- Script Property tips: Populate `SHOPIFY_SHOP_DOMAIN` without the `https://` prefix (for example `acme-store`) so generated handlers can construct both Admin URLs and customer-facing order status links.
 
 #### Stripe
 
