@@ -1,0 +1,199 @@
+exports[`Apps Script GitHub REAL_OPS builds action.github:add_labels_to_issue 1`] = `
+
+function step_action_github_add_labels_to_issue(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:add_labels_to_issue Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:add_labels_to_issue' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:add_labels_to_issue. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:close_issue 1`] = `
+
+function step_action_github_close_issue(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:close_issue Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:close_issue' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:close_issue. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:create_comment 1`] = `
+
+function step_action_github_create_comment(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:create_comment Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:create_comment' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:create_comment. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:create_issue 1`] = `
+
+function step_action_github_create_issue(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:create_issue Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:create_issue' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:create_issue. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:create_pull_request 1`] = `
+
+function step_action_github_create_pull_request(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:create_pull_request Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:create_pull_request' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:create_pull_request. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:create_webhook 1`] = `
+
+function step_action_github_create_webhook(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:create_webhook Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:create_webhook' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:create_webhook. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:get_issue 1`] = `
+
+function step_action_github_get_issue(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:get_issue Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:get_issue' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:get_issue. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:get_repository 1`] = `
+
+function step_action_github_get_repository(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:get_repository Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:get_repository' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:get_repository. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:list_issues 1`] = `
+
+function step_action_github_list_issues(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:list_issues Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:list_issues' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:list_issues. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:list_pull_requests 1`] = `
+
+function step_action_github_list_pull_requests(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:list_pull_requests Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:list_pull_requests' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:list_pull_requests. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:list_repositories 1`] = `
+
+function step_action_github_list_repositories(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:list_repositories Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:list_repositories' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:list_repositories. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:merge_pull_request 1`] = `
+
+function step_action_github_merge_pull_request(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:merge_pull_request Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:merge_pull_request' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:merge_pull_request. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:test_connection 1`] = `
+
+function step_action_github_test_connection(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:test_connection Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:test_connection' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:test_connection. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:update_issue 1`] = `
+
+function step_action_github_update_issue(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:update_issue Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:update_issue' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:update_issue. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds action.github:update_pull_request 1`] = `
+
+function step_action_github_update_pull_request(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement action.github:update_pull_request Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'action.github:update_pull_request' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.github:update_pull_request. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds trigger.github:issue_closed 1`] = `
+
+function trigger_trigger_github_issue_closed(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement trigger.github:issue_closed Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'trigger.github:issue_closed' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.github:issue_closed. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds trigger.github:issue_opened 1`] = `
+
+function trigger_trigger_github_issue_opened(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement trigger.github:issue_opened Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'trigger.github:issue_opened' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.github:issue_opened. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds trigger.github:pull_request_merged 1`] = `
+
+function trigger_trigger_github_pull_request_merged(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement trigger.github:pull_request_merged Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'trigger.github:pull_request_merged' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.github:pull_request_merged. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds trigger.github:pull_request_opened 1`] = `
+
+function trigger_trigger_github_pull_request_opened(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement trigger.github:pull_request_opened Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'trigger.github:pull_request_opened' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.github:pull_request_opened. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script GitHub REAL_OPS builds trigger.github:push 1`] = `
+
+function trigger_trigger_github_push(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#github): Implement trigger.github:push Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'github', operation: 'trigger.github:push' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.github:push. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;

@@ -1,0 +1,129 @@
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:copy_file 1`] = `
+
+function step_action_dropbox_copy_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:copy_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:copy_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:copy_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:create_folder 1`] = `
+
+function step_action_dropbox_create_folder(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:create_folder Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:create_folder' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:create_folder. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:create_shared_link 1`] = `
+
+function step_action_dropbox_create_shared_link(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:create_shared_link Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:create_shared_link' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:create_shared_link. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:delete_file 1`] = `
+
+function step_action_dropbox_delete_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:delete_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:delete_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:delete_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:download_file 1`] = `
+
+function step_action_dropbox_download_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:download_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:download_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:download_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:get_metadata 1`] = `
+
+function step_action_dropbox_get_metadata(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:get_metadata Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:get_metadata' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:get_metadata. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:list_folder 1`] = `
+
+function step_action_dropbox_list_folder(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:list_folder Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:list_folder' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:list_folder. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:move_file 1`] = `
+
+function step_action_dropbox_move_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:move_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:move_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:move_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:search 1`] = `
+
+function step_action_dropbox_search(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:search Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:search' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:search. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:test_connection 1`] = `
+
+function step_action_dropbox_test_connection(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:test_connection Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:test_connection' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:test_connection. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds action.dropbox:upload_file 1`] = `
+
+function step_action_dropbox_upload_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement action.dropbox:upload_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'action.dropbox:upload_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.dropbox:upload_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds trigger.dropbox:file_deleted 1`] = `
+
+function trigger_trigger_dropbox_file_deleted(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement trigger.dropbox:file_deleted Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'trigger.dropbox:file_deleted' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.dropbox:file_deleted. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Dropbox REAL_OPS builds trigger.dropbox:file_uploaded 1`] = `
+
+function trigger_trigger_dropbox_file_uploaded(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#dropbox): Implement trigger.dropbox:file_uploaded Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'dropbox', operation: 'trigger.dropbox:file_uploaded' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.dropbox:file_uploaded. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;

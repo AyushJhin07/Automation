@@ -16,7 +16,7 @@ function loadWorkflowGraph(name: string): WorkflowGraph {
   return JSON.parse(raw) as WorkflowGraph;
 }
 
-describe('Tier-1 Shopify Apps Script snapshot', () => {
+describe('Apps Script Shopify Tier-1 fixture', () => {
   it('generates create_order handler with validation, rate limiting, and structured logs', () => {
     const graph = loadWorkflowGraph('tier-1-commerce');
     const result = compileToAppsScript(graph);

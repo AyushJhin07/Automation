@@ -16,7 +16,7 @@ function loadWorkflowGraph(name: string): WorkflowGraph {
   return JSON.parse(raw) as WorkflowGraph;
 }
 
-describe('Tier-1 Typeform Apps Script snapshot', () => {
+describe('Apps Script Typeform Tier-1 fixture', () => {
   it('generates a persisted Typeform create_form handler with structured logging', () => {
     const graph = loadWorkflowGraph('tier-1-feedback');
     const result = compileToAppsScript(graph);
