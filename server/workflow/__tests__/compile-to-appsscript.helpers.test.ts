@@ -5,8 +5,19 @@ describe('appsScriptHttpHelpers', () => {
     const helpers = appsScriptHttpHelpers();
     expect(helpers).toContain('function withRetries');
     expect(helpers).toContain('function fetchJson');
-    expect(helpers.trim()).toMatchInlineSnapshot(`
-var __HTTP_RETRY_DEFAULTS = {
+    expect(helpers).toContain('function rateLimitAware');
+    expect(helpers).toContain('function requireOAuthToken');
+    expect(helpers).toContain('dispatchBatch: function');
+    expect(helpers).toContain(
+      "var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;"
+    );
+    expect(helpers).toContain(
+      "var jitter = typeof config.jitter === 'number' ? config.jitter : 0;"
+    );
+    expect(helpers).toContain('var transport = __resolveLogTransport();');
+    expect(helpers).toContain('UrlFetchApp.fetch(transport.url');
+    expect(helpers.trim()).toMatchInlineSnapshot(
+`var __HTTP_RETRY_DEFAULTS = {
   maxAttempts: 5,
   initialDelayMs: 500,
   backoffFactor: 2,
@@ -1798,8 +1809,8 @@ function fetchJson(request) {
     body: body,
     text: text
   };
-}
-`);
+}`
+);
   });
 });
 
