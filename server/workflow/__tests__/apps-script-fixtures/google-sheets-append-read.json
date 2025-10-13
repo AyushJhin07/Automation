@@ -1,0 +1,167 @@
+{
+  "id": "google-sheets-append-read",
+  "description": "Tier-0 workflow that appends and reads Google Sheets rows via REST",
+  "graph": {
+    "id": "fixture-google-sheets-append-read",
+    "name": "Google Sheets append and read",
+    "nodes": [
+      {
+        "id": "append",
+        "type": "action.sheets",
+        "app": "sheets",
+        "name": "Append automation result",
+        "op": "action.sheets:append_row",
+        "params": {
+          "spreadsheetId": "sheet-123",
+          "sheetName": "Automation Log",
+          "values": ["{{stage}}", "{{result}}"]
+        },
+        "data": {
+          "operation": "append_row",
+          "config": {
+            "spreadsheetId": "sheet-123",
+            "sheetName": "Automation Log",
+            "values": ["{{stage}}", "{{result}}"]
+          }
+        }
+      },
+      {
+        "id": "read",
+        "type": "action.sheets",
+        "app": "sheets",
+        "name": "Read appended row",
+        "op": "action.sheets:getRow",
+        "params": {
+          "spreadsheetId": "sheet-123",
+          "sheetName": "Automation Log",
+          "rowNumber": { "mode": "ref", "nodeId": "append", "path": "googleSheetsLastAppend.rowNumber" }
+        },
+        "data": {
+          "operation": "getRow",
+          "config": {
+            "spreadsheetId": "sheet-123",
+            "sheetName": "Automation Log",
+            "rowNumber": { "mode": "ref", "nodeId": "append", "path": "googleSheetsLastAppend.rowNumber" }
+          }
+        }
+      }
+    ],
+    "edges": [
+      { "id": "flow-append-read", "from": "append", "to": "read", "source": "append", "target": "read" }
+    ]
+  },
+  "entry": {
+    "context": {
+      "stage": "Tier 0",
+      "result": "Success"
+    }
+  },
+  "secrets": {
+    "GOOGLE_SHEETS_ACCESS_TOKEN": "ya29.test-sheets-token"
+  },
+  "http": [
+    {
+      "name": "sheets-append",
+      "request": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Automation%20Log:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&includeValuesInResponse=true",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-sheets-token",
+          "content-type": "application/json",
+          "accept": "application/json"
+        },
+        "payload": {
+          "values": [
+            [
+              "Tier 0",
+              "Success"
+            ]
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "updates": {
+            "spreadsheetId": "sheet-123",
+            "updatedRange": "Automation Log!A5:B5",
+            "updatedRows": 1,
+            "updatedColumns": 2,
+            "updatedData": {
+              "range": "Automation Log!A5:B5",
+              "values": [
+                [
+                  "Tier 0",
+                  "Success"
+                ]
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "sheets-get-row",
+      "request": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Automation%20Log!5%3A5?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-sheets-token",
+          "accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "range": "Automation Log!A5:B5",
+          "majorDimension": "ROWS",
+          "values": [
+            [
+              "Tier 0",
+              "Success"
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "stage": "Tier 0",
+      "result": "Success",
+      "sheetName": "Automation Log",
+      "rowNumber": 5,
+      "row": 5,
+      "rowValues": ["Tier 0", "Success"],
+      "googleSheetsRowNumber": 5,
+      "googleSheetsRowValues": ["Tier 0", "Success"],
+      "googleSheetsLastAppend": {
+        "spreadsheetId": "sheet-123",
+        "sheetName": "Automation Log",
+        "range": "Automation Log",
+        "updatedRange": "Automation Log!A5:B5",
+        "updatedRows": 1,
+        "values": ["Tier 0", "Success"],
+        "rowNumber": 5
+      },
+      "googleSheetsLastRead": {
+        "spreadsheetId": "sheet-123",
+        "sheetName": "Automation Log",
+        "rowNumber": 5,
+        "range": "Automation Log!5:5",
+        "values": ["Tier 0", "Success"],
+        "valueRenderOption": "FORMATTED_VALUE"
+      }
+    },
+    "httpCalls": [
+      {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Automation%20Log:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&includeValuesInResponse=true",
+        "method": "POST"
+      },
+      {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Automation%20Log!5%3A5?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE",
+        "method": "GET"
+      }
+    ]
+  }
+}
