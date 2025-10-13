@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import { WorkflowRuntimeService } from '../WorkflowRuntimeService.js';
 import { integrationManager } from '../../integrations/IntegrationManager.js';
+import { resetAppsScriptConnectorFlagCache } from '../../runtime/appsScriptConnectorFlags.js';
 
 type ExecutionContext = Parameters<WorkflowRuntimeService['executeNode']>[1];
 
@@ -252,6 +253,116 @@ async function runConnectorParameterResolutionRegression(): Promise<void> {
   }
 }
 
+async function runAppsScriptConnectorFlagGating(): Promise<void> {
+  const runtime = new WorkflowRuntimeService();
+
+  const context: ExecutionContext = {
+    workflowId: 'workflow-apps-script-connector',
+    executionId: 'exec-apps-script-enabled',
+    nodeOutputs: {},
+    timezone: 'UTC',
+    organizationId: 'org-inline',
+  };
+
+  const baseNode = {
+    id: 'pipedrive-create-deal',
+    app: 'pipedrive',
+    function: 'create_deal',
+    params: {
+      title: 'Flag Demo Deal',
+      value: 12000,
+    },
+    data: {
+      app: 'pipedrive',
+      function: 'create_deal',
+      credentials: { local: true },
+    },
+  };
+
+  const originalExecuteFunction = integrationManager.executeFunction;
+  let successfulInvocations = 0;
+
+  integrationManager.executeFunction = async (payload) => {
+    successfulInvocations++;
+    return {
+      success: true,
+      data: {
+        dealId: 'deal-enabled-1',
+        payload,
+      },
+      executionTime: 15,
+    } as any;
+  };
+
+  try {
+    const result = await runtime.executeNode(baseNode, context);
+    assert.equal(successfulInvocations, 1, 'Connector execution should invoke integration manager when flag enabled');
+    assert.equal(
+      result.summary.includes('pipedrive.create_deal'),
+      true,
+      'Execution summary should mention the pipedrive.create_deal action',
+    );
+  } finally {
+    integrationManager.executeFunction = originalExecuteFunction;
+  }
+
+  const disabledRuntime = new WorkflowRuntimeService();
+  const disabledContext: ExecutionContext = {
+    workflowId: 'workflow-apps-script-disabled',
+    executionId: 'exec-apps-script-disabled',
+    nodeOutputs: {},
+    timezone: 'UTC',
+    organizationId: 'org-inline',
+  };
+
+  const disabledNode = {
+    ...baseNode,
+    params: { ...baseNode.params },
+    data: { ...baseNode.data },
+  };
+
+  process.env.APPS_SCRIPT_ENABLED_PIPEDRIVE = 'false';
+  resetAppsScriptConnectorFlagCache();
+
+  const originalDisabledFunction = integrationManager.executeFunction;
+  let disabledInvocations = 0;
+
+  integrationManager.executeFunction = async () => {
+    disabledInvocations++;
+    return {
+      success: true,
+      data: { dealId: 'deal-disabled' },
+      executionTime: 20,
+    } as any;
+  };
+
+  try {
+    await assert.rejects(
+      disabledRuntime.executeNode(disabledNode, disabledContext),
+      (error: any) => {
+        assert.equal(typeof error?.message, 'string', 'Error should include a descriptive message');
+        assert.match(
+          error.message,
+          /APPS_SCRIPT_ENABLED_PIPEDRIVE/i,
+          'Error should point to the APPS_SCRIPT_ENABLED_PIPEDRIVE flag',
+        );
+        return true;
+      },
+      'Apps Script disabled connectors should reject execution',
+    );
+
+    assert.equal(
+      disabledInvocations,
+      0,
+      'Integration manager must not be invoked when Apps Script connector is disabled',
+    );
+  } finally {
+    integrationManager.executeFunction = originalDisabledFunction;
+    delete process.env.APPS_SCRIPT_ENABLED_PIPEDRIVE;
+    resetAppsScriptConnectorFlagCache();
+  }
+}
+
 async function runConnectionIdAuthRegression(): Promise<void> {
   const runtime = new WorkflowRuntimeService();
 
@@ -380,6 +491,7 @@ async function runConnectionIdAuthRegression(): Promise<void> {
 
 try {
   await runConnectorParameterResolutionRegression();
+  await runAppsScriptConnectorFlagGating();
   await runSheetsAndTimeRegression();
   await runConnectionIdAuthRegression();
   console.log('WorkflowRuntimeService regressions passed.');

@@ -5,6 +5,13 @@ import type { ConnectionService } from '../services/ConnectionService.js';
 import { getErrorMessage } from '../types/common.js';
 import { WorkflowRepository } from './WorkflowRepository.js';
 import { workflowRuntime } from '../core/WorkflowRuntime.js';
+import { getAppsScriptConnectorFlag } from '../runtime/appsScriptConnectorFlags.js';
+import {
+  resolveRuntime,
+  type RuntimeAvailability,
+  type RuntimeIdentifier,
+  type RuntimeResolutionIssue,
+} from '../runtime/registry.js';
 import {
   createWorkflowNodeMetadataSnapshot,
   inferWorkflowMetadataFromValue,
@@ -50,6 +57,14 @@ interface CredentialResolutionFailure {
 }
 
 type CredentialResolution = CredentialResolutionSuccess | CredentialResolutionFailure;
+
+interface RuntimeSelectionInfo {
+  availability: RuntimeAvailability;
+  runtime: RuntimeIdentifier | null;
+  issues: RuntimeResolutionIssue[];
+  nativeRuntimes: RuntimeIdentifier[];
+  fallbackRuntimes: RuntimeIdentifier[];
+}
 
 interface TriggerWorkflowOptions {
   workflowId: string;
@@ -195,6 +210,15 @@ export class WorkflowRuntimeService {
       });
     }
 
+    const operationKind: 'action' | 'trigger' = role === 'trigger' ? 'trigger' : 'action';
+    const runtimeInfo = this.resolveConnectorRuntimeSelection({
+      role: operationKind,
+      appId,
+      functionId,
+    });
+
+    this.ensureAppsScriptConnectorEnabled(appId, functionId, runtimeInfo);
+
     const credentialResolution = await this.resolveCredentials(
       node,
       context.userId,
@@ -256,7 +280,9 @@ export class WorkflowRuntimeService {
         app: appId,
         functionId,
         credentialsSource: credentialResolution.source,
-        executionTime: executionResponse.executionTime
+        executionTime: executionResponse.executionTime,
+        runtime: runtimeInfo.runtime ?? null,
+        runtimeAvailability: runtimeInfo.availability,
       },
       metadataSnapshot
     };
@@ -738,6 +764,60 @@ export class WorkflowRuntimeService {
       .replace(/_{2,}/g, '_')
       .replace(/^_|_$/g, '')
       .toLowerCase();
+  }
+
+  private resolveConnectorRuntimeSelection(args: {
+    role: 'action' | 'trigger';
+    appId: string;
+    functionId: string;
+  }): RuntimeSelectionInfo {
+    const resolution = resolveRuntime({
+      kind: args.role,
+      appId: args.appId,
+      operationId: args.functionId,
+    });
+
+    return {
+      availability: resolution.availability,
+      runtime: resolution.runtime,
+      issues: resolution.issues,
+      nativeRuntimes: resolution.nativeRuntimes,
+      fallbackRuntimes: resolution.fallbackRuntimes,
+    };
+  }
+
+  private ensureAppsScriptConnectorEnabled(
+    appId: string,
+    functionId: string,
+    runtimeInfo: RuntimeSelectionInfo,
+  ): void {
+    const gatingIssue = runtimeInfo.issues.find(
+      issue => issue.code === 'runtime.apps_script_connector_disabled',
+    );
+    if (gatingIssue) {
+      const flag = getAppsScriptConnectorFlag(appId);
+      const message =
+        gatingIssue.message ??
+        `Apps Script runtime disabled for ${appId}.${functionId}; set ${flag.envKey}=true to enable.`;
+      throw new WorkflowNodeExecutionError(message, {
+        reason: 'apps_script_disabled',
+        appId,
+        functionId,
+        envKey: flag.envKey,
+      });
+    }
+
+    if (runtimeInfo.availability === 'unavailable') {
+      const issueMessage = runtimeInfo.issues[0]?.message;
+      const message =
+        issueMessage ??
+        `Execution for ${appId}.${functionId} is not available in this environment.`;
+      throw new WorkflowNodeExecutionError(message, {
+        reason: 'runtime_unavailable',
+        appId,
+        functionId,
+      });
+    }
   }
 
   private selectString(...values: Array<string | null | undefined>): string | undefined {

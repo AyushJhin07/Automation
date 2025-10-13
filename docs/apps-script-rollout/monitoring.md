@@ -25,7 +25,13 @@ Script rollout squad, QA, and support so the response playbook stays visible.
   - `APPS_SCRIPT_ENABLED_<CONNECTOR>` (default `true`) — override to `false` to
     short-circuit Apps Script compilation/execution for a specific connector.
     For example, export `APPS_SCRIPT_ENABLED_SLACK=false` to force the compiler
-    and runtime to reject Slack nodes until the rollout resumes.
+    and runtime to reject Slack nodes until the rollout resumes. The compiler
+    halts before emitting `Code.gs`, the runtime registry filters the Apps Script
+    handler, and workflow preview/manual runs surface an actionable error instead
+    of invoking the connector. Use the integration regression suite
+    (`server/workflow/__tests__/WorkflowRuntimeService.test.ts`) to validate that
+    both the enabled and disabled paths behave as expected when the flag is
+    toggled.
 - Use `--once` (or set `APPS_SCRIPT_DRY_RUN_RUN_ONCE=true`) for ad-hoc reruns
   during incident response without mutating the scheduler.
 
