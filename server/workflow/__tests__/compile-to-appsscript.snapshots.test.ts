@@ -28,6 +28,10 @@ const FIXTURES: FixtureConfig[] = [
     description: 'high-volume Sheets → Airtable/HubSpot sync'
   },
   {
+    name: 'tier-1-storage',
+    description: 'Dropbox and Box uploads with shared file references'
+  },
+  {
     name: 'tier-2-long-tail',
     description: 'scheduled Asana orchestration with Trello fallback'
   }

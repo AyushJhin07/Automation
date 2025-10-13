@@ -7,7 +7,6 @@
  */
 
 
-
 var __WORKFLOW_LOG_METADATA = {"workflowId":"apps-script-tier-2-long-tail","automationType":"project_management","connectors":[{"id":"time","displayName":"time"},{"id":"asana","displayName":"asana"},{"id":"system","displayName":"system"},{"id":"branch","displayName":"branch"},{"id":"mailchimp","displayName":"mailchimp"}]};
 
 var __HTTP_RETRY_DEFAULTS = {
@@ -520,14 +519,154 @@ function buildTimeTrigger(config) {
 }
 
 function buildPollingWrapper(triggerKey, executor) {
-  var stats = { processed: 0 };
-  logInfo('trigger_poll_start', { key: triggerKey });
+  var metadata = typeof __WORKFLOW_LOG_METADATA !== 'undefined' ? __WORKFLOW_LOG_METADATA : null;
+  var connectorIds = [];
+  if (metadata && metadata.connectors && metadata.connectors.length) {
+    for (var i = 0; i < metadata.connectors.length; i++) {
+      var entry = metadata.connectors[i];
+      if (!entry) {
+        continue;
+      }
+      if (typeof entry === 'string') {
+        connectorIds.push(entry);
+        continue;
+      }
+      if (entry.normalizedId) {
+        connectorIds.push(entry.normalizedId);
+        continue;
+      }
+      if (entry.id) {
+        connectorIds.push(entry.id);
+      }
+    }
+  }
+
+  var stats = { processed: 0, succeeded: 0, failed: 0 };
+  if (connectorIds.length > 0) {
+    stats.connectors = connectorIds.slice();
+  }
+
+  var startedAtMs = Date.now();
+  var startedAtIso = new Date(startedAtMs).toISOString();
+  var properties = PropertiesService.getScriptProperties();
+  var stateKey = '__studio_trigger_state__:' + triggerKey;
+  var state = {};
+
+  try {
+    var rawState = properties.getProperty(stateKey);
+    if (rawState) {
+      var parsedState = JSON.parse(rawState);
+      if (parsedState && typeof parsedState === 'object') {
+        state = parsedState;
+      }
+    }
+  } catch (error) {
+    logWarn('trigger_state_load_failed', {
+      key: triggerKey,
+      message: error && error.message ? error.message : String(error)
+    });
+    state = {};
+  }
+
+  if (!state || typeof state !== 'object') {
+    state = {};
+  }
+
+  state.lastRunStartedAt = startedAtIso;
+
+  function mergeConnectors(value) {
+    if (!value) {
+      return;
+    }
+    var next = Array.isArray(value) ? value : [value];
+    if (!stats.connectors) {
+      stats.connectors = connectorIds.slice();
+    }
+    for (var c = 0; c < next.length; c++) {
+      var candidate = next[c];
+      if (!candidate) {
+        continue;
+      }
+      var normalized = candidate;
+      if (typeof candidate === 'object') {
+        normalized = candidate.normalizedId || candidate.id || null;
+      }
+      if (!normalized) {
+        continue;
+      }
+      normalized = String(normalized);
+      var already = false;
+      for (var existingIndex = 0; existingIndex < stats.connectors.length; existingIndex++) {
+        if (stats.connectors[existingIndex] === normalized) {
+          already = true;
+          break;
+        }
+      }
+      if (!already) {
+        stats.connectors.push(normalized);
+      }
+    }
+  }
+
+  function finalizeStats(status) {
+    var completedAtMs = Date.now();
+    stats.completedAt = new Date(completedAtMs).toISOString();
+    stats.durationMs = completedAtMs - startedAtMs;
+    if (typeof stats.failed !== 'number') {
+      stats.failed = 0;
+    }
+    if (typeof stats.processed !== 'number') {
+      stats.processed = 0;
+    }
+    stats.attempted = (stats.processed || 0) + (stats.failed || 0);
+    if (stats.durationMs > 0) {
+      var perSecond = stats.processed / (stats.durationMs / 1000);
+      var perMinute = stats.processed / (stats.durationMs / 60000);
+      stats.throughputPerSecond = Math.round(perSecond * 1000) / 1000;
+      stats.throughputPerMinute = Math.round(perMinute * 1000) / 1000;
+    } else {
+      stats.throughputPerSecond = stats.processed;
+      stats.throughputPerMinute = stats.processed * 60;
+    }
+    stats.status = status;
+    mergeConnectors(connectorIds);
+  }
+
+  function persistState() {
+    try {
+      properties.setProperty(stateKey, JSON.stringify(state || {}));
+    } catch (error) {
+      logError('trigger_state_save_failed', {
+        key: triggerKey,
+        message: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
+  logInfo('trigger_poll_start', {
+    key: triggerKey,
+    connectors: connectorIds,
+    state: state
+  });
+
   var runtime = {
+    state: state,
+    setState: function (nextState) {
+      if (!nextState || typeof nextState !== 'object') {
+        return runtime.state;
+      }
+      state = nextState;
+      runtime.state = state;
+      return runtime.state;
+    },
     dispatch: function (payload) {
       try {
         main(payload || {});
         stats.processed += 1;
+        stats.succeeded += 1;
+        return true;
       } catch (error) {
+        stats.failed += 1;
         logError('trigger_dispatch_failed', {
           key: triggerKey,
           message: error && error.message ? error.message : String(error)
@@ -535,12 +674,66 @@ function buildPollingWrapper(triggerKey, executor) {
         throw error;
       }
     },
+    dispatchBatch: function (items, mapFn) {
+      var result = { attempted: 0, succeeded: 0, failed: 0, errors: [] };
+      if (!items || (typeof items.length !== 'number' && !Array.isArray(items))) {
+        return result;
+      }
+
+      for (var index = 0; index < items.length; index++) {
+        var item = items[index];
+        result.attempted += 1;
+        var payload = item;
+
+        if (mapFn) {
+          try {
+            payload = mapFn(item, index);
+          } catch (mapError) {
+            var mapMessage = mapError && mapError.message ? mapError.message : String(mapError);
+            result.failed += 1;
+            stats.failed += 1;
+            result.errors.push(mapMessage);
+            logError('trigger_dispatch_map_failed', {
+              key: triggerKey,
+              index: index,
+              message: mapMessage
+            });
+            continue;
+          }
+        }
+
+        try {
+          runtime.dispatch(payload);
+          result.succeeded += 1;
+        } catch (dispatchError) {
+          var dispatchMessage = dispatchError && dispatchError.message ? dispatchError.message : String(dispatchError);
+          result.failed += 1;
+          result.errors.push(dispatchMessage);
+        }
+      }
+
+      stats.batches = (stats.batches || 0) + 1;
+      stats.lastBatch = {
+        attempted: result.attempted,
+        succeeded: result.succeeded,
+        failed: result.failed
+      };
+
+      return result;
+    },
     summary: function (partial) {
       if (!partial || typeof partial !== 'object') {
         return;
       }
       for (var key in partial) {
-        stats[key] = partial[key];
+        if (!Object.prototype.hasOwnProperty.call(partial, key)) {
+          continue;
+        }
+        if (key === 'connectors') {
+          mergeConnectors(partial[key]);
+        } else {
+          stats[key] = partial[key];
+        }
       }
     }
   };
@@ -550,12 +743,28 @@ function buildPollingWrapper(triggerKey, executor) {
     if (result && typeof result === 'object') {
       runtime.summary(result);
     }
-    logInfo('trigger_poll_success', { key: triggerKey, stats: stats });
+    finalizeStats('success');
+    if (!Object.prototype.hasOwnProperty.call(state, 'lastRunAt')) {
+      state.lastRunAt = stats.completedAt;
+    }
+    state.lastSuccessStats = {
+      processed: stats.processed,
+      failed: stats.failed,
+      durationMs: stats.durationMs
+    };
+    persistState();
+    logInfo('trigger_poll_success', { key: triggerKey, stats: stats, state: state });
     return stats;
   } catch (error) {
+    var errorMessage = error && error.message ? error.message : String(error);
+    finalizeStats('error');
+    state.lastErrorAt = stats.completedAt;
+    state.lastErrorMessage = errorMessage;
+    persistState();
     logError('trigger_poll_error', {
       key: triggerKey,
-      message: error && error.message ? error.message : String(error)
+      message: errorMessage,
+      stats: stats
     });
     throw error;
   }
@@ -1493,6 +1702,464 @@ function rateLimitAware(fn, options) {
   return withRetries(fn, mergedOptions);
 }
 
+function __getRuntimeFileByRef(ctx, ref) {
+  if (!ref) {
+    return null;
+  }
+
+  var containers = [];
+  if (ctx && typeof ctx === 'object') {
+    if (ctx.__automationRuntime && ctx.__automationRuntime.files) {
+      containers.push(ctx.__automationRuntime.files);
+    }
+    if (ctx.__runtime && ctx.__runtime.files) {
+      containers.push(ctx.__runtime.files);
+    }
+    if (ctx.files) {
+      containers.push(ctx.files);
+    }
+    if (ctx.attachments) {
+      containers.push(ctx.attachments);
+    }
+    if (ctx.__files) {
+      containers.push(ctx.__files);
+    }
+  }
+
+  for (var i = 0; i < containers.length; i++) {
+    var store = containers[i];
+    if (!store) {
+      continue;
+    }
+
+    if (typeof store === 'object') {
+      if (Array.isArray(store)) {
+        for (var j = 0; j < store.length; j++) {
+          var item = store[j];
+          if (!item) {
+            continue;
+          }
+          if (item.id === ref || item.ref === ref || item.name === ref || item.fileName === ref) {
+            return item;
+          }
+        }
+      } else {
+        if (store[ref]) {
+          return store[ref];
+        }
+        if (store[String(ref)]) {
+          return store[String(ref)];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function __coerceByteArray(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    var result = [];
+    for (var i = 0; i < value.length; i++) {
+      var current = value[i];
+      if (typeof current === 'number') {
+        result.push(current & 0xff);
+      } else if (typeof current === 'string' && current) {
+        var parsed = Number(current);
+        if (!isNaN(parsed)) {
+          result.push(parsed & 0xff);
+        }
+      }
+    }
+    return result;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return Utilities.base64Decode(value);
+    } catch (error) {
+      return Utilities.newBlob(value).getBytes();
+    }
+  }
+
+  if (value.bytes && Array.isArray(value.bytes)) {
+    return __coerceByteArray(value.bytes);
+  }
+
+  if (value.blob && typeof value.blob.getBytes === 'function') {
+    try {
+      return value.blob.getBytes();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function __resolveUploadInput(ctx, options) {
+  var config = options || {};
+  var provider = config.provider || 'connector';
+  var inlineContent = typeof config.inlineContent === 'string' ? interpolate(config.inlineContent, ctx) : null;
+  var inlineFileContent = typeof config.inlineFileContent === 'string' ? interpolate(config.inlineFileContent, ctx) : null;
+  var inlineRef = typeof config.inlineRef === 'string' ? interpolate(config.inlineRef, ctx) : null;
+  var inlineFileName = typeof config.inlineFileName === 'string' ? interpolate(config.inlineFileName, ctx) : null;
+  var inlineMimeType = typeof config.inlineMimeType === 'string' ? interpolate(config.inlineMimeType, ctx) : null;
+  var fallbackName = typeof config.fallbackName === 'string' ? config.fallbackName : null;
+
+  var source = 'inline';
+  var candidateContent = inlineContent || inlineFileContent;
+  var base64Content = typeof candidateContent === 'string' ? candidateContent.trim() : null;
+  var bytes = null;
+  var mimeType = inlineMimeType || 'application/octet-stream';
+
+  if ((!base64Content || base64Content.length === 0) && inlineRef) {
+    var file = __getRuntimeFileByRef(ctx, inlineRef.trim());
+    if (!file) {
+      throw new Error(provider + ' upload requires resolving file reference "' + inlineRef + '".');
+    }
+    source = 'reference';
+    if (!inlineFileName && (file.name || file.fileName || file.filename)) {
+      inlineFileName = file.name || file.fileName || file.filename;
+    }
+    if (!inlineMimeType && (file.mimeType || file.contentType)) {
+      mimeType = file.mimeType || file.contentType;
+    }
+    if (file.base64 || file.base64Content) {
+      base64Content = file.base64 || file.base64Content;
+    } else if (typeof file.content === 'string' && file.content) {
+      base64Content = file.content;
+    } else if (typeof file.data === 'string' && file.data) {
+      base64Content = file.data;
+    } else if (file.body && typeof file.body === 'string') {
+      base64Content = file.body;
+    }
+    if (!base64Content && file.bytes) {
+      bytes = __coerceByteArray(file.bytes);
+    }
+    if (!base64Content && !bytes && file.blob && typeof file.blob.getBytes === 'function') {
+      bytes = file.blob.getBytes();
+      try {
+        if (!inlineMimeType && file.blob.getContentType) {
+          mimeType = file.blob.getContentType();
+        }
+        if (!inlineFileName && file.blob.getName) {
+          inlineFileName = file.blob.getName();
+        }
+      } catch (error) {}
+    }
+    if (!base64Content && file.base64Content) {
+      base64Content = file.base64Content;
+    }
+  }
+
+  if ((!base64Content || base64Content.length === 0) && !bytes) {
+    var fallbackKeys = Array.isArray(config.fallbackCtxKeys) ? config.fallbackCtxKeys : [];
+    for (var i = 0; i < fallbackKeys.length; i++) {
+      var key = fallbackKeys[i];
+      if (!key) {
+        continue;
+      }
+      if (ctx && typeof ctx === 'object' && typeof ctx[key] === 'string') {
+        base64Content = ctx[key];
+        source = 'context';
+        break;
+      }
+    }
+  }
+
+  if (!base64Content && !bytes) {
+    throw new Error(provider + ' upload requires file content. Provide base64 content or a valid reference.');
+  }
+
+  if (!bytes) {
+    try {
+      bytes = Utilities.base64Decode(base64Content);
+    } catch (error) {
+      var blob = Utilities.newBlob(String(base64Content));
+      bytes = blob.getBytes();
+      if (!inlineMimeType) {
+        mimeType = blob.getContentType();
+      }
+      source = source || 'text';
+    }
+  }
+
+  var size = bytes.length;
+  var name = inlineFileName || (fallbackName || ('upload-' + Date.now()));
+
+  return {
+    bytes: bytes,
+    size: size,
+    mimeType: mimeType || 'application/octet-stream',
+    name: name,
+    base64: base64Content || Utilities.base64Encode(bytes),
+    source: source || 'inline'
+  };
+}
+
+function __sliceBytes(bytes, start, end) {
+  var result = [];
+  if (!bytes || !bytes.length) {
+    return result;
+  }
+  var limit = typeof end === 'number' ? Math.min(end, bytes.length) : bytes.length;
+  for (var i = start; i < limit; i++) {
+    result.push(bytes[i]);
+  }
+  return result;
+}
+
+function __dropboxFetch(url, requestOptions, accessToken) {
+  var headers = {};
+  if (requestOptions && requestOptions.headers) {
+    for (var key in requestOptions.headers) {
+      if (Object.prototype.hasOwnProperty.call(requestOptions.headers, key)) {
+        headers[key] = requestOptions.headers[key];
+      }
+    }
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+
+  var options = {
+    method: requestOptions && requestOptions.method ? requestOptions.method : 'post',
+    headers: headers,
+    muteHttpExceptions: true
+  };
+
+  if (requestOptions && typeof requestOptions.payload !== 'undefined') {
+    options.payload = requestOptions.payload;
+  }
+
+  if (requestOptions && requestOptions.contentType) {
+    options.contentType = requestOptions.contentType;
+  }
+
+  return rateLimitAware(function() {
+    var response = UrlFetchApp.fetch(url, options);
+    var status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      return response;
+    }
+
+    var error = new Error('Dropbox API request failed with status ' + status);
+    error.status = status;
+    try {
+      error.headers = response.getAllHeaders();
+    } catch (headerError) {
+      error.headers = {};
+    }
+    try {
+      error.text = response.getContentText();
+      error.body = JSON.parse(error.text);
+    } catch (parseError) {}
+    throw error;
+  }, requestOptions && requestOptions.retryOptions ? requestOptions.retryOptions : {});
+}
+
+function __dropboxDirectUpload(accessToken, commitOptions, fileInput) {
+  var response = __dropboxFetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify(commitOptions)
+    },
+    payload: fileInput.bytes
+  }, accessToken);
+
+  return JSON.parse(response.getContentText());
+}
+
+function __dropboxChunkedUpload(accessToken, commitOptions, fileInput) {
+  var bytes = fileInput.bytes;
+  var total = bytes.length;
+  var chunkSize = 8 * 1024 * 1024;
+  var firstChunkSize = Math.min(chunkSize, total);
+
+  var startResponse = __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/start', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ close: false })
+    },
+    payload: __sliceBytes(bytes, 0, firstChunkSize)
+  }, accessToken);
+
+  var session = JSON.parse(startResponse.getContentText());
+  var sessionId = session.session_id;
+  var offset = firstChunkSize;
+
+  while (offset + chunkSize < total) {
+    var chunk = __sliceBytes(bytes, offset, offset + chunkSize);
+    __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/append_v2', {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({
+          cursor: {
+            session_id: sessionId,
+            offset: offset
+          },
+          close: false
+        })
+      },
+      payload: chunk
+    }, accessToken);
+    offset += chunk.length;
+  }
+
+  var finishChunk = __sliceBytes(bytes, offset, total);
+  var finishResponse = __dropboxFetch('https://content.dropboxapi.com/2/files/upload_session/finish', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({
+        cursor: {
+          session_id: sessionId,
+          offset: offset
+        },
+        commit: commitOptions
+      })
+    },
+    payload: finishChunk
+  }, accessToken);
+
+  return JSON.parse(finishResponse.getContentText());
+}
+
+function __boxFetch(url, requestOptions, accessToken) {
+  var headers = {};
+  if (requestOptions && requestOptions.headers) {
+    for (var key in requestOptions.headers) {
+      if (Object.prototype.hasOwnProperty.call(requestOptions.headers, key)) {
+        headers[key] = requestOptions.headers[key];
+      }
+    }
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+
+  var options = {
+    method: requestOptions && requestOptions.method ? requestOptions.method : 'post',
+    headers: headers,
+    muteHttpExceptions: true
+  };
+
+  if (requestOptions && typeof requestOptions.payload !== 'undefined') {
+    options.payload = requestOptions.payload;
+  }
+
+  if (requestOptions && requestOptions.contentType) {
+    options.contentType = requestOptions.contentType;
+  }
+
+  if (requestOptions && typeof requestOptions.followRedirects === 'boolean') {
+    options.followRedirects = requestOptions.followRedirects;
+  }
+
+  return rateLimitAware(function() {
+    var response = UrlFetchApp.fetch(url, options);
+    var status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      return response;
+    }
+
+    var error = new Error('Box API request failed with status ' + status);
+    error.status = status;
+    try {
+      error.headers = response.getAllHeaders();
+    } catch (headerError) {
+      error.headers = {};
+    }
+    try {
+      error.text = response.getContentText();
+      error.body = JSON.parse(error.text);
+    } catch (parseError) {}
+    throw error;
+  }, requestOptions && requestOptions.retryOptions ? requestOptions.retryOptions : {});
+}
+
+function __boxDirectUpload(accessToken, parentId, fileInput) {
+  var metadataBlob = Utilities.newBlob(JSON.stringify({
+    name: fileInput.name,
+    parent: { id: parentId }
+  }), 'application/json', 'attributes.json');
+  var fileBlob = Utilities.newBlob(fileInput.bytes, fileInput.mimeType, fileInput.name);
+
+  var response = __boxFetch('https://upload.box.com/api/2.0/files/content', {
+    method: 'post',
+    payload: {
+      attributes: metadataBlob,
+      file: fileBlob
+    }
+  }, accessToken);
+
+  return JSON.parse(response.getContentText());
+}
+
+function __boxChunkedUpload(accessToken, parentId, fileInput) {
+  var sessionResponse = __boxFetch('https://upload.box.com/api/2.0/files/upload_sessions', {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({
+      folder_id: parentId,
+      file_name: fileInput.name,
+      file_size: fileInput.bytes.length
+    })
+  }, accessToken);
+
+  var session = JSON.parse(sessionResponse.getContentText());
+  if (!session || !session.id || !session.session_endpoints) {
+    throw new Error('Box upload session response missing required fields.');
+  }
+
+  var uploadUrl = session.session_endpoints.upload_part;
+  var commitUrl = session.session_endpoints.commit;
+  var partSize = session.part_size;
+  var parts = [];
+  var offset = 0;
+  var total = fileInput.bytes.length;
+
+  while (offset < total) {
+    var end = Math.min(offset + partSize, total);
+    var chunk = __sliceBytes(fileInput.bytes, offset, end);
+    var digestBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_1, chunk);
+    var digest = Utilities.base64Encode(digestBytes);
+
+    var uploadResponse = __boxFetch(uploadUrl, {
+      method: 'put',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Range': 'bytes ' + offset + '-' + (end - 1) + '/' + total,
+        'Digest': 'SHA=' + digest
+      },
+      payload: chunk
+    }, accessToken);
+
+    var uploadBody = JSON.parse(uploadResponse.getContentText());
+    if (!uploadBody || !uploadBody.part) {
+      throw new Error('Box chunk upload did not return part metadata.');
+    }
+    parts.push(uploadBody.part);
+    offset = end;
+  }
+
+  var commitResponse = __boxFetch(commitUrl, {
+    method: 'post',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({ parts: parts })
+  }, accessToken);
+
+  return JSON.parse(commitResponse.getContentText());
+}
+
 function fetchJson(request) {
   var config = request || {};
   if (typeof request === 'string') {
@@ -1587,1134 +2254,6 @@ function fetchJson(request) {
   }
 
   return {
-    status: status,
-    headers: allHeaders,
-    body: body,
-    text: text
-  };
-}
-
-var __TRIGGER_REGISTRY_KEY = '__studio_trigger_registry__';
-
-function __loadTriggerRegistry() {
-  try {
-    var raw = PropertiesService.getScriptProperties().getProperty(__TRIGGER_REGISTRY_KEY);
-    if (!raw) {
-      return {};
-    }
-    var parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') {
-      return parsed;
-    }
-  } catch (error) {
-    logWarn('trigger_registry_parse_failed', {
-      message: error && error.message ? error.message : String(error)
-    });
-  }
-  return {};
-}
-
-function __saveTriggerRegistry(registry) {
-  try {
-    PropertiesService.getScriptProperties().setProperty(
-      __TRIGGER_REGISTRY_KEY,
-      JSON.stringify(registry || {})
-    );
-  } catch (error) {
-    logError('trigger_registry_save_failed', {
-      message: error && error.message ? error.message : String(error)
-    });
-  }
-}
-
-function __findTriggerById(triggerId) {
-  if (!triggerId) {
-    return null;
-  }
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    var trigger = triggers[i];
-    if (!trigger) {
-      continue;
-    }
-    if (typeof trigger.getUniqueId === 'function' && trigger.getUniqueId() === triggerId) {
-      return trigger;
-    }
-  }
-  return null;
-}
-
-function __ensureTrigger(triggerKey, handler, type, builderFn, description) {
-  var registry = __loadTriggerRegistry();
-  var entry = registry[triggerKey];
-  if (entry) {
-    var existing = __findTriggerById(entry.id);
-    if (existing) {
-      logInfo('trigger_exists', { key: triggerKey, handler: handler, type: type });
-      return { key: triggerKey, triggerId: entry.id, handler: handler, type: type };
-    }
-    logWarn('trigger_missing_recreating', { key: triggerKey, handler: handler, type: type });
-  }
-
-  try {
-    var trigger = builderFn();
-    var triggerId = trigger && typeof trigger.getUniqueId === 'function' ? trigger.getUniqueId() : null;
-    registry[triggerKey] = {
-      id: triggerId,
-      handler: handler,
-      type: type,
-      description: description || null,
-      updatedAt: new Date().toISOString()
-    };
-    __saveTriggerRegistry(registry);
-    logInfo('trigger_created', { key: triggerKey, handler: handler, type: type, description: description || null });
-    return { key: triggerKey, triggerId: triggerId, handler: handler, type: type };
-  } catch (error) {
-    logError('trigger_create_failed', {
-      key: triggerKey,
-      handler: handler,
-      type: type,
-      message: error && error.message ? error.message : String(error)
-    });
-    throw error;
-  }
-}
-
-function __createEphemeralTrigger(triggerKey, handler, type, builderFn, description) {
-  try {
-    var trigger = builderFn();
-    var triggerId = trigger && typeof trigger.getUniqueId === 'function' ? trigger.getUniqueId() : null;
-    logInfo('trigger_created', {
-      key: triggerKey,
-      handler: handler,
-      type: type,
-      ephemeral: true,
-      description: description || null
-    });
-    return { key: triggerKey, triggerId: triggerId, handler: handler, type: type };
-  } catch (error) {
-    logError('trigger_create_failed', {
-      key: triggerKey,
-      handler: handler,
-      type: type,
-      ephemeral: true,
-      message: error && error.message ? error.message : String(error)
-    });
-    throw error;
-  }
-}
-
-function syncTriggerRegistry(activeKeys) {
-  var registry = __loadTriggerRegistry();
-  var keep = {};
-  if (Array.isArray(activeKeys)) {
-    for (var i = 0; i < activeKeys.length; i++) {
-      keep[activeKeys[i]] = true;
-    }
-  }
-  var triggers = ScriptApp.getProjectTriggers();
-  var changed = false;
-
-  for (var key in registry) {
-    if (!keep[key]) {
-      var entry = registry[key];
-      var triggerId = entry && entry.id;
-      if (triggerId) {
-        for (var j = 0; j < triggers.length; j++) {
-          var trigger = triggers[j];
-          if (trigger && typeof trigger.getUniqueId === 'function' && trigger.getUniqueId() === triggerId) {
-            ScriptApp.deleteTrigger(trigger);
-            break;
-          }
-        }
-      }
-      delete registry[key];
-      changed = true;
-      logInfo('trigger_removed', { key: key });
-    }
-  }
-
-  if (changed) {
-    __saveTriggerRegistry(registry);
-  }
-}
-
-function clearTriggerByKey(triggerKey) {
-  if (!triggerKey) {
-    return;
-  }
-  var registry = __loadTriggerRegistry();
-  var entry = registry[triggerKey];
-  if (!entry) {
-    return;
-  }
-  var triggerId = entry.id;
-  var trigger = triggerId ? __findTriggerById(triggerId) : null;
-  if (trigger) {
-    ScriptApp.deleteTrigger(trigger);
-  }
-  delete registry[triggerKey];
-  __saveTriggerRegistry(registry);
-  logInfo('trigger_cleared', { key: triggerKey });
-}
-
-function buildTimeTrigger(config) {
-  config = config || {};
-  var handler = config.handler || 'main';
-  var triggerKey = config.key || handler + ':' + (config.frequency || 'time');
-  var description = config.description || null;
-
-  function builder() {
-    var timeBuilder = ScriptApp.newTrigger(handler).timeBased();
-    if (config.runAt) {
-      return timeBuilder.at(new Date(config.runAt)).create();
-    }
-    if (config.everyMinutes) {
-      timeBuilder.everyMinutes(Number(config.everyMinutes) || 1);
-    } else if (config.everyHours) {
-      timeBuilder.everyHours(Number(config.everyHours) || 1);
-    } else if (config.everyDays) {
-      timeBuilder.everyDays(Number(config.everyDays) || 1);
-    } else if (config.everyWeeks) {
-      timeBuilder.everyWeeks(Number(config.everyWeeks) || 1);
-    }
-    if (typeof config.atHour === 'number' && typeof timeBuilder.atHour === 'function') {
-      timeBuilder.atHour(config.atHour);
-    }
-    if (typeof config.nearMinute === 'number' && typeof timeBuilder.nearMinute === 'function') {
-      timeBuilder.nearMinute(config.nearMinute);
-    }
-    if (typeof config.onMonthDay === 'number' && typeof timeBuilder.onMonthDay === 'function') {
-      timeBuilder.onMonthDay(config.onMonthDay);
-    }
-    if (config.onWeekDay) {
-      var weekDay = config.onWeekDay;
-      if (typeof weekDay === 'string') {
-        weekDay = ScriptApp.WeekDay[weekDay] || ScriptApp.WeekDay.MONDAY;
-      }
-      if (weekDay) {
-        timeBuilder.onWeekDay(weekDay);
-      }
-    }
-    return timeBuilder.create();
-  }
-
-  if (config.ephemeral) {
-    return __createEphemeralTrigger(triggerKey, handler, 'time', builder, description);
-  }
-
-  return __ensureTrigger(triggerKey, handler, 'time', builder, description);
-}
-
-function buildPollingWrapper(triggerKey, executor) {
-  var stats = { processed: 0 };
-  logInfo('trigger_poll_start', { key: triggerKey });
-  var runtime = {
-    dispatch: function (payload) {
-      try {
-        main(payload || {});
-        stats.processed += 1;
-      } catch (error) {
-        logError('trigger_dispatch_failed', {
-          key: triggerKey,
-          message: error && error.message ? error.message : String(error)
-        });
-        throw error;
-      }
-    },
-    summary: function (partial) {
-      if (!partial || typeof partial !== 'object') {
-        return;
-      }
-      for (var key in partial) {
-        stats[key] = partial[key];
-      }
-    }
-  };
-
-  try {
-    var result = executor(runtime);
-    if (result && typeof result === 'object') {
-      runtime.summary(result);
-    }
-    logInfo('trigger_poll_success', { key: triggerKey, stats: stats });
-    return stats;
-  } catch (error) {
-    logError('trigger_poll_error', {
-      key: triggerKey,
-      message: error && error.message ? error.message : String(error)
-    });
-    throw error;
-  }
-}
-
-var __SECRET_HELPER_DEFAULT_OVERRIDES = {
-  defaults: {
-    AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
-    AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] },
-    ASANA_ACCESS_TOKEN: { aliases: ['apps_script__asana__access_token'] },
-    BOX_ACCESS_TOKEN: { aliases: ['apps_script__box__access_token'] },
-    DOCUSIGN_ACCESS_TOKEN: { aliases: ['apps_script__docusign__access_token'] },
-    DOCUSIGN_ACCOUNT_ID: { aliases: ['apps_script__docusign__account_id'] },
-    DOCUSIGN_BASE_URI: { aliases: ['apps_script__docusign__base_uri'] },
-    DROPBOX_ACCESS_TOKEN: { aliases: ['apps_script__dropbox__access_token'] },
-    GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] },
-    GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
-    GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] },
-    HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] },
-    JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
-    JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
-    JIRA_EMAIL: { aliases: ['apps_script__jira__email'] },
-    NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] },
-    SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
-    SALESFORCE_INSTANCE_URL: { aliases: ['apps_script__salesforce__instance_url'] },
-    SHOPIFY_ACCESS_TOKEN: { aliases: ['apps_script__shopify__access_token'] },
-    SHOPIFY_API_KEY: { aliases: ['apps_script__shopify__api_key'] },
-    SHOPIFY_SHOP_DOMAIN: { aliases: ['apps_script__shopify__shop_domain'] },
-    SLACK_ACCESS_TOKEN: { aliases: ['apps_script__slack__bot_token'], mapTo: 'SLACK_BOT_TOKEN' },
-    SLACK_BOT_TOKEN: { aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token'] },
-    SLACK_WEBHOOK_URL: { aliases: ['apps_script__slack__webhook_url'] },
-    SQUARE_ACCESS_TOKEN: { aliases: ['apps_script__square__access_token'] },
-    SQUARE_APPLICATION_ID: { aliases: ['apps_script__square__application_id'] },
-    SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] },
-    STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] },
-    TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
-    TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] },
-    TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
-    TWILIO_AUTH_TOKEN: { aliases: ['apps_script__twilio__auth_token'] },
-    TWILIO_FROM_NUMBER: { aliases: ['apps_script__twilio__from_number'] },
-    TYPEFORM_ACCESS_TOKEN: { aliases: ['apps_script__typeform__access_token'] }
-  },
-  connectors: {
-    airtable: {
-      AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
-      AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] }
-    },
-    asana: {
-      ASANA_ACCESS_TOKEN: { aliases: ['apps_script__asana__access_token'] }
-    },
-    box: {
-      BOX_ACCESS_TOKEN: { aliases: ['apps_script__box__access_token'] }
-    },
-    docusign: {
-      DOCUSIGN_ACCESS_TOKEN: { aliases: ['apps_script__docusign__access_token'] },
-      DOCUSIGN_ACCOUNT_ID: { aliases: ['apps_script__docusign__account_id'] },
-      DOCUSIGN_BASE_URI: { aliases: ['apps_script__docusign__base_uri'] }
-    },
-    dropbox: {
-      DROPBOX_ACCESS_TOKEN: { aliases: ['apps_script__dropbox__access_token'] }
-    },
-    github: {
-      GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] }
-    },
-    'google-admin': {
-      GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
-      GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] }
-    },
-    hubspot: {
-      HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] }
-    },
-    jira: {
-      JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
-      JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
-      JIRA_EMAIL: { aliases: ['apps_script__jira__email'] }
-    },
-    notion: {
-      NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] }
-    },
-    salesforce: {
-      SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
-      SALESFORCE_INSTANCE_URL: { aliases: ['apps_script__salesforce__instance_url'] }
-    },
-    shopify: {
-      SHOPIFY_ACCESS_TOKEN: { aliases: ['apps_script__shopify__access_token'] },
-      SHOPIFY_API_KEY: { aliases: ['apps_script__shopify__api_key'] },
-      SHOPIFY_SHOP_DOMAIN: { aliases: ['apps_script__shopify__shop_domain'] }
-    },
-    slack: {
-      SLACK_ACCESS_TOKEN: { aliases: ['apps_script__slack__bot_token'], mapTo: 'SLACK_BOT_TOKEN' },
-      SLACK_BOT_TOKEN: { aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token'] },
-      SLACK_WEBHOOK_URL: { aliases: ['apps_script__slack__webhook_url'] }
-    },
-    square: {
-      SQUARE_ACCESS_TOKEN: { aliases: ['apps_script__square__access_token'] },
-      SQUARE_APPLICATION_ID: { aliases: ['apps_script__square__application_id'] },
-      SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] }
-    },
-    stripe: {
-      STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] }
-    },
-    trello: {
-      TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
-      TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] }
-    },
-    twilio: {
-      TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
-      TWILIO_AUTH_TOKEN: { aliases: ['apps_script__twilio__auth_token'] },
-      TWILIO_FROM_NUMBER: { aliases: ['apps_script__twilio__from_number'] }
-    },
-    typeform: {
-      TYPEFORM_ACCESS_TOKEN: { aliases: ['apps_script__typeform__access_token'] }
-    }
-  }
-};
-var __CONNECTOR_OAUTH_TOKEN_METADATA = {
-  asana: {
-    displayName: 'Asana',
-    property: 'ASANA_ACCESS_TOKEN',
-    description: 'personal access token',
-    aliases: ['apps_script__asana__access_token']
-  },
-  box: {
-    displayName: 'Box',
-    property: 'BOX_ACCESS_TOKEN',
-    description: 'OAuth access token',
-    aliases: ['apps_script__box__access_token']
-  },
-  docusign: {
-    displayName: 'DocuSign',
-    property: 'DOCUSIGN_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__docusign__access_token']
-  },
-  dropbox: {
-    displayName: 'Dropbox',
-    property: 'DROPBOX_ACCESS_TOKEN',
-    description: 'OAuth access token',
-    aliases: ['apps_script__dropbox__access_token']
-  },
-  github: {
-    displayName: 'GitHub',
-    property: 'GITHUB_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__github__access_token']
-  },
-  'google-admin': {
-    displayName: 'Google Admin',
-    property: 'GOOGLE_ADMIN_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__google_admin__access_token']
-  },
-  jira: {
-    displayName: 'Jira',
-    property: 'JIRA_API_TOKEN',
-    description: 'API token',
-    aliases: ['apps_script__jira__api_token']
-  },
-  notion: {
-    displayName: 'Notion',
-    property: 'NOTION_ACCESS_TOKEN',
-    description: 'integration token',
-    aliases: ['apps_script__notion__access_token']
-  },
-  salesforce: {
-    displayName: 'Salesforce',
-    property: 'SALESFORCE_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__salesforce__access_token']
-  },
-  shopify: {
-    displayName: 'Shopify',
-    property: 'SHOPIFY_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__shopify__access_token']
-  },
-  slack: {
-    displayName: 'Slack',
-    property: 'SLACK_BOT_TOKEN',
-    description: 'bot token',
-    aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token']
-  },
-  square: {
-    displayName: 'Square',
-    property: 'SQUARE_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__square__access_token']
-  },
-  stripe: {
-    displayName: 'Stripe',
-    property: 'STRIPE_SECRET_KEY',
-    description: 'secret key',
-    aliases: ['apps_script__stripe__secret_key']
-  },
-  trello: {
-    displayName: 'Trello',
-    property: 'TRELLO_TOKEN',
-    description: 'OAuth token',
-    aliases: ['apps_script__trello__token']
-  },
-  twilio: {
-    displayName: 'Twilio',
-    property: 'TWILIO_AUTH_TOKEN',
-    description: 'auth token',
-    aliases: ['apps_script__twilio__auth_token']
-  },
-  typeform: {
-    displayName: 'Typeform',
-    property: 'TYPEFORM_ACCESS_TOKEN',
-    description: 'access token',
-    aliases: ['apps_script__typeform__access_token']
-  }
-};
-var __SECRET_HELPER_OVERRIDES = __mergeSecretHelperOverrides(
-  __SECRET_HELPER_DEFAULT_OVERRIDES,
-  typeof SECRET_HELPER_OVERRIDES !== 'undefined' && SECRET_HELPER_OVERRIDES ? SECRET_HELPER_OVERRIDES : {}
-);
-var __SECRET_VAULT_EXPORT_CACHE = null;
-var __SECRET_VAULT_EXPORT_PARSED = false;
-var __APPS_SCRIPT_SECRET_PREFIX = 'AS1.';
-var __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES = null;
-var __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES = null;
-
-function __coerceSecretArray(value) {
-  if (!value) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value.filter(function (item) {
-      return typeof item === 'string' && item.trim().length > 0;
-    });
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return [value.trim()];
-  }
-  return [];
-}
-
-function __cloneSecretOverrideEntry(entry) {
-  if (!entry || typeof entry !== 'object') {
-    return {};
-  }
-  var clone = {};
-  if (entry.aliases !== undefined) {
-    var aliases = __coerceSecretArray(entry.aliases);
-    if (aliases.length > 0) {
-      clone.aliases = aliases.slice();
-    }
-  }
-  for (var key in entry) {
-    if (!Object.prototype.hasOwnProperty.call(entry, key) || key === 'aliases') {
-      continue;
-    }
-    clone[key] = entry[key];
-  }
-  return clone;
-}
-
-function __mergeSecretOverrideEntry(baseEntry, overrideEntry) {
-  var merged = __cloneSecretOverrideEntry(baseEntry);
-  if (!overrideEntry || typeof overrideEntry !== 'object') {
-    return merged;
-  }
-  if (overrideEntry.aliases !== undefined) {
-    var existing = merged.aliases ? merged.aliases.slice() : [];
-    var additions = __coerceSecretArray(overrideEntry.aliases);
-    for (var i = 0; i < additions.length; i++) {
-      var alias = additions[i];
-      if (existing.indexOf(alias) === -1) {
-        existing.push(alias);
-      }
-    }
-    if (existing.length > 0) {
-      merged.aliases = existing;
-    } else {
-      delete merged.aliases;
-    }
-  }
-  for (var key in overrideEntry) {
-    if (!Object.prototype.hasOwnProperty.call(overrideEntry, key) || key === 'aliases') {
-      continue;
-    }
-    merged[key] = overrideEntry[key];
-  }
-  return merged;
-}
-
-function __mergeSecretHelperOverrides(baseOverrides, extraOverrides) {
-  var result = { defaults: {}, connectors: {} };
-
-  if (baseOverrides && baseOverrides.defaults) {
-    for (var baseDefaultKey in baseOverrides.defaults) {
-      if (!Object.prototype.hasOwnProperty.call(baseOverrides.defaults, baseDefaultKey)) {
-        continue;
-      }
-      result.defaults[baseDefaultKey] = __cloneSecretOverrideEntry(baseOverrides.defaults[baseDefaultKey]);
-    }
-  }
-
-  if (baseOverrides && baseOverrides.connectors) {
-    for (var baseConnectorKey in baseOverrides.connectors) {
-      if (!Object.prototype.hasOwnProperty.call(baseOverrides.connectors, baseConnectorKey)) {
-        continue;
-      }
-      var baseConnectorOverrides = baseOverrides.connectors[baseConnectorKey];
-      var connectorClone = {};
-      for (var baseProperty in baseConnectorOverrides) {
-        if (!Object.prototype.hasOwnProperty.call(baseConnectorOverrides, baseProperty)) {
-          continue;
-        }
-        connectorClone[baseProperty] = __cloneSecretOverrideEntry(baseConnectorOverrides[baseProperty]);
-      }
-      result.connectors[baseConnectorKey] = connectorClone;
-    }
-  }
-
-  if (extraOverrides && extraOverrides.defaults) {
-    for (var extraDefaultKey in extraOverrides.defaults) {
-      if (!Object.prototype.hasOwnProperty.call(extraOverrides.defaults, extraDefaultKey)) {
-        continue;
-      }
-      result.defaults[extraDefaultKey] = __mergeSecretOverrideEntry(
-        result.defaults[extraDefaultKey],
-        extraOverrides.defaults[extraDefaultKey]
-      );
-    }
-  }
-
-  if (extraOverrides && extraOverrides.connectors) {
-    for (var extraConnectorKey in extraOverrides.connectors) {
-      if (!Object.prototype.hasOwnProperty.call(extraOverrides.connectors, extraConnectorKey)) {
-        continue;
-      }
-      var extraConnectorOverrides = extraOverrides.connectors[extraConnectorKey];
-      if (!result.connectors[extraConnectorKey]) {
-        result.connectors[extraConnectorKey] = {};
-      }
-      for (var extraProperty in extraConnectorOverrides) {
-        if (!Object.prototype.hasOwnProperty.call(extraConnectorOverrides, extraProperty)) {
-          continue;
-        }
-        result.connectors[extraConnectorKey][extraProperty] = __mergeSecretOverrideEntry(
-          result.connectors[extraConnectorKey][extraProperty],
-          extraConnectorOverrides[extraProperty]
-        );
-      }
-    }
-  }
-
-  if (baseOverrides) {
-    for (var baseKey in baseOverrides) {
-      if (!Object.prototype.hasOwnProperty.call(baseOverrides, baseKey)) {
-        continue;
-      }
-      if (baseKey === 'defaults' || baseKey === 'connectors') {
-        continue;
-      }
-      result[baseKey] = baseOverrides[baseKey];
-    }
-  }
-
-  if (extraOverrides) {
-    for (var extraKey in extraOverrides) {
-      if (!Object.prototype.hasOwnProperty.call(extraOverrides, extraKey)) {
-        continue;
-      }
-      if (extraKey === 'defaults' || extraKey === 'connectors') {
-        continue;
-      }
-      result[extraKey] = extraOverrides[extraKey];
-    }
-  }
-
-  return result;
-}
-
-function __loadVaultExports() {
-  if (__SECRET_VAULT_EXPORT_PARSED) {
-    return __SECRET_VAULT_EXPORT_CACHE;
-  }
-  __SECRET_VAULT_EXPORT_PARSED = true;
-
-  var scriptProps = PropertiesService.getScriptProperties();
-  var raw =
-    scriptProps.getProperty('__VAULT_EXPORTS__') ||
-    scriptProps.getProperty('VAULT_EXPORTS_JSON') ||
-    scriptProps.getProperty('VAULT_EXPORTS');
-
-  if (!raw) {
-    __SECRET_VAULT_EXPORT_CACHE = {};
-    return __SECRET_VAULT_EXPORT_CACHE;
-  }
-
-  try {
-    var parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') {
-      if (parsed.secrets && typeof parsed.secrets === 'object') {
-        __SECRET_VAULT_EXPORT_CACHE = parsed.secrets;
-      } else {
-        __SECRET_VAULT_EXPORT_CACHE = parsed;
-      }
-    } else {
-      __SECRET_VAULT_EXPORT_CACHE = {};
-    }
-  } catch (error) {
-    logWarn('vault_exports_parse_failed', { message: error && error.message ? error.message : String(error) });
-    __SECRET_VAULT_EXPORT_CACHE = {};
-  }
-
-  return __SECRET_VAULT_EXPORT_CACHE;
-}
-
-function __stringToBytes(value) {
-  return Utilities.newBlob(value || '', 'text/plain').getBytes();
-}
-
-function __ensureSecretConstants() {
-  if (!__APPS_SCRIPT_SECRET_STREAM_INFO_BYTES) {
-    __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES = __stringToBytes('apps-script-secret-stream-v1');
-  }
-  if (!__APPS_SCRIPT_SECRET_METADATA_INFO_BYTES) {
-    __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES = __stringToBytes('apps-script-secret-metadata-v1');
-  }
-}
-
-function __concatByteArrays(chunks) {
-  var total = 0;
-  for (var i = 0; i < chunks.length; i++) {
-    var chunk = chunks[i];
-    if (chunk && chunk.length) {
-      total += chunk.length;
-    }
-  }
-  var result = new Array(total);
-  var offset = 0;
-  for (var j = 0; j < chunks.length; j++) {
-    var segment = chunks[j];
-    if (!segment) {
-      continue;
-    }
-    for (var k = 0; k < segment.length; k++) {
-      result[offset++] = segment[k];
-    }
-  }
-  return result;
-}
-
-function __numberToUint32Bytes(value) {
-  return [
-    (value >>> 24) & 0xff,
-    (value >>> 16) & 0xff,
-    (value >>> 8) & 0xff,
-    value & 0xff,
-  ];
-}
-
-function __bytesToHex(bytes) {
-  var hex = '';
-  for (var i = 0; i < bytes.length; i++) {
-    var piece = (bytes[i] & 0xff).toString(16);
-    if (piece.length < 2) {
-      piece = '0' + piece;
-    }
-    hex += piece;
-  }
-  return hex;
-}
-
-function __bytesToString(bytes) {
-  return Utilities.newBlob(bytes, 'application/octet-stream').getDataAsString('utf-8');
-}
-
-function __constantTimeEqualsHex(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) {
-    return false;
-  }
-  var result = 0;
-  for (var i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
-}
-
-function __deriveSecretKeystream(sharedKeyBytes, ivBytes, length) {
-  __ensureSecretConstants();
-  var blockSize = 32;
-  var blocks = Math.ceil(length / blockSize);
-  var output = new Array(blocks * blockSize);
-
-  for (var i = 0; i < blocks; i++) {
-    var counterBytes = __numberToUint32Bytes(i);
-    var digest = Utilities.computeHmacSha256(
-      __concatByteArrays([ivBytes, counterBytes, __APPS_SCRIPT_SECRET_STREAM_INFO_BYTES]),
-      sharedKeyBytes
-    );
-    for (var j = 0; j < digest.length; j++) {
-      output[i * blockSize + j] = digest[j];
-    }
-  }
-
-  output.length = length;
-  return output;
-}
-
-function __decodeAppsScriptSecret(value) {
-  if (typeof value !== 'string' || value.indexOf(__APPS_SCRIPT_SECRET_PREFIX) !== 0) {
-    return null;
-  }
-
-  var encoded = value.substring(__APPS_SCRIPT_SECRET_PREFIX.length);
-  var tokenBytes = Utilities.base64Decode(encoded);
-  var tokenJson = __bytesToString(tokenBytes);
-  var token;
-
-  try {
-    token = JSON.parse(tokenJson);
-  } catch (error) {
-    throw new Error('Failed to parse sealed credential token: ' + error);
-  }
-
-  if (!token || typeof token !== 'object' || token.version !== 1) {
-    throw new Error('Unrecognized sealed credential token format.');
-  }
-
-  var now = Date.now();
-  if (typeof token.expiresAt === 'number' && now > token.expiresAt) {
-    throw new Error('Credential token for ' + (token.purpose || 'credential') + ' has expired.');
-  }
-
-  var sharedKeyBytes = Utilities.base64Decode(token.sharedKey);
-  var ivBytes = Utilities.base64Decode(token.iv);
-  var ciphertextBytes = Utilities.base64Decode(token.ciphertext);
-
-  __ensureSecretConstants();
-  var macInput = __concatByteArrays([
-    __APPS_SCRIPT_SECRET_METADATA_INFO_BYTES,
-    ivBytes,
-    ciphertextBytes,
-    __stringToBytes(String(token.issuedAt)),
-    __stringToBytes(String(token.expiresAt)),
-    __stringToBytes(token.purpose || ''),
-  ]);
-
-  var macBytes = Utilities.computeHmacSha256(macInput, sharedKeyBytes);
-  var macHex = __bytesToHex(macBytes);
-  if (!__constantTimeEqualsHex(macHex, token.hmac)) {
-    throw new Error('Credential token integrity check failed for ' + (token.purpose || 'credential') + '.');
-  }
-
-  var keystream = __deriveSecretKeystream(sharedKeyBytes, ivBytes, ciphertextBytes.length);
-  var plaintextBytes = new Array(ciphertextBytes.length);
-  for (var i = 0; i < ciphertextBytes.length; i++) {
-    plaintextBytes[i] = ciphertextBytes[i] ^ keystream[i];
-  }
-
-  var payloadString = __bytesToString(plaintextBytes);
-  var sealedPayload;
-  try {
-    sealedPayload = JSON.parse(payloadString);
-  } catch (error) {
-    throw new Error('Failed to decode sealed credential payload: ' + error);
-  }
-
-  if (
-    !sealedPayload ||
-    typeof sealedPayload !== 'object' ||
-    sealedPayload.issuedAt !== token.issuedAt ||
-    sealedPayload.expiresAt !== token.expiresAt ||
-    (sealedPayload.purpose || null) !== (token.purpose || null)
-  ) {
-    throw new Error('Credential token metadata mismatch for ' + (token.purpose || 'credential') + '.');
-  }
-
-  return {
-    payload: sealedPayload.payload,
-    issuedAt: token.issuedAt,
-    expiresAt: token.expiresAt,
-    purpose: token.purpose || null,
-  };
-}
-
-function getSecret(propertyName, opts) {
-  var options = opts || {};
-  var key = typeof propertyName === 'string' ? propertyName.trim() : '';
-
-  if (!key) {
-    throw new Error('getSecret requires a propertyName');
-  }
-
-  var connectorKey = options.connectorKey || options.connector || null;
-  if (!connectorKey) {
-    var normalizedKey = key.replace(/^_+/, '');
-    var underscoreIndex = normalizedKey.indexOf('_');
-    if (underscoreIndex > 0) {
-      connectorKey = normalizedKey.substring(0, underscoreIndex).toLowerCase();
-    }
-  }
-  var candidates = [];
-  var seen = {};
-
-  function pushCandidate(name) {
-    if (!name || typeof name !== 'string') {
-      return;
-    }
-    var trimmed = name.trim();
-    if (!trimmed || seen[trimmed]) {
-      return;
-    }
-    seen[trimmed] = true;
-    candidates.push(trimmed);
-  }
-
-  pushCandidate(key);
-
-  var defaultOverrides = (__SECRET_HELPER_OVERRIDES.defaults && __SECRET_HELPER_OVERRIDES.defaults[key]) || null;
-  var connectorOverrides =
-    (connectorKey &&
-      __SECRET_HELPER_OVERRIDES.connectors &&
-      __SECRET_HELPER_OVERRIDES.connectors[connectorKey] &&
-      __SECRET_HELPER_OVERRIDES.connectors[connectorKey][key]) ||
-    null;
-
-  __coerceSecretArray(defaultOverrides && defaultOverrides.aliases).forEach(pushCandidate);
-  __coerceSecretArray(connectorOverrides && connectorOverrides.aliases).forEach(pushCandidate);
-  __coerceSecretArray(options.aliases || options.alias).forEach(pushCandidate);
-
-  if (defaultOverrides && defaultOverrides.mapTo) {
-    pushCandidate(defaultOverrides.mapTo);
-  }
-  if (connectorOverrides && connectorOverrides.mapTo) {
-    pushCandidate(connectorOverrides.mapTo);
-  }
-  if (options.mapTo) {
-    pushCandidate(options.mapTo);
-  }
-
-  var scriptProps = PropertiesService.getScriptProperties();
-  var resolvedKey = null;
-  var value = null;
-  var source = null;
-
-  for (var i = 0; i < candidates.length; i++) {
-    var candidate = candidates[i];
-    var candidateValue = scriptProps.getProperty(candidate);
-    if (candidateValue !== null && candidateValue !== undefined && String(candidateValue).trim() !== '') {
-      resolvedKey = candidate;
-      value = candidateValue;
-      source = 'script_properties';
-      break;
-    }
-  }
-
-  if (value === null) {
-    var vaultSecrets = __loadVaultExports();
-    if (vaultSecrets && typeof vaultSecrets === 'object') {
-      for (var j = 0; j < candidates.length; j++) {
-        var vaultKey = candidates[j];
-        if (vaultSecrets.hasOwnProperty(vaultKey) && vaultSecrets[vaultKey] !== undefined && vaultSecrets[vaultKey] !== null) {
-          resolvedKey = vaultKey;
-          value = String(vaultSecrets[vaultKey]);
-          source = 'vault_exports';
-          break;
-        }
-      }
-    }
-  }
-
-  if (value === null && defaultOverrides && defaultOverrides.defaultValue !== undefined) {
-    value = defaultOverrides.defaultValue;
-    source = 'default_override';
-    resolvedKey = key;
-  }
-
-  if (value === null && connectorOverrides && connectorOverrides.defaultValue !== undefined) {
-    value = connectorOverrides.defaultValue;
-    source = 'connector_override';
-    resolvedKey = key;
-  }
-
-  if (value === null && options.defaultValue !== undefined) {
-    value = options.defaultValue;
-    source = 'default_option';
-    resolvedKey = key;
-  }
-
-  if (value === null || value === undefined || String(value).trim() === '') {
-    logError('secret_missing', {
-      property: key,
-      connectorKey: connectorKey || null,
-      triedKeys: candidates
-    });
-    throw new Error('Missing required secret "' + key + '"');
-  }
-
-  if (options.logResolved) {
-    logInfo('secret_resolved', {
-      property: key,
-      connectorKey: connectorKey || null,
-      resolvedKey: resolvedKey,
-      source: source
-    });
-  }
-
-  if (typeof value === 'string') {
-    var sealed = __decodeAppsScriptSecret(value);
-    if (sealed) {
-      if (options.logResolved) {
-        logInfo('sealed_secret_validated', {
-          property: key,
-          connector: connectorKey || null,
-          purpose: sealed.purpose,
-          expiresAt: new Date(sealed.expiresAt).toISOString(),
-        });
-      }
-      value = sealed.payload;
-    }
-  }
-
-  return value;
-}
-
-function requireOAuthToken(connectorKey, opts) {
-  var options = opts || {};
-  var key = typeof connectorKey === 'string' ? connectorKey.trim().toLowerCase() : '';
-
-  if (!key) {
-    throw new Error('requireOAuthToken requires a connectorKey');
-  }
-
-  var metadata = __CONNECTOR_OAUTH_TOKEN_METADATA[key];
-  if (!metadata) {
-    throw new Error('requireOAuthToken is not configured for connector "' + key + '"');
-  }
-
-  var scopes = __coerceSecretArray(options.scopes);
-
-  try {
-    return getSecret(metadata.property, { connectorKey: key });
-  } catch (error) {
-    var message = error && error.message ? String(error.message) : '';
-    if (message.indexOf('Missing required secret') === 0) {
-      var requirement = metadata.description || 'OAuth token';
-      var article = 'a';
-      if (requirement && /^[aeiou]/i.test(requirement)) {
-        article = 'an';
-      }
-      var aliasList = __coerceSecretArray(metadata.aliases);
-      var aliasText = aliasList.length > 0 ? ' (aliases: ' + aliasList.join(', ') + ')' : '';
-      var scopeText = scopes.length > 0 ? ' Required scopes: ' + scopes.join(', ') + '.' : '';
-      throw new Error(
-        metadata.displayName +
-          ' requires ' +
-          article +
-          ' ' +
-          requirement +
-          '. Configure ' +
-          metadata.property +
-          aliasText +
-          ' in Script Properties.' +
-          scopeText
-      );
-    }
-    throw error;
-  }
-}
-
-function withRetries(fn, options) {
-  var config = options || {};
-  var maxAttempts = config.maxAttempts || __HTTP_RETRY_DEFAULTS.maxAttempts;
-  var initialDelayMs = config.initialDelayMs || __HTTP_RETRY_DEFAULTS.initialDelayMs;
-  var backoffFactor = config.backoffFactor || __HTTP_RETRY_DEFAULTS.backoffFactor;
-  var maxDelayMs = config.maxDelayMs || __HTTP_RETRY_DEFAULTS.maxDelayMs;
-  var attempt = 0;
-  var delay = initialDelayMs;
-
-  while (true) {
-    try {
-      return fn(attempt + 1);
-    } catch (error) {
-      attempt++;
-      var message = error && error.message ? error.message : String(error);
-      if (attempt >= maxAttempts) {
-        logError('http_retry_exhausted', { attempts: attempt, message: message });
-        throw error;
-      }
-      logWarn('http_retry', { attempt: attempt, delayMs: delay, message: message });
-      Utilities.sleep(delay);
-      delay = Math.min(delay * backoffFactor, maxDelayMs);
-    }
-  }
-}
-
-function fetchJson(url, requestOptions) {
-  var options = requestOptions || {};
-  var method = options.method || 'GET';
-  var headers = options.headers || {};
-  var payload = options.payload;
-  var contentType = options.contentType || options['contentType'];
-  var muteHttpExceptions = options.muteHttpExceptions !== undefined ? options.muteHttpExceptions : true;
-  var followRedirects = options.followRedirects;
-  var start = new Date().getTime();
-
-  var fetchOptions = {
-    method: method,
-    headers: headers,
-    muteHttpExceptions: muteHttpExceptions
-  };
-
-  if (typeof payload !== 'undefined') {
-    fetchOptions.payload = payload;
-  }
-
-  if (typeof contentType !== 'undefined') {
-    fetchOptions.contentType = contentType;
-  }
-
-  if (typeof followRedirects !== 'undefined') {
-    fetchOptions.followRedirects = followRedirects;
-  }
-
-  if (options.escape !== undefined) {
-    fetchOptions.escape = options.escape;
-  }
-
-  var response = UrlFetchApp.fetch(url, fetchOptions);
-  var durationMs = new Date().getTime() - start;
-  var status = response.getResponseCode();
-  var text = response.getContentText();
-  var allHeaders = response.getAllHeaders();
-  var success = status >= 200 && status < 300;
-
-  var logDetails = {
-    url: url,
-    method: method,
-    status: status,
-    durationMs: durationMs
-  };
-
-  if (!success) {
-    logDetails.response = text;
-  }
-
-  logStructured(success ? 'INFO' : 'ERROR', success ? 'http_success' : 'http_failure', logDetails);
-
-  var responseContentType = '';
-  if (allHeaders['Content-Type']) {
-    responseContentType = String(allHeaders['Content-Type']).toLowerCase();
-  } else if (allHeaders['content-type']) {
-    responseContentType = String(allHeaders['content-type']).toLowerCase();
-  }
-
-  var body = text;
-  if (responseContentType.indexOf('application/json') !== -1) {
-    try {
-      body = text ? JSON.parse(text) : null;
-    } catch (error) {
-      logWarn('http_parse_failure', { url: url, message: error && error.message ? error.message : String(error) });
-    }
-  }
-
-  if (!success) {
-    var err = new Error('Request failed with status ' + status);
-    var errorWithDetails = err;
-    errorWithDetails.status = status;
-    errorWithDetails.body = body;
-    errorWithDetails.text = text;
-    errorWithDetails.headers = allHeaders;
-    throw errorWithDetails;
-  }
-
-  return {
-    ok: success,
     status: status,
     headers: allHeaders,
     body: body,
@@ -2909,9 +2448,29 @@ function scheduledTrigger() {
     var triggerTime = new Date().toISOString();
 
     logInfo('time_trigger_fired', { frequency: frequency, unit: unit, triggerTime: triggerTime });
-    runtime.summary({ frequency: frequency, unit: unit, triggerTime: triggerTime });
-    runtime.dispatch({ triggerTime: triggerTime, frequency: frequency, unit: unit });
-    return { dispatched: 1, triggerTime: triggerTime, frequency: frequency, unit: unit };
+    var batch = runtime.dispatchBatch([{ triggerTime: triggerTime, frequency: frequency, unit: unit }], function (entry) {
+      return entry;
+    });
+
+    runtime.state.lastRunAt = triggerTime;
+    runtime.state.lastSchedule = { frequency: frequency, unit: unit };
+
+    runtime.summary({
+      frequency: frequency,
+      unit: unit,
+      triggerTime: triggerTime,
+      runsAttempted: batch.attempted,
+      runsDispatched: batch.succeeded,
+      runsFailed: batch.failed
+    });
+    return {
+      triggerTime: triggerTime,
+      frequency: frequency,
+      unit: unit,
+      runsAttempted: batch.attempted,
+      runsDispatched: batch.succeeded,
+      runsFailed: batch.failed
+    };
   });
 }
 
@@ -3074,8 +2633,26 @@ function executeDelayedContext() {
     scriptProps.deleteProperty('short_delay_trigger');
 
     logInfo('delay_trigger_execute', { contextKey: contextKey });
-    runtime.dispatch(ctx);
-    return { resumed: true, contextKey: contextKey };
+    const batch = runtime.dispatchBatch([{ context: ctx, contextKey: contextKey }], function (entry) {
+      return entry.context;
+    });
+
+    runtime.state.lastRunAt = new Date().toISOString();
+    runtime.state.lastContextKey = contextKey;
+    runtime.state.lastResumeCount = batch.succeeded;
+
+    runtime.summary({
+      resumed: batch.succeeded > 0,
+      resumedCount: batch.succeeded,
+      contextKey: contextKey,
+      resumeFailures: batch.failed
+    });
+    return {
+      resumed: batch.succeeded > 0,
+      resumedCount: batch.succeeded,
+      resumeFailures: batch.failed,
+      contextKey: contextKey
+    };
   });
 }
 
