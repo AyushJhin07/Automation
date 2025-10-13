@@ -151,6 +151,7 @@ Salesforce workflows must populate both properties before deployment. Access tok
 | Zoho Books | `ZOHO_BOOKS_AUTH_TOKEN` | — | — |
 | Zoho CRM | `ZOHO_CRM_ACCESS_TOKEN` | — | — |
 | zoom | `ZOOM_API_KEY`<br>`ZOOM_API_SECRET` | — | — |
+| Zoom Enhanced | `ZOOM_ENHANCED_ACCESS_TOKEN` | `ZOOM_ENHANCED_CLIENT_ID`<br>`ZOOM_ENHANCED_CLIENT_SECRET`<br>`ZOOM_ENHANCED_ACCOUNT_ID`<br>`ZOOM_ENHANCED_JWT_TOKEN`<br>`ZOOM_ENHANCED_USER_ID`<br>`ZOOM_ENHANCED_DEFAULT_MEETING_ID`<br>`ZOOM_ENHANCED_DEFAULT_WEBINAR_ID` | — |
 
 <!-- END GENERATED APPS SCRIPT PROPERTIES -->
 
