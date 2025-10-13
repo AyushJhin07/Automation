@@ -311,7 +311,47 @@
         "trigger.airtable-enhanced:record_created",
         "trigger.airtable-enhanced:record_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_CHAT_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-chat:create_membership",
+            "action.google-chat:create_space",
+            "action.google-chat:delete_message",
+            "action.google-chat:get_message",
+            "action.google-chat:get_space",
+            "action.google-chat:list_members",
+            "action.google-chat:list_messages",
+            "action.google-chat:list_spaces",
+            "action.google-chat:send_message",
+            "action.google-chat:test_connection",
+            "action.google-chat:update_message"
+          ],
+          "triggers": [],
+          "contexts": [
+            "requireOAuthToken"
+          ]
+        },
+        {
+          "name": "GOOGLE_CHAT_DEFAULT_SPACE",
+          "optional": true,
+          "operations": [
+            "action.google-chat:create_membership",
+            "action.google-chat:get_space",
+            "action.google-chat:list_members",
+            "action.google-chat:list_messages",
+            "action.google-chat:send_message"
+          ],
+          "triggers": [
+            "trigger.google-chat:message_created",
+            "trigger.google-chat:membership_created"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {
