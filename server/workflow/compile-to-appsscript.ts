@@ -1211,6 +1211,7 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
     GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] },
     HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] },
+    HUBSPOT_ACCESS_TOKEN: { aliases: ['apps_script__hubspot__access_token', 'HUBSPOT_API_KEY', 'apps_script__hubspot__api_key'] },
     JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
     JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
     JIRA_EMAIL: { aliases: ['apps_script__jira__email'] },
@@ -4110,7 +4111,7 @@ function ${functionName}(inputData, params) {
   console.log('💬 Executing Slack: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const botToken = getSecret('SLACK_BOT_TOKEN');
+  const botToken = requireOAuthToken('slack');
   const webhookUrl = getSecret('SLACK_WEBHOOK_URL');
   
   try {
@@ -4493,12 +4494,7 @@ function ${functionName}(inputData, params) {
   console.log('☁️ Executing Dropbox: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const dropboxToken = getSecret('DROPBOX_ACCESS_TOKEN');
-  
-  if (!dropboxToken) {
-    console.warn('⚠️ Dropbox access token not configured, skipping operation');
-    return { ...inputData, dropboxSkipped: true, error: 'Missing access token' };
-  }
+  const dropboxToken = requireOAuthToken('dropbox');
   
   try {
     switch (operation) {
@@ -5614,13 +5610,8 @@ function ${functionName}(inputData, params) {
   console.log('☁️ Executing Salesforce: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN');
+  const accessToken = requireOAuthToken('salesforce');
   const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL');
-  
-  if (!accessToken || !instanceUrl) {
-    console.warn('⚠️ Salesforce credentials not configured');
-    return { ...inputData, salesforceSkipped: true, error: 'Missing OAuth credentials' };
-  }
   
   try {
     switch (operation) {
@@ -5910,12 +5901,7 @@ function ${functionName}(inputData, params) {
   const operation = params.operation || '${operation}';
   const baseUrl = getSecret('JIRA_BASE_URL');
   const email = getSecret('JIRA_EMAIL');
-  const apiToken = getSecret('JIRA_API_TOKEN');
-  
-  if (!baseUrl || !email || !apiToken) {
-    console.warn('⚠️ Jira credentials not configured');
-    return { ...inputData, jiraSkipped: true, error: 'Missing Jira credentials' };
-  }
+  const apiToken = requireOAuthToken('jira');
   
   try {
     switch (operation) {
@@ -7675,12 +7661,7 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Stripe: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = getSecret('STRIPE_SECRET_KEY');
-  
-  if (!apiKey) {
-    console.warn('⚠️ Stripe secret key not configured');
-    return { ...inputData, stripeSkipped: true, error: 'Missing secret key' };
-  }
+  const apiKey = requireOAuthToken('stripe');
   
   try {
     const baseUrl = 'https://api.stripe.com/v1';
@@ -7846,13 +7827,8 @@ function ${functionName}(inputData, params) {
   
   const operation = params.operation || '${operation}';
   const accountSid = getSecret('TWILIO_ACCOUNT_SID');
-  const authToken = getSecret('TWILIO_AUTH_TOKEN');
+  const authToken = requireOAuthToken('twilio');
   const fromNumber = getSecret('TWILIO_FROM_NUMBER');
-  
-  if (!accountSid || !authToken) {
-    console.warn('⚠️ Twilio credentials not configured');
-    return { ...inputData, twilioSkipped: true, error: 'Missing account SID or auth token' };
-  }
   
   try {
     const baseUrl = \`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}\`;
@@ -9405,14 +9381,9 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Square: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = getSecret('SQUARE_ACCESS_TOKEN');
+  const accessToken = requireOAuthToken('square');
   const applicationId = getSecret('SQUARE_APPLICATION_ID');
   const environment = getSecret('SQUARE_ENVIRONMENT', { defaultValue: 'sandbox' });
-  
-  if (!accessToken || !applicationId) {
-    console.warn('⚠️ Square credentials not configured');
-    return { ...inputData, squareSkipped: true, error: 'Missing access token or application ID' };
-  }
   
   try {
     const baseUrl = environment === 'production' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
@@ -9513,12 +9484,7 @@ function ${functionName}(inputData, params) {
   console.log('💳 Executing Stripe Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const apiKey = getSecret('STRIPE_SECRET_KEY');
-  
-  if (!apiKey) {
-    console.warn('⚠️ Stripe Enhanced secret key not configured');
-    return { ...inputData, stripeEnhancedSkipped: true, error: 'Missing secret key' };
-  }
+  const apiKey = requireOAuthToken('stripe');
   
   try {
     const baseUrl = 'https://api.stripe.com/v1';
@@ -9626,12 +9592,7 @@ function ${functionName}(inputData, params) {
   console.log('📋 Executing Asana Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = getSecret('ASANA_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ Asana access token not configured');
-    return { ...inputData, asanaSkipped: true, error: 'Missing access token' };
-  }
+  const accessToken = requireOAuthToken('asana');
   
   try {
     const baseUrl = 'https://app.asana.com/api/1.0';
@@ -9833,12 +9794,7 @@ function ${functionName}(inputData, params) {
   
   const operation = params.operation || '${operation}';
   const apiKey = getSecret('TRELLO_API_KEY');
-  const token = getSecret('TRELLO_TOKEN');
-  
-  if (!apiKey || !token) {
-    console.warn('⚠️ Trello credentials not configured');
-    return { ...inputData, trelloSkipped: true, error: 'Missing API key or token' };
-  }
+  const token = requireOAuthToken('trello');
   
   try {
     const baseUrl = 'https://api.trello.com/1';
@@ -10088,12 +10044,7 @@ function ${functionName}(inputData, params) {
   console.log('📝 Executing Notion Enhanced: ${node.name || operation}');
   
   const operation = params.operation || '${operation}';
-  const accessToken = getSecret('NOTION_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ Notion access token not configured');
-    return { ...inputData, notionSkipped: true, error: 'Missing access token' };
-  }
+  const accessToken = requireOAuthToken('notion');
   
   try {
     const baseUrl = 'https://api.notion.com/v1';
@@ -10333,12 +10284,7 @@ function generateGitHubEnhancedFunction(functionName: string, node: WorkflowNode
 function ${functionName}(inputData, params) {
   console.log('🐙 Executing GitHub Enhanced: ${params.operation || '${operation}'}');
   
-  const accessToken = getSecret('GITHUB_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ GitHub access token not configured');
-    return { ...inputData, githubSkipped: true, error: 'Missing access token' };
-  }
+  const accessToken = requireOAuthToken('github');
   
   try {
     const operation = params.operation || '${operation}';
@@ -10424,12 +10370,7 @@ function generateTypeformFunction(functionName: string, node: WorkflowNode): str
 function ${functionName}(inputData, params) {
   console.log('📝 Executing Typeform: ${params.operation || '${operation}'}');
   
-  const accessToken = getSecret('TYPEFORM_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ Typeform access token not configured');
-    return { ...inputData, typeformSkipped: true, error: 'Missing access token' };
-  }
+  const accessToken = requireOAuthToken('typeform');
   
   try {
     const operation = params.operation || '${operation}';
@@ -10786,7 +10727,7 @@ function generateDocuSignFunction(functionName: string, node: WorkflowNode): str
 
   return `
 function ${esc(functionName)}(inputData, params) {
-  const accessToken = params.accessToken || getSecret('DOCUSIGN_ACCESS_TOKEN');
+  const accessToken = params.accessToken || requireOAuthToken('docusign');
   const accountId = params.accountId || getSecret('DOCUSIGN_ACCOUNT_ID');
   const baseUri = (params.baseUri || getSecret('DOCUSIGN_BASE_URI', { defaultValue: 'https://na3.docusign.net/restapi' })).replace(/\/$/, '');
 
@@ -11044,7 +10985,7 @@ function generateGoogleAdminFunction(functionName: string, node: WorkflowNode): 
 
   return `
 function ${functionName}(inputData, params) {
-  const accessToken = params.accessToken || getSecret('GOOGLE_ADMIN_ACCESS_TOKEN');
+  const accessToken = params.accessToken || requireOAuthToken('google-admin');
   const customerId = params.customer || getSecret('GOOGLE_ADMIN_CUSTOMER_ID', { defaultValue: 'my_customer' });
 
   if (!accessToken) {
@@ -11906,12 +11847,7 @@ function generateSlackFunction(functionName: string, node: WorkflowNode): string
 function ${functionName}(inputData, params) {
   console.log('💬 Executing Slack: ${params.operation || '${operation}'}');
   
-  const botToken = getSecret('SLACK_BOT_TOKEN');
-  
-  if (!botToken) {
-    console.warn('⚠️ Slack bot token not configured');
-    return { ...inputData, slackSkipped: true, error: 'Missing bot token' };
-  }
+  const botToken = requireOAuthToken('slack');
   
   try {
     const operation = params.operation || '${operation}';
@@ -11937,12 +11873,7 @@ function ${functionName}(inputData, params) {
   console.log('📌 Executing Trello: ${params.operation || '${operation}'}');
   
   const apiKey = getSecret('TRELLO_API_KEY');
-  const token = getSecret('TRELLO_TOKEN');
-  
-  if (!apiKey || !token) {
-    console.warn('⚠️ Trello credentials not configured');
-    return { ...inputData, trelloSkipped: true, error: 'Missing credentials' };
-  }
+  const token = requireOAuthToken('trello');
   
   try {
     const operation = params.operation || '${operation}';
@@ -13009,13 +12940,8 @@ function generateShopifyFunction(functionName: string, node: WorkflowNode): stri
 function ${functionName}(inputData, params) {
   console.log('🛍️ Executing Shopify: ${params.operation || '${operation}'}');
   
-  const accessToken = getSecret('SHOPIFY_ACCESS_TOKEN');
+  const accessToken = requireOAuthToken('shopify');
   const shopDomain = getSecret('SHOPIFY_SHOP_DOMAIN');
-  
-  if (!accessToken || !shopDomain) {
-    console.warn('⚠️ Shopify credentials not configured');
-    return { ...inputData, shopifySkipped: true, error: 'Missing credentials' };
-  }
   
   try {
     const operation = params.operation || '${operation}';
@@ -15049,7 +14975,7 @@ function buildSalesforceAction(slug: string, config: any, options: SalesforceAct
 function step_action_salesforce_${slug}(ctx) {
   ctx = ctx || {};
   const config = ${configLiteral};
-  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN', { connectorKey: 'salesforce' });
+  const accessToken = requireOAuthToken('salesforce');
   const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL', { connectorKey: 'salesforce' });
 ${salesforceHelperPrelude()}${prelude}  try {
 ${tryLines}
@@ -19115,7 +19041,7 @@ function onSlackMessageReceived() {
   // Stripe - Payments
   'action.stripe:create_payment': (c) => `
 function step_createStripePayment(ctx) {
-  const apiKey = getSecret('STRIPE_SECRET_KEY');
+  const apiKey = requireOAuthToken('stripe');
 
   const scriptProperties =
     typeof PropertiesService !== 'undefined' &&
@@ -19263,13 +19189,8 @@ function step_createStripePayment(ctx) {
   // Shopify - E-commerce
   'action.shopify:create_order': (c) => `
 function step_createShopifyOrder(ctx) {
-  const accessToken = getSecret('SHOPIFY_ACCESS_TOKEN', { connectorKey: 'shopify' });
+  const accessToken = requireOAuthToken('shopify');
   const shopDomain = getSecret('SHOPIFY_SHOP_DOMAIN', { connectorKey: 'shopify' });
-
-  if (!accessToken || !shopDomain) {
-    logWarn('shopify_missing_credentials', { message: 'Shopify credentials not configured' });
-    return ctx;
-  }
 
   const apiVersion = '${esc(c.apiVersion || '2024-01')}';
 
@@ -20144,13 +20065,8 @@ function step_createMagentoCustomer(ctx) {
   'action.jira:create_issue': (c) => `
 function step_createJiraIssue(ctx) {
   const email = getSecret('JIRA_EMAIL');
-  const apiToken = getSecret('JIRA_API_TOKEN');
+  const apiToken = requireOAuthToken('jira');
   const baseUrl = getSecret('JIRA_BASE_URL');
-
-  if (!email || !apiToken || !baseUrl) {
-    logWarn('jira_missing_credentials', { message: 'Jira credentials not configured' });
-    return ctx;
-  }
 
   const projectKeyTemplate = ${c.projectKey !== undefined ? `'${escapeForSingleQuotes(String(c.projectKey))}'` : "'{{project.key}}'"};
   const summaryTemplate = ${c.summary !== undefined ? `'${escapeForSingleQuotes(String(c.summary))}'` : "'{{summary}}'"};
@@ -20255,12 +20171,7 @@ function step_createJiraIssue(ctx) {
 
   'action.asana:create_task': (c) => `
 function step_createAsanaTask(ctx) {
-  const accessToken = getSecret('ASANA_ACCESS_TOKEN');
-
-  if (!accessToken) {
-    logWarn('asana_missing_access_token', { message: 'Asana access token not configured' });
-    return ctx;
-  }
+  const accessToken = requireOAuthToken('asana');
 
   const nameTemplate = ${c.name !== undefined ? `'${escapeForSingleQuotes(String(c.name))}'` : "'{{task.name}}'"};
   const notesTemplate = ${c.notes !== undefined ? `'${escapeForSingleQuotes(String(c.notes))}'` : "'Created by automation'"};
@@ -20354,12 +20265,7 @@ function step_createAsanaTask(ctx) {
   'action.trello:create_card': (c) => `
 function step_createTrelloCard(ctx) {
   const apiKey = getSecret('TRELLO_API_KEY');
-  const token = getSecret('TRELLO_TOKEN');
-
-  if (!apiKey || !token) {
-    logWarn('trello_missing_credentials', { message: 'Trello credentials not configured' });
-    return ctx;
-  }
+  const token = requireOAuthToken('trello');
 
   const nameTemplate = ${c.name !== undefined ? `'${escapeForSingleQuotes(String(c.name))}'` : "'{{card.name}}'"};
   const descriptionTemplate = ${c.description !== undefined ? `'${escapeForSingleQuotes(String(c.description))}'` : "'Created by automation'"};
@@ -21391,12 +21297,7 @@ function step_createGitHubIssue(ctx) {
   // BATCH 9: Forms & Surveys
   'action.typeform:create_form': (c) => `
 function step_createTypeform(ctx) {
-  const accessToken = getSecret('TYPEFORM_ACCESS_TOKEN', { connectorKey: 'typeform' });
-
-  if (!accessToken) {
-    logWarn('typeform_missing_access_token', { message: 'Typeform access token not configured' });
-    return ctx;
-  }
+  const accessToken = requireOAuthToken('typeform');
 
   const titleTemplate = ${c.title !== undefined ? `'${escapeForSingleQuotes(String(c.title))}'` : 'null'};
   if (!titleTemplate) {
@@ -21635,11 +21536,7 @@ function step_createCalendlyEvent(ctx) {
   // PHASE 1: Storage & Cloud Applications
   'action.dropbox:upload_file': (c) => `
 function step_uploadDropboxFile(ctx) {
-  const accessToken = getSecret('DROPBOX_ACCESS_TOKEN');
-
-  if (!accessToken) {
-    throw new Error('Missing Dropbox access token. Configure DROPBOX_ACCESS_TOKEN in Script Properties.');
-  }
+  const accessToken = requireOAuthToken('dropbox');
 
   const config = {
     path: ${c.path !== undefined ? `'${escapeForSingleQuotes(String(c.path))}'` : 'null'},
@@ -21902,11 +21799,7 @@ function step_createDriveFolder(ctx) {
 
   'action.box:upload_file': (c) => `
 function step_uploadBoxFile(ctx) {
-  const accessToken = getSecret('BOX_ACCESS_TOKEN');
-
-  if (!accessToken) {
-    throw new Error('Missing Box access token. Configure BOX_ACCESS_TOKEN in Script Properties.');
-  }
+  const accessToken = requireOAuthToken('box');
 
   const config = {
     parentId: ${c.parent_folder_id !== undefined
@@ -23457,13 +23350,8 @@ function step_sendNewRelicEvent(ctx) {
   // PHASE 7: Document Management Applications
   'action.docusign:send_envelope': (c) => `
 function step_sendDocuSignEnvelope(ctx) {
-  const accessToken = getSecret('DOCUSIGN_ACCESS_TOKEN');
+  const accessToken = requireOAuthToken('docusign');
   const accountId = getSecret('DOCUSIGN_ACCOUNT_ID');
-  
-  if (!accessToken || !accountId) {
-    console.warn('⚠️ DocuSign credentials not configured');
-    return ctx;
-  }
   
   console.log('📄 DocuSign envelope sent to:', interpolate('${c.recipientEmail || '{{email}}'}', ctx));
   ctx.docusignEnvelopeId = 'docusign_' + Date.now();
@@ -23676,12 +23564,7 @@ function step_createPayPalPayment(ctx) {
 
   'action.square:create_payment': (c) => `
 function step_createSquarePayment(ctx) {
-  const accessToken = getSecret('SQUARE_ACCESS_TOKEN');
-  
-  if (!accessToken) {
-    console.warn('⚠️ Square access token not configured');
-    return ctx;
-  }
+  const accessToken = requireOAuthToken('square');
   
   console.log('🟩 Square payment created for amount:', '${c.amount || '10.00'}');
   ctx.squarePaymentId = 'square_' + Date.now();
