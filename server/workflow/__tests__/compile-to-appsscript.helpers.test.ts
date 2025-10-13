@@ -367,10 +367,218 @@ function buildPollingWrapper(triggerKey, executor) {
   }
 }
 
-var __SECRET_HELPER_OVERRIDES =
-  typeof SECRET_HELPER_OVERRIDES !== 'undefined' && SECRET_HELPER_OVERRIDES
-    ? SECRET_HELPER_OVERRIDES
-    : {};
+var __SECRET_HELPER_DEFAULT_OVERRIDES = {
+  defaults: {
+    AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
+    AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] },
+    ASANA_ACCESS_TOKEN: { aliases: ['apps_script__asana__access_token'] },
+    BOX_ACCESS_TOKEN: { aliases: ['apps_script__box__access_token'] },
+    DOCUSIGN_ACCESS_TOKEN: { aliases: ['apps_script__docusign__access_token'] },
+    DOCUSIGN_ACCOUNT_ID: { aliases: ['apps_script__docusign__account_id'] },
+    DOCUSIGN_BASE_URI: { aliases: ['apps_script__docusign__base_uri'] },
+    DROPBOX_ACCESS_TOKEN: { aliases: ['apps_script__dropbox__access_token'] },
+    GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] },
+    GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
+    GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] },
+    HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] },
+    JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
+    JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
+    JIRA_EMAIL: { aliases: ['apps_script__jira__email'] },
+    NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] },
+    SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
+    SALESFORCE_INSTANCE_URL: { aliases: ['apps_script__salesforce__instance_url'] },
+    SHOPIFY_ACCESS_TOKEN: { aliases: ['apps_script__shopify__access_token'] },
+    SHOPIFY_API_KEY: { aliases: ['apps_script__shopify__api_key'] },
+    SHOPIFY_SHOP_DOMAIN: { aliases: ['apps_script__shopify__shop_domain'] },
+    SLACK_ACCESS_TOKEN: { aliases: ['apps_script__slack__bot_token'], mapTo: 'SLACK_BOT_TOKEN' },
+    SLACK_BOT_TOKEN: { aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token'] },
+    SLACK_WEBHOOK_URL: { aliases: ['apps_script__slack__webhook_url'] },
+    SQUARE_ACCESS_TOKEN: { aliases: ['apps_script__square__access_token'] },
+    SQUARE_APPLICATION_ID: { aliases: ['apps_script__square__application_id'] },
+    SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] },
+    STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] },
+    TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
+    TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] },
+    TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
+    TWILIO_AUTH_TOKEN: { aliases: ['apps_script__twilio__auth_token'] },
+    TWILIO_FROM_NUMBER: { aliases: ['apps_script__twilio__from_number'] },
+    TYPEFORM_ACCESS_TOKEN: { aliases: ['apps_script__typeform__access_token'] }
+  },
+  connectors: {
+    airtable: {
+      AIRTABLE_API_KEY: { aliases: ['apps_script__airtable__api_key'] },
+      AIRTABLE_BASE_ID: { aliases: ['apps_script__airtable__base_id'] }
+    },
+    asana: {
+      ASANA_ACCESS_TOKEN: { aliases: ['apps_script__asana__access_token'] }
+    },
+    box: {
+      BOX_ACCESS_TOKEN: { aliases: ['apps_script__box__access_token'] }
+    },
+    docusign: {
+      DOCUSIGN_ACCESS_TOKEN: { aliases: ['apps_script__docusign__access_token'] },
+      DOCUSIGN_ACCOUNT_ID: { aliases: ['apps_script__docusign__account_id'] },
+      DOCUSIGN_BASE_URI: { aliases: ['apps_script__docusign__base_uri'] }
+    },
+    dropbox: {
+      DROPBOX_ACCESS_TOKEN: { aliases: ['apps_script__dropbox__access_token'] }
+    },
+    github: {
+      GITHUB_ACCESS_TOKEN: { aliases: ['apps_script__github__access_token'] }
+    },
+    'google-admin': {
+      GOOGLE_ADMIN_ACCESS_TOKEN: { aliases: ['apps_script__google_admin__access_token'] },
+      GOOGLE_ADMIN_CUSTOMER_ID: { aliases: ['apps_script__google_admin__customer_id'] }
+    },
+    hubspot: {
+      HUBSPOT_API_KEY: { aliases: ['apps_script__hubspot__api_key'] }
+    },
+    jira: {
+      JIRA_API_TOKEN: { aliases: ['apps_script__jira__api_token'] },
+      JIRA_BASE_URL: { aliases: ['apps_script__jira__base_url'] },
+      JIRA_EMAIL: { aliases: ['apps_script__jira__email'] }
+    },
+    notion: {
+      NOTION_ACCESS_TOKEN: { aliases: ['apps_script__notion__access_token'] }
+    },
+    salesforce: {
+      SALESFORCE_ACCESS_TOKEN: { aliases: ['apps_script__salesforce__access_token'] },
+      SALESFORCE_INSTANCE_URL: { aliases: ['apps_script__salesforce__instance_url'] }
+    },
+    shopify: {
+      SHOPIFY_ACCESS_TOKEN: { aliases: ['apps_script__shopify__access_token'] },
+      SHOPIFY_API_KEY: { aliases: ['apps_script__shopify__api_key'] },
+      SHOPIFY_SHOP_DOMAIN: { aliases: ['apps_script__shopify__shop_domain'] }
+    },
+    slack: {
+      SLACK_ACCESS_TOKEN: { aliases: ['apps_script__slack__bot_token'], mapTo: 'SLACK_BOT_TOKEN' },
+      SLACK_BOT_TOKEN: { aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token'] },
+      SLACK_WEBHOOK_URL: { aliases: ['apps_script__slack__webhook_url'] }
+    },
+    square: {
+      SQUARE_ACCESS_TOKEN: { aliases: ['apps_script__square__access_token'] },
+      SQUARE_APPLICATION_ID: { aliases: ['apps_script__square__application_id'] },
+      SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] }
+    },
+    stripe: {
+      STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] }
+    },
+    trello: {
+      TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
+      TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] }
+    },
+    twilio: {
+      TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
+      TWILIO_AUTH_TOKEN: { aliases: ['apps_script__twilio__auth_token'] },
+      TWILIO_FROM_NUMBER: { aliases: ['apps_script__twilio__from_number'] }
+    },
+    typeform: {
+      TYPEFORM_ACCESS_TOKEN: { aliases: ['apps_script__typeform__access_token'] }
+    }
+  }
+};
+var __CONNECTOR_OAUTH_TOKEN_METADATA = {
+  asana: {
+    displayName: 'Asana',
+    property: 'ASANA_ACCESS_TOKEN',
+    description: 'personal access token',
+    aliases: ['apps_script__asana__access_token']
+  },
+  box: {
+    displayName: 'Box',
+    property: 'BOX_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__box__access_token']
+  },
+  docusign: {
+    displayName: 'DocuSign',
+    property: 'DOCUSIGN_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__docusign__access_token']
+  },
+  dropbox: {
+    displayName: 'Dropbox',
+    property: 'DROPBOX_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__dropbox__access_token']
+  },
+  github: {
+    displayName: 'GitHub',
+    property: 'GITHUB_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__github__access_token']
+  },
+  'google-admin': {
+    displayName: 'Google Admin',
+    property: 'GOOGLE_ADMIN_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__google_admin__access_token']
+  },
+  jira: {
+    displayName: 'Jira',
+    property: 'JIRA_API_TOKEN',
+    description: 'API token',
+    aliases: ['apps_script__jira__api_token']
+  },
+  notion: {
+    displayName: 'Notion',
+    property: 'NOTION_ACCESS_TOKEN',
+    description: 'integration token',
+    aliases: ['apps_script__notion__access_token']
+  },
+  salesforce: {
+    displayName: 'Salesforce',
+    property: 'SALESFORCE_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__salesforce__access_token']
+  },
+  shopify: {
+    displayName: 'Shopify',
+    property: 'SHOPIFY_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__shopify__access_token']
+  },
+  slack: {
+    displayName: 'Slack',
+    property: 'SLACK_BOT_TOKEN',
+    description: 'bot token',
+    aliases: ['SLACK_ACCESS_TOKEN', 'apps_script__slack__bot_token']
+  },
+  square: {
+    displayName: 'Square',
+    property: 'SQUARE_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__square__access_token']
+  },
+  stripe: {
+    displayName: 'Stripe',
+    property: 'STRIPE_SECRET_KEY',
+    description: 'secret key',
+    aliases: ['apps_script__stripe__secret_key']
+  },
+  trello: {
+    displayName: 'Trello',
+    property: 'TRELLO_TOKEN',
+    description: 'OAuth token',
+    aliases: ['apps_script__trello__token']
+  },
+  twilio: {
+    displayName: 'Twilio',
+    property: 'TWILIO_AUTH_TOKEN',
+    description: 'auth token',
+    aliases: ['apps_script__twilio__auth_token']
+  },
+  typeform: {
+    displayName: 'Typeform',
+    property: 'TYPEFORM_ACCESS_TOKEN',
+    description: 'access token',
+    aliases: ['apps_script__typeform__access_token']
+  }
+};
+var __SECRET_HELPER_OVERRIDES = __mergeSecretHelperOverrides(
+  __SECRET_HELPER_DEFAULT_OVERRIDES,
+  typeof SECRET_HELPER_OVERRIDES !== 'undefined' && SECRET_HELPER_OVERRIDES ? SECRET_HELPER_OVERRIDES : {}
+);
 var __SECRET_VAULT_EXPORT_CACHE = null;
 var __SECRET_VAULT_EXPORT_PARSED = false;
 var __APPS_SCRIPT_SECRET_PREFIX = 'AS1.';
@@ -390,6 +598,144 @@ function __coerceSecretArray(value) {
     return [value.trim()];
   }
   return [];
+}
+
+function __cloneSecretOverrideEntry(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return {};
+  }
+  var clone = {};
+  if (entry.aliases !== undefined) {
+    var aliases = __coerceSecretArray(entry.aliases);
+    if (aliases.length > 0) {
+      clone.aliases = aliases.slice();
+    }
+  }
+  for (var key in entry) {
+    if (!Object.prototype.hasOwnProperty.call(entry, key) || key === 'aliases') {
+      continue;
+    }
+    clone[key] = entry[key];
+  }
+  return clone;
+}
+
+function __mergeSecretOverrideEntry(baseEntry, overrideEntry) {
+  var merged = __cloneSecretOverrideEntry(baseEntry);
+  if (!overrideEntry || typeof overrideEntry !== 'object') {
+    return merged;
+  }
+  if (overrideEntry.aliases !== undefined) {
+    var existing = merged.aliases ? merged.aliases.slice() : [];
+    var additions = __coerceSecretArray(overrideEntry.aliases);
+    for (var i = 0; i < additions.length; i++) {
+      var alias = additions[i];
+      if (existing.indexOf(alias) === -1) {
+        existing.push(alias);
+      }
+    }
+    if (existing.length > 0) {
+      merged.aliases = existing;
+    } else {
+      delete merged.aliases;
+    }
+  }
+  for (var key in overrideEntry) {
+    if (!Object.prototype.hasOwnProperty.call(overrideEntry, key) || key === 'aliases') {
+      continue;
+    }
+    merged[key] = overrideEntry[key];
+  }
+  return merged;
+}
+
+function __mergeSecretHelperOverrides(baseOverrides, extraOverrides) {
+  var result = { defaults: {}, connectors: {} };
+
+  if (baseOverrides && baseOverrides.defaults) {
+    for (var baseDefaultKey in baseOverrides.defaults) {
+      if (!Object.prototype.hasOwnProperty.call(baseOverrides.defaults, baseDefaultKey)) {
+        continue;
+      }
+      result.defaults[baseDefaultKey] = __cloneSecretOverrideEntry(baseOverrides.defaults[baseDefaultKey]);
+    }
+  }
+
+  if (baseOverrides && baseOverrides.connectors) {
+    for (var baseConnectorKey in baseOverrides.connectors) {
+      if (!Object.prototype.hasOwnProperty.call(baseOverrides.connectors, baseConnectorKey)) {
+        continue;
+      }
+      var baseConnectorOverrides = baseOverrides.connectors[baseConnectorKey];
+      var connectorClone = {};
+      for (var baseProperty in baseConnectorOverrides) {
+        if (!Object.prototype.hasOwnProperty.call(baseConnectorOverrides, baseProperty)) {
+          continue;
+        }
+        connectorClone[baseProperty] = __cloneSecretOverrideEntry(baseConnectorOverrides[baseProperty]);
+      }
+      result.connectors[baseConnectorKey] = connectorClone;
+    }
+  }
+
+  if (extraOverrides && extraOverrides.defaults) {
+    for (var extraDefaultKey in extraOverrides.defaults) {
+      if (!Object.prototype.hasOwnProperty.call(extraOverrides.defaults, extraDefaultKey)) {
+        continue;
+      }
+      result.defaults[extraDefaultKey] = __mergeSecretOverrideEntry(
+        result.defaults[extraDefaultKey],
+        extraOverrides.defaults[extraDefaultKey]
+      );
+    }
+  }
+
+  if (extraOverrides && extraOverrides.connectors) {
+    for (var extraConnectorKey in extraOverrides.connectors) {
+      if (!Object.prototype.hasOwnProperty.call(extraOverrides.connectors, extraConnectorKey)) {
+        continue;
+      }
+      var extraConnectorOverrides = extraOverrides.connectors[extraConnectorKey];
+      if (!result.connectors[extraConnectorKey]) {
+        result.connectors[extraConnectorKey] = {};
+      }
+      for (var extraProperty in extraConnectorOverrides) {
+        if (!Object.prototype.hasOwnProperty.call(extraConnectorOverrides, extraProperty)) {
+          continue;
+        }
+        result.connectors[extraConnectorKey][extraProperty] = __mergeSecretOverrideEntry(
+          result.connectors[extraConnectorKey][extraProperty],
+          extraConnectorOverrides[extraProperty]
+        );
+      }
+    }
+  }
+
+  if (baseOverrides) {
+    for (var baseKey in baseOverrides) {
+      if (!Object.prototype.hasOwnProperty.call(baseOverrides, baseKey)) {
+        continue;
+      }
+      if (baseKey === 'defaults' || baseKey === 'connectors') {
+        continue;
+      }
+      result[baseKey] = baseOverrides[baseKey];
+    }
+  }
+
+  if (extraOverrides) {
+    for (var extraKey in extraOverrides) {
+      if (!Object.prototype.hasOwnProperty.call(extraOverrides, extraKey)) {
+        continue;
+      }
+      if (extraKey === 'defaults' || extraKey === 'connectors') {
+        continue;
+      }
+      result[extraKey] = extraOverrides[extraKey];
+    }
+  }
+
+  return result;
 }
 
 function __loadVaultExports() {
@@ -735,6 +1081,51 @@ function getSecret(propertyName, opts) {
   }
 
   return value;
+}
+
+function requireOAuthToken(connectorKey, opts) {
+  var options = opts || {};
+  var key = typeof connectorKey === 'string' ? connectorKey.trim().toLowerCase() : '';
+
+  if (!key) {
+    throw new Error('requireOAuthToken requires a connectorKey');
+  }
+
+  var metadata = __CONNECTOR_OAUTH_TOKEN_METADATA[key];
+  if (!metadata) {
+    throw new Error('requireOAuthToken is not configured for connector "' + key + '"');
+  }
+
+  var scopes = __coerceSecretArray(options.scopes);
+
+  try {
+    return getSecret(metadata.property, { connectorKey: key });
+  } catch (error) {
+    var message = error && error.message ? String(error.message) : '';
+    if (message.indexOf('Missing required secret') === 0) {
+      var requirement = metadata.description || 'OAuth token';
+      var article = 'a';
+      if (requirement && /^[aeiou]/i.test(requirement)) {
+        article = 'an';
+      }
+      var aliasList = __coerceSecretArray(metadata.aliases);
+      var aliasText = aliasList.length > 0 ? ' (aliases: ' + aliasList.join(', ') + ')' : '';
+      var scopeText = scopes.length > 0 ? ' Required scopes: ' + scopes.join(', ') + '.' : '';
+      throw new Error(
+        metadata.displayName +
+          ' requires ' +
+          article +
+          ' ' +
+          requirement +
+          '. Configure ' +
+          metadata.property +
+          aliasText +
+          ' in Script Properties.' +
+          scopeText
+      );
+    }
+    throw error;
+  }
 }
 
 function withRetries(fn, options) {
