@@ -195,7 +195,50 @@
       "triggers": [
         "trigger.adp:worker_hired"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "ADP_CLIENT_ID",
+          "optional": false,
+          "operations": [
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker",
+            "trigger.adp:worker_hired"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ADP_CLIENT_SECRET",
+          "optional": false,
+          "operations": [
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker",
+            "trigger.adp:worker_hired"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "ADP_COMPANY_CODES",
+          "optional": false,
+          "operations": [
+            "action.adp:create_worker",
+            "action.adp:get_worker",
+            "action.adp:test_connection",
+            "action.adp:update_worker",
+            "trigger.adp:worker_hired"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

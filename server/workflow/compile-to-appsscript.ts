@@ -15803,9 +15803,671 @@ ${payloadBlock}
 `;
 }
 
+function adpHelperPrelude(): string {
+  return `
+  const defaultBaseUrl = 'https://api.adp.com';
+  const scopes = ['api', 'hr.worker.read', 'hr.worker.write', 'payroll.payroll_processing', 'payroll.payroll_reports.read'];
+  getSecret('ADP_CLIENT_ID', { connectorKey: 'adp' });
+  getSecret('ADP_CLIENT_SECRET', { connectorKey: 'adp' });
+  const accessToken = requireOAuthToken('adp', { scopes: scopes });
+  const baseUrl = resolveBaseUrl();
+  const tenantContextHeader = resolveTenantContext();
+  const defaultHeaders = {
+    Authorization: 'Bearer ' + accessToken,
+    Accept: 'application/json'
+  };
+  if (tenantContextHeader) {
+    defaultHeaders['ADP-Context'] = tenantContextHeader;
+  }
+
+  function resolveBaseUrl() {
+    const contextual = ctx && typeof ctx.adpBaseUrl === 'string' ? ctx.adpBaseUrl : null;
+    const configured = config && typeof config.baseUrl === 'string' ? config.baseUrl : null;
+    const fallback = contextual || configured || defaultBaseUrl;
+    const text = String(fallback || defaultBaseUrl).trim();
+    return (text || defaultBaseUrl).replace(/\/$/, '');
+  }
+
+  function resolveTenantContext() {
+    const ctxValue =
+      ctx && Object.prototype.hasOwnProperty.call(ctx, 'adpTenantContext')
+        ? ctx.adpTenantContext
+        : ctx && Object.prototype.hasOwnProperty.call(ctx, 'adpContext')
+          ? ctx.adpContext
+          : ctx && Object.prototype.hasOwnProperty.call(ctx, 'adpCompanyCodes')
+            ? ctx.adpCompanyCodes
+            : null;
+
+    const configValue =
+      config && Object.prototype.hasOwnProperty.call(config, 'tenantContext')
+        ? config.tenantContext
+        : config && Object.prototype.hasOwnProperty.call(config, 'companyCodes')
+          ? config.companyCodes
+          : null;
+
+    let propertyValue = null;
+    try {
+      propertyValue = getSecret('ADP_COMPANY_CODES', { connectorKey: 'adp' });
+    } catch (_error) {
+      propertyValue = null;
+    }
+
+    const resolvedSource =
+      ctxValue !== null && ctxValue !== undefined
+        ? ctxValue
+        : configValue !== null && configValue !== undefined
+          ? configValue
+          : propertyValue;
+
+    const contextString = normaliseContext(resolvedSource);
+    if (!contextString) {
+      throw new Error('ADP requires company codes. Configure ADP_COMPANY_CODES in Script Properties or provide companyCodes.');
+    }
+    return contextString;
+  }
+
+  function normaliseContext(raw) {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+    if (typeof raw === 'string') {
+      var trimmed = raw.trim();
+      if (!trimmed) {
+        return '';
+      }
+      if (trimmed.charAt(0) === '{') {
+        return trimmed;
+      }
+      try {
+        var parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          return JSON.stringify(parsed);
+        }
+      } catch (_error) {
+        // ignore parse failure
+      }
+      var parts = trimmed.split(/[\s,]+/).filter(function (item) { return item; });
+      if (parts.length === 0) {
+        return '';
+      }
+      return JSON.stringify({ 'com.adp.company.v1': parts });
+    }
+    if (Array.isArray(raw)) {
+      var values = [];
+      for (var i = 0; i < raw.length; i++) {
+        var value = raw[i];
+        if (value === null || value === undefined) {
+          continue;
+        }
+        var text = String(value).trim();
+        if (text) {
+          values.push(text);
+        }
+      }
+      if (values.length === 0) {
+        return '';
+      }
+      return JSON.stringify({ 'com.adp.company.v1': values });
+    }
+    if (typeof raw === 'object') {
+      try {
+        return JSON.stringify(raw);
+      } catch (_error) {
+        return '';
+      }
+    }
+    return '';
+  }
+
+  function resolveOptionalString(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      const template = value.trim();
+      if (!template) {
+        return '';
+      }
+      return interpolate(template, ctx).trim();
+    }
+    return String(value).trim();
+  }
+
+  function resolveWorkerId(configValue, message) {
+    let resolved = resolveOptionalString(configValue);
+    if (!resolved) {
+      const fallbackSources = [
+        ctx && ctx.workerId,
+        ctx && ctx.worker_id,
+        ctx && ctx.adpWorkerId,
+        ctx && ctx.worker && ctx.worker.workerId,
+        ctx && ctx.worker && ctx.worker.worker_id,
+        ctx && ctx.worker && ctx.worker.associateOID,
+        ctx && ctx.worker && ctx.worker.associateOid,
+        ctx && ctx.worker && ctx.worker.associateId
+      ];
+      for (let i = 0; i < fallbackSources.length; i++) {
+        const candidate = fallbackSources[i];
+        if (candidate === null || candidate === undefined) {
+          continue;
+        }
+        const text = String(candidate).trim();
+        if (text) {
+          resolved = text;
+          break;
+        }
+      }
+    }
+    if (!resolved) {
+      throw new Error(message);
+    }
+    return resolved;
+  }
+
+  function resolveStructured(value) {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === null) {
+      return null;
+    }
+    if (typeof value === 'string') {
+      const template = value.trim();
+      if (!template) {
+        return '';
+      }
+      return interpolate(template, ctx);
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) {
+          continue;
+        }
+        result[key] = resolveStructured(value[key]);
+      }
+      return result;
+    }
+    return value;
+  }
+
+  function mergeObjects(target, source) {
+    if (!target || typeof target !== 'object' || Array.isArray(target)) {
+      return target;
+    }
+    if (!source || typeof source !== 'object' || Array.isArray(source)) {
+      return target;
+    }
+    for (const key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) {
+        continue;
+      }
+      const value = source[key];
+      if (value === undefined) {
+        continue;
+      }
+      if (
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        target[key] &&
+        typeof target[key] === 'object' &&
+        !Array.isArray(target[key])
+      ) {
+        mergeObjects(target[key], value);
+      } else {
+        target[key] = value;
+      }
+    }
+    return target;
+  }
+
+  function buildPayloadFromSources(sources) {
+    const target = {};
+    for (let i = 0; i < sources.length; i++) {
+      const source = resolveStructured(sources[i]);
+      if (source && typeof source === 'object' && !Array.isArray(source)) {
+        mergeObjects(target, source);
+      }
+    }
+    return target;
+  }
+
+  function adpRequest(method, endpoint, payload, extraHeaders) {
+    const requestOptions = {
+      method: method,
+      muteHttpExceptions: true,
+      headers: Object.assign({}, defaultHeaders, extraHeaders || {})
+    };
+    if (payload !== undefined && payload !== null) {
+      requestOptions.payload = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      if (!requestOptions.headers['Content-Type']) {
+        requestOptions.headers['Content-Type'] = 'application/json';
+      }
+    }
+    const response = withRetries(function () {
+      return UrlFetchApp.fetch(baseUrl + endpoint, requestOptions);
+    });
+    const status = response.getResponseCode();
+    const text = response.getContentText() || '';
+    let data;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (_error) {
+        data = text;
+      }
+    } else {
+      data = {};
+    }
+    return { status: status, data: data, text: text };
+  }
+
+  function adpRequestJson(method, endpoint, payload, extraHeaders) {
+    const result = adpRequest(method, endpoint, payload, extraHeaders);
+    if (result.status >= 200 && result.status < 300) {
+      return result.data;
+    }
+    logError('adp_request_failed', {
+      operation: operationLabel,
+      status: result.status,
+      endpoint: endpoint,
+      method: method
+    });
+    throw new Error('ADP request failed with status ' + result.status + '.');
+  }
+`;
+}
+
+function buildAdpAction(operationKey: string, config: any, bodyLines: string[]): string {
+  const functionName = `step_${operationKey.replace(/[.:]/g, '_')}`;
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const bodyBlock = bodyLines.map(line => `    ${line}`).join('\n');
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const operationLabel = '${operationKey}';
+${adpHelperPrelude()}  try {
+${bodyBlock}
+  } catch (error) {
+    logError('adp_operation_failed', {
+      operation: operationLabel,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+`;
+}
+
+function buildAdpTrigger(operationKey: string, config: any, bodyLines: string[]): string {
+  const functionName = `trigger_${operationKey.replace(/[.:]/g, '_')}`;
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const bodyBlock = bodyLines.map(line => `    ${line}`).join('\n');
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const operationLabel = '${operationKey}';
+  try {
+${bodyBlock}
+  } catch (error) {
+    logError('adp_trigger_failed', {
+      operation: operationLabel,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
+  }
+}
+`;
+}
+
+const ADP_REAL_OPS: Record<string, (c: any) => string> = {
+  'action.adp:create_worker': (c) =>
+    buildAdpAction('action.adp:create_worker', c, [
+      "const payload = buildPayloadFromSources([",
+      "  config && config.payload,",
+      "  config && config.worker,",
+      "  config && config.body,",
+      "  config && config.person,",
+      "  ctx && ctx.adpWorkerPayload,",
+      "  ctx && ctx.worker,",
+      "  ctx && ctx.payload",
+      "]);",
+      "if (!payload || Object.keys(payload).length === 0) {",
+      "  throw new Error('ADP create_worker requires worker details. Provide node parameters or ctx.worker.');",
+      "}",
+      "const response = adpRequestJson('POST', '/events/hr/v2/workers', payload);",
+      "ctx.adpWorkerCreateResponse = response;",
+      "let createdWorker = null;",
+      "if (response && typeof response === 'object') {",
+      "  if (response.worker) {",
+      "    createdWorker = response.worker;",
+      "  } else if (response.data && response.data.worker) {",
+      "    createdWorker = response.data.worker;",
+      "  } else if (response.event && response.event.data && response.event.data.worker) {",
+      "    createdWorker = response.event.data.worker;",
+      "  }",
+      "}",
+      "if (createdWorker && typeof createdWorker === 'object') {",
+      "  ctx.worker = createdWorker;",
+      "  const candidateIds = [",
+      "    createdWorker.workerId,",
+      "    createdWorker.worker_id,",
+      "    createdWorker.associateOID,",
+      "    createdWorker.associateOid,",
+      "    createdWorker.associateId",
+      "  ];",
+      "  for (let i = 0; i < candidateIds.length; i++) {",
+      "    const value = candidateIds[i];",
+      "    if (value !== null && value !== undefined) {",
+      "      const text = String(value).trim();",
+      "      if (text) {
+      "        ctx.workerId = text;",
+      "        ctx.adpWorkerId = text;",
+      "        break;",
+      "      }",
+      "    }",
+      "  }",
+      "}",
+      "logInfo('adp_create_worker_success', { workerId: ctx.adpWorkerId || null });",
+      "return ctx;",
+    ]),
+  'action.adp:get_worker': (c) =>
+    buildAdpAction('action.adp:get_worker', c, [
+      "const workerId = resolveWorkerId(config && (Object.prototype.hasOwnProperty.call(config, 'workerId') ? config.workerId : config && Object.prototype.hasOwnProperty.call(config, 'worker_id') ? config.worker_id : undefined), 'ADP get_worker requires a worker ID.');",
+      "const response = adpRequestJson('GET', '/hr/v2/workers/' + encodeURIComponent(workerId));",
+      "let worker = null;",
+      "if (response && typeof response === 'object') {",
+      "  if (Array.isArray(response.workers) && response.workers.length > 0) {",
+      "    worker = response.workers[0];",
+      "  } else if (response.worker) {",
+      "    worker = response.worker;",
+      "  } else if (response.data && response.data.worker) {",
+      "    worker = response.data.worker;",
+      "  }",
+      "}",
+      "ctx.adpWorker = worker || response;",
+      "ctx.worker = worker || response;",
+      "ctx.workerId = workerId;",
+      "ctx.adpWorkerId = workerId;",
+      "logInfo('adp_get_worker_success', { workerId: workerId });",
+      "return ctx;",
+    ]),
+  'action.adp:test_connection': (c) =>
+    buildAdpAction('action.adp:test_connection', c, [
+      "const data = adpRequestJson('GET', '/hr/v2/workers?$top=1');",
+      "const workers = data && typeof data === 'object' && Array.isArray(data.workers) ? data.workers : [];",
+      "ctx.adpConnectionTest = { success: true, sample: data };",
+      "ctx.adpWorkersSample = workers;",
+      "logInfo('adp_test_connection_success', { sampleCount: workers.length });",
+      "return ctx;",
+    ]),
+  'action.adp:update_worker': (c) =>
+    buildAdpAction('action.adp:update_worker', c, [
+      "const workerId = resolveWorkerId(config && (Object.prototype.hasOwnProperty.call(config, 'workerId') ? config.workerId : config && Object.prototype.hasOwnProperty.call(config, 'worker_id') ? config.worker_id : undefined), 'ADP update_worker requires a worker ID.');",
+      "const payload = buildPayloadFromSources([",
+      "  config && config.updates,",
+      "  config && config.person,",
+      "  config && config.worker,",
+      "  config && config.payload,",
+      "  ctx && ctx.adpUpdatePayload,",
+      "  ctx && ctx.updates,",
+      "  ctx && ctx.worker",
+      "]);",
+      "if (!payload || Object.keys(payload).length === 0) {",
+      "  throw new Error('ADP update_worker requires update fields.');",
+      "}",
+      "const response = adpRequestJson('PATCH', '/hr/v2/workers/' + encodeURIComponent(workerId), payload);",
+      "ctx.adpWorkerUpdateResponse = response;",
+      "if (!ctx.worker && response && typeof response === 'object') {",
+      "  if (Array.isArray(response.workers) && response.workers.length > 0) {",
+      "    ctx.worker = response.workers[0];",
+      "  } else if (response.worker) {",
+      "    ctx.worker = response.worker;",
+      "  } else if (response.data && response.data.worker) {",
+      "    ctx.worker = response.data.worker;",
+      "  }",
+      "}",
+      "ctx.workerId = workerId;",
+      "ctx.adpWorkerId = workerId;",
+      "logInfo('adp_update_worker_success', { workerId: workerId });",
+      "return ctx;",
+    ]),
+  'trigger.adp:worker_hired': (c) =>
+    buildAdpTrigger('trigger.adp:worker_hired', c, [
+      "const payload = ctx && ctx.webhookPayload ? ctx.webhookPayload : ctx && ctx.payload ? ctx.payload : {};",
+      "let events = [];",
+      "if (payload && Array.isArray(payload.events)) {",
+      "  events = payload.events;",
+      "} else if (payload && payload.data && Array.isArray(payload.data.events)) {",
+      "  events = payload.data.events;",
+      "} else if (payload && payload.event) {",
+      "  events = [payload.event];",
+      "}",
+      "let matchedEvent = null;",
+      "for (let i = 0; i < events.length; i++) {",
+      "  const candidate = events[i];",
+      "  if (!candidate) {",
+      "    continue;",
+      "  }",
+      "  const nameCandidate = candidate.eventName || candidate.name || (candidate.event && candidate.event.eventName) || '';",
+      "  const normalized = String(nameCandidate || '').toLowerCase();",
+      "  if (!normalized || normalized.indexOf('worker.hired') !== -1 || normalized.indexOf('worker_hired') !== -1) {",
+      "    matchedEvent = candidate.event ? candidate.event : candidate;",
+      "    break;",
+      "  }",
+      "}",
+      "if (!matchedEvent && payload && payload.event) {",
+      "  matchedEvent = payload.event;",
+      "}",
+      "let workerDetails = null;",
+      "if (matchedEvent && matchedEvent.data && matchedEvent.data.worker) {",
+      "  workerDetails = matchedEvent.data.worker;",
+      "} else if (matchedEvent && matchedEvent.worker) {",
+      "  workerDetails = matchedEvent.worker;",
+      "} else if (payload && payload.worker) {",
+      "  workerDetails = payload.worker;",
+      "}",
+      "let workerId = null;",
+      "if (workerDetails && typeof workerDetails === 'object') {",
+      "  const candidateIds = [",
+      "    workerDetails.workerId,",
+      "    workerDetails.worker_id,",
+      "    workerDetails.associateOID,",
+      "    workerDetails.associateOid,",
+      "    workerDetails.associateId",
+      "  ];",
+      "  for (let i = 0; i < candidateIds.length; i++) {",
+      "    const value = candidateIds[i];",
+      "    if (value !== null && value !== undefined) {",
+      "      const text = String(value).trim();",
+      "      if (text) {",
+      "        workerId = text;",
+      "        break;",
+      "      }",
+      "    }",
+      "  }",
+      "}",
+      "let dedupeId = null;",
+      "const dedupeCandidates = [",
+      "  matchedEvent && (matchedEvent.eventID || matchedEvent.eventId || matchedEvent.id),",
+      "  payload && (payload.eventID || payload.eventId || payload.id)",
+      "];",
+      "for (let i = 0; i < dedupeCandidates.length; i++) {",
+      "  const value = dedupeCandidates[i];",
+      "  if (value !== null && value !== undefined) {",
+      "    const text = String(value).trim();",
+      "    if (text) {",
+      "      dedupeId = text;",
+      "      break;",
+      "    }",
+      "  }",
+      "}",
+      "ctx.adpEvent = matchedEvent || payload || null;",
+      "if (workerDetails) {",
+      "  ctx.worker = workerDetails;",
+      "}",
+      "if (workerId) {",
+      "  ctx.workerId = workerId;",
+      "  ctx.adpWorkerId = workerId;",
+      "}",
+      "if (dedupeId) {",
+      "  ctx.dedupeId = dedupeId;",
+      "}",
+      "logInfo('adp_worker_hired_received', { workerId: workerId || null });",
+      "return ctx;",
+    ]),
+};
+
+
+function generateADPFunction(functionName: string, node: WorkflowNode): string {
+  const config = node.data?.config ?? node.params ?? {};
+  const rawNodeOp = typeof node.op === 'string' ? node.op.trim() : '';
+  const rawOperationParam =
+    typeof (node.params as any)?.operation === 'string'
+      ? ((node.params as any).operation as string)
+      : typeof (node.data as any)?.operation === 'string'
+        ? ((node.data as any).operation as string)
+        : '';
+  const rawOperationKey =
+    typeof (node.data as any)?.operationId === 'string'
+      ? ((node.data as any).operationId as string)
+      : typeof (node.data as any)?.operationKey === 'string'
+        ? ((node.data as any).operationKey as string)
+        : '';
+
+  const nodeType = typeof node.type === 'string' ? node.type.toLowerCase() : '';
+  const isTrigger =
+    rawNodeOp.startsWith('trigger.') ||
+    rawOperationParam.startsWith('trigger.') ||
+    rawOperationParam.startsWith('trigger:') ||
+    rawOperationKey.startsWith('trigger.') ||
+    rawOperationKey.startsWith('trigger:') ||
+    nodeType === 'trigger' ||
+    nodeType.startsWith('trigger');
+
+  const defaultType: 'action' | 'trigger' = isTrigger ? 'trigger' : 'action';
+
+  const normalise = (value?: string | null, assumedType: 'action' | 'trigger' = defaultType): string | null => {
+    if (!value || typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    if (/^(action|trigger)\.adp:/.test(trimmed)) {
+      return trimmed;
+    }
+
+    if (/^(action|trigger)\.adp\./.test(trimmed)) {
+      const parts = trimmed.split('.');
+      const op = parts.slice(2).join('_').replace(/:+/g, '_');
+      return op ? `${parts[0]}.adp:${op}` : null;
+    }
+
+    if (/^(action|trigger):/.test(trimmed)) {
+      const [typePart, rest] = trimmed.split(':', 2);
+      if ((typePart === 'action' || typePart === 'trigger') && rest) {
+        return normalise(rest, typePart);
+      }
+    }
+
+    if (trimmed.startsWith('action.adp:') || trimmed.startsWith('trigger.adp:')) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('action.adp.')) {
+      const op = trimmed.slice('action.adp.'.length).replace(/[.]/g, '_');
+      return op ? `action.adp:${op}` : null;
+    }
+
+    if (trimmed.startsWith('trigger.adp.')) {
+      const op = trimmed.slice('trigger.adp.'.length).replace(/[.]/g, '_');
+      return op ? `trigger.adp:${op}` : null;
+    }
+
+    if (trimmed.startsWith('adp.')) {
+      const op = trimmed.slice(4).replace(/[.]/g, '_');
+      return op ? `${assumedType}.adp:${op}` : null;
+    }
+
+    if (trimmed.startsWith('adp:')) {
+      const op = trimmed.slice(4);
+      return op ? `${assumedType}.adp:${op}` : null;
+    }
+
+    const sanitised = trimmed.replace(/[.]/g, '_');
+    return `${assumedType}.adp:${sanitised}`;
+  };
+
+  const candidates: string[] = [];
+  const pushCandidate = (candidate: string | null | undefined) => {
+    if (!candidate) {
+      return;
+    }
+    if (!candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  };
+
+  pushCandidate(normalise(rawNodeOp));
+  pushCandidate(normalise(rawOperationParam));
+  pushCandidate(normalise(rawOperationKey));
+
+  const fallbackOperation = (() => {
+    if (rawOperationParam && rawOperationParam.trim()) {
+      return rawOperationParam.trim();
+    }
+    if (rawOperationKey && rawOperationKey.trim()) {
+      return rawOperationKey.trim();
+    }
+    if (rawNodeOp.includes(':')) {
+      return rawNodeOp.split(':').pop() ?? '';
+    }
+    if (rawNodeOp.includes('.')) {
+      return rawNodeOp.split('.').pop() ?? '';
+    }
+    return rawNodeOp;
+  })();
+
+  pushCandidate(normalise(fallbackOperation));
+
+  for (const candidate of candidates) {
+    const builder = ADP_REAL_OPS[candidate];
+    if (typeof builder === 'function') {
+      const generated = builder(config);
+      if (typeof generated === 'string' && generated.trim().length > 0) {
+        return generated.replace(/function\s+[^(]+\(/, `function ${functionName}(`);
+      }
+    }
+  }
+
+  const label = escapeForSingleQuotes(fallbackOperation || rawNodeOp || rawOperationParam || 'unknown');
+
+  return `function ${functionName}(ctx) {
+  ctx = ctx || {};
+  logWarn('adp_operation_missing', { operation: '${label}' });
+  throw new Error('ADP operation "${label}" is not implemented in Apps Script runtime.');
+}`;
+}
+
+
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
+  ...ADP_REAL_OPS,
   'trigger.gmail:email_received': (c) => `
 function onNewEmail() {
   return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
