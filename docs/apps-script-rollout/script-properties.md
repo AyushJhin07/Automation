@@ -56,7 +56,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | freshbooks | `FRESHBOOKS_ACCESS_TOKEN` | — | — |
 | Freshdesk | `FRESHDESK_API_KEY`<br>`FRESHDESK_DOMAIN` | — | `FRESHDESK_DOMAIN` |
 | ghost | `GHOST_ADMIN_API_KEY`<br>`GHOST_API_URL` | — | — |
-| GitHub | `GITHUB_ACCESS_TOKEN` | — | — |
+| GitHub | `GITHUB_ACCESS_TOKEN` *(repo scope)* | — | — |
 | GitLab | `GITLAB_ACCESS_TOKEN` | — | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
