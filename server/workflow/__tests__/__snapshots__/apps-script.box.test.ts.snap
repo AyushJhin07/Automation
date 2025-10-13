@@ -1,0 +1,99 @@
+exports[`Apps Script Box REAL_OPS builds action.box:create_folder 1`] = `
+
+function step_action_box_create_folder(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:create_folder Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:create_folder' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:create_folder. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:create_shared_link 1`] = `
+
+function step_action_box_create_shared_link(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:create_shared_link Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:create_shared_link' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:create_shared_link. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:download_file 1`] = `
+
+function step_action_box_download_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:download_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:download_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:download_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:get_file_info 1`] = `
+
+function step_action_box_get_file_info(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:get_file_info Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:get_file_info' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:get_file_info. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:list_folder_items 1`] = `
+
+function step_action_box_list_folder_items(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:list_folder_items Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:list_folder_items' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:list_folder_items. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:search 1`] = `
+
+function step_action_box_search(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:search Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:search' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:search. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:test_connection 1`] = `
+
+function step_action_box_test_connection(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:test_connection Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:test_connection' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:test_connection. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds action.box:upload_file 1`] = `
+
+function step_action_box_upload_file(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement action.box:upload_file Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'action.box:upload_file' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.box:upload_file. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds trigger.box:file_deleted 1`] = `
+
+function trigger_trigger_box_file_deleted(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement trigger.box:file_deleted Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'trigger.box:file_deleted' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.box:file_deleted. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Box REAL_OPS builds trigger.box:file_uploaded 1`] = `
+
+function trigger_trigger_box_file_uploaded(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#box): Implement trigger.box:file_uploaded Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'box', operation: 'trigger.box:file_uploaded' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.box:file_uploaded. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
