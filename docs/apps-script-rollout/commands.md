@@ -13,6 +13,15 @@ The npm scripts below power the Apps Script rollout workflow. Use this quick ref
   - Console table showing every operation with runtime availability and enablement flags.
   - Writes `production/reports/apps-script-runtime-coverage.csv` by default (override with `--output <path>`).
 
+### `npm run report:apps-script-real-ops`
+- **Purpose:** Compares Apps Script-capable actions and triggers defined in `connectors/*/definition.json` against the `REAL_OPS` builders compiled in `server/workflow/compile-to-appsscript.ts`. Use it to confirm every Apps Script operation has a native implementation before promoting connectors.
+- **Prerequisites:**
+  - Install dependencies (`npm install`) so `npx tsx` can execute TypeScript entry points.
+  - Keep `server/workflow/compile-to-appsscript.ts` and `server/workflow/realOps.generated.ts` in sync (`npm run build:apps-script`) so coverage numbers reflect reality.
+- **Outputs:**
+  - Logs a coverage summary (`covered/total` operations plus per-connector gaps) and fails the process when coverage drops below `APPS_SCRIPT_REAL_OPS_TARGET` (defaults to `0`).
+  - Writes both `production/reports/apps-script-real-ops-coverage.json` (detailed connector breakdown) and `production/reports/apps-script-real-ops-coverage.csv` (spreadsheet-friendly view) for handoffs.
+
 ## Prioritization and backlog
 
 ### `npm run prioritize:apps-script`

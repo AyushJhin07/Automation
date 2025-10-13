@@ -136,7 +136,7 @@ connector_id,connector_name,total_operations,covered_operations,coverage_ratio,m
 "trello","Trello","24","24","1.0000",""
 "trello-enhanced","Trello Enhanced","12","12","1.0000",""
 "twilio","Twilio","15","15","1.0000",""
-"typeform","Typeform","2","2","1.0000",""
+"typeform","Typeform","3","3","1.0000",""
 "victorops","VictorOps","15","15","1.0000",""
 "webex","Cisco Webex","13","13","1.0000",""
 "webflow","Webflow","18","18","1.0000",""
