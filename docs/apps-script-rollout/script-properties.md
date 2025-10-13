@@ -22,6 +22,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | adobe-acrobat | `ADOBE_PDF_CLIENT_ID`<br>`ADOBE_PDF_CLIENT_SECRET` | — | — |
 | adobe-creative | `ADOBE_CREATIVE_ACCESS_TOKEN` | — | — |
 | adobe-sign | `ADOBE_SIGN_ACCESS_TOKEN` | — | — |
+| Adyen | `ADYEN_API_KEY`<br>`ADYEN_MERCHANT_ACCOUNT` | — | — |
 | Airtable | `AIRTABLE_API_KEY`<br>`AIRTABLE_BASE_ID` | — | — |
 | amazon | `AMAZON_ACCESS_KEY`<br>`AMAZON_SECRET_KEY` | — | — |
 | amplitude | `AMPLITUDE_API_KEY` | — | — |
