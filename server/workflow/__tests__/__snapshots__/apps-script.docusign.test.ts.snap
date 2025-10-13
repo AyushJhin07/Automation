@@ -1,0 +1,42 @@
+exports[`Apps Script DocuSign REAL_OPS builds action.docusign:create_envelope 1`] = `
+
+function step_action_docusign_create_envelope(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#docusign): Implement action.docusign:create_envelope Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'docusign', operation: 'action.docusign:create_envelope' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.docusign:create_envelope. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script DocuSign REAL_OPS builds action.docusign:list_envelopes 1`] = `
+
+function step_action_docusign_list_envelopes(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#docusign): Implement action.docusign:list_envelopes Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'docusign', operation: 'action.docusign:list_envelopes' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.docusign:list_envelopes. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script DocuSign REAL_OPS builds action.docusign:send_envelope 1`] = `
+
+function step_sendDocuSignEnvelope(ctx) {
+  const accessToken = requireOAuthToken('docusign');
+  const accountId = getSecret('DOCUSIGN_ACCOUNT_ID');
+
+  console.log('📄 DocuSign envelope sent to:', interpolate('${c.recipientEmail || '{{email}}'}', ctx));
+  ctx.docusignEnvelopeId = 'docusign_' + Date.now();
+  return ctx;
+}
+
+`;
+
+exports[`Apps Script DocuSign REAL_OPS builds trigger.docusign:envelope_completed 1`] = `
+
+function trigger_trigger_docusign_envelope_completed(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#docusign): Implement trigger.docusign:envelope_completed Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'docusign', operation: 'trigger.docusign:envelope_completed' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.docusign:envelope_completed. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
