@@ -5387,6 +5387,16 @@
           "contexts": [
             "getSecret"
           ]
+        },
+        {
+          "name": "TYPEFORM_LAST_FORM_ID",
+          "optional": true,
+          "operations": [
+            "action.typeform:create_form"
+          ],
+          "contexts": [
+            "scriptProperties"
+          ]
         }
       ],
       "environmentProperties": []

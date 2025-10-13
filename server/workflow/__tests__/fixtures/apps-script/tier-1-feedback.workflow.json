@@ -1,0 +1,108 @@
+{
+  "id": "apps-script-tier-1-feedback",
+  "name": "Tier 1 feedback automation",
+  "meta": {
+    "appsScript": {
+      "tier": 1,
+      "description": "Turn edited sheet rows into Typeform surveys with persisted context",
+      "features": ["authentication", "structured-logging", "http-retries"]
+    },
+    "automationType": "customer_feedback",
+    "prompt": "When a marketer edits the feedback tracker, create a fresh Typeform survey and capture the form ID for follow-up"
+  },
+  "nodes": [
+    {
+      "id": "sheet-trigger",
+      "type": "trigger.sheets",
+      "app": "sheets",
+      "name": "Feedback row updated",
+      "op": "trigger.sheets:onEdit",
+      "params": {
+        "sheetName": "Feedback",
+        "dispatchRow": true
+      },
+      "data": {
+        "operation": "onEdit",
+        "config": {
+          "sheetName": "Feedback",
+          "dispatchRow": true
+        },
+        "metadata": {
+          "outputs": {
+            "row": { "type": "number" },
+            "values": { "type": "object" }
+          }
+        }
+      }
+    },
+    {
+      "id": "typeform-create",
+      "type": "action.typeform",
+      "app": "typeform",
+      "name": "Create survey",
+      "op": "action.typeform:create_form",
+      "params": {
+        "title": "Feedback for {{values.campaign_name}}",
+        "type": "survey",
+        "fields": [
+          {
+            "title": "How would you rate {{values.campaign_name}}?",
+            "type": "opinion_scale",
+            "properties": {
+              "steps": 5,
+              "start_at_one": true,
+              "labels": {
+                "left": "Poor",
+                "right": "Excellent"
+              }
+            }
+          },
+          {
+            "title": "What should we improve next time?",
+            "type": "long_text",
+            "properties": {
+              "description": "Share details for the growth team"
+            }
+          }
+        ]
+      },
+      "data": {
+        "operation": "create_form",
+        "config": {
+          "title": "Feedback for {{values.campaign_name}}",
+          "type": "survey",
+          "fields": [
+            {
+              "title": "How would you rate {{values.campaign_name}}?",
+              "type": "opinion_scale",
+              "properties": {
+                "steps": 5,
+                "start_at_one": true,
+                "labels": {
+                  "left": "Poor",
+                  "right": "Excellent"
+                }
+              }
+            },
+            {
+              "title": "What should we improve next time?",
+              "type": "long_text",
+              "properties": {
+                "description": "Share details for the growth team"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-sheet-to-typeform",
+      "from": "sheet-trigger",
+      "to": "typeform-create",
+      "source": "sheet-trigger",
+      "target": "typeform-create"
+    }
+  ]
+}
