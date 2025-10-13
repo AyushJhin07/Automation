@@ -151,6 +151,14 @@ The table below is regenerated automatically. Required properties appear in the 
 
 <!-- END GENERATED APPS SCRIPT PROPERTIES -->
 
+### Zendesk authentication expectations
+
+- `ZENDESK_SUBDOMAIN` must always resolve to the workspace host (e.g. `acme` for `https://acme.zendesk.com`). The handlers
+  normalize values that include protocol or the full hostname, but omitting the subdomain prevents API calls entirely.
+- Provide either an OAuth access token (recommended) via `requireOAuthToken('zendesk', { scopes: ['read', 'write'] })` **or**
+  populate both `ZENDESK_API_TOKEN` and `ZENDESK_EMAIL`. When OAuth is unavailable the email/token pair authenticates using
+  Zendesk's API token scheme.
+
 ### Stripe account overrides
 
 - `STRIPE_SECRET_KEY` authenticates API requests and must be present before deploying the handler.

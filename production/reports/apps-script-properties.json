@@ -5897,7 +5897,9 @@
           "name": "ZENDESK_API_TOKEN",
           "optional": false,
           "operations": [
-            "action.zendesk:create_ticket"
+            "action.zendesk:create_ticket",
+            "action.zendesk:list_tickets",
+            "action.zendesk:update_ticket"
           ],
           "contexts": [
             "getSecret"
@@ -5907,7 +5909,9 @@
           "name": "ZENDESK_EMAIL",
           "optional": false,
           "operations": [
-            "action.zendesk:create_ticket"
+            "action.zendesk:create_ticket",
+            "action.zendesk:list_tickets",
+            "action.zendesk:update_ticket"
           ],
           "contexts": [
             "getSecret"
@@ -5917,7 +5921,9 @@
           "name": "ZENDESK_SUBDOMAIN",
           "optional": false,
           "operations": [
-            "action.zendesk:create_ticket"
+            "action.zendesk:create_ticket",
+            "action.zendesk:list_tickets",
+            "action.zendesk:update_ticket"
           ],
           "contexts": [
             "getSecret"
