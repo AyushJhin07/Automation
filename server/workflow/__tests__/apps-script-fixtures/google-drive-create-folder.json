@@ -1,0 +1,137 @@
+{
+  "id": "google-drive-create-folder",
+  "description": "Tier-0 workflow that creates Google Drive folders via REST",
+  "graph": {
+    "id": "fixture-google-drive-create-folder",
+    "name": "Google Drive create folder",
+    "nodes": [
+      {
+        "id": "drive-action",
+        "type": "action.google-drive",
+        "app": "google-drive",
+        "name": "Create Drive folder",
+        "op": "action.google-drive:create_folder",
+        "params": {
+          "operation": "create_folder",
+          "name": "{{deployment}} Artifacts",
+          "parentId": "{{driveParentId}}"
+        },
+        "data": {
+          "operation": "create_folder",
+          "config": {
+            "name": "{{deployment}} Artifacts",
+            "parentId": "{{driveParentId}}"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "deployment": "Tier Zero",
+      "driveParentId": "parent-456"
+    }
+  },
+  "secrets": {
+    "GOOGLE_DRIVE_ACCESS_TOKEN": "ya29.test-drive-token"
+  },
+  "http": [
+    {
+      "name": "drive-validate-parent",
+      "request": {
+        "url": "https://www.googleapis.com/drive/v3/files/parent-456?fields=id,name,mimeType,trashed&supportsAllDrives=true",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-drive-token",
+          "accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "parent-456",
+          "name": "Automation Root",
+          "mimeType": "application/vnd.google-apps.folder",
+          "trashed": false
+        }
+      }
+    },
+    {
+      "name": "drive-create-folder",
+      "request": {
+        "url": "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType,parents,webViewLink,webContentLink,createdTime,modifiedTime,owners",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-drive-token",
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "name": "Tier Zero Artifacts",
+          "mimeType": "application/vnd.google-apps.folder",
+          "parents": [
+            "parent-456"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "fld-123",
+          "name": "Tier Zero Artifacts",
+          "mimeType": "application/vnd.google-apps.folder",
+          "parents": [
+            "parent-456"
+          ],
+          "webViewLink": "https://drive.google.com/drive/folders/fld-123",
+          "webContentLink": "https://drive.google.com/uc?id=fld-123&export=download",
+          "createdTime": "2024-01-01T00:00:00Z",
+          "modifiedTime": "2024-01-01T00:00:00Z",
+          "owners": [
+            {
+              "displayName": "Automation Bot",
+              "emailAddress": "automation@example.com"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "deployment": "Tier Zero",
+      "driveParentId": "parent-456",
+      "driveFolderId": "fld-123",
+      "googleDriveFolderId": "fld-123",
+      "googleDriveParentId": "parent-456",
+      "lastCreatedFolderId": "fld-123",
+      "googleDriveFolder": {
+        "id": "fld-123",
+        "name": "Tier Zero Artifacts",
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [
+          "parent-456"
+        ],
+        "webViewLink": "https://drive.google.com/drive/folders/fld-123",
+        "webContentLink": "https://drive.google.com/uc?id=fld-123&export=download"
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "google_drive_create_folder_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://www.googleapis.com/drive/v3/files/parent-456?fields=id,name,mimeType,trashed&supportsAllDrives=true",
+        "method": "GET"
+      },
+      {
+        "url": "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType,parents,webViewLink,webContentLink,createdTime,modifiedTime,owners",
+        "method": "POST"
+      }
+    ]
+  }
+}

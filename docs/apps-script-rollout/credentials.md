@@ -156,9 +156,13 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 | Script property | Required? | Purpose | Preferred aliases |
 | --- | --- | --- | --- |
-| _None_ | — | Drive workflows run with the Apps Script project's OAuth scopes via `DriveApp`. | — |
+| `GOOGLE_DRIVE_ACCESS_TOKEN` | Yes (unless service account configured) | OAuth access token resolved by `requireOAuthToken('google-drive')` | `apps_script__google_drive__access_token` |
+| `GOOGLE_DRIVE_SERVICE_ACCOUNT` | Optional | JSON service-account key used when OAuth tokens are unavailable | `apps_script__google_drive__service_account` |
 
 - Runbook: [OAuth setup — Google](../phases/oauth-setup.md#google-drivecalendar)
+- Apps Script now issues REST calls with `rateLimitAware` and `requireOAuthToken`. Store an access token scoped to `https://www.googleapis.com/auth/drive.file` (or broader) in Script Properties before deploying Tier‑0 automations.
+- Service accounts are supported for back-office automations. Save the raw JSON key in `GOOGLE_DRIVE_SERVICE_ACCOUNT`; the handler exchanges it for an access token at runtime. The account must have access to the destination folders.
+- Parent folder IDs are validated via the Drive API before creation. Misconfigured IDs surface structured errors in workflow logs—double-check shared-drive permissions if validation fails.
 
 #### HubSpot
 
