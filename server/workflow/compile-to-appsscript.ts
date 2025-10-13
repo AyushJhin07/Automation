@@ -1451,6 +1451,12 @@ var __CONNECTOR_OAUTH_TOKEN_METADATA = {
     description: 'OAuth access token',
     aliases: ['apps_script__google_drive__access_token']
   },
+  'google-contacts': {
+    displayName: 'Google Contacts',
+    property: 'GOOGLE_CONTACTS_ACCESS_TOKEN',
+    description: 'OAuth access token',
+    aliases: ['apps_script__google_contacts__access_token']
+  },
   sheets: {
     displayName: 'Google Sheets',
     property: 'GOOGLE_SHEETS_ACCESS_TOKEN',
@@ -2974,6 +2980,179 @@ function fetchJson(options) {
     body: body,
     text: text
   };
+}
+
+function __googleContactsOptionalSecret(name: string): string {
+  if (!name) {
+    return '';
+  }
+
+  try {
+    const value = getSecret(name, { connectorKey: 'google-contacts' });
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return String(value).trim();
+  } catch (error) {
+    return '';
+  }
+}
+
+function __googleContactsBuildHeaders(accessToken: string, extra?: Record<string, string | null | undefined>) {
+  const headers: Record<string, string> = {
+    Authorization: 'Bearer ' + accessToken,
+    Accept: 'application/json'
+  };
+
+  if (extra && typeof extra === 'object') {
+    for (const key of Object.keys(extra)) {
+      const value = extra[key];
+      if (value !== null && value !== undefined && String(value).length > 0) {
+        headers[key] = String(value);
+      }
+    }
+  }
+
+  const subject = __googleContactsOptionalSecret('GOOGLE_CONTACTS_OAUTH_SUBJECT');
+  if (subject) {
+    headers['X-Goog-Authenticated-User-Email'] = subject;
+  }
+
+  return headers;
+}
+
+function __googleContactsNormalizeResourceName(value: string): string {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = String(value).trim().replace(/^\/+|\/+$/g, '');
+  if (!trimmed) {
+    return '';
+  }
+
+  if (trimmed.indexOf('people/') === 0) {
+    return trimmed;
+  }
+
+  return 'people/' + trimmed;
+}
+
+function __googleContactsEncodeResourceName(value: string): string {
+  const normalized = __googleContactsNormalizeResourceName(value);
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
+function __googleContactsResolveEntries(entries: any, ctx: any) {
+  const list = Array.isArray(entries) ? entries : [];
+  const context = ctx || {};
+  const resolved: any[] = [];
+
+  for (let i = 0; i < list.length; i++) {
+    const entry = list[i];
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
+
+    const transformed: Record<string, any> = {};
+    for (const key in entry) {
+      if (!Object.prototype.hasOwnProperty.call(entry, key)) {
+        continue;
+      }
+
+      const value = entry[key];
+      if (value === null || value === undefined) {
+        continue;
+      }
+
+      if (typeof value === 'string') {
+        const interpolated = interpolate(value, context);
+        if (interpolated === null || interpolated === undefined) {
+          continue;
+        }
+        const trimmed = String(interpolated).trim();
+        if (!trimmed) {
+          continue;
+        }
+        transformed[key] = trimmed;
+      } else {
+        transformed[key] = value;
+      }
+    }
+
+    if (Object.keys(transformed).length > 0) {
+      resolved.push(transformed);
+    }
+  }
+
+  return resolved;
+}
+
+function __googleContactsTransformPerson(person: any) {
+  if (!person || typeof person !== 'object') {
+    return {
+      resourceName: null,
+      id: null,
+      etag: null,
+      names: [],
+      emailAddresses: [],
+      phoneNumbers: [],
+      addresses: [],
+      organizations: [],
+      biographies: [],
+      metadata: null,
+      raw: person ?? null
+    };
+  }
+
+  return {
+    resourceName: typeof person.resourceName === 'string' ? person.resourceName : null,
+    id: typeof person.resourceName === 'string' ? person.resourceName : null,
+    etag: typeof person.etag === 'string' ? person.etag : null,
+    names: Array.isArray(person.names) ? person.names : [],
+    emailAddresses: Array.isArray(person.emailAddresses) ? person.emailAddresses : [],
+    phoneNumbers: Array.isArray(person.phoneNumbers) ? person.phoneNumbers : [],
+    addresses: Array.isArray(person.addresses) ? person.addresses : [],
+    organizations: Array.isArray(person.organizations) ? person.organizations : [],
+    biographies: Array.isArray(person.biographies) ? person.biographies : [],
+    metadata: person.metadata || null,
+    raw: person
+  };
+}
+
+function __googleContactsExtractContactSource(person: any) {
+  if (!person || !person.metadata || !Array.isArray(person.metadata.sources)) {
+    return null;
+  }
+
+  for (let i = 0; i < person.metadata.sources.length; i++) {
+    const source = person.metadata.sources[i];
+    if (source && source.type === 'CONTACT') {
+      return source;
+    }
+  }
+
+  return person.metadata.sources.length > 0 ? person.metadata.sources[0] : null;
+}
+
+function __googleContactsParseTime(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  if (isNaN(parsed)) {
+    return null;
+  }
+
+  return parsed;
 }
 `;
 }
@@ -7579,169 +7758,52 @@ function handleDynamics365Trigger(baseUrl, accessToken, params, inputData) {
 
 // Comprehensive Google Contacts implementation
 function generateGoogleContactsFunction(functionName: string, node: WorkflowNode): string {
-  const operation = node.params?.operation || node.op?.split('.').pop() || 'create_contact';
-  
-  return `
-function ${functionName}(inputData, params) {
-  console.log('📇 Executing Google Contacts: ${node.name || operation}');
-  
-  const operation = params.operation || '${operation}';
-  
-  try {
-    switch (operation) {
-      case 'create_contact':
-        return handleCreateGoogleContact(params, inputData);
-      case 'get_contact':
-        return handleGetGoogleContact(params, inputData);
-      case 'update_contact':
-        return handleUpdateGoogleContact(params, inputData);
-      case 'delete_contact':
-        return handleDeleteGoogleContact(params, inputData);
-      case 'list_contacts':
-        return handleListGoogleContacts(params, inputData);
-      case 'search_contacts':
-        return handleSearchGoogleContacts(params, inputData);
-      case 'create_contact_group':
-        return handleCreateContactGroup(params, inputData);
-      case 'list_contact_groups':
-        return handleListContactGroups(params, inputData);
-      case 'test_connection':
-        return handleGoogleContactsTestConnection(params, inputData);
-      case 'contact_created':
-      case 'contact_updated':
-        return handleGoogleContactsTrigger(params, inputData);
-      default:
-        console.warn(\`⚠️ Unknown Google Contacts operation: \${operation}\`);
-        return { ...inputData, googleContactsWarning: \`Unsupported operation: \${operation}\` };
+  const rawOperationKey = typeof node.op === 'string' ? node.op : '';
+  const nodeType = typeof node.type === 'string' ? node.type : '';
+  const paramsOperation = node.params && typeof (node.params as any).operation === 'string'
+    ? (node.params as any).operation
+    : '';
+  const dataOperation = node.data && typeof node.data.operation === 'string'
+    ? node.data.operation
+    : '';
+  const explicitOperation = paramsOperation || dataOperation;
+  const isTrigger = rawOperationKey.startsWith('trigger.google-contacts')
+    || nodeType.startsWith('trigger.google-contacts')
+    || nodeType.startsWith('trigger');
+  const defaultOperation = isTrigger ? 'contact_created' : 'test_connection';
+  const operationName = explicitOperation || defaultOperation;
+  const prefix = isTrigger ? 'trigger.google-contacts' : 'action.google-contacts';
+
+  let resolvedKey = rawOperationKey;
+  if (!resolvedKey) {
+    resolvedKey = `${prefix}:${operationName}`;
+  } else if (!resolvedKey.startsWith('action.google-contacts') && !resolvedKey.startsWith('trigger.google-contacts')) {
+    const suffix = resolvedKey.includes(':')
+      ? resolvedKey.split(':').pop() || operationName
+      : resolvedKey.includes('.')
+        ? resolvedKey.split('.').pop() || operationName
+        : operationName;
+    resolvedKey = `${prefix}:${suffix}`;
+  }
+
+  const config = (node.data?.config ?? node.params ?? {}) as Record<string, unknown>;
+  const builder = REAL_OPS[resolvedKey];
+
+  if (typeof builder === 'function') {
+    const generated = builder(config);
+    if (typeof generated === 'string' && generated.trim().length > 0) {
+      return generated.replace(/function\s+[^(]+\(/, match => `function ${functionName}(`);
     }
-    
-  } catch (error) {
-    console.error(\`❌ Google Contacts \${operation} failed:\`, error);
-    return { ...inputData, googleContactsError: error.toString(), googleContactsSuccess: false };
   }
-}
 
-function handleCreateGoogleContact(params, inputData) {
-  const contact = ContactsApp.createContact(
-    params.firstName || params.first_name || inputData.first_name || '',
-    params.lastName || params.last_name || inputData.last_name || 'Unknown'
-  );
-  
-  // Add additional fields
-  if (params.email || inputData.email) {
-    contact.addEmail(params.email || inputData.email);
-  }
-  
-  if (params.phone || inputData.phone) {
-    contact.addPhone(ContactsApp.Field.MOBILE_PHONE, params.phone || inputData.phone);
-  }
-  
-  if (params.company || inputData.company) {
-    contact.addCompany(params.company || inputData.company, params.jobTitle || params.job_title || '');
-  }
-  
-  if (params.address) {
-    contact.addAddress(ContactsApp.Field.HOME_ADDRESS, params.address);
-  }
-  
-  if (params.notes || params.description) {
-    contact.setNotes(params.notes || params.description);
-  }
-  
-  console.log(\`✅ Created Google contact: \${contact.getFullName()}\`);
-  return { 
-    ...inputData, 
-    googleContactCreated: true, 
-    contactId: contact.getId(), 
-    contactName: contact.getFullName(),
-    contactEmail: contact.getEmails()[0]?.getAddress() || ''
-  };
-}
+  const safeKey = esc(resolvedKey || `${prefix}:${operationName}`);
+  const safeOperation = esc(operationName);
 
-function handleGetGoogleContact(params, inputData) {
-  const contactId = params.contactId || params.contact_id;
-  
-  if (!contactId) {
-    throw new Error('Contact ID is required');
-  }
-  
-  const contact = ContactsApp.getContact(contactId);
-  
-  const contactData = {
-    id: contact.getId(),
-    fullName: contact.getFullName(),
-    givenName: contact.getGivenName(),
-    familyName: contact.getFamilyName(),
-    emails: contact.getEmails().map(email => email.getAddress()),
-    phones: contact.getPhones().map(phone => phone.getPhoneNumber()),
-    companies: contact.getCompanies().map(company => company.getCompanyName()),
-    addresses: contact.getAddresses().map(addr => addr.getAddress()),
-    notes: contact.getNotes()
-  };
-  
-  console.log(\`✅ Retrieved Google contact: \${contactData.fullName}\`);
-  return { ...inputData, googleContact: contactData };
-}
-
-function handleListGoogleContacts(params, inputData) {
-  const maxResults = params.maxResults || params.limit || 100;
-  const query = params.query || '';
-  
-  let contacts;
-  if (query) {
-    contacts = ContactsApp.getContactsByName(query);
-  } else {
-    contacts = ContactsApp.getContacts();
-  }
-  
-  const contactList = contacts.slice(0, maxResults).map(contact => ({
-    id: contact.getId(),
-    fullName: contact.getFullName(),
-    primaryEmail: contact.getEmails()[0]?.getAddress() || '',
-    primaryPhone: contact.getPhones()[0]?.getPhoneNumber() || '',
-    company: contact.getCompanies()[0]?.getCompanyName() || ''
-  }));
-  
-  console.log(\`✅ Listed \${contactList.length} Google contacts\`);
-  return { ...inputData, googleContacts: contactList, contactCount: contactList.length };
-}
-
-function handleGoogleContactsTestConnection(params, inputData) {
-  try {
-    const user = Session.getActiveUser().getEmail();
-    const contacts = ContactsApp.getContacts();
-    
-    console.log(\`✅ Google Contacts connection test successful. User: \${user}, Contacts available: \${contacts.length}\`);
-    return { ...inputData, connectionTest: 'success', userEmail: user, totalContacts: contacts.length };
-  } catch (error) {
-    console.error('❌ Google Contacts connection test failed:', error);
-    return { ...inputData, connectionTest: 'failed', error: error.toString() };
-  }
-}
-
-function handleGoogleContactsTrigger(params, inputData) {
-  // Simulate contact monitoring by getting recently updated contacts
-  const maxResults = params.maxResults || 10;
-  
-  try {
-    const contacts = ContactsApp.getContacts();
-    
-    // Get the most recently created/updated contacts (simulate by taking first N)
-    const recentContacts = contacts.slice(0, maxResults).map(contact => ({
-      id: contact.getId(),
-      fullName: contact.getFullName(),
-      email: contact.getEmails()[0]?.getAddress() || '',
-      phone: contact.getPhones()[0]?.getPhoneNumber() || '',
-      company: contact.getCompanies()[0]?.getCompanyName() || '',
-      triggeredBy: 'contact_watcher'
-    }));
-    
-    console.log(\`📇 Google Contacts trigger found \${recentContacts.length} recent contacts\`);
-    return { ...inputData, googleContactsTrigger: recentContacts, triggerCount: recentContacts.length };
-  } catch (error) {
-    console.error('❌ Google Contacts trigger failed:', error);
-    return { ...inputData, googleContactsTriggerError: error.toString() };
-  }
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  logWarn('google_contacts_operation_missing', { operation: '${safeKey}' });
+  throw new Error('Google Contacts operation "${safeOperation}" is not implemented in Apps Script runtime.');
 }`;
 }
 
@@ -18395,6 +18457,771 @@ function step_action_gmail_search_emails(ctx) {
     });
     throw new Error('Gmail search_emails failed: ' + (providerCode ? providerCode + ' ' : '') + message);
   }
+}`,
+
+  'action.google-contacts:test_connection': (_config) => `
+function step_action_google_contacts_test_connection(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+
+  let accessToken;
+  try {
+    accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  } catch (error) {
+    const message = error && error.message ? String(error.message) : String(error);
+    logError('google_contacts_token_missing', {
+      operation: 'action.google-contacts:test_connection',
+      message: message
+    });
+    throw error;
+  }
+
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const url = 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses,metadata';
+
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: url,
+      method: 'GET',
+      headers: headers
+    }), { attempts: 3, initialDelayMs: 500, jitter: 0.25 });
+
+    const person = response.body || {};
+    const formatted = __googleContactsTransformPerson(person);
+
+    ctx.googleContactsTestConnection = {
+      resourceName: formatted.resourceName,
+      names: formatted.names,
+      emailAddresses: formatted.emailAddresses
+    };
+
+    logInfo('google_contacts_test_connection_success', {
+      resourceName: formatted.resourceName || null,
+      names: Array.isArray(formatted.names) ? formatted.names.length : 0,
+      emailAddresses: Array.isArray(formatted.emailAddresses) ? formatted.emailAddresses.length : 0
+    });
+
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const providerMessage = error && error.body && error.body.error
+      ? error.body.error.message
+      : (error && error.message ? error.message : String(error));
+
+    logError('google_contacts_test_connection_failed', {
+      status: status,
+      message: providerMessage
+    });
+
+    throw new Error('Google Contacts test_connection failed: ' + providerMessage);
+  }
+}`,
+
+  'action.google-contacts:create_contact': (c) => `
+function step_action_google_contacts_create_contact(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken, { 'Content-Type': 'application/json' });
+  const config = ${JSON.stringify({
+    names: c.names ?? [],
+    emailAddresses: c.emailAddresses ?? [],
+    phoneNumbers: c.phoneNumbers ?? [],
+    addresses: c.addresses ?? [],
+    organizations: c.organizations ?? [],
+    biographies: c.biographies ?? []
+  })};
+
+  const payload = {};
+  const names = __googleContactsResolveEntries(config.names, ctx);
+  if (names.length) {
+    payload.names = names;
+  }
+
+  const emailAddresses = __googleContactsResolveEntries(config.emailAddresses, ctx);
+  if (emailAddresses.length) {
+    payload.emailAddresses = emailAddresses;
+  }
+
+  const phoneNumbers = __googleContactsResolveEntries(config.phoneNumbers, ctx);
+  if (phoneNumbers.length) {
+    payload.phoneNumbers = phoneNumbers;
+  }
+
+  const addresses = __googleContactsResolveEntries(config.addresses, ctx);
+  if (addresses.length) {
+    payload.addresses = addresses;
+  }
+
+  const organizations = __googleContactsResolveEntries(config.organizations, ctx);
+  if (organizations.length) {
+    payload.organizations = organizations;
+  }
+
+  const biographies = __googleContactsResolveEntries(config.biographies, ctx);
+  if (biographies.length) {
+    payload.biographies = biographies.map(entry => ({ value: entry.value }));
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error('Google Contacts create_contact requires at least one field such as names, emailAddresses, phoneNumbers, addresses, organizations, or biographies.');
+  }
+
+  const response = rateLimitAware(() => fetchJson({
+    url: 'https://people.googleapis.com/v1/people:createContact',
+    method: 'POST',
+    headers: headers,
+    payload: JSON.stringify(payload),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.3 });
+
+  const person = response.body || {};
+  const formatted = __googleContactsTransformPerson(person);
+
+  ctx.googleContactsCreateResponse = person;
+  ctx.googleContactsLastContact = formatted;
+  ctx.googleContactsResourceName = formatted.resourceName || null;
+
+  logInfo('google_contacts_create_contact_success', {
+    resourceName: formatted.resourceName || null,
+    names: Array.isArray(formatted.names) ? formatted.names.length : 0,
+    emailAddresses: Array.isArray(formatted.emailAddresses) ? formatted.emailAddresses.length : 0,
+    phoneNumbers: Array.isArray(formatted.phoneNumbers) ? formatted.phoneNumbers.length : 0
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:get_contact': (c) => `
+function step_action_google_contacts_get_contact(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const resourceNameTemplate = ${JSON.stringify(c.resourceName ?? '')};
+  const personFieldsTemplate = ${JSON.stringify(c.personFields ?? 'names,emailAddresses,phoneNumbers,addresses,organizations,metadata')};
+
+  let resourceName = resourceNameTemplate ? interpolate(resourceNameTemplate, ctx).trim() : '';
+  if (!resourceName && ctx.googleContactsResourceName) {
+    resourceName = String(ctx.googleContactsResourceName).trim();
+  }
+  if (!resourceName) {
+    throw new Error('Google Contacts get_contact requires a resourceName.');
+  }
+
+  const encodedResourceName = __googleContactsEncodeResourceName(resourceName);
+  if (!encodedResourceName) {
+    throw new Error('Google Contacts get_contact received an invalid resourceName.');
+  }
+
+  const personFieldsValue = personFieldsTemplate ? interpolate(personFieldsTemplate, ctx).trim() : '';
+  const personFields = personFieldsValue || 'names,emailAddresses,phoneNumbers,addresses,organizations,metadata';
+
+  const url = 'https://people.googleapis.com/v1/' + encodedResourceName + '?personFields=' + encodeURIComponent(personFields);
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'GET',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const person = response.body || {};
+  const formatted = __googleContactsTransformPerson(person);
+
+  ctx.googleContactsGetResponse = person;
+  ctx.googleContactsContact = formatted;
+  ctx.googleContactsResourceName = formatted.resourceName || __googleContactsNormalizeResourceName(resourceName);
+
+  logInfo('google_contacts_get_contact_success', {
+    resourceName: ctx.googleContactsResourceName,
+    personFields: personFields
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:update_contact': (c) => `
+function step_action_google_contacts_update_contact(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken, { 'Content-Type': 'application/json' });
+  const resourceNameTemplate = ${JSON.stringify(c.resourceName ?? '')};
+  const updateFieldsTemplate = ${JSON.stringify(c.updatePersonFields ?? '')};
+  const config = ${JSON.stringify({
+    names: c.names ?? [],
+    emailAddresses: c.emailAddresses ?? [],
+    phoneNumbers: c.phoneNumbers ?? [],
+    addresses: c.addresses ?? [],
+    organizations: c.organizations ?? [],
+    biographies: c.biographies ?? []
+  })};
+
+  let resourceName = resourceNameTemplate ? interpolate(resourceNameTemplate, ctx).trim() : '';
+  if (!resourceName && ctx.googleContactsResourceName) {
+    resourceName = String(ctx.googleContactsResourceName).trim();
+  }
+  if (!resourceName) {
+    throw new Error('Google Contacts update_contact requires a resourceName.');
+  }
+
+  const encodedResourceName = __googleContactsEncodeResourceName(resourceName);
+  if (!encodedResourceName) {
+    throw new Error('Google Contacts update_contact received an invalid resourceName.');
+  }
+
+  const existingResponse = rateLimitAware(() => fetchJson({
+    url: 'https://people.googleapis.com/v1/' + encodedResourceName + '?personFields=names,emailAddresses,phoneNumbers,addresses,organizations,biographies,metadata',
+    method: 'GET',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const existing = existingResponse.body || {};
+  const etag = typeof existing.etag === 'string' ? existing.etag : '';
+  if (!etag) {
+    logWarn('google_contacts_update_contact_missing_etag', { resourceName: resourceName });
+    throw new Error('Google Contacts update_contact requires an etag for the contact. Confirm the contact exists and that the token grants edit access.');
+  }
+
+  const payload = {
+    resourceName: __googleContactsNormalizeResourceName(resourceName),
+    etag: etag
+  };
+  const updatedFields = [];
+
+  const names = __googleContactsResolveEntries(config.names, ctx);
+  if (names.length) {
+    payload.names = names;
+    updatedFields.push('names');
+  }
+
+  const emailAddresses = __googleContactsResolveEntries(config.emailAddresses, ctx);
+  if (emailAddresses.length) {
+    payload.emailAddresses = emailAddresses;
+    updatedFields.push('emailAddresses');
+  }
+
+  const phoneNumbers = __googleContactsResolveEntries(config.phoneNumbers, ctx);
+  if (phoneNumbers.length) {
+    payload.phoneNumbers = phoneNumbers;
+    updatedFields.push('phoneNumbers');
+  }
+
+  const addresses = __googleContactsResolveEntries(config.addresses, ctx);
+  if (addresses.length) {
+    payload.addresses = addresses;
+    updatedFields.push('addresses');
+  }
+
+  const organizations = __googleContactsResolveEntries(config.organizations, ctx);
+  if (organizations.length) {
+    payload.organizations = organizations;
+    updatedFields.push('organizations');
+  }
+
+  const biographies = __googleContactsResolveEntries(config.biographies, ctx);
+  if (biographies.length) {
+    payload.biographies = biographies.map(entry => ({ value: entry.value }));
+    updatedFields.push('biographies');
+  }
+
+  let updateFieldsValue = updateFieldsTemplate ? interpolate(updateFieldsTemplate, ctx).trim() : '';
+  let updatePersonFields = updateFieldsValue || '';
+  if (!updatePersonFields && updatedFields.length > 0) {
+    updatePersonFields = updatedFields.join(',');
+  }
+  if (!updatePersonFields) {
+    throw new Error('Google Contacts update_contact requires fields to update. Provide names, emailAddresses, phoneNumbers, addresses, organizations, biographies, or specify updatePersonFields.');
+  }
+
+  const patchUrl = 'https://people.googleapis.com/v1/' + encodedResourceName + ':updateContact?updatePersonFields=' + encodeURIComponent(updatePersonFields);
+  const response = rateLimitAware(() => fetchJson({
+    url: patchUrl,
+    method: 'PATCH',
+    headers: headers,
+    payload: JSON.stringify(payload),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.3 });
+
+  const person = response.body || {};
+  const formatted = __googleContactsTransformPerson(person);
+
+  ctx.googleContactsUpdateResponse = person;
+  ctx.googleContactsUpdated = formatted;
+  ctx.googleContactsResourceName = formatted.resourceName || __googleContactsNormalizeResourceName(resourceName);
+
+  logInfo('google_contacts_update_contact_success', {
+    resourceName: ctx.googleContactsResourceName,
+    updatePersonFields: updatePersonFields
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:delete_contact': (c) => `
+function step_action_google_contacts_delete_contact(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const resourceNameTemplate = ${JSON.stringify(c.resourceName ?? '')};
+
+  let resourceName = resourceNameTemplate ? interpolate(resourceNameTemplate, ctx).trim() : '';
+  if (!resourceName && ctx.googleContactsResourceName) {
+    resourceName = String(ctx.googleContactsResourceName).trim();
+  }
+  if (!resourceName) {
+    throw new Error('Google Contacts delete_contact requires a resourceName.');
+  }
+
+  const encodedResourceName = __googleContactsEncodeResourceName(resourceName);
+  if (!encodedResourceName) {
+    throw new Error('Google Contacts delete_contact received an invalid resourceName.');
+  }
+
+  rateLimitAware(() => fetchJson({
+    url: 'https://people.googleapis.com/v1/' + encodedResourceName + ':deleteContact',
+    method: 'DELETE',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const normalized = __googleContactsNormalizeResourceName(resourceName);
+  if (!ctx.googleContactsDeleted) {
+    ctx.googleContactsDeleted = [];
+  }
+  if (Array.isArray(ctx.googleContactsDeleted)) {
+    ctx.googleContactsDeleted.push(normalized);
+  }
+  ctx.googleContactsResourceName = normalized;
+
+  logInfo('google_contacts_delete_contact_success', {
+    resourceName: normalized
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:list_contacts': (c) => `
+function step_action_google_contacts_list_contacts(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const personFieldsTemplate = ${JSON.stringify(c.personFields ?? 'names,emailAddresses,phoneNumbers,organizations,metadata')};
+  const sortOrderTemplate = ${JSON.stringify(c.sortOrder ?? '')};
+  const pageSizeTemplate = ${JSON.stringify(c.pageSize ?? 100)};
+  const pageTokenTemplate = ${JSON.stringify(c.pageToken ?? '')};
+
+  const personFieldsValue = personFieldsTemplate ? interpolate(personFieldsTemplate, ctx).trim() : '';
+  const personFields = personFieldsValue || 'names,emailAddresses,phoneNumbers,organizations,metadata';
+
+  const sortOrderValue = sortOrderTemplate ? interpolate(sortOrderTemplate, ctx).trim() : '';
+  const validSortOrders = ['LAST_MODIFIED_ASCENDING', 'LAST_MODIFIED_DESCENDING', 'FIRST_NAME_ASCENDING', 'LAST_NAME_ASCENDING'];
+  const sortOrder = validSortOrders.indexOf(sortOrderValue) !== -1 ? sortOrderValue : 'LAST_MODIFIED_DESCENDING';
+
+  let pageSizeValue = pageSizeTemplate ? interpolate(String(pageSizeTemplate), ctx).trim() : '';
+  let pageSize = pageSizeValue ? Number(pageSizeValue) : ${typeof c.pageSize === 'number' ? c.pageSize : 100};
+  if (!pageSize || isNaN(pageSize)) {
+    pageSize = ${typeof c.pageSize === 'number' ? c.pageSize : 100};
+  }
+  pageSize = Math.max(1, Math.min(1000, Math.floor(pageSize)));
+
+  const explicitPageToken = pageTokenTemplate ? interpolate(pageTokenTemplate, ctx).trim() : '';
+  const pageToken = explicitPageToken || ctx.googleContactsNextPageToken || ctx.googleContactsConnectionsNextPageToken || '';
+
+  const queryParts = [
+    'personFields=' + encodeURIComponent(personFields),
+    'pageSize=' + pageSize,
+    'sortOrder=' + encodeURIComponent(sortOrder)
+  ];
+  if (pageToken) {
+    queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+  }
+
+  const url = 'https://people.googleapis.com/v1/people/me/connections?' + queryParts.join('&');
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'GET',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const body = response.body || {};
+  const connections = Array.isArray(body.connections) ? body.connections : [];
+  const formatted = connections.map(person => __googleContactsTransformPerson(person));
+
+  ctx.googleContactsListResponse = body;
+  ctx.googleContactsConnections = formatted;
+  ctx.googleContactsNextPageToken = body.nextPageToken || null;
+  ctx.googleContactsConnectionsNextPageToken = body.nextPageToken || null;
+  ctx.googleContactsTotal = typeof body.totalItems === 'number' ? body.totalItems : formatted.length;
+
+  logInfo('google_contacts_list_contacts_success', {
+    fetched: formatted.length,
+    nextPageToken: body.nextPageToken || null,
+    sortOrder: sortOrder,
+    personFields: personFields
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:search_contacts': (c) => `
+function step_action_google_contacts_search_contacts(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const queryTemplate = ${JSON.stringify(c.query ?? '')};
+  const readMaskTemplate = ${JSON.stringify(c.readMask ?? 'names,emailAddresses,phoneNumbers,organizations')};
+  const pageSizeTemplate = ${JSON.stringify(c.pageSize ?? 10)};
+
+  const queryValue = queryTemplate ? interpolate(queryTemplate, ctx).trim() : '';
+  if (!queryValue) {
+    throw new Error('Google Contacts search_contacts requires a query.');
+  }
+
+  const readMaskValue = readMaskTemplate ? interpolate(readMaskTemplate, ctx).trim() : '';
+  const readMask = readMaskValue || 'names,emailAddresses,phoneNumbers,organizations';
+
+  let pageSizeValue = pageSizeTemplate ? interpolate(String(pageSizeTemplate), ctx).trim() : '';
+  let pageSize = pageSizeValue ? Number(pageSizeValue) : ${typeof c.pageSize === 'number' ? c.pageSize : 10};
+  if (!pageSize || isNaN(pageSize)) {
+    pageSize = ${typeof c.pageSize === 'number' ? c.pageSize : 10};
+  }
+  pageSize = Math.max(1, Math.min(30, Math.floor(pageSize)));
+
+  const url = 'https://people.googleapis.com/v1/people:searchContacts?query=' + encodeURIComponent(queryValue)
+    + '&pageSize=' + pageSize
+    + '&readMask=' + encodeURIComponent(readMask);
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'GET',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const body = response.body || {};
+  const results = Array.isArray(body.results) ? body.results : [];
+  const contacts = results.map(entry => {
+    const person = entry && entry.person ? entry.person : entry;
+    const formatted = __googleContactsTransformPerson(person);
+    formatted.searchMetadata = entry && entry.metadata ? entry.metadata : null;
+    return formatted;
+  });
+
+  ctx.googleContactsSearchResponse = body;
+  ctx.googleContactsSearchResults = contacts;
+  ctx.googleContactsSearchQuery = queryValue;
+
+  logInfo('google_contacts_search_contacts_success', {
+    query: queryValue,
+    results: contacts.length,
+    readMask: readMask
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:create_contact_group': (c) => `
+function step_action_google_contacts_create_contact_group(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken, { 'Content-Type': 'application/json' });
+  const nameTemplate = ${JSON.stringify(c.name ?? '')};
+  const readGroupFieldsTemplate = ${JSON.stringify(c.readGroupFields ?? 'name,memberCount')};
+
+  const groupName = nameTemplate ? interpolate(nameTemplate, ctx).trim() : '';
+  if (!groupName) {
+    throw new Error('Google Contacts create_contact_group requires a name.');
+  }
+
+  const readGroupFieldsValue = readGroupFieldsTemplate ? interpolate(readGroupFieldsTemplate, ctx).trim() : '';
+  const readGroupFields = readGroupFieldsValue || 'name,memberCount';
+
+  const url = 'https://people.googleapis.com/v1/contactGroups' + (readGroupFields ? '?readGroupFields=' + encodeURIComponent(readGroupFields) : '');
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'POST',
+    headers: headers,
+    payload: JSON.stringify({ contactGroup: { name: groupName } }),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.3 });
+
+  const body = response.body || {};
+  ctx.googleContactsGroup = body;
+  ctx.googleContactsGroupName = groupName;
+
+  logInfo('google_contacts_create_contact_group_success', {
+    resourceName: typeof body.resourceName === 'string' ? body.resourceName : null,
+    name: body.name || groupName,
+    memberCount: body.memberCount || null
+  });
+
+  return ctx;
+}`,
+
+  'action.google-contacts:list_contact_groups': (c) => `
+function step_action_google_contacts_list_contact_groups(ctx) {
+  ctx = ctx || {};
+  const scopeList = ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts'];
+  const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+  const headers = __googleContactsBuildHeaders(accessToken);
+  const groupFieldsTemplate = ${JSON.stringify(c.groupFields ?? 'name,memberCount')};
+  const pageSizeTemplate = ${JSON.stringify(c.pageSize ?? 30)};
+  const pageTokenTemplate = ${JSON.stringify(c.pageToken ?? '')};
+  const syncTokenTemplate = ${JSON.stringify(c.syncToken ?? '')};
+
+  const groupFieldsValue = groupFieldsTemplate ? interpolate(groupFieldsTemplate, ctx).trim() : '';
+  const groupFields = groupFieldsValue || 'name,memberCount';
+
+  let pageSizeValue = pageSizeTemplate ? interpolate(String(pageSizeTemplate), ctx).trim() : '';
+  let pageSize = pageSizeValue ? Number(pageSizeValue) : ${typeof c.pageSize === 'number' ? c.pageSize : 30};
+  if (!pageSize || isNaN(pageSize)) {
+    pageSize = ${typeof c.pageSize === 'number' ? c.pageSize : 30};
+  }
+  pageSize = Math.max(1, Math.min(1000, Math.floor(pageSize)));
+
+  const explicitPageToken = pageTokenTemplate ? interpolate(pageTokenTemplate, ctx).trim() : '';
+  const explicitSyncToken = syncTokenTemplate ? interpolate(syncTokenTemplate, ctx).trim() : '';
+  const pageToken = explicitPageToken || ctx.googleContactsGroupsNextPageToken || '';
+  const syncToken = explicitSyncToken || ctx.googleContactsGroupsSyncToken || '';
+
+  const queryParts = [
+    'pageSize=' + pageSize,
+    'groupFields=' + encodeURIComponent(groupFields)
+  ];
+  if (pageToken) {
+    queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+  }
+  if (syncToken) {
+    queryParts.push('syncToken=' + encodeURIComponent(syncToken));
+  }
+
+  const url = 'https://people.googleapis.com/v1/contactGroups?' + queryParts.join('&');
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'GET',
+    headers: headers
+  }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+  const body = response.body || {};
+  const groups = Array.isArray(body.contactGroups) ? body.contactGroups : [];
+
+  ctx.googleContactsListGroupsResponse = body;
+  ctx.googleContactsGroups = groups;
+  ctx.googleContactsGroupsNextPageToken = body.nextPageToken || null;
+  ctx.googleContactsGroupsSyncToken = body.nextSyncToken || syncToken || null;
+
+  logInfo('google_contacts_list_contact_groups_success', {
+    fetched: groups.length,
+    nextPageToken: body.nextPageToken || null,
+    nextSyncToken: body.nextSyncToken || null,
+    groupFields: groupFields
+  });
+
+  return ctx;
+}`,
+
+  'trigger.google-contacts:contact_created': (_config) => `
+function onTriggerGoogleContactsContactCreated() {
+  return buildPollingWrapper('trigger.google-contacts:contact_created', function (runtime) {
+    const scopeList = ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts'];
+    const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+    const headers = __googleContactsBuildHeaders(accessToken);
+    const pageSize = 200;
+    const personFields = 'names,emailAddresses,phoneNumbers,organizations,metadata';
+
+    const response = rateLimitAware(() => fetchJson({
+      url: 'https://people.googleapis.com/v1/people/me/connections?personFields=' + encodeURIComponent(personFields) + '&sortOrder=LAST_MODIFIED_DESCENDING&pageSize=' + pageSize,
+      method: 'GET',
+      headers: headers
+    }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+    const connections = response.body && Array.isArray(response.body.connections) ? response.body.connections : [];
+    runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+
+    const cursor = runtime.state.cursor;
+    const lastCreateTime = cursor.lastCreateTime ? __googleContactsParseTime(cursor.lastCreateTime) : null;
+    const collected = [];
+
+    for (let i = 0; i < connections.length; i++) {
+      const person = connections[i];
+      if (!person || typeof person !== 'object') {
+        continue;
+      }
+
+      const source = __googleContactsExtractContactSource(person);
+      if (!source) {
+        continue;
+      }
+
+      const createdAt = __googleContactsParseTime(source.createTime || source.updateTime || null);
+      if (!createdAt) {
+        continue;
+      }
+
+      if (lastCreateTime && createdAt <= lastCreateTime) {
+        continue;
+      }
+
+      const formatted = __googleContactsTransformPerson(person);
+      formatted.trigger = 'contact_created';
+      formatted.triggeredAt = source.createTime || source.updateTime || null;
+      formatted.changeType = 'CREATED';
+
+      collected.push({ payload: formatted, timestamp: createdAt });
+    }
+
+    collected.sort(function (a, b) {
+      return a.timestamp - b.timestamp;
+    });
+
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+      return entry.payload;
+    });
+
+    if (collected.length > 0) {
+      const newest = collected[collected.length - 1];
+      cursor.lastCreateTime = new Date(newest.timestamp).toISOString();
+      if (newest.payload && newest.payload.resourceName) {
+        cursor.lastResourceName = newest.payload.resourceName;
+      }
+      runtime.state.lastPayload = newest.payload;
+    } else if (!cursor.lastCreateTime) {
+      cursor.lastCreateTime = new Date().toISOString();
+    }
+
+    runtime.summary({
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      newContacts: collected.length,
+      lastCreateTime: cursor.lastCreateTime || null
+    });
+
+    logInfo('google_contacts_contact_created_success', {
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      newContacts: collected.length,
+      lastCreateTime: cursor.lastCreateTime || null
+    });
+
+    return {
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      newContacts: collected.length,
+      lastCreateTime: cursor.lastCreateTime || null
+    };
+  });
+}`,
+
+  'trigger.google-contacts:contact_updated': (_config) => `
+function onTriggerGoogleContactsContactUpdated() {
+  return buildPollingWrapper('trigger.google-contacts:contact_updated', function (runtime) {
+    const scopeList = ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts'];
+    const accessToken = requireOAuthToken('google-contacts', { scopes: scopeList });
+    const headers = __googleContactsBuildHeaders(accessToken);
+    const pageSize = 200;
+    const personFields = 'names,emailAddresses,phoneNumbers,organizations,metadata';
+
+    const response = rateLimitAware(() => fetchJson({
+      url: 'https://people.googleapis.com/v1/people/me/connections?personFields=' + encodeURIComponent(personFields) + '&sortOrder=LAST_MODIFIED_DESCENDING&pageSize=' + pageSize,
+      method: 'GET',
+      headers: headers
+    }), { attempts: 4, initialDelayMs: 500, jitter: 0.25 });
+
+    const connections = response.body && Array.isArray(response.body.connections) ? response.body.connections : [];
+    runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+
+    const cursor = runtime.state.cursor;
+    const lastUpdateTime = cursor.lastUpdateTime ? __googleContactsParseTime(cursor.lastUpdateTime) : null;
+    const collected = [];
+
+    for (let i = 0; i < connections.length; i++) {
+      const person = connections[i];
+      if (!person || typeof person !== 'object') {
+        continue;
+      }
+
+      const source = __googleContactsExtractContactSource(person);
+      if (!source) {
+        continue;
+      }
+
+      const updateTime = __googleContactsParseTime(source.updateTime || null);
+      if (!updateTime) {
+        continue;
+      }
+
+      if (lastUpdateTime && updateTime <= lastUpdateTime) {
+        continue;
+      }
+
+      const createTime = __googleContactsParseTime(source.createTime || null);
+      if (createTime && updateTime === createTime) {
+        continue;
+      }
+
+      const formatted = __googleContactsTransformPerson(person);
+      formatted.trigger = 'contact_updated';
+      formatted.triggeredAt = source.updateTime || null;
+      formatted.changeType = 'UPDATED';
+      formatted.previousCreateTime = source.createTime || null;
+
+      collected.push({ payload: formatted, timestamp: updateTime });
+    }
+
+    collected.sort(function (a, b) {
+      return a.timestamp - b.timestamp;
+    });
+
+    const batch = runtime.dispatchBatch(collected, function (entry) {
+      return entry.payload;
+    });
+
+    if (collected.length > 0) {
+      const newest = collected[collected.length - 1];
+      cursor.lastUpdateTime = new Date(newest.timestamp).toISOString();
+      if (newest.payload && newest.payload.resourceName) {
+        cursor.lastResourceName = newest.payload.resourceName;
+      }
+      runtime.state.lastPayload = newest.payload;
+    } else if (!cursor.lastUpdateTime) {
+      cursor.lastUpdateTime = new Date().toISOString();
+    }
+
+    runtime.summary({
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      updatedContacts: collected.length,
+      lastUpdateTime: cursor.lastUpdateTime || null
+    });
+
+    logInfo('google_contacts_contact_updated_success', {
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      updatedContacts: collected.length,
+      lastUpdateTime: cursor.lastUpdateTime || null
+    });
+
+    return {
+      attempted: batch.attempted,
+      dispatched: batch.succeeded,
+      failed: batch.failed,
+      updatedContacts: collected.length,
+      lastUpdateTime: cursor.lastUpdateTime || null
+    };
+  });
 }`,
 
   'trigger.time:schedule': (c) => `
