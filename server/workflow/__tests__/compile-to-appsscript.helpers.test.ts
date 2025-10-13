@@ -16,6 +16,8 @@ describe('appsScriptHttpHelpers', () => {
     );
     expect(helpers).toContain('var transport = __resolveLogTransport();');
     expect(helpers).toContain('UrlFetchApp.fetch(transport.url');
+    expect(helpers).toContain("'CENTRAL_TELEMETRY_ENDPOINT'");
+    expect(helpers).toContain("logStructured('INFO', event, mask(details));");
     expect(helpers.trim()).toMatchInlineSnapshot(
 `var __HTTP_RETRY_DEFAULTS = {
   maxAttempts: 5,
@@ -110,6 +112,10 @@ function __resolveLogTransport() {
   try {
     if (typeof CENTRAL_LOG_TRANSPORT !== 'undefined' && CENTRAL_LOG_TRANSPORT) {
       candidate = CENTRAL_LOG_TRANSPORT;
+    } else if (typeof CENTRAL_TELEMETRY_TRANSPORT !== 'undefined' && CENTRAL_TELEMETRY_TRANSPORT) {
+      candidate = CENTRAL_TELEMETRY_TRANSPORT;
+    } else if (typeof CENTRAL_TELEMETRY_ENDPOINT !== 'undefined' && CENTRAL_TELEMETRY_ENDPOINT) {
+      candidate = { url: CENTRAL_TELEMETRY_ENDPOINT };
     } else if (typeof LOG_TRANSPORT_URL !== 'undefined' && LOG_TRANSPORT_URL) {
       candidate = { url: LOG_TRANSPORT_URL };
     } else if (typeof APPS_SCRIPT_LOG_TRANSPORT !== 'undefined' && APPS_SCRIPT_LOG_TRANSPORT) {
@@ -122,6 +128,7 @@ function __resolveLogTransport() {
     try {
       var props = PropertiesService.getScriptProperties();
       var urlCandidates = [
+        'CENTRAL_TELEMETRY_ENDPOINT',
         'CENTRAL_LOG_TRANSPORT_URL',
         'APPS_SCRIPT_LOG_TRANSPORT_URL',
         'CENTRAL_LOGGING_ENDPOINT',
@@ -136,7 +143,7 @@ function __resolveLogTransport() {
         }
       }
       if (!candidate) {
-        var objectCandidates = ['CENTRAL_LOG_TRANSPORT', 'APPS_SCRIPT_LOG_TRANSPORT'];
+        var objectCandidates = ['CENTRAL_LOG_TRANSPORT', 'CENTRAL_TELEMETRY_TRANSPORT', 'APPS_SCRIPT_LOG_TRANSPORT'];
         for (var j = 0; j < objectCandidates.length; j++) {
           var raw = props.getProperty(objectCandidates[j]);
           if (!raw) {
@@ -298,15 +305,15 @@ function logStructured(level, event, details) {
 }
 
 function logInfo(event, details) {
-  logStructured('INFO', event, details);
+  logStructured('INFO', event, mask(details));
 }
 
 function logWarn(event, details) {
-  logStructured('WARN', event, details);
+  logStructured('WARN', event, mask(details));
 }
 
 function logError(event, details) {
-  logStructured('ERROR', event, details);
+  logStructured('ERROR', event, mask(details));
 }
 
 logStructured.mask = mask;
