@@ -13,6 +13,7 @@
 - Vendor-specific tips
   - Slack: ensure bot is invited to the channel; check chat:write scope.
   - Stripe: use `starting_after` for pagination; keep keys out of source control.
+  - Twilio: provision an SMS-capable **From** number in the console, verify it against your messaging geo permissions, and rotate it when swapping sandboxes to avoid 40013 errors.
   - HubSpot: use `after` for paging; ensure app has contacts scope.
   - Zendesk: subdomain must be provided; use /webhooks for programmatic endpoints.
   - GitHub: PAT or OAuth app with repo scope; set webhook secret.
