@@ -15,7 +15,78 @@
     }
   },
   "baseUrl": "https://api.typeform.com",
-  "actions": [],
+  "actions": [
+    {
+      "id": "create_form",
+      "name": "Create Form",
+      "description": "Create a new Typeform with optional questions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title shown at the top of the Typeform"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["quiz", "survey"],
+            "default": "quiz",
+            "description": "Typeform workspace mode"
+          },
+          "fields": {
+            "type": "array",
+            "description": "Questions to include in the form",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string", "description": "Question prompt" },
+                "type": { "type": "string", "description": "Question type" },
+                "properties": {
+                  "type": "object",
+                  "description": "Additional Typeform field settings",
+                  "additionalProperties": true
+                },
+                "validations": {
+                  "type": "object",
+                  "description": "Validation rules",
+                  "additionalProperties": true
+                }
+              },
+              "required": ["title", "type"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["title"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Typeform form ID" },
+          "title": { "type": "string", "description": "Resolved form title" },
+          "type": { "type": "string", "description": "Resolved form type" },
+          "_links": {
+            "type": "object",
+            "description": "Hyperlinks returned by the API",
+            "additionalProperties": true
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": true
+      },
+      "sample": {
+        "id": "01H9ZAX8V3M4P0JKQV1Y2Z3X4",
+        "title": "Customer feedback form",
+        "type": "survey"
+      },
+      "runtimes": [
+        "appsScript"
+      ],
+      "fallback": null
+    }
+  ],
   "triggers": [
     {
       "id": "form_response",

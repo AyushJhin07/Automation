@@ -131,7 +131,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | Trello | `TRELLO_API_KEY`<br>`TRELLO_TOKEN` | — | — |
 | Twilio | `TWILIO_ACCOUNT_SID`<br>`TWILIO_AUTH_TOKEN`<br>`TWILIO_FROM_NUMBER` | — | — |
 | twitter | `TWITTER_BEARER_TOKEN` | — | — |
-| Typeform | `TYPEFORM_ACCESS_TOKEN` | — | — |
+| Typeform | `TYPEFORM_ACCESS_TOKEN` | `TYPEFORM_LAST_FORM_ID` | — |
 | vimeo | `VIMEO_ACCESS_TOKEN` | — | — |
 | vonage | `VONAGE_API_KEY`<br>`VONAGE_API_SECRET` | — | — |
 | wave | `WAVE_ACCESS_TOKEN` | — | — |
