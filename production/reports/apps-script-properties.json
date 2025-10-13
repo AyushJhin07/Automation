@@ -119,8 +119,69 @@
         "trigger.adobesign:agreement_action_completed",
         "trigger.adobesign:agreement_workflow_completed"
       ],
-      "properties": [],
-      "environmentProperties": []
+      "properties": [
+        {
+          "name": "TEAMWORK_API_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.teamwork:create_milestone",
+            "action.teamwork:create_project",
+            "action.teamwork:create_task",
+            "action.teamwork:create_time_entry",
+            "action.teamwork:get_project",
+            "action.teamwork:get_task",
+            "action.teamwork:get_time_entry",
+            "action.teamwork:list_milestones",
+            "action.teamwork:list_projects",
+            "action.teamwork:list_tasks",
+            "action.teamwork:list_time_entries",
+            "action.teamwork:test_connection",
+            "action.teamwork:update_project",
+            "action.teamwork:update_task"
+          ],
+          "triggers": [
+            "trigger.teamwork:project_created",
+            "trigger.teamwork:task_completed",
+            "trigger.teamwork:task_created",
+            "trigger.teamwork:time_entry_created"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "TEAMWORK_SITE_URL",
+          "optional": false,
+          "operations": [
+            "action.teamwork:create_milestone",
+            "action.teamwork:create_project",
+            "action.teamwork:create_task",
+            "action.teamwork:create_time_entry",
+            "action.teamwork:get_project",
+            "action.teamwork:get_task",
+            "action.teamwork:get_time_entry",
+            "action.teamwork:list_milestones",
+            "action.teamwork:list_projects",
+            "action.teamwork:list_tasks",
+            "action.teamwork:list_time_entries",
+            "action.teamwork:test_connection",
+            "action.teamwork:update_project",
+            "action.teamwork:update_task"
+          ],
+          "triggers": [
+            "trigger.teamwork:project_created",
+            "trigger.teamwork:task_completed",
+            "trigger.teamwork:task_created",
+            "trigger.teamwork:time_entry_created"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
+      "environmentProperties": [
+        "TEAMWORK_SITE_URL"
+      ]
     },
     {
       "id": "adp",
