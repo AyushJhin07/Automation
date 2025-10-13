@@ -1,0 +1,98 @@
+{
+  "id": "hubspot-create-contact",
+  "description": "Creates a HubSpot contact using the Apps Script runtime.",
+  "graph": {
+    "id": "fixture-hubspot-create-contact",
+    "name": "HubSpot create contact",
+    "nodes": [
+      {
+        "id": "hubspot-action",
+        "type": "action.hubspot",
+        "app": "hubspot",
+        "name": "Create HubSpot contact",
+        "op": "action.hubspot:create_contact",
+        "params": {
+          "operation": "create_contact",
+          "email": "{{lead.email}}",
+          "firstname": "{{lead.firstName}}",
+          "lastname": "Customer"
+        },
+        "data": {
+          "operation": "create_contact",
+          "config": {
+            "email": "{{lead.email}}",
+            "firstname": "{{lead.firstName}}",
+            "lastname": "Customer"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "lead": {
+        "email": "sam@example.com",
+        "firstName": "Sam"
+      }
+    }
+  },
+  "secrets": {
+    "HUBSPOT_ACCESS_TOKEN": "hs-access-token"
+  },
+  "http": [
+    {
+      "name": "hubspot-create-contact",
+      "request": {
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer hs-access-token",
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "properties": {
+            "email": "sam@example.com",
+            "firstname": "Sam",
+            "lastname": "Customer"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "12345",
+          "properties": {
+            "email": "sam@example.com",
+            "firstname": "Sam",
+            "lastname": "Customer"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "lead": {
+        "email": "sam@example.com",
+        "firstName": "Sam"
+      },
+      "hubspotContactId": "12345",
+      "hubspotContact": {
+        "id": "12345",
+        "properties": {
+          "email": "sam@example.com",
+          "firstname": "Sam",
+          "lastname": "Customer"
+        }
+      }
+    },
+    "httpCalls": [
+      {
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "method": "POST"
+      }
+    ]
+  }
+}
