@@ -121,6 +121,18 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 
 - Script Property tips: Configure the Apps Script deployment with a bot token that includes the scopes listed above. The runtime calls `requireOAuthToken('slack', …)` for every action and trigger, so missing scopes surface before the API call. Incoming webhooks remain supported as a safety valve but are only used when explicitly configured alongside the OAuth token.
 
+#### Salesforce
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `SALESFORCE_ACCESS_TOKEN` | Yes | Short-lived OAuth access token for REST calls | `apps_script__salesforce__access_token` |
+| `SALESFORCE_INSTANCE_URL` | Yes | Instance base URL (for example, `https://example.my.salesforce.com`) used to compose REST endpoints | `apps_script__salesforce__instance_url` |
+
+- Script Property tips: Salesforce access tokens typically expire within 12 hours. Automations must refresh the token via a scheduled job (or another CI system) and overwrite `SALESFORCE_ACCESS_TOKEN` before it expires. The Apps Script handler validates that both the access token and instance URL are present, so missing properties fail fast during execution.
+- OAuth refresh expectations: Configure the connected app with `offline_access` and persist the issued refresh token outside of Apps Script. Use that token to rotate the access token on a cadence and update Script Properties so deployments stay authorized.
+- Rate limits: Responses often include `errorCode`, `message`, and `fields` arrays. The handler wraps API calls in `rateLimitAware`, surfaces those arrays in the thrown error, and reuses Salesforce's suggested backoff hints.
+
+
 #### Asana
 
 | Script property | Required? | Purpose | Preferred aliases |

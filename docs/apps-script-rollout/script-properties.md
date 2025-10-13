@@ -110,6 +110,9 @@ The table below is regenerated automatically. Required properties appear in the 
 | RingCentral | `RINGCENTRAL_ACCESS_TOKEN` | — | — |
 | sage | `SAGE_API_KEY` | — | — |
 | Salesforce | `SALESFORCE_ACCESS_TOKEN`<br>`SALESFORCE_INSTANCE_URL` | — | `SALESFORCE_INSTANCE_URL` |
+
+Salesforce workflows must populate both properties before deployment. Access tokens expire within hours, so schedule a rotation that updates `SALESFORCE_ACCESS_TOKEN` and confirm the `SALESFORCE_INSTANCE_URL` matches the target tenant. The Apps Script runtime aborts the handler early when either property is missing.
+
 | salesforce-commerce | `SFCC_ACCESS_TOKEN` | — | — |
 | screencast-o-matic | `SCREENCAST_O_MATIC_API_KEY` | — | — |
 | SendGrid | `SENDGRID_API_KEY` | — | — |

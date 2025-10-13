@@ -14292,6 +14292,243 @@ ${bodyLines.join('\n')}
 `;
 }
 
+
+function salesforceHelperPrelude(): string {
+  return `
+  const rateConfig = { attempts: 5, initialDelayMs: 500, jitter: 0.2 };
+
+  function normalizeInstanceUrl(url) {
+    return String(url || '').replace(/\/+$/, '');
+  }
+
+  function resolveApiVersion() {
+    if (config && typeof config.apiVersion === 'string') {
+      const raw = config.apiVersion.trim();
+      if (raw) {
+        if (/^v\d+/i.test(raw)) {
+          return raw.charAt(0).toLowerCase() + raw.slice(1);
+        }
+        return 'v' + raw;
+      }
+    }
+    return 'v58.0';
+  }
+
+  function buildBaseUrl() {
+    return normalizeInstanceUrl(instanceUrl) + '/services/data/' + resolveApiVersion();
+  }
+
+  function resolveRequiredString(value, message) {
+    if (value === undefined || value === null) {
+      throw new Error(message);
+    }
+    const raw = String(value).trim();
+    if (!raw) {
+      throw new Error(message);
+    }
+    const resolved = interpolate(raw, ctx).trim();
+    if (!resolved) {
+      throw new Error(message);
+    }
+    return resolved;
+  }
+
+  function resolveOptionalString(value) {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    const raw = String(value);
+    const template = raw.trim();
+    if (!template) {
+      return '';
+    }
+    return interpolate(template, ctx).trim();
+  }
+
+  function resolveAny(value) {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === null) {
+      return null;
+    }
+    if (typeof value === 'string') {
+      const template = value.trim();
+      if (!template) {
+        return '';
+      }
+      return interpolate(template, ctx);
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        const entry = resolveAny(value[i]);
+        if (entry === undefined) {
+          continue;
+        }
+        if (Array.isArray(entry)) {
+          if (entry.length > 0) {
+            result.push(entry);
+          }
+          continue;
+        }
+        if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+          if (Object.keys(entry).length === 0) {
+            continue;
+          }
+        }
+        result.push(entry);
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) {
+          continue;
+        }
+        const entry = resolveAny(value[key]);
+        if (entry === undefined) {
+          continue;
+        }
+        if (Array.isArray(entry) && entry.length === 0) {
+          continue;
+        }
+        if (entry && typeof entry === 'object' && !Array.isArray(entry) && Object.keys(entry).length === 0) {
+          continue;
+        }
+        result[key] = entry;
+      }
+      return result;
+    }
+    return value;
+  }
+
+  function ensureNonEmptyObject(value, message) {
+    const normalized = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    if (Object.keys(normalized).length === 0) {
+      throw new Error(message);
+    }
+    return normalized;
+  }
+
+  function handleError(error, metadata) {
+    metadata = metadata || {};
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const headers = error && error.headers ? error.headers : undefined;
+    const payload = error && Object.prototype.hasOwnProperty.call(error, 'body') ? error.body : null;
+    const details = [];
+
+    if (status) {
+      details.push('status ' + status);
+    }
+
+    function pushDetail(entry) {
+      if (!entry) {
+        return;
+      }
+      if (typeof entry === 'string') {
+        const trimmed = entry.trim();
+        if (trimmed) {
+          details.push(trimmed);
+        }
+        return;
+      }
+      if (Array.isArray(entry)) {
+        for (let i = 0; i < entry.length; i++) {
+          pushDetail(entry[i]);
+        }
+        return;
+      }
+      if (typeof entry === 'object') {
+        if (entry.message) {
+          pushDetail(entry.message);
+        }
+        if (entry.error) {
+          pushDetail(entry.error);
+        }
+        if (entry.errorCode) {
+          pushDetail(entry.errorCode);
+        }
+        if (entry.code && entry.code !== entry.errorCode) {
+          pushDetail(entry.code);
+        }
+        if (Array.isArray(entry.fields) && entry.fields.length > 0) {
+          pushDetail('fields ' + entry.fields.join(', '));
+        }
+        if (Array.isArray(entry.errors) && entry.errors.length > 0) {
+          pushDetail(entry.errors);
+        }
+        if (entry.details) {
+          pushDetail(entry.details);
+        }
+      }
+    }
+
+    if (payload) {
+      pushDetail(payload);
+    }
+
+    const contextParts = [];
+    if (metadata && metadata.sobjectType) {
+      contextParts.push('sObject ' + metadata.sobjectType);
+    }
+    if (metadata && metadata.recordId) {
+      contextParts.push('record ' + metadata.recordId);
+    }
+    if (metadata && metadata.query) {
+      contextParts.push(metadata.query);
+    }
+
+    const context = contextParts.length > 0 ? ' for ' + contextParts.join(' ') : '';
+    const message =
+      'Salesforce ' +
+      (metadata && metadata.operation ? metadata.operation : 'request') +
+      ' failed' +
+      context +
+      '. ' +
+      (details.length > 0 ? details.join(' ') : 'Unexpected error.');
+    const wrapped = new Error(message);
+    wrapped.status = status;
+    if (headers) {
+      wrapped.headers = headers;
+    }
+    wrapped.body = payload;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+`;
+}
+
+interface SalesforceActionOptions {
+  preludeLines?: string[];
+  tryLines: string[];
+  errorMetadata: string;
+}
+
+function buildSalesforceAction(slug: string, config: any, options: SalesforceActionOptions): string {
+  const configLiteral = JSON.stringify(prepareValueForCode(config ?? {}));
+  const preludeLines = options.preludeLines ?? [];
+  const prelude = preludeLines.length > 0 ? preludeLines.map(line => `  ${line}`).join('
+') + '
+' : '';
+  const tryLines = options.tryLines.map(line => `    ${line}`).join('
+');
+  return `
+function step_action_salesforce_${slug}(ctx) {
+  ctx = ctx || {};
+  const config = ${configLiteral};
+  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN', { connectorKey: 'salesforce' });
+  const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL', { connectorKey: 'salesforce' });
+${salesforceHelperPrelude()}${prelude}  try {
+${tryLines}
+  } catch (error) {
+    handleError(error, ${options.errorMetadata});
+  }
+}
+`;
+}
+
 // Real Apps Script operations mapping - P0 CRITICAL EXPANSION
 const REAL_OPS: Record<string, (c: any) => string> = {
   ...GENERATED_REAL_OPS,
@@ -16735,38 +16972,227 @@ function onSlackMessageReceived() {
 }
 `
   // Salesforce - CRM
-  'action.salesforce:create_lead': (c) => `
-function step_createSalesforceLead(ctx) {
-  const accessToken = getSecret('SALESFORCE_ACCESS_TOKEN');
-  const instanceUrl = getSecret('SALESFORCE_INSTANCE_URL');
-
-  if (!accessToken || !instanceUrl) {
-    logWarn('salesforce_missing_credentials', { message: 'Salesforce credentials not configured' });
-    return ctx;
-  }
-
-  const leadData = {
-    FirstName: interpolate('${c.firstName || '{{first_name}}'}', ctx),
-    LastName: interpolate('${c.lastName || '{{last_name}}'}', ctx),
-    Email: interpolate('${c.email || '{{email}}'}', ctx),
-    Company: interpolate('${c.company || '{{company}}'}', ctx)
-  };
-  
-  const response = withRetries(() => fetchJson(\`\${instanceUrl}/services/data/v52.0/sobjects/Lead\`, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${accessToken}\`,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(leadData),
-    contentType: 'application/json'
-  }));
-
-  ctx.salesforceLeadId = response.body && response.body.id;
-  logInfo('salesforce_create_lead', { leadId: ctx.salesforceLeadId || null });
-  return ctx;
-}`,
-
+  'action.salesforce:create_record': (c) =>
+    buildSalesforceAction('create_record', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+        "const sobjectType = resolveRequiredString(config && config.sobjectType, 'Salesforce create_record requires the Object Type field. Configure the SObject Type parameter.');",
+        "const fields = ensureNonEmptyObject(resolveAny(config && config.fields), 'Salesforce create_record requires at least one field. Populate the Fields section with key/value pairs.');",
+      ],
+      tryLines: [
+        "const response = rateLimitAware(() => fetchJson({",
+        "  url: baseUrl + '/sobjects/' + encodeURIComponent(sobjectType) + '/',",
+        "  method: 'POST',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken,",
+        "    'Content-Type': 'application/json'",
+        "  },",
+        "  payload: JSON.stringify(fields),",
+        "  contentType: 'application/json'",
+        "}), rateConfig);",
+        "const body = response && response.body ? response.body : {};",
+        "const recordId = body && body.id ? body.id : null;",
+        "ctx.salesforceRecordId = recordId;",
+        "ctx.salesforceSObjectType = sobjectType;",
+        "ctx.salesforceRecord = body || null;",
+        "if (recordId && !ctx.recordId) {",
+        "  ctx.recordId = recordId;",
+        "}",
+        "logInfo('salesforce_create_record', { sobjectType: sobjectType, recordId: recordId || null });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'create_record', sobjectType: sobjectType }",
+    }),
+  'action.salesforce:update_record': (c) =>
+    buildSalesforceAction('update_record', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+        "const sobjectType = resolveRequiredString(config && config.sobjectType, 'Salesforce update_record requires the Object Type field. Configure the SObject Type parameter.');",
+        "const recordId = resolveRequiredString(config && config.recordId, 'Salesforce update_record requires the Record ID field. Provide a Record ID or template that resolves to an ID.');",
+        "const fields = ensureNonEmptyObject(resolveAny(config && config.fields), 'Salesforce update_record requires at least one field to update.');",
+      ],
+      tryLines: [
+        "rateLimitAware(() => fetchJson({",
+        "  url: baseUrl + '/sobjects/' + encodeURIComponent(sobjectType) + '/' + encodeURIComponent(recordId),",
+        "  method: 'PATCH',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken,",
+        "    'Content-Type': 'application/json'",
+        "  },",
+        "  payload: JSON.stringify(fields),",
+        "  contentType: 'application/json'",
+        "}), rateConfig);",
+        "ctx.salesforceRecordId = recordId;",
+        "ctx.salesforceSObjectType = sobjectType;",
+        "ctx.salesforceUpdateSucceeded = true;",
+        "logInfo('salesforce_update_record', { sobjectType: sobjectType, recordId: recordId });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'update_record', sobjectType: sobjectType, recordId: recordId }",
+    }),
+  'action.salesforce:get_record': (c) =>
+    buildSalesforceAction('get_record', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+        "const sobjectType = resolveRequiredString(config && config.sobjectType, 'Salesforce get_record requires the Object Type field. Configure the SObject Type parameter.');",
+        "const recordId = resolveRequiredString(config && config.recordId, 'Salesforce get_record requires the Record ID field. Provide a Record ID or template that resolves to an ID.');",
+        "const fieldsConfig = config && config.fields;",
+        "const resolvedFields = [];",
+        "if (Array.isArray(fieldsConfig)) {",
+        "  for (let i = 0; i < fieldsConfig.length; i++) {",
+        "    const value = resolveOptionalString(fieldsConfig[i]);",
+        "    if (value) {",
+        "      resolvedFields.push(value);",
+        "    }",
+        "  }",
+        "} else if (typeof fieldsConfig === 'string') {",
+        "  const singleField = resolveOptionalString(fieldsConfig);",
+        "  if (singleField) {",
+        "    resolvedFields.push(singleField);",
+        "  }",
+        "}",
+        "let recordUrl = baseUrl + '/sobjects/' + encodeURIComponent(sobjectType) + '/' + encodeURIComponent(recordId);",
+        "if (resolvedFields.length > 0) {",
+        "  recordUrl += '?fields=' + encodeURIComponent(resolvedFields.join(','));",
+        "}",
+      ],
+      tryLines: [
+        "const response = rateLimitAware(() => fetchJson({",
+        "  url: recordUrl,",
+        "  method: 'GET',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken",
+        "  }",
+        "}), rateConfig);",
+        "const record = response && response.body ? response.body : null;",
+        "ctx.salesforceRecordId = recordId;",
+        "ctx.salesforceSObjectType = sobjectType;",
+        "ctx.salesforceRecord = record;",
+        "logInfo('salesforce_get_record', { sobjectType: sobjectType, recordId: recordId });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'get_record', sobjectType: sobjectType, recordId: recordId }",
+    }),
+  'action.salesforce:query_records': (c) =>
+    buildSalesforceAction('query_records', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+        "const queryValue = config && Object.prototype.hasOwnProperty.call(config, 'query') ? config.query : (config && Object.prototype.hasOwnProperty.call(config, 'soql') ? config.soql : '');",
+        "const soql = resolveRequiredString(queryValue, 'Salesforce query_records requires the Query field. Provide a SOQL query.');",
+        "const queryUrl = baseUrl + '/query?q=' + encodeURIComponent(soql);",
+      ],
+      tryLines: [
+        "const response = rateLimitAware(() => fetchJson({",
+        "  url: queryUrl,",
+        "  method: 'GET',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken",
+        "  }",
+        "}), rateConfig);",
+        "const body = response && response.body ? response.body : {};",
+        "ctx.salesforceQuery = soql;",
+        "ctx.salesforceRecords = Array.isArray(body.records) ? body.records : [];",
+        "ctx.salesforceTotalSize = typeof body.totalSize === 'number' ? body.totalSize : null;",
+        "ctx.salesforceQueryLocator = body && body.nextRecordsUrl ? body.nextRecordsUrl : null;",
+        "logInfo('salesforce_query_records', { totalSize: ctx.salesforceTotalSize, done: body && Object.prototype.hasOwnProperty.call(body, 'done') ? !!body.done : null });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'query_records', query: soql }",
+    }),
+  'action.salesforce:test_connection': (c) =>
+    buildSalesforceAction('test_connection', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+      ],
+      tryLines: [
+        "const response = rateLimitAware(() => fetchJson({",
+        "  url: baseUrl + '/limits',",
+        "  method: 'GET',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken",
+        "  }",
+        "}), rateConfig);",
+        "ctx.salesforceConnectionOk = true;",
+        "ctx.salesforceLimits = response && response.body ? response.body : null;",
+        "ctx.salesforceInstanceUrl = normalizeInstanceUrl(instanceUrl);",
+        "logInfo('salesforce_test_connection', { instanceUrl: ctx.salesforceInstanceUrl, status: response && response.status ? response.status : null });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'test_connection' }",
+    }),
+  'action.salesforce:create_lead': (c) =>
+    buildSalesforceAction('create_lead', c, {
+      preludeLines: [
+        "const baseUrl = buildBaseUrl();",
+        "const leadConfig = config || {};",
+        "const firstNameTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'firstName') ? leadConfig.firstName : '{{first_name}}';",
+        "const lastNameTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'lastName') ? leadConfig.lastName : '{{last_name}}';",
+        "const emailTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'email') ? leadConfig.email : '{{email}}';",
+        "const companyTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'company') ? leadConfig.company : '{{company}}';",
+        "const phoneTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'phone') ? leadConfig.phone : '{{phone}}';",
+        "const leadSourceTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'leadSource') ? leadConfig.leadSource : 'Webhook';",
+        "const statusTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'status') ? leadConfig.status : 'Open - Not Contacted';",
+        "const descriptionTemplate = Object.prototype.hasOwnProperty.call(leadConfig, 'description') ? leadConfig.description : '';",
+        "const firstName = resolveOptionalString(firstNameTemplate);",
+        "const lastName = resolveRequiredString(lastNameTemplate, 'Salesforce create_lead requires the Last Name field. Provide a Last Name or template that resolves to text.');",
+        "const company = resolveRequiredString(companyTemplate, 'Salesforce create_lead requires the Company field. Provide a Company or template that resolves to text.');",
+        "const email = resolveOptionalString(emailTemplate);",
+        "const phone = resolveOptionalString(phoneTemplate);",
+        "const leadSource = resolveOptionalString(leadSourceTemplate) || 'Webhook';",
+        "const status = resolveOptionalString(statusTemplate) || 'Open - Not Contacted';",
+        "const description = resolveOptionalString(descriptionTemplate);",
+        "const additionalFields = resolveAny(leadConfig && leadConfig.fields) || {};",
+        "const leadData = {};",
+        "if (firstName) {",
+        "  leadData.FirstName = firstName;",
+        "}",
+        "leadData.LastName = lastName;",
+        "if (email) {",
+        "  leadData.Email = email;",
+        "}",
+        "leadData.Company = company;",
+        "if (phone) {",
+        "  leadData.Phone = phone;",
+        "}",
+        "if (leadSource) {",
+        "  leadData.LeadSource = leadSource;",
+        "}",
+        "if (status) {",
+        "  leadData.Status = status;",
+        "}",
+        "leadData.Description = description;",
+        "for (const key in additionalFields) {",
+        "  if (Object.prototype.hasOwnProperty.call(additionalFields, key)) {",
+        "    leadData[key] = additionalFields[key];",
+        "  }",
+        "}",
+        "leadData.LastName = lastName;",
+        "leadData.Company = company;",
+      ],
+      tryLines: [
+        "const response = rateLimitAware(() => fetchJson({",
+        "  url: baseUrl + '/sobjects/Lead/',",
+        "  method: 'POST',",
+        "  headers: {",
+        "    'Authorization': 'Bearer ' + accessToken,",
+        "    'Content-Type': 'application/json'",
+        "  },",
+        "  payload: JSON.stringify(leadData),",
+        "  contentType: 'application/json'",
+        "}), rateConfig);",
+        "const body = response && response.body ? response.body : {};",
+        "const leadId = body && body.id ? body.id : null;",
+        "ctx.salesforceLeadId = leadId;",
+        "ctx.salesforceLeadCreated = !!leadId;",
+        "if (leadId) {",
+        "  ctx.leadId = leadId;",
+        "}",
+        "ctx.salesforceLead = body || null;",
+        "logInfo('salesforce_create_lead', { leadId: leadId || null });",
+        "return ctx;",
+      ],
+      errorMetadata: "{ operation: 'create_lead', sobjectType: 'Lead' }",
+    }),
   // HubSpot - CRM
   'action.hubspot:create_contact': (c) =>
     buildHubSpotAction(
