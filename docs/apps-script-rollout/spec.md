@@ -32,7 +32,7 @@ Each connector is expected to complete the following tasks before GA. Teams shou
 - [ ] **API coverage validated** – Confirm that all prioritized endpoints pass automated tests in the [Regression Harness](../operations/testing-harness.md).
 - [ ] **Authentication flow parity** – Verify OAuth/credential flows align with the [Credential Patterns guide](credentials.md).
 - [ ] **Triggers and schedules** – Ensure time-driven and event-driven triggers satisfy documented business rules.
-- [ ] **Error handling** – Demonstrate that retryable and non-retryable errors follow the [Monitoring playbook](monitoring.md).
+- [ ] **Error handling** – Demonstrate that retryable and non-retryable errors follow the [Monitoring playbook](monitoring.md) and the [Handler Authoring Guide](handler-authoring.md).
 
 ### Quality & Testing
 - [ ] **Snapshot tests updated** – Refresh snapshots and diffs using the [Snapshot Testing guide](snapshot-testing.md).
@@ -54,6 +54,7 @@ Each connector is expected to complete the following tasks before GA. Teams shou
 ## Tooling References
 - **Prioritization Report:** [`docs/apps-script-rollout/prioritization.md`](prioritization.md)
 - **Rollout Tracker:** [`docs/apps-script-rollout/tracker.md`](tracker.md)
+- **Handler Authoring Guide:** [`docs/apps-script-rollout/handler-authoring.md`](handler-authoring.md)
 - **Regression Harness:** [`docs/operations/testing-harness.md`](../operations/testing-harness.md)
 
 ## Operational Cadence
