@@ -122,7 +122,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | slideshare | `SLIDESHARE_API_KEY`<br>`SLIDESHARE_SHARED_SECRET` | — | — |
 | sprout-social | `SPROUT_SOCIAL_ACCESS_TOKEN` | — | — |
 | Square | `SQUARE_ACCESS_TOKEN` | — | — |
-| Stripe | `STRIPE_SECRET_KEY` | — | — |
+| Stripe | `STRIPE_SECRET_KEY` | `STRIPE_ACCOUNT_OVERRIDE` | — |
 | substack | `SUBSTACK_API_KEY` | — | — |
 | SurveyMonkey | `SURVEYMONKEY_ACCESS_TOKEN` | — | — |
 | telegram | `TELEGRAM_BOT_TOKEN`<br>`TELEGRAM_CHAT_ID` | — | — |
@@ -150,6 +150,11 @@ The table below is regenerated automatically. Required properties appear in the 
 | zoom | `ZOOM_API_KEY`<br>`ZOOM_API_SECRET` | — | — |
 
 <!-- END GENERATED APPS SCRIPT PROPERTIES -->
+
+### Stripe account overrides
+
+- `STRIPE_SECRET_KEY` authenticates API requests and must be present before deploying the handler.
+- `STRIPE_ACCOUNT_OVERRIDE` is optional and, when set, supplies the `Stripe-Account` header so Connect workflows can target a specific child account.
 
 ### Gmail token management
 

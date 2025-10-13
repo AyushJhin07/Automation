@@ -4928,6 +4928,16 @@
           "contexts": [
             "getSecret"
           ]
+        },
+        {
+          "name": "STRIPE_ACCOUNT_OVERRIDE",
+          "optional": true,
+          "operations": [
+            "action.stripe:create_payment"
+          ],
+          "contexts": [
+            "scriptProperties"
+          ]
         }
       ],
       "environmentProperties": []

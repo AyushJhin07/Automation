@@ -962,6 +962,7 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
     SQUARE_APPLICATION_ID: { aliases: ['apps_script__square__application_id'] },
     SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] },
     STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] },
+    STRIPE_ACCOUNT_OVERRIDE: { aliases: ['apps_script__stripe__account_override'] },
     TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
     TRELLO_TOKEN: { aliases: ['apps_script__trello__token'] },
     TWILIO_ACCOUNT_SID: { aliases: ['apps_script__twilio__account_sid'] },
@@ -1026,7 +1027,8 @@ var __SECRET_HELPER_DEFAULT_OVERRIDES = {
       SQUARE_ENVIRONMENT: { aliases: ['apps_script__square__environment'] }
     },
     stripe: {
-      STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] }
+      STRIPE_SECRET_KEY: { aliases: ['apps_script__stripe__secret_key'] },
+      STRIPE_ACCOUNT_OVERRIDE: { aliases: ['apps_script__stripe__account_override'] }
     },
     trello: {
       TRELLO_API_KEY: { aliases: ['apps_script__trello__api_key'] },
@@ -14755,29 +14757,147 @@ function step_createHubSpotContact(ctx) {
 function step_createStripePayment(ctx) {
   const apiKey = getSecret('STRIPE_SECRET_KEY');
 
-  if (!apiKey) {
-    logWarn('stripe_missing_api_key', { message: 'Stripe API key not configured' });
-    return ctx;
+  const scriptProperties =
+    typeof PropertiesService !== 'undefined' &&
+    PropertiesService &&
+    typeof PropertiesService.getScriptProperties === 'function'
+      ? PropertiesService.getScriptProperties()
+      : null;
+  const accountOverrideRaw =
+    scriptProperties && typeof scriptProperties.getProperty === 'function'
+      ? scriptProperties.getProperty('STRIPE_ACCOUNT_OVERRIDE')
+      : null;
+  const stripeAccount = accountOverrideRaw && String(accountOverrideRaw).trim() !== ''
+    ? String(accountOverrideRaw).trim()
+    : null;
+
+  const amountTemplate = '${c.amount || '100'}';
+  const amountRaw = interpolate(amountTemplate, ctx);
+  const amountValue = Number(amountRaw);
+  if (isNaN(amountValue)) {
+    throw new Error('Stripe payment amount must be numeric');
+  }
+  const amount = Math.round(amountValue * 100);
+  if (!amount || amount <= 0) {
+    throw new Error('Stripe payment amount must be greater than zero');
   }
 
-  const amount = parseInt('${c.amount || '100'}') * 100; // Convert to cents
-  const currency = '${c.currency || 'usd'}';
+  const currencyTemplate = '${c.currency || 'usd'}';
+  const interpolatedCurrency = interpolate(currencyTemplate, ctx);
+  const currency = (interpolatedCurrency && interpolatedCurrency.toString ? interpolatedCurrency.toString().trim() : '').toLowerCase() || 'usd';
 
-  const payload = \`amount=\${amount}&currency=\${currency}&payment_method_types[]=card\`;
+  const idempotencyKey = ctx.stripePaymentIdempotencyKey || Utilities.getUuid();
+  const payloadParts = [
+    'amount=' + encodeURIComponent(String(amount)),
+    'currency=' + encodeURIComponent(currency),
+    'payment_method_types[]=' + encodeURIComponent('card')
+  ];
+  const payload = payloadParts.join('&');
 
-  const response = withRetries(() => fetchJson('https://api.stripe.com/v1/payment_intents', {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${apiKey}\`,
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    payload: payload,
-    contentType: 'application/x-www-form-urlencoded'
-  }));
+  const headers = {
+    'Authorization': \`Bearer \${apiKey}\`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Idempotency-Key': idempotencyKey
+  };
+  if (stripeAccount) {
+    headers['Stripe-Account'] = stripeAccount;
+  }
 
-  ctx.stripePaymentId = response.body && response.body.id;
-  logInfo('stripe_create_payment_intent', { paymentId: ctx.stripePaymentId || null, amount: amount, currency: currency });
-  return ctx;
+  try {
+    const response = rateLimitAware(() => fetchJson({
+      url: 'https://api.stripe.com/v1/payment_intents',
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: 'application/x-www-form-urlencoded'
+    }), {
+      attempts: 5,
+      initialDelayMs: 1000,
+      maxDelayMs: 16000,
+      jitter: 0.25,
+      retryOn: function(context) {
+        var error = context && context.error ? context.error : null;
+        var body = error && error.body ? error.body : null;
+        if (body && body.error && typeof body.error === 'object') {
+          var stripeError = body.error;
+          if (stripeError.type === 'invalid_request_error' || stripeError.type === 'card_error' || stripeError.type === 'idempotency_error') {
+            return { retry: false };
+          }
+        }
+        var headersSource = {};
+        if (context && context.response && context.response.headers) {
+          headersSource = context.response.headers;
+        } else if (error && error.headers) {
+          headersSource = error.headers;
+        }
+        var normalized = __normalizeHeaders(headersSource || {});
+        if (normalized['stripe-should-retry'] === 'true') {
+          return { retry: true };
+        }
+        if (normalized['stripe-should-retry'] === 'false') {
+          return { retry: false };
+        }
+        if (normalized['stripe-rate-limit-reset-seconds'] !== undefined) {
+          var resetDelaySeconds = Number(String(normalized['stripe-rate-limit-reset-seconds']));
+          if (!isNaN(resetDelaySeconds) && resetDelaySeconds > 0) {
+            return { retry: true, delayMs: resetDelaySeconds * 1000 };
+          }
+        }
+        return null;
+      }
+    });
+
+    const paymentIntent = response.body || {};
+    ctx.stripePaymentId = paymentIntent.id || null;
+    ctx.stripePaymentIdempotencyKey = idempotencyKey;
+    ctx.stripePaymentMetadata = paymentIntent.metadata || {};
+    ctx.stripePaymentIntent = paymentIntent;
+    if (stripeAccount) {
+      ctx.stripeAccountOverride = stripeAccount;
+    }
+    logInfo('stripe_create_payment_intent', {
+      paymentId: ctx.stripePaymentId || null,
+      amount: amount,
+      currency: currency,
+      idempotencyKey: idempotencyKey,
+      stripeAccount: stripeAccount
+    });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const stripeBody = error && error.body ? error.body : null;
+    var errorMessage = error && error.message ? error.message : 'Unknown Stripe error';
+    var stripeErrorType = null;
+    var stripeErrorCode = null;
+
+    if (stripeBody && stripeBody.error && typeof stripeBody.error === 'object') {
+      var stripeError = stripeBody.error;
+      if (stripeError.message) {
+        errorMessage = stripeError.message;
+      }
+      if (stripeError.type) {
+        stripeErrorType = stripeError.type;
+      }
+      if (stripeError.code) {
+        stripeErrorCode = stripeError.code;
+      }
+    }
+
+    logError('stripe_create_payment_intent_failed', {
+      status: status,
+      idempotencyKey: idempotencyKey,
+      type: stripeErrorType,
+      code: stripeErrorCode,
+      message: errorMessage
+    });
+
+    if (error && typeof error === 'object') {
+      error.message = 'Stripe create_payment failed: ' + errorMessage;
+      throw error;
+    }
+
+    throw new Error('Stripe create_payment failed: ' + errorMessage);
+  }
 }`,
 
   // Shopify - E-commerce

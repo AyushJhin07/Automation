@@ -1,0 +1,97 @@
+{
+  "id": "stripe-create-payment-intent",
+  "description": "Creates a Stripe PaymentIntent with an idempotency key and persists metadata.",
+  "graph": {
+    "id": "fixture-stripe-create-payment-intent",
+    "name": "Stripe create payment",
+    "nodes": [
+      {
+        "id": "stripe-action",
+        "type": "action.stripe",
+        "app": "stripe",
+        "name": "Collect payment",
+        "op": "action.stripe:create_payment",
+        "params": {
+          "operation": "create_payment",
+          "amount": "55",
+          "currency": "usd"
+        },
+        "data": {
+          "operation": "create_payment",
+          "config": {
+            "amount": "55",
+            "currency": "usd"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "orderId": "ORD-55"
+    }
+  },
+  "secrets": {
+    "STRIPE_SECRET_KEY": "sk_test_fixture",
+    "STRIPE_ACCOUNT_OVERRIDE": "acct_12345"
+  },
+  "http": [
+    {
+      "name": "stripe-create-payment-intent",
+      "request": {
+        "url": "https://api.stripe.com/v1/payment_intents",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer sk_test_fixture",
+          "content-type": "application/x-www-form-urlencoded",
+          "stripe-account": "acct_12345"
+        },
+        "payload": "amount=5500&currency=usd&payment_method_types[]=card"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "pi_12345",
+          "status": "requires_payment_method",
+          "client_secret": "pi_12345_secret_abc",
+          "metadata": {
+            "order_id": "ORD-55",
+            "customer": "cus_123"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "orderId": "ORD-55",
+      "stripePaymentId": "pi_12345",
+      "stripePaymentMetadata": {
+        "order_id": "ORD-55",
+        "customer": "cus_123"
+      },
+      "stripePaymentIntent": {
+        "id": "pi_12345",
+        "status": "requires_payment_method",
+        "client_secret": "pi_12345_secret_abc",
+        "metadata": {
+          "order_id": "ORD-55",
+          "customer": "cus_123"
+        }
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "stripe_create_payment_intent"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://api.stripe.com/v1/payment_intents",
+        "method": "POST"
+      }
+    ]
+  }
+}
