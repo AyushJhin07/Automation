@@ -1,0 +1,59 @@
+exports[`Apps Script Google Admin REAL_OPS builds action.google-admin:create_group 1`] = `
+
+function step_action_google_admin_create_group(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement action.google-admin:create_group Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'action.google-admin:create_group' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.google-admin:create_group. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Google Admin REAL_OPS builds action.google-admin:create_user 1`] = `
+
+function step_action_google_admin_create_user(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement action.google-admin:create_user Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'action.google-admin:create_user' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.google-admin:create_user. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Google Admin REAL_OPS builds action.google-admin:add_group_member 1`] = `
+
+function step_action_google_admin_add_group_member(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement action.google-admin:add_group_member Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'action.google-admin:add_group_member' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.google-admin:add_group_member. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Google Admin REAL_OPS builds action.google-admin:test_connection 1`] = `
+
+function step_action_google_admin_test_connection(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement action.google-admin:test_connection Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'action.google-admin:test_connection' });
+  throw new Error('TODO[apps-script-backlog]: Implement action.google-admin:test_connection. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Google Admin REAL_OPS builds trigger.google-admin:user_created 1`] = `
+
+function trigger_trigger_google_admin_user_created(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement trigger.google-admin:user_created Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'trigger.google-admin:user_created' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.google-admin:user_created. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
+
+exports[`Apps Script Google Admin REAL_OPS builds trigger.google-admin:user_suspended 1`] = `
+
+function trigger_trigger_google_admin_user_suspended(ctx) {
+  // TODO(APPS_SCRIPT_BACKLOG#google-admin): Implement trigger.google-admin:user_suspended Apps Script handler.
+  logWarn('apps_script_builder_todo', { connector: 'google-admin', operation: 'trigger.google-admin:user_suspended' });
+  throw new Error('TODO[apps-script-backlog]: Implement trigger.google-admin:user_suspended. See docs/apps-script-rollout/backlog.md.');
+}
+
+`;
