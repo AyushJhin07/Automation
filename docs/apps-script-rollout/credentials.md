@@ -196,6 +196,18 @@ This keeps connector code unchanged while letting the helper resolve prefixed pr
 - **API key naming:** Service account blobs must remain in `GOOGLE_DRIVE_SERVICE_ACCOUNT` to align with the helper overrides.
 - **Runbook:** [OAuth setup — Google](../phases/oauth-setup.md#google-drivecalendar)
 
+#### Google Calendar
+
+| Script property | Required? | Purpose | Preferred aliases |
+| --- | --- | --- | --- |
+| `GOOGLE_CALENDAR_ACCESS_TOKEN` | Yes | OAuth access token resolved by `requireOAuthToken('google-calendar')` | `apps_script__google_calendar__access_token` |
+| `GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID` | Optional | Default calendar identifier when nodes omit `calendarId` | `apps_script__google_calendar__default_calendar_id` |
+
+- **OAuth scopes:** Request both `https://www.googleapis.com/auth/calendar` and `https://www.googleapis.com/auth/calendar.events` for Tier‑0 automations so event CRUD and polling triggers can execute.
+- **Refresh strategy:** User tokens expire hourly—rotate them centrally and republish Script Properties in staging and production before deployment windows.
+- **API key naming:** Keep the canonical property names; the helper already maps the `apps_script__google_calendar__…` aliases used by Vault exporters and the rollout tracker.
+- **Runbook:** Capture scope or calendar defaults in the Google Calendar rollout checklist whenever handlers change.
+
 #### Google Sheets
 
 | Script property | Required? | Purpose | Preferred aliases |

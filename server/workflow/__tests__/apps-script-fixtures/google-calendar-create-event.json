@@ -1,0 +1,229 @@
+{
+  "id": "google-calendar-create-event",
+  "description": "Tier-0 workflow that creates a Google Calendar event via the REST API.",
+  "graph": {
+    "id": "fixture-google-calendar-create-event",
+    "name": "Google Calendar create event",
+    "nodes": [
+      {
+        "id": "calendar-action",
+        "type": "action.google-calendar",
+        "app": "google-calendar",
+        "name": "Create calendar event",
+        "op": "action.google-calendar:create_event",
+        "params": {
+          "operation": "create_event",
+          "calendarId": "primary",
+          "summary": "Tier 0 {{deployment}} Sync",
+          "description": "Status: {{status}}",
+          "location": "War Room",
+          "start": {
+            "dateTime": "{{startTime}}"
+          },
+          "end": {
+            "dateTime": "{{endTime}}"
+          },
+          "attendees": [
+            {
+              "email": "oncall@example.com"
+            },
+            {
+              "email": "deploy@example.com",
+              "optional": true
+            }
+          ],
+          "reminders": {
+            "useDefault": false,
+            "overrides": [
+              {
+                "method": "email",
+                "minutes": 30
+              },
+              {
+                "method": "popup",
+                "minutes": 10
+              }
+            ]
+          }
+        },
+        "data": {
+          "operation": "create_event",
+          "config": {
+            "calendarId": "primary",
+            "summary": "Tier 0 {{deployment}} Sync",
+            "description": "Status: {{status}}",
+            "location": "War Room",
+            "start": {
+              "dateTime": "{{startTime}}"
+            },
+            "end": {
+              "dateTime": "{{endTime}}"
+            },
+            "attendees": [
+              {
+                "email": "oncall@example.com"
+              },
+              {
+                "email": "deploy@example.com",
+                "optional": true
+              }
+            ],
+            "reminders": {
+              "useDefault": false,
+              "overrides": [
+                {
+                  "method": "email",
+                  "minutes": 30
+                },
+                {
+                  "method": "popup",
+                  "minutes": 10
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {
+      "deployment": "Deployment",
+      "status": "Green",
+      "startTime": "2024-07-01T16:00:00Z",
+      "endTime": "2024-07-01T17:00:00Z"
+    }
+  },
+  "secrets": {
+    "GOOGLE_CALENDAR_ACCESS_TOKEN": "ya29.test-calendar-token"
+  },
+  "http": [
+    {
+      "name": "calendar-create-event",
+      "request": {
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-calendar-token",
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "summary": "Tier 0 Deployment Sync",
+          "start": {
+            "dateTime": "2024-07-01T16:00:00Z"
+          },
+          "end": {
+            "dateTime": "2024-07-01T17:00:00Z"
+          },
+          "description": "Status: Green",
+          "location": "War Room",
+          "attendees": [
+            {
+              "email": "oncall@example.com"
+            },
+            {
+              "email": "deploy@example.com",
+              "optional": true
+            }
+          ],
+          "reminders": {
+            "useDefault": false,
+            "overrides": [
+              {
+                "method": "email",
+                "minutes": 30
+              },
+              {
+                "method": "popup",
+                "minutes": 10
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "evt-123",
+          "summary": "Tier 0 Deployment Sync",
+          "description": "Status: Green",
+          "location": "War Room",
+          "start": {
+            "dateTime": "2024-07-01T16:00:00Z"
+          },
+          "end": {
+            "dateTime": "2024-07-01T17:00:00Z"
+          },
+          "attendees": [
+            {
+              "email": "oncall@example.com"
+            },
+            {
+              "email": "deploy@example.com",
+              "optional": true
+            }
+          ],
+          "creator": {
+            "email": "automation@example.com"
+          },
+          "organizer": {
+            "email": "automation@example.com"
+          },
+          "htmlLink": "https://calendar.google.com/event?eid=evt-123"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "deployment": "Deployment",
+      "status": "Green",
+      "startTime": "2024-07-01T16:00:00Z",
+      "endTime": "2024-07-01T17:00:00Z",
+      "googleCalendarEventId": "evt-123",
+      "googleCalendarCalendarId": "primary",
+      "googleCalendarEvent": {
+        "id": "evt-123",
+        "summary": "Tier 0 Deployment Sync",
+        "description": "Status: Green",
+        "location": "War Room",
+        "start": {
+          "dateTime": "2024-07-01T16:00:00Z"
+        },
+        "end": {
+          "dateTime": "2024-07-01T17:00:00Z"
+        },
+        "attendees": [
+          {
+            "email": "oncall@example.com"
+          },
+          {
+            "email": "deploy@example.com",
+            "optional": true
+          }
+        ],
+        "creator": {
+          "email": "automation@example.com"
+        },
+        "organizer": {
+          "email": "automation@example.com"
+        },
+        "htmlLink": "https://calendar.google.com/event?eid=evt-123"
+      }
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "google_calendar_create_event_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "method": "POST"
+      }
+    ]
+  }
+}

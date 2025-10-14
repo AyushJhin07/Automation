@@ -64,6 +64,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | Google Contacts | `GOOGLE_CONTACTS_ACCESS_TOKEN` | `GOOGLE_CONTACTS_OAUTH_SUBJECT` | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
+| google-calendar | `GOOGLE_CALENDAR_ACCESS_TOKEN` | `GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID` | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
 | Google Docs | `GOOGLE_DOCS_ACCESS_TOKEN` *(Docs + Drive metadata scopes)* | — | — |
 | Google Drive | `GOOGLE_DRIVE_ACCESS_TOKEN` | `GOOGLE_DRIVE_OAUTH_SUBJECT`<br>`GOOGLE_DRIVE_SERVICE_ACCOUNT` | — |
