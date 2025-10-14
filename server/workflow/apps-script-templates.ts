@@ -82,8 +82,59 @@ function buildRequestUrlHelper(): string {
     }
     if (parts.length > 0) {
       url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+  }
+  return url;
+  }`;
+}
+
+function buildResolveEndpointHelper(): string {
+  return `  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
     }
-    return url;
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\\]\\\\$]/g, '\\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\\{' + escapeRegExp(key) + '\\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
   }`;
 }
 
@@ -164,10 +215,13 @@ export function restPostActionTemplate(metadata: RestPostTemplateMetadata): stri
   var body = request.body || request.payload || ctx.payload || {};
   var query = request.query || {};
   var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || '${baseUrl}';
+  var endpointTemplate = '${endpoint}';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
 ${authSnippet ? `${authSnippet}\n` : ''}
   headers['Content-Type'] = headers['Content-Type'] || 'application/json';
 
-  var url = buildRequestUrl('${baseUrl}', '${endpoint}', query);
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
   var payload = typeof body === 'string' ? body : JSON.stringify(body);
   var response = withRetries(function () {
     return fetchJson(url, {
@@ -182,6 +236,7 @@ ${authSnippet ? `${authSnippet}\n` : ''}
   logInfo('rest_post_success', { operation: '${escapeForSingleQuotes(metadata.key)}', status: response.status || null });
   return ctx;
 ${buildRequestUrlHelper()}
+${buildResolveEndpointHelper()}
 }`;
 }
 
@@ -202,7 +257,7 @@ export function retryableFetchActionTemplate(metadata: RetryableFetchTemplateMet
     if (nextToken && '${paginationParam}' !== '') {
       queryForPage['${paginationParam}'] = nextToken;
     }
-    var pageUrl = buildRequestUrl('${baseUrl}', '${endpoint}', queryForPage);
+    var pageUrl = buildRequestUrl(baseUrl, resolvedEndpoint, queryForPage);
     var pageResponse = withRetries(function () {
       return fetchJson(pageUrl, { method: '${escapeForSingleQuotes(metadata.method)}', headers: headers });
     });
@@ -230,7 +285,7 @@ export function retryableFetchActionTemplate(metadata: RetryableFetchTemplateMet
   }
 `
     : `
-  var url = buildRequestUrl('${baseUrl}', '${endpoint}', query);
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
   var response = withRetries(function () {
     return fetchJson(url, { method: '${escapeForSingleQuotes(metadata.method)}', headers: headers });
   });
@@ -241,12 +296,16 @@ export function retryableFetchActionTemplate(metadata: RetryableFetchTemplateMet
   var request = ctx && ctx.request ? ctx.request : {};
   var query = request.query || {};
   var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || '${baseUrl}';
+  var endpointTemplate = '${endpoint}';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
 ${authSnippet ? `${authSnippet}\n` : ''}
   logInfo('retryable_fetch_start', { operation: '${escapeForSingleQuotes(metadata.key)}' });
 ${paginationGuard}
   logInfo('retryable_fetch_complete', { operation: '${escapeForSingleQuotes(metadata.key)}' });
   return ctx;
 ${buildRequestUrlHelper()}
+${buildResolveEndpointHelper()}
 }`;
 }
 

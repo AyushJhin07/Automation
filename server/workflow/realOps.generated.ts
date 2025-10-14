@@ -3127,81 +3127,1148 @@ function step_action_google_drive_upload_file(ctx) {
 
   'action.google-forms:add_question': (_config) => `
 function step_action_google_forms_add_question(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:add_question Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:add_question' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:add_question. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}:batchUpdate';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:add_question' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_add_question_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:add_question', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:batch_update': (_config) => `
 function step_action_google_forms_batch_update(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:batch_update Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:batch_update' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:batch_update. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}:batchUpdate';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:batch_update' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_batch_update_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:batch_update', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:create_form': (_config) => `
 function step_action_google_forms_create_form(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:create_form Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:create_form' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:create_form. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:create_form' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_create_form_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:create_form', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:delete_item': (_config) => `
 function step_action_google_forms_delete_item(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:delete_item Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:delete_item' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:delete_item. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}:batchUpdate';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:delete_item' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_delete_item_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:delete_item', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:get_form': (_config) => `
 function step_action_google_forms_get_form(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:get_form Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:get_form' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:get_form. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:get_form' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  logInfo('retryable_fetch_start', { operation: 'action.google-forms:get_form' });
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var response = withRetries(function () {
+    return fetchJson(url, { method: 'GET', headers: headers });
+  });
+  ctx['google_forms_get_form_result'] = response.body !== undefined ? response.body : response;
+  logInfo('retryable_fetch_complete', { operation: 'action.google-forms:get_form' });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:get_response': (_config) => `
 function step_action_google_forms_get_response(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:get_response Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:get_response' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:get_response. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}/responses/{responseId}';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:get_response' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  logInfo('retryable_fetch_start', { operation: 'action.google-forms:get_response' });
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var response = withRetries(function () {
+    return fetchJson(url, { method: 'GET', headers: headers });
+  });
+  ctx['google_forms_get_response_result'] = response.body !== undefined ? response.body : response;
+  logInfo('retryable_fetch_complete', { operation: 'action.google-forms:get_response' });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:list_responses': (_config) => `
 function step_action_google_forms_list_responses(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:list_responses Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:list_responses' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:list_responses. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}/responses';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:list_responses' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  logInfo('retryable_fetch_start', { operation: 'action.google-forms:list_responses' });
+
+  var nextToken = (ctx && ctx.state && ctx.state.pageToken) || null;
+  var attempts = 0;
+  var aggregated = [];
+  while (attempts < 25) {
+    var queryForPage = Object.assign({}, query);
+    if (nextToken && 'pageToken' !== '') {
+      queryForPage['pageToken'] = nextToken;
+    }
+    var pageUrl = buildRequestUrl(baseUrl, resolvedEndpoint, queryForPage);
+    var pageResponse = withRetries(function () {
+      return fetchJson(pageUrl, { method: 'GET', headers: headers });
+    });
+    var pageBody = pageResponse.body || {};
+    var items = [];
+    if (Array.isArray(pageBody.items)) {
+      items = pageBody.items;
+    } else if (Array.isArray(pageBody.data)) {
+      items = pageBody.data;
+    } else if (Array.isArray(pageBody.results)) {
+      items = pageBody.results;
+    }
+    if (items.length > 0) {
+      aggregated = aggregated.concat(items);
+    }
+    nextToken = pageBody.nextToken || pageBody.next_page_token || pageBody.nextCursor || (pageBody.pagination && (pageBody.pagination.next || pageBody.pagination.nextCursor)) || null;
+    attempts++;
+    if (!nextToken) {
+      ctx['google_forms_list_responses_result'] = aggregated.length > 0 ? aggregated : pageBody;
+      break;
+    }
+  }
+  if (!ctx['google_forms_list_responses_result']) {
+    ctx['google_forms_list_responses_result'] = aggregated;
+  }
+  logInfo('retryable_fetch_complete', { operation: 'action.google-forms:list_responses' });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:test_connection': (_config) => `
 function step_action_google_forms_test_connection(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:test_connection Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:test_connection' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:test_connection. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:test_connection' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  logInfo('retryable_fetch_start', { operation: 'action.google-forms:test_connection' });
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var response = withRetries(function () {
+    return fetchJson(url, { method: 'GET', headers: headers });
+  });
+  ctx['google_forms_test_connection_result'] = response.body !== undefined ? response.body : response;
+  logInfo('retryable_fetch_complete', { operation: 'action.google-forms:test_connection' });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:update_form_info': (_config) => `
 function step_action_google_forms_update_form_info(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:update_form_info Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:update_form_info' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:update_form_info. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}:batchUpdate';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:update_form_info' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'POST',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_update_form_info_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:update_form_info', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
   'action.google-forms:update_settings': (_config) => `
 function step_action_google_forms_update_settings(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement action.google-forms:update_settings Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'action.google-forms:update_settings' });
-  throw new Error('TODO[apps-script-backlog]: Implement action.google-forms:update_settings. See docs/apps-script-rollout/backlog.md.');
+  var request = ctx && ctx.request ? ctx.request : {};
+  var body = request.body || request.payload || ctx.payload || {};
+  var query = request.query || {};
+  var headers = request.headers ? Object.assign({}, request.headers) : {};
+  var baseUrl = request.baseUrl || request.rootUrl || 'https://forms.googleapis.com/v1';
+  var endpointTemplate = '/forms/{formId}/settings';
+  var resolvedEndpoint = resolveEndpoint(endpointTemplate, request, ctx);
+  var accessToken = getSecret('GOOGLE_FORMS_ACCESS_TOKEN', { connector: 'google-forms' });
+  if (!accessToken) {
+    logWarn('missing_oauth_token', { connector: 'google-forms', operation: 'action.google-forms:update_settings' });
+    return ctx;
+  }
+  headers['Authorization'] = 'Bearer ' + accessToken;
+  headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+
+  var url = buildRequestUrl(baseUrl, resolvedEndpoint, query);
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  var response = withRetries(function () {
+    return fetchJson(url, {
+      method: 'PATCH',
+      headers: headers,
+      payload: payload,
+      contentType: headers['Content-Type']
+    });
+  });
+
+  ctx['google_forms_update_settings_result'] = response.body !== undefined ? response.body : response;
+  logInfo('rest_post_success', { operation: 'action.google-forms:update_settings', status: response.status || null });
+  return ctx;
+  function buildRequestUrl(baseUrl, endpoint, query) {
+    var root = baseUrl ? String(baseUrl).replace(/\/+$/, '') : '';
+    var path = endpoint ? String(endpoint) : '';
+    var url;
+    if (/^https?:/i.test(path)) {
+      url = path;
+    } else if (root) {
+      var normalizedPath = path && path.charAt(0) !== '/' ? '/' + path : path;
+      url = root + normalizedPath;
+    } else {
+      url = path;
+    }
+    var parts = [];
+    if (query && typeof query === 'object') {
+      for (var name in query) {
+        if (!Object.prototype.hasOwnProperty.call(query, name)) continue;
+        var raw = query[name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        if (Array.isArray(raw)) {
+          raw.forEach(function (entry) {
+            if (entry === undefined || entry === null || entry === '') return;
+            parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(entry));
+          });
+        } else {
+          parts.push(encodeURIComponent(name) + '=' + encodeURIComponent(raw));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+    }
+    return url;
+  }
+  function resolveEndpoint(template, request, ctx) {
+    var override = request && typeof request === 'object' ? (request.endpoint || request.path) : null;
+    if (override && typeof override === 'string') {
+      return override;
+    }
+
+    var resolved = template ? String(template) : '';
+    if (!resolved) {
+      return resolved;
+    }
+
+    var sources = [];
+    if (request && typeof request === 'object') {
+      if (request.pathParams && typeof request.pathParams === 'object') {
+        sources.push(request.pathParams);
+      }
+      if (request.params && typeof request.params === 'object') {
+        sources.push(request.params);
+      }
+    }
+    if (ctx && typeof ctx === 'object') {
+      if (ctx.pathParams && typeof ctx.pathParams === 'object') {
+        sources.push(ctx.pathParams);
+      }
+      if (ctx.params && typeof ctx.params === 'object') {
+        sources.push(ctx.params);
+      }
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^{}()|[\]\\$]/g, '\$&');
+    }
+
+    for (var i = 0; i < sources.length; i++) {
+      var source = sources[i];
+      for (var key in source) {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+        var rawValue = source[key];
+        if (rawValue === undefined || rawValue === null) continue;
+        var stringValue = String(rawValue);
+        var placeholderPattern = new RegExp('\{' + escapeRegExp(key) + '\}', 'g');
+        var colonPattern = new RegExp(':' + escapeRegExp(key) + '(?![a-zA-Z0-9_])', 'g');
+        resolved = resolved.replace(placeholderPattern, stringValue).replace(colonPattern, stringValue);
+      }
+    }
+
+    return resolved;
+  }
 }
 `,
 
@@ -12566,18 +13633,52 @@ function trigger_trigger_google_drive_file_updated(ctx) {
 `,
 
   'trigger.google-forms:form_created': (_config) => `
-function trigger_trigger_google_forms_form_created(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement trigger.google-forms:form_created Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'trigger.google-forms:form_created' });
-  throw new Error('TODO[apps-script-backlog]: Implement trigger.google-forms:form_created. See docs/apps-script-rollout/backlog.md.');
+function trigger_trigger_google_forms_form_created(e) {
+  var rawBody = e && e.postData && typeof e.postData.getDataAsString === 'function' ? e.postData.getDataAsString() : null;
+  var parsed;
+  if (rawBody) {
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch (error) {
+      logWarn('webhook_parse_failed', { operation: 'trigger.google-forms:form_created', message: error && error.message ? error.message : String(error) });
+    }
+  }
+
+  logInfo('webhook_received', { operation: 'trigger.google-forms:form_created' });
+  if (parsed) {
+    try {
+      main(parsed);
+    } catch (error) {
+      logError('webhook_dispatch_failed', { operation: 'trigger.google-forms:form_created', message: error && error.message ? error.message : String(error) });
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
 }
 `,
 
   'trigger.google-forms:form_response': (_config) => `
-function trigger_trigger_google_forms_form_response(ctx) {
-  // TODO(APPS_SCRIPT_BACKLOG#google-forms): Implement trigger.google-forms:form_response Apps Script handler.
-  logWarn('apps_script_builder_todo', { connector: 'google-forms', operation: 'trigger.google-forms:form_response' });
-  throw new Error('TODO[apps-script-backlog]: Implement trigger.google-forms:form_response. See docs/apps-script-rollout/backlog.md.');
+function trigger_trigger_google_forms_form_response(e) {
+  var rawBody = e && e.postData && typeof e.postData.getDataAsString === 'function' ? e.postData.getDataAsString() : null;
+  var parsed;
+  if (rawBody) {
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch (error) {
+      logWarn('webhook_parse_failed', { operation: 'trigger.google-forms:form_response', message: error && error.message ? error.message : String(error) });
+    }
+  }
+
+  logInfo('webhook_received', { operation: 'trigger.google-forms:form_response' });
+  if (parsed) {
+    try {
+      main(parsed);
+    } catch (error) {
+      logError('webhook_dispatch_failed', { operation: 'trigger.google-forms:form_response', message: error && error.message ? error.message : String(error) });
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
 }
 `,
 

@@ -64,6 +64,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | Google Contacts | `GOOGLE_CONTACTS_ACCESS_TOKEN` | `GOOGLE_CONTACTS_OAUTH_SUBJECT` | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
+| Google Forms | `GOOGLE_FORMS_ACCESS_TOKEN` | — | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
 | Google Docs | `GOOGLE_DOCS_ACCESS_TOKEN` *(Docs + Drive metadata scopes)* | — | — |
 | Google Drive | `GOOGLE_DRIVE_ACCESS_TOKEN` | `GOOGLE_DRIVE_OAUTH_SUBJECT`<br>`GOOGLE_DRIVE_SERVICE_ACCOUNT` | — |
@@ -186,6 +187,12 @@ Salesforce workflows must populate both properties before deployment. Access tok
 
 - Issue `GOOGLE_CONTACTS_ACCESS_TOKEN` with the `https://www.googleapis.com/auth/contacts` scope so the same credential can read and mutate contacts across all handlers.
 - When using domain-wide delegation, populate `GOOGLE_CONTACTS_OAUTH_SUBJECT` with the delegated user's primary email before deployment. The Apps Script runtime includes that subject automatically so Google issues tokens on behalf of the impersonated account.
+
+### Google Forms OAuth scopes
+
+- Provision the `GOOGLE_FORMS_ACCESS_TOKEN` secret with both `https://www.googleapis.com/auth/forms` and `https://www.googleapis.com/auth/forms.responses.readonly` scopes so create, update, and response retrieval actions share the same credential.
+- The Apps Script handlers read the token via `getSecret('GOOGLE_FORMS_ACCESS_TOKEN')`; populate Script Properties in every environment before running a workflow. Missing tokens short-circuit the handler and emit a `missing_oauth_token` warning.
+- When rotating tokens via OAuth Manager, overwrite the Script Property immediately so batch updates, question creation, and settings mutations continue to succeed without manual retries.
 
 ## Machine-readable report
 
