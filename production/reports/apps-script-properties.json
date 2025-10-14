@@ -472,7 +472,100 @@
         "trigger.ansible:inventory_updated",
         "trigger.ansible:job_completed"
       ],
-      "properties": [],
+  "properties": [
+    {
+      "name": "GOOGLE_SHEETS_ACCESS_TOKEN",
+      "optional": false,
+      "operations": [
+        "action.google-sheets-enhanced:append_row",
+        "action.google-sheets-enhanced:clear_range",
+        "action.google-sheets-enhanced:create_sheet",
+        "action.google-sheets-enhanced:delete_sheet",
+        "action.google-sheets-enhanced:duplicate_sheet",
+        "action.google-sheets-enhanced:find_replace",
+        "action.google-sheets-enhanced:format_cells",
+        "action.google-sheets-enhanced:get_values",
+        "action.google-sheets-enhanced:sort_range",
+        "action.google-sheets-enhanced:test_connection",
+        "action.google-sheets-enhanced:update_cell",
+        "action.google-sheets-enhanced:update_range",
+        "trigger.google-sheets-enhanced:cell_updated",
+        "trigger.google-sheets-enhanced:row_added"
+      ],
+      "contexts": [
+        "getSecret"
+      ]
+    },
+      {
+        "name": "GOOGLE_SHEETS_SERVICE_ACCOUNT",
+        "optional": true,
+        "operations": [
+        "action.google-sheets-enhanced:append_row",
+        "action.google-sheets-enhanced:clear_range",
+        "action.google-sheets-enhanced:create_sheet",
+        "action.google-sheets-enhanced:delete_sheet",
+        "action.google-sheets-enhanced:duplicate_sheet",
+        "action.google-sheets-enhanced:find_replace",
+        "action.google-sheets-enhanced:format_cells",
+        "action.google-sheets-enhanced:get_values",
+        "action.google-sheets-enhanced:sort_range",
+        "action.google-sheets-enhanced:test_connection",
+        "action.google-sheets-enhanced:update_cell",
+        "action.google-sheets-enhanced:update_range",
+        "trigger.google-sheets-enhanced:cell_updated",
+        "trigger.google-sheets-enhanced:row_added"
+      ],
+        "contexts": [
+          "scriptProperties"
+        ]
+      },
+      {
+        "name": "GOOGLE_SHEETS_DELEGATED_EMAIL",
+        "optional": true,
+        "operations": [
+        "action.google-sheets-enhanced:append_row",
+        "action.google-sheets-enhanced:clear_range",
+        "action.google-sheets-enhanced:create_sheet",
+        "action.google-sheets-enhanced:delete_sheet",
+        "action.google-sheets-enhanced:duplicate_sheet",
+        "action.google-sheets-enhanced:find_replace",
+        "action.google-sheets-enhanced:format_cells",
+        "action.google-sheets-enhanced:get_values",
+        "action.google-sheets-enhanced:sort_range",
+        "action.google-sheets-enhanced:test_connection",
+        "action.google-sheets-enhanced:update_cell",
+        "action.google-sheets-enhanced:update_range",
+        "trigger.google-sheets-enhanced:cell_updated",
+        "trigger.google-sheets-enhanced:row_added"
+      ],
+        "contexts": [
+          "scriptProperties"
+        ]
+      },
+    {
+      "name": "GOOGLE_SHEETS_DEFAULT_SPREADSHEET_ID",
+      "optional": true,
+      "operations": [
+        "action.google-sheets-enhanced:append_row",
+        "action.google-sheets-enhanced:clear_range",
+        "action.google-sheets-enhanced:create_sheet",
+        "action.google-sheets-enhanced:delete_sheet",
+        "action.google-sheets-enhanced:duplicate_sheet",
+        "action.google-sheets-enhanced:find_replace",
+        "action.google-sheets-enhanced:format_cells",
+        "action.google-sheets-enhanced:get_values",
+        "action.google-sheets-enhanced:sort_range",
+        "action.google-sheets-enhanced:test_connection",
+        "action.google-sheets-enhanced:update_cell",
+        "action.google-sheets-enhanced:update_range",
+        "trigger.google-sheets-enhanced:cell_updated",
+        "trigger.google-sheets-enhanced:row_added"
+      ],
+      "contexts": [
+        "scriptProperties"
+      ]
+    }
+  ],
       "environmentProperties": []
     },
     {

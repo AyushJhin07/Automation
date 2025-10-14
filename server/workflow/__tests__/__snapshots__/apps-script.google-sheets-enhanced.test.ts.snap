@@ -1,0 +1,413 @@
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:test_connection 1`] = `
+function step_action_google_sheets_enhanced_test_connection(ctx) {
+  ctx = ctx || {};
+  const config = {"spreadsheetId":"sheet-123"};
+  const interpolationContext = ctx || {};
+  const spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(config, interpolationContext);
+  const accessToken = googleSheetsEnhancedGetAccessToken([
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/drive.metadata.readonly'
+  ]);
+  const fields = 'spreadsheetId,spreadsheetUrl,properties(title,timeZone),sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount)))';
+
+  try {
+    const response = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, accessToken, fields, false, []);
+    const body = response || {};
+    const result = {
+      success: true,
+      spreadsheetId: spreadsheetId,
+      properties: body.properties || {},
+      sheets: body.sheets || [],
+      spreadsheetUrl: body.spreadsheetUrl || null
+    };
+    ctx.googleSheetsEnhancedTestConnection = result;
+    ctx.googleSheetsEnhancedLastResult = result;
+    ctx.spreadsheetId = ctx.spreadsheetId || spreadsheetId;
+    logInfo('google_sheets_enhanced_test_connection_success', {
+      spreadsheetId: spreadsheetId,
+      sheetCount: Array.isArray(body.sheets) ? body.sheets.length : 0
+    });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = error && error.message ? error.message : String(error);
+    logError('google_sheets_enhanced_test_connection_failed', {
+      spreadsheetId: spreadsheetId,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+}
+/* googleSheetsEnhancedHelpersBlock omitted in snapshot */`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:append_row 1`] = `
+function step_action_google_sheets_enhanced_append_row(ctx) {
+  ctx = ctx || {};
+  const config = {"spreadsheetId":"sheet-123","sheet":"Automation Log","values":["{{stage}}","{{result}}"]};
+  const interpolationContext = ctx || {};
+  const spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(config, interpolationContext);
+  const targetRange = googleSheetsEnhancedResolveRange(config, interpolationContext);
+  const sheetName = googleSheetsEnhancedResolveSheetName(config, interpolationContext);
+  const values = googleSheetsEnhancedResolveValues(config.values, interpolationContext, { fallbackKey: 'values' });
+  if (!Array.isArray(values) || values.length === 0 || !Array.isArray(values[0]) || values[0].length === 0) {
+    throw new Error('Google Sheets Enhanced append_row requires a non-empty values array');
+  }
+  const valueInputOption = (googleSheetsEnhancedResolveString(config.valueInputOption, interpolationContext) || 'USER_ENTERED').toUpperCase();
+  const insertOption = (googleSheetsEnhancedResolveString(config.insertDataOption, interpolationContext) || 'INSERT_ROWS').toUpperCase();
+  const includeValues = config.includeValuesInResponse !== false;
+  const accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  let url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(targetRange) + ':append';
+  const params = [
+    'valueInputOption=' + encodeURIComponent(valueInputOption),
+    'insertDataOption=' + encodeURIComponent(insertOption)
+  ];
+  if (includeValues) {
+    params.push('includeValuesInResponse=true');
+  }
+  if (params.length) {
+    url += '?' + params.join('&');
+  }
+
+  try {
+    const response = googleSheetsEnhancedApiRequest('POST', url, accessToken, { values: values }, { attempts: 4 });
+    const body = response.body || {};
+    const updates = body.updates || {};
+    const summary = {
+      success: true,
+      spreadsheetId: spreadsheetId,
+      updatedRange: updates.updatedRange || (updates.updatedData && updates.updatedData.range) || null,
+      updatedRows: typeof updates.updatedRows === 'number' ? updates.updatedRows : Number(updates.updatedRows || 0),
+      updatedColumns: typeof updates.updatedColumns === 'number' ? updates.updatedColumns : Number(updates.updatedColumns || 0),
+      values: updates.updatedData && updates.updatedData.values ? updates.updatedData.values : values
+    };
+    let appendedRowNumber = null;
+    if (summary.updatedRange) {
+      const rowMatch = String(summary.updatedRange).match(/!.*?(\d+)/);
+      if (rowMatch && rowMatch[1]) {
+        appendedRowNumber = Number(rowMatch[1]);
+      }
+    }
+    if (appendedRowNumber !== null && !isNaN(appendedRowNumber)) {
+      summary.rowNumber = appendedRowNumber;
+      ctx.rowNumber = appendedRowNumber;
+      ctx.row = appendedRowNumber;
+    }
+    ctx.googleSheetsEnhancedAppendRow = summary;
+    ctx.googleSheetsEnhancedLastResult = summary;
+    ctx.spreadsheetId = ctx.spreadsheetId || spreadsheetId;
+    ctx.sheetName = ctx.sheetName || sheetName;
+    logInfo('google_sheets_enhanced_append_row_success', {
+      spreadsheetId: spreadsheetId,
+      range: targetRange,
+      updatedRange: summary.updatedRange,
+      updatedRows: summary.updatedRows
+    });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = error && error.message ? error.message : String(error);
+    logError('google_sheets_enhanced_append_row_failed', {
+      spreadsheetId: spreadsheetId,
+      range: targetRange,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+}
+/* googleSheetsEnhancedHelpersBlock omitted in snapshot */`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:format_cells 1`] = `
+function step_action_google_sheets_enhanced_format_cells(ctx) {
+  ctx = ctx || {};
+  const config = {"spreadsheetId":"sheet-123","range":"Automation Log!A1:D1","format":{"backgroundColor":{"red":0.1,"green":0.5,"blue":0.9},"textFormat":{"bold":true}}};
+  const interpolationContext = ctx || {};
+  const spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(config, interpolationContext);
+  const range = googleSheetsEnhancedResolveRange(config, interpolationContext);
+  const sheetName = googleSheetsEnhancedResolveSheetName(config, interpolationContext);
+  const format = config.format || {};
+  const accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  const metadata = googleSheetsEnhancedFetchSpreadsheet(
+    spreadsheetId,
+    accessToken,
+    'spreadsheetId,spreadsheetUrl,sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount)))',
+    false,
+    [sheetName]
+  );
+  const sheet = googleSheetsEnhancedSelectSheet(metadata.sheets, sheetName);
+  if (!sheet || !sheet.properties || sheet.properties.sheetId === undefined) {
+    throw new Error('Google Sheets Enhanced format_cells could not resolve sheet: ' + sheetName);
+  }
+  const gridRange = googleSheetsEnhancedBuildGridRange(sheet.properties.sheetId, sheetName, range, sheet.properties);
+  const request = {
+    repeatCell: {
+      range: gridRange,
+      cell: {
+        userEnteredFormat: format
+      },
+      fields: 'userEnteredFormat'
+    }
+  };
+
+  try {
+    googleSheetsEnhancedBatchUpdate(spreadsheetId, accessToken, [request]);
+    const summary = {
+      success: true,
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      sheetTitle: sheet.properties.title,
+      range: range,
+      appliedFormat: format
+    };
+    ctx.googleSheetsEnhancedFormatCells = summary;
+    ctx.googleSheetsEnhancedLastResult = summary;
+    ctx.spreadsheetId = ctx.spreadsheetId || spreadsheetId;
+    ctx.sheetName = ctx.sheetName || sheetName;
+    logInfo('google_sheets_enhanced_format_cells_success', {
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      range: range
+    });
+    return ctx;
+  } catch (error) {
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = error && error.message ? error.message : String(error);
+    logError('google_sheets_enhanced_format_cells_failed', {
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      range: range,
+      status: status,
+      message: message
+    });
+    throw error;
+  }
+}
+/* googleSheetsEnhancedHelpersBlock omitted in snapshot */`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds trigger.google-sheets-enhanced:row_added 1`] = `
+function trigger_trigger_google_sheets_enhanced_row_added(ctx) {
+  return buildPollingWrapper('trigger.google-sheets-enhanced:row_added', function (runtime) {
+    const config = {"spreadsheetId":"sheet-123","sheetName":"Automation Log"};
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : (runtime.state = {});
+    const interpolationContext = state.lastPayload && typeof state.lastPayload === 'object' ? state.lastPayload : {};
+    const spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(config, interpolationContext);
+    const sheetName = googleSheetsEnhancedResolveSheetName(config, interpolationContext);
+    const accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    const fields = 'spreadsheetId,spreadsheetUrl,sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount)),data(rowData(values(formattedValue,effectiveValue))))';
+    const response = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, accessToken, fields, true, [sheetName]);
+    const spreadsheetUrl = response.spreadsheetUrl || null;
+    const sheet = googleSheetsEnhancedSelectSheet(response.sheets, sheetName);
+    if (!sheet || !sheet.properties || sheet.properties.sheetId === undefined) {
+      throw new Error('Google Sheets Enhanced row_added trigger could not resolve sheet: ' + sheetName);
+    }
+    const rows = googleSheetsEnhancedExtractRowValues(sheet);
+    const cursor = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+    let lastRowIndex = 0;
+    if (cursor && cursor.spreadsheetId === spreadsheetId && cursor.sheetId === sheet.properties.sheetId) {
+      lastRowIndex = Number(cursor.lastRowIndex || 0);
+    }
+    const events = [];
+    for (let idx = lastRowIndex; idx < rows.length; idx++) {
+      const values = rows[idx] || [];
+      const nonEmpty = values.some(function (value) { return value !== null && value !== undefined && String(value).trim() !== ''; });
+      if (!nonEmpty) {
+        continue;
+      }
+      const rowNumber = idx + 1;
+      const addedAt = new Date().toISOString();
+      const valuesByColumn = {};
+      for (let col = 0; col < values.length; col++) {
+        valuesByColumn[googleSheetsEnhancedColumnLetter(col)] = values[col];
+      }
+      events.push({
+        spreadsheetId: spreadsheetId,
+        spreadsheetUrl: spreadsheetUrl,
+        sheetId: sheet.properties.sheetId,
+        sheetTitle: sheet.properties.title,
+        rowId: sheet.properties.sheetId + '!' + rowNumber,
+        rowIndex: rowNumber,
+        values: values,
+        valuesByColumn: valuesByColumn,
+        addedAt: addedAt,
+        _meta: {
+          raw: {
+            spreadsheetId: spreadsheetId,
+            sheetId: sheet.properties.sheetId,
+            row: {
+              range: sheet.properties.title + '!' + rowNumber + ':' + rowNumber,
+              values: [values]
+            }
+          }
+        }
+      });
+    }
+
+    if (!events.length) {
+      runtime.summary({ spreadsheetId: spreadsheetId, sheetId: sheet.properties.sheetId, eventsDispatched: 0 });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursor };
+    }
+
+    const batch = runtime.dispatchBatch(events, function (entry) { return entry; });
+    const newCursor = {
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      lastRowIndex: rows.length,
+      updatedAt: new Date().toISOString()
+    };
+    state.cursor = newCursor;
+    state.lastPayload = events[events.length - 1];
+
+    runtime.summary({
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed,
+      cursor: newCursor
+    });
+
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: newCursor
+    };
+  });
+}
+/* googleSheetsEnhancedHelpersBlock omitted in snapshot */`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds trigger.google-sheets-enhanced:cell_updated 1`] = `
+function trigger_trigger_google_sheets_enhanced_cell_updated(ctx) {
+  return buildPollingWrapper('trigger.google-sheets-enhanced:cell_updated', function (runtime) {
+    const config = {"spreadsheetId":"sheet-123","sheetName":"Automation Log"};
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : (runtime.state = {});
+    const interpolationContext = state.lastPayload && typeof state.lastPayload === 'object' ? state.lastPayload : {};
+    const spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(config, interpolationContext);
+    const sheetName = googleSheetsEnhancedResolveSheetName(config, interpolationContext);
+    const accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    const fields = 'spreadsheetId,spreadsheetUrl,sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount)),data(rowData(values(formattedValue,effectiveValue))))';
+    const response = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, accessToken, fields, true, [sheetName]);
+    const sheet = googleSheetsEnhancedSelectSheet(response.sheets, sheetName);
+    if (!sheet || !sheet.properties || sheet.properties.sheetId === undefined) {
+      throw new Error('Google Sheets Enhanced cell_updated trigger could not resolve sheet: ' + sheetName);
+    }
+    const rows = googleSheetsEnhancedExtractRowValues(sheet);
+    const sheetKey = spreadsheetId + ':' + sheet.properties.sheetId;
+    const cellsState = state.cells && typeof state.cells === 'object' ? state.cells : (state.cells = {});
+    const previous = cellsState[sheetKey] && typeof cellsState[sheetKey] === 'object' ? cellsState[sheetKey] : {};
+    const nextSnapshot = {};
+    const events = [];
+    const timestamp = new Date().toISOString();
+    const limit = 50;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const rowValues = rows[rowIndex] || [];
+      const rowNumber = rowIndex + 1;
+      for (let colIndex = 0; colIndex < rowValues.length; colIndex++) {
+        const cellKey = googleSheetsEnhancedColumnLetter(colIndex) + rowNumber;
+        const newValue = rowValues[colIndex];
+        const normalizedNew = newValue === undefined ? null : newValue;
+        if (normalizedNew !== null && normalizedNew !== '') {
+          nextSnapshot[cellKey] = normalizedNew;
+        }
+        const hadValue = Object.prototype.hasOwnProperty.call(previous, cellKey);
+        const oldValue = hadValue ? previous[cellKey] : null;
+        if (!hadValue && (normalizedNew === null || normalizedNew === '')) {
+          continue;
+        }
+        if (hadValue && googleSheetsEnhancedValuesEqual(oldValue, normalizedNew)) {
+          continue;
+        }
+        const range = sheet.properties.title + '!' + cellKey;
+        events.push({
+          spreadsheetId: spreadsheetId,
+          sheetId: sheet.properties.sheetId,
+          sheetTitle: sheet.properties.title,
+          range: range,
+          changeId: sheet.properties.sheetId + '!' + cellKey + '@' + timestamp,
+          oldValue: oldValue === undefined ? null : oldValue,
+          newValue: normalizedNew,
+          updatedAt: timestamp,
+          _meta: {
+            raw: {
+              spreadsheetId: spreadsheetId,
+              sheetId: sheet.properties.sheetId,
+              range: range,
+              oldValue: oldValue === undefined ? null : oldValue,
+              newValue: normalizedNew
+            }
+          }
+        });
+        if (events.length >= limit) {
+          break;
+        }
+      }
+      if (events.length >= limit) {
+        break;
+      }
+    }
+
+    if (events.length < limit) {
+      for (var key in previous) {
+        if (!Object.prototype.hasOwnProperty.call(previous, key)) continue;
+        if (Object.prototype.hasOwnProperty.call(nextSnapshot, key)) continue;
+        const range = sheet.properties.title + '!' + key;
+        events.push({
+          spreadsheetId: spreadsheetId,
+          sheetId: sheet.properties.sheetId,
+          sheetTitle: sheet.properties.title,
+          range: range,
+          changeId: sheet.properties.sheetId + '!' + key + '@' + timestamp,
+          oldValue: previous[key],
+          newValue: null,
+          updatedAt: timestamp,
+          _meta: {
+            raw: {
+              spreadsheetId: spreadsheetId,
+              sheetId: sheet.properties.sheetId,
+              range: range,
+              oldValue: previous[key],
+              newValue: null
+            }
+          }
+        });
+        if (events.length >= limit) {
+          break;
+        }
+      }
+    }
+
+    if (!events.length) {
+      runtime.summary({ spreadsheetId: spreadsheetId, sheetId: sheet.properties.sheetId, eventsDispatched: 0 });
+      cellsState[sheetKey] = nextSnapshot;
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: state.cursor || {} };
+    }
+
+    const batch = runtime.dispatchBatch(events, function (entry) { return entry; });
+    cellsState[sheetKey] = nextSnapshot;
+    state.cursor = {
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      updatedAt: timestamp
+    };
+    state.lastPayload = events[events.length - 1];
+
+    runtime.summary({
+      spreadsheetId: spreadsheetId,
+      sheetId: sheet.properties.sheetId,
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: state.cursor
+    });
+
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: state.cursor
+    };
+  });
+}
+/* googleSheetsEnhancedHelpersBlock omitted in snapshot */`;

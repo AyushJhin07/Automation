@@ -66,6 +66,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | google-analytics | `GA_VIEW_ID` | — | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
 | Google Docs | `GOOGLE_DOCS_ACCESS_TOKEN` *(Docs + Drive metadata scopes)* | — | — |
+| Google Sheets Enhanced | `GOOGLE_SHEETS_ACCESS_TOKEN` *(Sheets + Drive metadata scopes)* | `GOOGLE_SHEETS_SERVICE_ACCOUNT` *(JSON payload for domain-wide delegation)*<br>`GOOGLE_SHEETS_DELEGATED_EMAIL` *(impersonated user when using a service account)*<br>`GOOGLE_SHEETS_DEFAULT_SPREADSHEET_ID` *(fallback spreadsheet when node configuration omits an ID)* | — |
 | Greenhouse | `GREENHOUSE_API_KEY` | — | — |
 | HelloSign | `HELLOSIGN_API_KEY` | — | — |
 | hootsuite | `HOOTSUITE_ACCESS_TOKEN` | — | — |
