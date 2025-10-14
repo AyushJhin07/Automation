@@ -2209,7 +2209,89 @@
         "trigger.google-drive:file_shared",
         "trigger.google-drive:file_updated"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_DRIVE_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-drive:copy_file",
+            "action.google-drive:create_file",
+            "action.google-drive:create_folder",
+            "action.google-drive:delete_file",
+            "action.google-drive:delete_permission",
+            "action.google-drive:download_file",
+            "action.google-drive:get_file",
+            "action.google-drive:get_file_permissions",
+            "action.google-drive:list_files",
+            "action.google-drive:move_file",
+            "action.google-drive:share_file",
+            "action.google-drive:test_connection",
+            "action.google-drive:update_file_metadata",
+            "action.google-drive:update_permission",
+            "action.google-drive:upload_file",
+            "trigger.google-drive:file_created",
+            "trigger.google-drive:file_shared",
+            "trigger.google-drive:file_updated"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_DRIVE_OAUTH_SUBJECT",
+          "optional": true,
+          "operations": [
+            "action.google-drive:copy_file",
+            "action.google-drive:create_file",
+            "action.google-drive:create_folder",
+            "action.google-drive:delete_file",
+            "action.google-drive:delete_permission",
+            "action.google-drive:download_file",
+            "action.google-drive:get_file",
+            "action.google-drive:get_file_permissions",
+            "action.google-drive:list_files",
+            "action.google-drive:move_file",
+            "action.google-drive:share_file",
+            "action.google-drive:test_connection",
+            "action.google-drive:update_file_metadata",
+            "action.google-drive:update_permission",
+            "action.google-drive:upload_file",
+            "trigger.google-drive:file_created",
+            "trigger.google-drive:file_shared",
+            "trigger.google-drive:file_updated"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        },
+        {
+          "name": "GOOGLE_DRIVE_SERVICE_ACCOUNT",
+          "optional": true,
+          "operations": [
+            "action.google-drive:copy_file",
+            "action.google-drive:create_file",
+            "action.google-drive:create_folder",
+            "action.google-drive:delete_file",
+            "action.google-drive:delete_permission",
+            "action.google-drive:download_file",
+            "action.google-drive:get_file",
+            "action.google-drive:get_file_permissions",
+            "action.google-drive:list_files",
+            "action.google-drive:move_file",
+            "action.google-drive:share_file",
+            "action.google-drive:test_connection",
+            "action.google-drive:update_file_metadata",
+            "action.google-drive:update_permission",
+            "action.google-drive:upload_file",
+            "trigger.google-drive:file_created",
+            "trigger.google-drive:file_shared",
+            "trigger.google-drive:file_updated"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,8 +16,14 @@ describe('Apps Script Google Drive REAL_OPS', () => {
 });
 
 describe('Apps Script Google Drive integration', () => {
-  it('creates a folder via Google Drive REST API', async () => {
-    const result = await runSingleFixture('google-drive-create-folder', fixturesDir);
+  let createFolderResult: Awaited<ReturnType<typeof runSingleFixture>>;
+
+  beforeAll(async () => {
+    createFolderResult = await runSingleFixture('google-drive-create-folder', fixturesDir);
+  });
+
+  it('creates a folder via Google Drive REST API', () => {
+    const result = createFolderResult;
 
     expect(result.success).toBe(true);
     expect(result.context.driveFolderId).toBe('fld-123');
@@ -44,5 +50,18 @@ describe('Apps Script Google Drive integration', () => {
       url: 'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType,parents,webViewLink,webContentLink,createdTime,modifiedTime,owners',
       method: 'POST'
     });
+  });
+
+  it('matches Tier-0 create folder dry-run snapshot', () => {
+    const snapshotPayload = {
+      context: createFolderResult.context,
+      httpCalls: createFolderResult.httpCalls.map(call => ({
+        url: call.url,
+        method: call.method,
+        headers: call.headers,
+      })),
+    };
+
+    expect(snapshotPayload).toMatchSnapshot();
   });
 });
