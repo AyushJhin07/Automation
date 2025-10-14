@@ -1,0 +1,84 @@
+{
+  "id": "gmail-search-emails",
+  "description": "Runs action.gmail:search_emails against a simulated Gmail list endpoint.",
+  "graph": {
+    "id": "fixture-gmail-search-emails",
+    "name": "Gmail search emails",
+    "nodes": [
+      {
+        "id": "gmail-search",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Search Gmail messages",
+        "op": "action.gmail:search_emails",
+        "params": {
+          "operation": "search_emails",
+          "query": "label:inbox",
+          "includeSpamTrash": false
+        },
+        "data": {
+          "operation": "search_emails",
+          "config": {
+            "query": "label:inbox",
+            "includeSpamTrash": false
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-message-list",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=label%3Ainbox",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "messages": [
+            { "id": "msg-1", "threadId": "thread-1" },
+            { "id": "msg-2", "threadId": "thread-2" }
+          ],
+          "nextPageToken": "next-token",
+          "resultSizeEstimate": 2
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailMessages": [
+        { "id": "msg-1", "threadId": "thread-1" },
+        { "id": "msg-2", "threadId": "thread-2" }
+      ],
+      "gmailNextPageToken": "next-token",
+      "nextPageToken": "next-token",
+      "resultSizeEstimate": 2,
+      "gmailQuery": "label:inbox",
+      "gmailIncludeSpamTrash": false
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_search_emails_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=label%3Ainbox",
+        "method": "GET"
+      }
+    ]
+  }
+}

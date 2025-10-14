@@ -174,9 +174,10 @@ Salesforce workflows must populate both properties before deployment. Access tok
 
 ### Gmail token management
 
-- Apps Script Gmail handlers require `GMAIL_ACCESS_TOKEN` scopes `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/gmail.readonly` to cover send, search, and polling flows. Provision tokens with both scopes so the same credential supports triggers and actions.
+- Apps Script Gmail handlers require `GMAIL_ACCESS_TOKEN` scopes `https://www.googleapis.com/auth/gmail.send`, `https://www.googleapis.com/auth/gmail.readonly`, **and** `https://www.googleapis.com/auth/gmail.modify` so the same token can poll, send, and update labels. Provision the access token with the full trio of scopes before promoting new handlers.
 - Populate `GMAIL_REFRESH_TOKEN` alongside the access token. A rotation job should exchange the refresh token at least daily; the Apps Script runtime expects fresh access tokens because Gmail REST calls fail once the one-hour access token expires.
 - Store both secrets in Script Properties (production and staging) before deploying new handlers. Missing tokens cause structured `gmail_missing_access_token` errors during runtime, surfacing misconfigurations quickly.
+- Polling triggers persist their `runtime.state` cursor back to Script Properties; confirm Script Properties writes succeed in staging before the Tier‑0 rollout so trigger runs continue from the last `internalDate` checkpoint.
 
 ## Machine-readable report
 

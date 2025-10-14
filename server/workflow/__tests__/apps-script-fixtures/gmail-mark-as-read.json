@@ -1,0 +1,72 @@
+{
+  "id": "gmail-mark-as-read",
+  "description": "Runs action.gmail:mark_as_read to remove the UNREAD label from messages.",
+  "graph": {
+    "id": "fixture-gmail-mark-as-read",
+    "name": "Gmail mark as read",
+    "nodes": [
+      {
+        "id": "gmail-mark",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Mark messages as read",
+        "op": "action.gmail:mark_as_read",
+        "params": {
+          "operation": "mark_as_read",
+          "messageIds": ["msg-1", "msg-2"]
+        },
+        "data": {
+          "operation": "mark_as_read",
+          "config": {
+            "messageIds": ["msg-1", "msg-2"]
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-mark-read",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "ids": ["msg-1", "msg-2"],
+          "removeLabelIds": ["UNREAD"]
+        }
+      },
+      "response": {
+        "status": 204,
+        "body": {}
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailModifiedIds": ["msg-1", "msg-2"]
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_mark_as_read_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify",
+        "method": "POST"
+      }
+    ]
+  }
+}
