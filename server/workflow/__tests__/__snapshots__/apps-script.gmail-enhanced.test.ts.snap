@@ -1,0 +1,4555 @@
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:test_connection 1`] = `
+function step_action_gmail_enhanced_test_connection(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me"});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('test_connection', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:send_email 1`] = `
+function step_action_gmail_enhanced_send_email(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","to":["alerts@example.com","ops@example.com"],"cc":["finance@example.com"],"bcc":["audit@example.com"],"subject":"Incident Report","body":"Summary of the incident and remediation steps.","replyTo":"noreply@example.com","isHtml":true,"attachments":[{"filename":"report.pdf","data":"UEsDBBQABgAIAAAAIQ==","mimeType":"application/pdf"}]});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('send_email', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:get_message 1`] = `
+function step_action_gmail_enhanced_get_message(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","id":"abc123","format":"full","metadataHeaders":["From","Subject"]});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('get_message', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:list_messages 1`] = `
+function step_action_gmail_enhanced_list_messages(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","q":"label:inbox","labelIds":["INBOX"],"includeSpamTrash":false,"maxResults":50,"pageToken":"token-1"});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('list_messages', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:modify_message 1`] = `
+function step_action_gmail_enhanced_modify_message(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","id":"message-42","addLabelIds":["STARRED"],"removeLabelIds":["UNREAD"]});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('modify_message', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:delete_message 1`] = `
+function step_action_gmail_enhanced_delete_message(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","id":"message-99"});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('delete_message', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:create_draft 1`] = `
+function step_action_gmail_enhanced_create_draft(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","to":["product@example.com"],"subject":"Product Launch Prep","body":"<p>Drafting launch checklist.</p>","isHtml":true});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('create_draft', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:list_labels 1`] = `
+function step_action_gmail_enhanced_list_labels(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me"});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('list_labels', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:create_label 1`] = `
+function step_action_gmail_enhanced_create_label(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","name":"Projects/Automation","messageListVisibility":"show","labelListVisibility":"labelShowIfUnread","type":"user","color":{"textColor":"#000000","backgroundColor":"#33ff33"}});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('create_label', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced REAL_OPS builds action.gmail-enhanced:search_messages 1`] = `
+function step_action_gmail_enhanced_search_messages(inputData, params) {
+  inputData = inputData || {};
+  params = params || {};
+  var options = Object.assign({}, {"userId":"me","query":"status update","from":"alerts@example.com","to":"ops@example.com","subject":"Alert","hasAttachment":true,"isUnread":true,"dateAfter":"2024/01/01","dateBefore":"2024/02/01","maxResults":25});
+  if (params && typeof params === 'object') {
+    for (var key in params) {
+      if (Object.prototype.hasOwnProperty.call(params, key)) {
+        options[key] = params[key];
+      }
+    }
+  }
+
+  if (typeof __gmailEnhancedHelpers === 'undefined') {
+    __gmailEnhancedHelpers = (function () {
+      var DEFAULT_SCOPES = ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"];
+      var BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/';
+
+      function ensureString(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value);
+      }
+
+      function ensureArray(value) {
+        if (!value) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          var normalized = [];
+          for (var i = 0; i < value.length; i++) {
+            var entry = value[i];
+            if (entry === null || entry === undefined) {
+              continue;
+            }
+            if (typeof entry === 'string') {
+              var trimmed = entry.trim();
+              if (trimmed) {
+                normalized.push(trimmed);
+              }
+            } else {
+              normalized.push(String(entry));
+            }
+          }
+          return normalized;
+        }
+        if (typeof value === 'string') {
+          var trimmed = value.trim();
+          return trimmed ? [trimmed] : [];
+        }
+        return [String(value)];
+      }
+
+      function requireValue(value, field) {
+        if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+          throw new Error('Missing required Gmail Enhanced field: ' + field);
+        }
+        return value;
+      }
+
+      function toUserId(value) {
+        if (value === null || value === undefined) {
+          return 'me';
+        }
+        var normalized = String(value).trim();
+        return normalized || 'me';
+      }
+
+      function resolveScopes(opts) {
+        var configured = opts && Array.isArray(opts.scopes) ? opts.scopes : [];
+        if (!configured.length) {
+          return DEFAULT_SCOPES;
+        }
+        return configured.map(function (entry) { return String(entry); }).filter(function (entry) { return entry.trim().length > 0; });
+      }
+
+      function apiRequest(method, userId, path, options) {
+        options = options || {};
+        var scopes = resolveScopes(options);
+        var token = requireOAuthToken('gmail-enhanced', { scopes: scopes });
+        var url = BASE_URL + encodeURIComponent(toUserId(userId)) + path;
+        if (options.query && typeof options.query === 'object') {
+          var queryParts = [];
+          for (var key in options.query) {
+            if (!Object.prototype.hasOwnProperty.call(options.query, key)) continue;
+            var raw = options.query[key];
+            if (raw === undefined || raw === null || raw === '') continue;
+            if (Array.isArray(raw)) {
+              for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                if (item === undefined || item === null || item === '') continue;
+                queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(item)));
+              }
+            } else {
+              queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(raw)));
+            }
+          }
+          if (queryParts.length > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + queryParts.join('&');
+          }
+        }
+
+        var headers = { Authorization: 'Bearer ' + token };
+        if (options.headers && typeof options.headers === 'object') {
+          for (var headerName in options.headers) {
+            if (Object.prototype.hasOwnProperty.call(options.headers, headerName)) {
+              headers[headerName] = options.headers[headerName];
+            }
+          }
+        }
+
+        var payload = options.payload;
+        var payloadText;
+        if (payload !== undefined) {
+          payloadText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+          headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+        }
+
+        var response = rateLimitAware(function () {
+          return fetchJson({
+            url: url,
+            method: method,
+            headers: headers,
+            payload: payloadText,
+            muteHttpExceptions: false
+          });
+        }, { attempts: 5, backoffMs: 500 });
+
+        return response.body || {};
+      }
+
+      function buildMimeMessage(message) {
+        var toList = ensureArray(requireValue(message.to, 'to'));
+        if (!toList.length) {
+          throw new Error('Send email requires at least one recipient.');
+        }
+
+        var ccList = ensureArray(message.cc);
+        var bccList = ensureArray(message.bcc);
+        var headerLines = [];
+        headerLines.push('To: ' + toList.join(', '));
+        if (ccList.length) {
+          headerLines.push('Cc: ' + ccList.join(', '));
+        }
+        if (bccList.length) {
+          headerLines.push('Bcc: ' + bccList.join(', '));
+        }
+        headerLines.push('Subject: ' + ensureString(requireValue(message.subject, 'subject')));
+        headerLines.push('MIME-Version: 1.0');
+        var replyTo = ensureString(message.replyTo).trim();
+        if (replyTo) {
+          headerLines.push('Reply-To: ' + replyTo);
+        }
+
+        var bodyContent = ensureString(requireValue(message.body, 'body'));
+        var isHtml = !!message.isHtml;
+        var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+        if (!attachments.length) {
+          headerLines.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+          headerLines.push('Content-Transfer-Encoding: 7bit');
+          var simple = headerLines.join('\r\n') + '\r\n\r\n' + bodyContent;
+          return Utilities.base64EncodeWebSafe(simple);
+        }
+
+        var boundary = 'gmail-enhanced-' + Utilities.getUuid();
+        headerLines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+
+        var parts = [];
+        parts.push('--' + boundary);
+        parts.push('Content-Type: ' + (isHtml ? 'text/html' : 'text/plain') + '; charset="UTF-8"');
+        parts.push('Content-Transfer-Encoding: 7bit');
+        parts.push('');
+        parts.push(bodyContent);
+        parts.push('');
+
+        for (var index = 0; index < attachments.length; index++) {
+          var descriptor = attachments[index] || {};
+          var name = ensureString(descriptor.filename || descriptor.name).trim();
+          var data = descriptor.data !== undefined ? descriptor.data : descriptor.content;
+          if (!name || data === undefined || data === null) {
+            continue;
+          }
+          var mimeType = ensureString(descriptor.mimeType || descriptor.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+          var encoded = '';
+          try {
+            var decoded = Utilities.base64Decode(String(data));
+            encoded = Utilities.base64Encode(decoded);
+          } catch (error) {
+            logWarn('gmail_enhanced_attachment_decode_failed', {
+              index: index,
+              message: error && error.message ? error.message : String(error)
+            });
+            encoded = Utilities.base64Encode(Utilities.newBlob(String(data)).getBytes());
+          }
+
+          parts.push('--' + boundary);
+          parts.push('Content-Type: ' + mimeType);
+          parts.push('Content-Disposition: attachment; filename="' + name.replace(/"/g, '\\"') + '"');
+          parts.push('Content-Transfer-Encoding: base64');
+          parts.push('');
+          parts.push(encoded);
+          parts.push('');
+        }
+
+        parts.push('--' + boundary + '--');
+        var fullMessage = headerLines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+        return Utilities.base64EncodeWebSafe(fullMessage);
+      }
+
+      function handleSendEmail(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/messages/send', { payload: { raw: raw }, scopes: options.scopes });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateDraft(options, inputData) {
+        var userId = toUserId(options.userId);
+        var raw = buildMimeMessage(options);
+        var response = apiRequest('POST', userId, '/drafts', { payload: { message: { raw: raw } }, scopes: options.scopes });
+        inputData.gmailEnhancedDraft = response;
+        inputData.gmailEnhancedDraftId = response.id || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleGetMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('GET', userId, '/messages/' + encodeURIComponent(messageId), {
+          query: {
+            format: ensureString(options.format || 'full'),
+            metadataHeaders: ensureArray(options.metadataHeaders)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedMessageId = response.id || null;
+        inputData.gmailEnhancedThreadId = response.threadId || null;
+        inputData.gmailEnhancedLabelIds = Array.isArray(response.labelIds) ? response.labelIds : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListMessages(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/messages', {
+          query: {
+            q: ensureString(options.q || ''),
+            labelIds: ensureArray(options.labelIds),
+            includeSpamTrash: options.includeSpamTrash ? 'true' : undefined,
+            maxResults: options.maxResults,
+            pageToken: options.pageToken
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessages = Array.isArray(response.messages) ? response.messages : [];
+        inputData.gmailEnhancedNextPageToken = response.nextPageToken || null;
+        inputData.gmailEnhancedResultSizeEstimate = response.resultSizeEstimate || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleSearchMessages(options, inputData) {
+        var parts = [];
+        if (options.query) {
+          parts.push(String(options.query));
+        }
+        if (options.from) {
+          parts.push('from:' + String(options.from));
+        }
+        if (options.to) {
+          parts.push('to:' + String(options.to));
+        }
+        if (options.subject) {
+          parts.push('subject:' + String(options.subject));
+        }
+        if (options.hasAttachment) {
+          parts.push('has:attachment');
+        }
+        if (options.isUnread) {
+          parts.push('is:unread');
+        }
+        if (options.dateAfter) {
+          parts.push('after:' + String(options.dateAfter));
+        }
+        if (options.dateBefore) {
+          parts.push('before:' + String(options.dateBefore));
+        }
+        var query = parts.join(' ').trim();
+        return handleListMessages({
+          userId: options.userId,
+          q: query,
+          maxResults: options.maxResults,
+          scopes: options.scopes
+        }, inputData);
+      }
+
+      function handleModifyMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        var response = apiRequest('POST', userId, '/messages/' + encodeURIComponent(messageId) + '/modify', {
+          payload: {
+            addLabelIds: ensureArray(options.addLabelIds),
+            removeLabelIds: ensureArray(options.removeLabelIds)
+          },
+          scopes: options.scopes
+        });
+        inputData.gmailEnhancedMessage = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleDeleteMessage(options, inputData) {
+        var userId = toUserId(options.userId);
+        var messageId = ensureString(requireValue(options.id, 'id'));
+        apiRequest('DELETE', userId, '/messages/' + encodeURIComponent(messageId), { scopes: options.scopes });
+        inputData.gmailEnhancedDeleted = true;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleListLabels(options, inputData) {
+        var userId = toUserId(options.userId);
+        var response = apiRequest('GET', userId, '/labels', { scopes: options.scopes });
+        inputData.gmailEnhancedLabels = Array.isArray(response.labels) ? response.labels : [];
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleCreateLabel(options, inputData) {
+        var userId = toUserId(options.userId);
+        var payload = {
+          name: ensureString(requireValue(options.name, 'name')),
+          labelListVisibility: options.labelListVisibility || 'labelShow',
+          messageListVisibility: options.messageListVisibility || 'show',
+          type: options.type || 'user'
+        };
+        if (options.color && typeof options.color === 'object') {
+          payload.color = {
+            textColor: ensureString(options.color.textColor),
+            backgroundColor: ensureString(options.color.backgroundColor)
+          };
+        }
+        var response = apiRequest('POST', userId, '/labels', { payload: payload, scopes: options.scopes });
+        inputData.gmailEnhancedLabel = response;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function handleTestConnection(options, inputData) {
+        var userId = toUserId(options.userId);
+        var profile = apiRequest('GET', userId, '/profile', { scopes: options.scopes });
+        inputData.gmailEnhancedProfile = profile;
+        inputData.gmailEnhancedEmailAddress = profile.emailAddress || null;
+        inputData.gmailEnhancedHistoryId = profile.historyId || null;
+        inputData.gmailEnhancedSuccess = true;
+        return inputData;
+      }
+
+      function execute(operation, options, inputData) {
+        var op = (operation || '').toLowerCase();
+        switch (op) {
+          case 'send_email':
+            return handleSendEmail(options, inputData);
+          case 'create_draft':
+            return handleCreateDraft(options, inputData);
+          case 'get_message':
+            return handleGetMessage(options, inputData);
+          case 'list_messages':
+            return handleListMessages(options, inputData);
+          case 'search_messages':
+            return handleSearchMessages(options, inputData);
+          case 'modify_message':
+            return handleModifyMessage(options, inputData);
+          case 'delete_message':
+            return handleDeleteMessage(options, inputData);
+          case 'list_labels':
+            return handleListLabels(options, inputData);
+          case 'create_label':
+            return handleCreateLabel(options, inputData);
+          case 'test_connection':
+            return handleTestConnection(options, inputData);
+          default:
+            throw new Error('Unsupported Gmail Enhanced action: ' + operation);
+        }
+      }
+
+      return { execute: execute };
+    })();
+  }
+
+  try {
+    return __gmailEnhancedHelpers.execute('search_messages', options, inputData);
+  } catch (error) {
+    console.error('❌ Gmail Enhanced action failed:', error);
+    inputData.gmailEnhancedError = error && error.message ? error.message : String(error);
+    inputData.gmailEnhancedSuccess = false;
+    throw error;
+  }
+}
+
+var __gmailEnhancedHelpers;
+`
+exports[`Apps Script Gmail Enhanced triggers builds trigger.gmail-enhanced:new_email 1`] = `
+function onGmailEnhancedNewEmail() {
+  return buildPollingWrapper('trigger.gmail-enhanced:new_email', function (runtime) {
+    let accessToken;
+    try {
+      accessToken = requireOAuthToken('gmail-enhanced', { scopes: ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"] });
+    } catch (error) {
+      logError('gmail_enhanced_missing_access_token', {
+        operation: 'trigger.gmail-enhanced:new_email',
+        message: error && error.message ? error.message : String(error)
+      });
+      throw error;
+    }
+
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+    const queryTemplate = 'from:alerts@example.com';
+    const query = queryTemplate ? interpolate(queryTemplate, interpolationContext).trim() : '';
+    const labelIdsConfig = ["INBOX","IMPORTANT"];
+    const labelIds = [];
+    if (Array.isArray(labelIdsConfig)) {
+      for (let i = 0; i < labelIdsConfig.length; i++) {
+        const value = typeof labelIdsConfig[i] === 'string' ? interpolate(labelIdsConfig[i], interpolationContext).trim() : '';
+        if (value) {
+          labelIds.push(value);
+        }
+      }
+    }
+
+    const headers = { Authorization: 'Bearer ' + accessToken };
+    const baseUrl = 'https://gmail.googleapis.com/gmail/v1/users/me';
+    const cursor = (runtime.state && typeof runtime.state.cursor === 'object') ? runtime.state.cursor : {};
+    const lastInternalDate = cursor && cursor.internalDate ? Number(cursor.internalDate) : null;
+    const afterSeconds = lastInternalDate ? Math.floor(lastInternalDate / 1000) : null;
+    const effectiveQuery = afterSeconds ? ((query ? query + ' ' : '') + 'after:' + afterSeconds) : query;
+    const messages = [];
+    let pageToken = null;
+    let pageCount = 0;
+
+    function decodeBase64Url(data) {
+      if (!data) {
+        return '';
+      }
+      try {
+        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = Utilities.base64Decode(normalized);
+        return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+      } catch (error) {
+        logWarn('gmail_message_body_decode_failed', {
+          message: error && error.message ? error.message : String(error)
+        });
+        return '';
+      }
+    }
+
+    function extractHeader(all, name) {
+      if (!Array.isArray(all)) {
+        return '';
+      }
+      const target = name.toLowerCase();
+      for (let i = 0; i < all.length; i++) {
+        const header = all[i];
+        if (!header || typeof header.name !== 'string') {
+          continue;
+        }
+        if (header.name.toLowerCase() === target) {
+          return header.value || '';
+        }
+      }
+      return '';
+    }
+
+    function parseAddressList(value) {
+      if (!value) {
+        return [];
+      }
+      return value.split(',').map(part => part.trim()).filter(Boolean);
+    }
+
+    function collectAttachments(parts, bucket) {
+      if (!Array.isArray(parts)) {
+        return;
+      }
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i] || {};
+        if (part.filename && part.body && part.body.attachmentId) {
+          bucket.push(part);
+        }
+        if (Array.isArray(part.parts)) {
+          collectAttachments(part.parts, bucket);
+        }
+      }
+    }
+
+    while (pageCount < 10) {
+      const queryParams = [];
+      if (effectiveQuery) {
+        queryParams.push('q=' + encodeURIComponent(effectiveQuery));
+      }
+      if (labelIds && labelIds.length) {
+        for (let i = 0; i < labelIds.length; i++) {
+          queryParams.push('labelIds=' + encodeURIComponent(labelIds[i]));
+        }
+      }
+      if (pageToken) {
+        queryParams.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const url = baseUrl + '/messages' + (queryParams.length ? '?' + queryParams.join('&') : '');
+      const response = rateLimitAware(() => fetchJson({
+        url,
+        method: 'GET',
+        headers,
+        muteHttpExceptions: false
+      }), { attempts: 5, backoffMs: 500 });
+
+      const body = response.body || {};
+      const batch = Array.isArray(body.messages) ? body.messages : [];
+      for (let i = 0; i < batch.length; i++) {
+        const messageMeta = batch[i];
+        const messageId = messageMeta && messageMeta.id ? String(messageMeta.id) : '';
+        if (!messageId) {
+          continue;
+        }
+
+        const messageResponse = rateLimitAware(() => fetchJson({
+          url: baseUrl + '/messages/' + encodeURIComponent(messageId) + '?format=full',
+          method: 'GET',
+          headers,
+          muteHttpExceptions: false
+        }), { attempts: 5, backoffMs: 500 });
+
+        const message = messageResponse.body || {};
+        const payload = message.payload || {};
+        const headersList = Array.isArray(payload.headers) ? payload.headers : [];
+        const attachments = [];
+        collectAttachments(payload.parts, attachments);
+
+        const from = extractHeader(headersList, 'From');
+        const to = extractHeader(headersList, 'To');
+        const cc = extractHeader(headersList, 'Cc');
+        const bcc = extractHeader(headersList, 'Bcc');
+        const subject = extractHeader(headersList, 'Subject');
+
+        messages.push({
+          id: message.id || null,
+          threadId: message.threadId || null,
+          historyId: message.historyId || null,
+          labelIds: message.labelIds || [],
+          snippet: message.snippet || '',
+          internalDate: message.internalDate || null,
+          payload: {
+            from,
+            to,
+            cc,
+            bcc,
+            subject,
+            body: decodeBase64Url(payload.body && payload.body.data),
+            attachments: attachments.map(part => ({
+              filename: part.filename || null,
+              mimeType: part.mimeType || null,
+              attachmentId: part.body ? part.body.attachmentId || null : null
+            }))
+          },
+          metadata: {
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+          fetchedAt: new Date().toISOString()
+          }
+        });
+      }
+
+      pageToken = body.nextPageToken || null;
+      pageCount += 1;
+      if (!pageToken) {
+        break;
+      }
+    }
+
+    if (!messages.length) {
+      runtime.summary({
+        eventsAttempted: 0,
+        eventsDispatched: 0,
+        eventsFailed: 0,
+        resource: 'gmail_enhanced_new_email',
+        cursor: cursor
+      });
+      logInfo('gmail_enhanced_new_email_poll', { dispatched: 0, cursor: cursor });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursor };
+    }
+
+    const batchResult = runtime.dispatchBatch(messages, function (message) {
+      return message;
+    });
+
+    const latestMessage = messages[messages.length - 1];
+    const nextCursor = {
+      internalDate: latestMessage && latestMessage.internalDate ? Number(latestMessage.internalDate) : Date.now(),
+      lastId: latestMessage && latestMessage.id ? latestMessage.id : null
+    };
+
+    runtime.state = runtime.state || {};
+    runtime.state.cursor = nextCursor;
+    runtime.summary({
+      eventsAttempted: batchResult.attempted,
+      eventsDispatched: batchResult.succeeded,
+      eventsFailed: batchResult.failed,
+      resource: 'gmail_enhanced_new_email',
+      cursor: nextCursor
+    });
+    logInfo('gmail_enhanced_new_email_poll', {
+      dispatched: batchResult.succeeded,
+      cursor: nextCursor,
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+      batchAttempted: batchResult.attempted
+    });
+
+    return {
+      eventsAttempted: batchResult.attempted,
+      eventsDispatched: batchResult.succeeded,
+      eventsFailed: batchResult.failed,
+      cursor: nextCursor,
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+      messages
+    };
+  });
+}`
+exports[`Apps Script Gmail Enhanced triggers builds trigger.gmail-enhanced:email_starred 1`] = `
+function onGmailEnhancedEmailStarred() {
+  return buildPollingWrapper('trigger.gmail-enhanced:email_starred', function (runtime) {
+    let accessToken;
+    try {
+      accessToken = requireOAuthToken('gmail-enhanced', { scopes: ["https://www.googleapis.com/auth/gmail.modify","https://www.googleapis.com/auth/gmail.labels","openid","email","profile"] });
+    } catch (error) {
+      logError('gmail_enhanced_missing_access_token', {
+        operation: 'trigger.gmail-enhanced:email_starred',
+        message: error && error.message ? error.message : String(error)
+      });
+      throw error;
+    }
+
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+    const labelIds = ['STARRED'];
+    const query = 'is:starred';
+
+    const headers = { Authorization: 'Bearer ' + accessToken };
+    const baseUrl = 'https://gmail.googleapis.com/gmail/v1/users/me';
+    const cursor = (runtime.state && typeof runtime.state.cursor === 'object') ? runtime.state.cursor : {};
+    const lastInternalDate = cursor && cursor.internalDate ? Number(cursor.internalDate) : null;
+    const afterSeconds = lastInternalDate ? Math.floor(lastInternalDate / 1000) : null;
+    const effectiveQuery = afterSeconds ? ((query ? query + ' ' : '') + 'after:' + afterSeconds) : query;
+    const messages = [];
+    let pageToken = null;
+    let pageCount = 0;
+
+    function decodeBase64Url(data) {
+      if (!data) {
+        return '';
+      }
+      try {
+        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = Utilities.base64Decode(normalized);
+        return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+      } catch (error) {
+        logWarn('gmail_message_body_decode_failed', {
+          message: error && error.message ? error.message : String(error)
+        });
+        return '';
+      }
+    }
+
+    function extractHeader(all, name) {
+      if (!Array.isArray(all)) {
+        return '';
+      }
+      const target = name.toLowerCase();
+      for (let i = 0; i < all.length; i++) {
+        const header = all[i];
+        if (!header || typeof header.name !== 'string') {
+          continue;
+        }
+        if (header.name.toLowerCase() === target) {
+          return header.value || '';
+        }
+      }
+      return '';
+    }
+
+    function parseAddressList(value) {
+      if (!value) {
+        return [];
+      }
+      return value.split(',').map(part => part.trim()).filter(Boolean);
+    }
+
+    function collectAttachments(parts, bucket) {
+      if (!Array.isArray(parts)) {
+        return;
+      }
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i] || {};
+        if (part.filename && part.body && part.body.attachmentId) {
+          bucket.push(part);
+        }
+        if (Array.isArray(part.parts)) {
+          collectAttachments(part.parts, bucket);
+        }
+      }
+    }
+
+    while (pageCount < 10) {
+      const queryParams = [];
+      if (effectiveQuery) {
+        queryParams.push('q=' + encodeURIComponent(effectiveQuery));
+      }
+      if (labelIds && labelIds.length) {
+        for (let i = 0; i < labelIds.length; i++) {
+          queryParams.push('labelIds=' + encodeURIComponent(labelIds[i]));
+        }
+      }
+      if (pageToken) {
+        queryParams.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const url = baseUrl + '/messages' + (queryParams.length ? '?' + queryParams.join('&') : '');
+      const response = rateLimitAware(() => fetchJson({
+        url,
+        method: 'GET',
+        headers,
+        muteHttpExceptions: false
+      }), { attempts: 5, backoffMs: 500 });
+
+      const body = response.body || {};
+      const batch = Array.isArray(body.messages) ? body.messages : [];
+      for (let i = 0; i < batch.length; i++) {
+        const messageMeta = batch[i];
+        const messageId = messageMeta && messageMeta.id ? String(messageMeta.id) : '';
+        if (!messageId) {
+          continue;
+        }
+
+        const messageResponse = rateLimitAware(() => fetchJson({
+          url: baseUrl + '/messages/' + encodeURIComponent(messageId) + '?format=full',
+          method: 'GET',
+          headers,
+          muteHttpExceptions: false
+        }), { attempts: 5, backoffMs: 500 });
+
+        const message = messageResponse.body || {};
+        const payload = message.payload || {};
+        const headersList = Array.isArray(payload.headers) ? payload.headers : [];
+        const attachments = [];
+        collectAttachments(payload.parts, attachments);
+
+        const hasStarred = Array.isArray(message.labelIds) && message.labelIds.indexOf('STARRED') !== -1;
+        if (!hasStarred) {
+          continue;
+        }
+
+        const from = extractHeader(headersList, 'From');
+        const to = extractHeader(headersList, 'To');
+        const cc = extractHeader(headersList, 'Cc');
+        const bcc = extractHeader(headersList, 'Bcc');
+        const subject = extractHeader(headersList, 'Subject');
+
+        messages.push({
+          id: message.id || null,
+          threadId: message.threadId || null,
+          historyId: message.historyId || null,
+          labelIds: message.labelIds || [],
+          snippet: message.snippet || '',
+          internalDate: message.internalDate || null,
+          payload: {
+            from,
+            to,
+            cc,
+            bcc,
+            subject,
+            body: decodeBase64Url(payload.body && payload.body.data),
+            attachments: attachments.map(part => ({
+              filename: part.filename || null,
+              mimeType: part.mimeType || null,
+              attachmentId: part.body ? part.body.attachmentId || null : null
+            }))
+          },
+          metadata: {
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+          fetchedAt: new Date().toISOString()
+          }
+        });
+      }
+
+      pageToken = body.nextPageToken || null;
+      pageCount += 1;
+      if (!pageToken) {
+        break;
+      }
+    }
+
+    if (!messages.length) {
+      runtime.summary({
+        eventsAttempted: 0,
+        eventsDispatched: 0,
+        eventsFailed: 0,
+        resource: 'gmail_enhanced_email_starred',
+        cursor: cursor
+      });
+      logInfo('gmail_enhanced_email_starred_poll', { dispatched: 0, cursor: cursor });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursor };
+    }
+
+    const batchResult = runtime.dispatchBatch(messages, function (message) {
+      return message;
+    });
+
+    const latestMessage = messages[messages.length - 1];
+    const nextCursor = {
+      internalDate: latestMessage && latestMessage.internalDate ? Number(latestMessage.internalDate) : Date.now(),
+      lastId: latestMessage && latestMessage.id ? latestMessage.id : null
+    };
+
+    runtime.state = runtime.state || {};
+    runtime.state.cursor = nextCursor;
+    runtime.summary({
+      eventsAttempted: batchResult.attempted,
+      eventsDispatched: batchResult.succeeded,
+      eventsFailed: batchResult.failed,
+      resource: 'gmail_enhanced_email_starred',
+      cursor: nextCursor
+    });
+    logInfo('gmail_enhanced_email_starred_poll', {
+      dispatched: batchResult.succeeded,
+      cursor: nextCursor,
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+      batchAttempted: batchResult.attempted
+    });
+
+    return {
+      eventsAttempted: batchResult.attempted,
+      eventsDispatched: batchResult.succeeded,
+      eventsFailed: batchResult.failed,
+      cursor: nextCursor,
+      connector: 'gmail-enhanced', labelCount: labelIds.length,
+      messages
+    };
+  });
+}`
