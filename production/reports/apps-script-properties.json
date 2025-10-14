@@ -2101,7 +2101,27 @@
         "trigger.google-forms:form_created",
         "trigger.google-forms:form_response"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_FORMS_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.google-forms:add_question",
+            "action.google-forms:batch_update",
+            "action.google-forms:create_form",
+            "action.google-forms:delete_item",
+            "action.google-forms:get_form",
+            "action.google-forms:get_response",
+            "action.google-forms:list_responses",
+            "action.google-forms:test_connection",
+            "action.google-forms:update_form_info",
+            "action.google-forms:update_settings"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

@@ -23,6 +23,8 @@
       "id": "test_connection",
       "name": "Test Connection",
       "description": "Test the connection to Google Forms",
+      "endpoint": "/forms",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {},
@@ -55,6 +57,8 @@
       "id": "create_form",
       "name": "Create Form",
       "description": "Create a new Google Form",
+      "endpoint": "/forms",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -103,6 +107,8 @@
       "id": "get_form",
       "name": "Get Form",
       "description": "Get form details and questions",
+      "endpoint": "/forms/{formId}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -142,6 +148,8 @@
       "id": "batch_update",
       "name": "Batch Update Form",
       "description": "Batch update form with requests",
+      "endpoint": "/forms/{formId}:batchUpdate",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -206,6 +214,8 @@
       "id": "add_question",
       "name": "Add Question",
       "description": "Add a question to the form",
+      "endpoint": "/forms/{formId}:batchUpdate",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -292,6 +302,8 @@
       "id": "update_form_info",
       "name": "Update Form Info",
       "description": "Update form title and description",
+      "endpoint": "/forms/{formId}:batchUpdate",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -351,6 +363,8 @@
       "id": "delete_item",
       "name": "Delete Item",
       "description": "Delete an item from the form",
+      "endpoint": "/forms/{formId}:batchUpdate",
+      "method": "POST",
       "parameters": {
         "type": "object",
         "properties": {
@@ -400,6 +414,8 @@
       "id": "list_responses",
       "name": "List Responses",
       "description": "List form responses",
+      "endpoint": "/forms/{formId}/responses",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -454,6 +470,8 @@
       "id": "get_response",
       "name": "Get Response",
       "description": "Get a specific form response",
+      "endpoint": "/forms/{formId}/responses/{responseId}",
+      "method": "GET",
       "parameters": {
         "type": "object",
         "properties": {
@@ -498,6 +516,8 @@
       "id": "update_settings",
       "name": "Update Settings",
       "description": "Update form settings",
+      "endpoint": "/forms/{formId}/settings",
+      "method": "PATCH",
       "parameters": {
         "type": "object",
         "properties": {
