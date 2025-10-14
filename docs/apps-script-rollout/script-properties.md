@@ -63,6 +63,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | Gmail | `GMAIL_ACCESS_TOKEN` | `GMAIL_REFRESH_TOKEN` | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
+| google-calendar | `GOOGLE_CALENDAR_ACCESS_TOKEN` | `GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID` | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
 | Greenhouse | `GREENHOUSE_API_KEY` | — | — |
 | HelloSign | `HELLOSIGN_API_KEY` | — | — |

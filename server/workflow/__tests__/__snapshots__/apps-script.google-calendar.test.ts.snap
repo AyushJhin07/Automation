@@ -1,0 +1,1405 @@
+exports[`Apps Script Google Calendar REAL_OPS builds action.google-calendar:create_event 1`] = `
+function step_action_google_calendar_create_event(ctx) {
+  ctx = ctx || {};
+
+  const config = {};
+  const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+
+  function resolveStructured(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          result[key] = resolveStructured(value[key]);
+        }
+      }
+      return result;
+    }
+    if (typeof value === 'string') {
+      return interpolate(value, ctx);
+    }
+    return value;
+  }
+
+  function resolveBoolean(value, fallback) {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) {
+      return fallback;
+    }
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+
+  function resolveCalendarId() {
+    const template = config.calendarId || config.calendar_id || '';
+    const resolved = template ? interpolate(String(template), ctx).trim() : '';
+    if (resolved) {
+      return resolved;
+    }
+    try {
+      const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+      if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+        return fallback.trim();
+      }
+    } catch (error) {
+      // Optional secret – ignore when missing.
+    }
+    return 'primary';
+  }
+
+  function resolveDate(label, value) {
+    const resolved = resolveStructured(value);
+    if (!resolved || typeof resolved !== 'object') {
+      throw new Error('Google Calendar ' + label + ' requires a date or dateTime.');
+    }
+    const output = {};
+    if (Object.prototype.hasOwnProperty.call(resolved, 'dateTime')) {
+      const raw = resolved.dateTime;
+      if (raw !== null && raw !== undefined) {
+        const normalized = String(raw).trim();
+        if (normalized) {
+          output.dateTime = normalized;
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(resolved, 'date')) {
+      const rawDate = resolved.date;
+      if (rawDate !== null && rawDate !== undefined) {
+        const normalizedDate = String(rawDate).trim();
+        if (normalizedDate) {
+          output.date = normalizedDate;
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(resolved, 'timeZone')) {
+      const rawTz = resolved.timeZone;
+      if (rawTz !== null && rawTz !== undefined) {
+        const normalizedTz = String(rawTz).trim();
+        if (normalizedTz) {
+          output.timeZone = normalizedTz;
+        }
+      }
+    }
+    if (!output.dateTime && !output.date) {
+      throw new Error('Google Calendar ' + label + ' requires a date or dateTime.');
+    }
+    return output;
+  }
+
+  function normalizeAttendees(value) {
+    const resolved = resolveStructured(value);
+    if (!Array.isArray(resolved) || resolved.length === 0) {
+      return null;
+    }
+    const attendees = [];
+    for (let i = 0; i < resolved.length; i++) {
+      const entry = resolved[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const email = entry.email ? String(entry.email).trim() : '';
+      if (!email) {
+        continue;
+      }
+      const attendee = { email: email };
+      if (entry.displayName) {
+        const displayName = String(entry.displayName).trim();
+        if (displayName) {
+          attendee.displayName = displayName;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(entry, 'optional')) {
+        attendee.optional = resolveBoolean(entry.optional, false);
+      }
+      attendees.push(attendee);
+    }
+    return attendees.length > 0 ? attendees : null;
+  }
+
+  function normalizeRecurrence(value) {
+    const resolved = resolveStructured(value);
+    if (!Array.isArray(resolved) || resolved.length === 0) {
+      return null;
+    }
+    const recurrence = [];
+    for (let i = 0; i < resolved.length; i++) {
+      const rule = resolved[i];
+      if (rule === null || rule === undefined) {
+        continue;
+      }
+      const normalized = String(rule).trim();
+      if (normalized) {
+        recurrence.push(normalized);
+      }
+    }
+    return recurrence.length > 0 ? recurrence : null;
+  }
+
+  function normalizeReminders(value) {
+    const resolved = resolveStructured(value);
+    if (!resolved || typeof resolved !== 'object') {
+      return null;
+    }
+    const reminders = {};
+    if (Object.prototype.hasOwnProperty.call(resolved, 'useDefault')) {
+      reminders.useDefault = resolveBoolean(resolved.useDefault, true);
+    }
+    if (Array.isArray(resolved.overrides)) {
+      const overrides = [];
+      for (let i = 0; i < resolved.overrides.length; i++) {
+        const override = resolved.overrides[i];
+        if (!override || typeof override !== 'object') {
+          continue;
+        }
+        const methodRaw = override.method ? String(override.method).trim().toLowerCase() : '';
+        if (methodRaw !== 'email' && methodRaw !== 'popup') {
+          continue;
+        }
+        const minutesRaw = override.minutes;
+        if (minutesRaw === null || minutesRaw === undefined || isNaN(Number(minutesRaw))) {
+          continue;
+        }
+        overrides.push({ method: methodRaw, minutes: Number(minutesRaw) });
+      }
+      if (overrides.length > 0) {
+        reminders.overrides = overrides;
+      }
+    }
+    if (!Object.prototype.hasOwnProperty.call(reminders, 'useDefault') && !Object.prototype.hasOwnProperty.call(reminders, 'overrides')) {
+      return null;
+    }
+    return reminders;
+  }
+
+  const calendarId = resolveCalendarId();
+  const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+  const summaryTemplate = config.summary || '';
+  const summary = summaryTemplate ? interpolate(String(summaryTemplate), ctx).trim() : '';
+  if (!summary) {
+    throw new Error('Google Calendar create_event requires a summary.');
+  }
+
+  const descriptionTemplate = config.description || '';
+  const description = descriptionTemplate ? interpolate(String(descriptionTemplate), ctx).trim() : '';
+  const locationTemplate = config.location || '';
+  const location = locationTemplate ? interpolate(String(locationTemplate), ctx).trim() : '';
+
+  const start = resolveDate('start', config.start);
+  const end = resolveDate('end', config.end);
+
+  const attendees = normalizeAttendees(config.attendees);
+  const recurrence = normalizeRecurrence(config.recurrence);
+  const reminders = normalizeReminders(config.reminders);
+
+  const visibilityTemplate = config.visibility || '';
+  let visibility = visibilityTemplate ? interpolate(String(visibilityTemplate), ctx).trim().toLowerCase() : '';
+  if (['default', 'public', 'private', 'confidential'].indexOf(visibility) === -1) {
+    visibility = '';
+  }
+
+  const requestBody = {
+    summary: summary,
+    start: start,
+    end: end
+  };
+
+  if (description) {
+    requestBody.description = description;
+  }
+  if (location) {
+    requestBody.location = location;
+  }
+  if (attendees && attendees.length > 0) {
+    requestBody.attendees = attendees;
+  }
+  if (recurrence && recurrence.length > 0) {
+    requestBody.recurrence = recurrence;
+  }
+  if (reminders) {
+    requestBody.reminders = reminders;
+  }
+  if (visibility) {
+    requestBody.visibility = visibility;
+  }
+
+  const response = rateLimitAware(() => fetchJson({
+    url: 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calendarId) + '/events',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(requestBody),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+  const event = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+  const eventId = event && event.id ? event.id : null;
+
+  ctx.googleCalendarEvent = event || {};
+  ctx.googleCalendarEventId = eventId;
+  ctx.googleCalendarCalendarId = calendarId;
+
+  logInfo('google_calendar_create_event_success', { calendarId: calendarId, eventId: eventId });
+
+  return ctx;
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds action.google-calendar:update_event 1`] = `
+function step_action_google_calendar_update_event(ctx) {
+  ctx = ctx || {};
+
+  const config = {};
+  const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+
+  function resolveStructured(value) {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      const result = [];
+      for (let i = 0; i < value.length; i++) {
+        result.push(resolveStructured(value[i]));
+      }
+      return result;
+    }
+    if (typeof value === 'object') {
+      const result = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          result[key] = resolveStructured(value[key]);
+        }
+      }
+      return result;
+    }
+    if (typeof value === 'string') {
+      return interpolate(value, ctx);
+    }
+    return value;
+  }
+
+  function resolveBoolean(value, fallback) {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) {
+      return fallback;
+    }
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+
+  function resolveCalendarId() {
+    const template = config.calendarId || config.calendar_id || '';
+    const resolved = template ? interpolate(String(template), ctx).trim() : '';
+    if (resolved) {
+      return resolved;
+    }
+    try {
+      const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+      if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+        return fallback.trim();
+      }
+    } catch (error) {
+      // Optional secret – ignore when missing.
+    }
+    return 'primary';
+  }
+
+  function resolveDate(label, value) {
+    const resolved = resolveStructured(value);
+    if (!resolved || typeof resolved !== 'object') {
+      throw new Error('Google Calendar ' + label + ' requires a date or dateTime.');
+    }
+    const output = {};
+    if (Object.prototype.hasOwnProperty.call(resolved, 'dateTime')) {
+      const raw = resolved.dateTime;
+      if (raw !== null && raw !== undefined) {
+        const normalized = String(raw).trim();
+        if (normalized) {
+          output.dateTime = normalized;
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(resolved, 'date')) {
+      const rawDate = resolved.date;
+      if (rawDate !== null && rawDate !== undefined) {
+        const normalizedDate = String(rawDate).trim();
+        if (normalizedDate) {
+          output.date = normalizedDate;
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(resolved, 'timeZone')) {
+      const rawTz = resolved.timeZone;
+      if (rawTz !== null && rawTz !== undefined) {
+        const normalizedTz = String(rawTz).trim();
+        if (normalizedTz) {
+          output.timeZone = normalizedTz;
+        }
+      }
+    }
+    if (!output.dateTime && !output.date) {
+      throw new Error('Google Calendar ' + label + ' requires a date or dateTime.');
+    }
+    return output;
+  }
+
+  function normalizeAttendees(value) {
+    const resolved = resolveStructured(value);
+    if (!Array.isArray(resolved) || resolved.length === 0) {
+      return null;
+    }
+    const attendees = [];
+    for (let i = 0; i < resolved.length; i++) {
+      const entry = resolved[i];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const email = entry.email ? String(entry.email).trim() : '';
+      if (!email) {
+        continue;
+      }
+      const attendee = { email: email };
+      if (entry.displayName) {
+        const displayName = String(entry.displayName).trim();
+        if (displayName) {
+          attendee.displayName = displayName;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(entry, 'optional')) {
+        attendee.optional = resolveBoolean(entry.optional, false);
+      }
+      attendees.push(attendee);
+    }
+    return attendees.length > 0 ? attendees : null;
+  }
+
+  const calendarId = resolveCalendarId();
+  const eventIdTemplate = config.eventId || config.event_id || '';
+  const eventId = eventIdTemplate ? interpolate(String(eventIdTemplate), ctx).trim() : '';
+  if (!eventId) {
+    throw new Error('Google Calendar update_event requires an eventId.');
+  }
+
+  const updates = {};
+
+  const summaryTemplate = config.summary || '';
+  const summary = summaryTemplate ? interpolate(String(summaryTemplate), ctx).trim() : '';
+  if (summary) {
+    updates.summary = summary;
+  }
+
+  const descriptionTemplate = config.description || '';
+  const description = descriptionTemplate ? interpolate(String(descriptionTemplate), ctx).trim() : '';
+  if (description) {
+    updates.description = description;
+  }
+
+  const locationTemplate = config.location || '';
+  const location = locationTemplate ? interpolate(String(locationTemplate), ctx).trim() : '';
+  if (location) {
+    updates.location = location;
+  }
+
+  if (config.start !== undefined && config.start !== null) {
+    updates.start = resolveDate('start', config.start);
+  }
+  if (config.end !== undefined && config.end !== null) {
+    updates.end = resolveDate('end', config.end);
+  }
+
+  if (config.attendees !== undefined && config.attendees !== null) {
+    const attendees = normalizeAttendees(config.attendees);
+    if (attendees) {
+      updates.attendees = attendees;
+    } else {
+      updates.attendees = [];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error('Provide at least one field to update for Google Calendar update_event.');
+  }
+
+  const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+  const response = rateLimitAware(() => fetchJson({
+    url:
+      'https://www.googleapis.com/calendar/v3/calendars/' +
+      encodeURIComponent(calendarId) +
+      '/events/' +
+      encodeURIComponent(eventId),
+    method: 'PATCH',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    payload: JSON.stringify(updates),
+    contentType: 'application/json'
+  }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+  const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+
+  ctx.googleCalendarEvent = body || {};
+  ctx.googleCalendarEventId = eventId;
+  ctx.googleCalendarCalendarId = calendarId;
+
+  logInfo('google_calendar_update_event_success', {
+    calendarId: calendarId,
+    eventId: eventId,
+    updatedFields: Object.keys(updates)
+  });
+
+  return ctx;
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds action.google-calendar:get_event 1`] = `
+function step_action_google_calendar_get_event(ctx) {
+  ctx = ctx || {};
+
+  const config = {};
+  const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+
+  function resolveCalendarId() {
+    const template = config.calendarId || config.calendar_id || '';
+    const resolved = template ? interpolate(String(template), ctx).trim() : '';
+    if (resolved) {
+      return resolved;
+    }
+    try {
+      const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+      if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+        return fallback.trim();
+      }
+    } catch (error) {
+      // Optional secret – ignore when missing.
+    }
+    return 'primary';
+  }
+
+  const calendarId = resolveCalendarId();
+  const eventIdTemplate = config.eventId || config.event_id || '';
+  const eventId = eventIdTemplate ? interpolate(String(eventIdTemplate), ctx).trim() : '';
+  if (!eventId) {
+    throw new Error('Google Calendar get_event requires an eventId.');
+  }
+
+  const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+  const response = rateLimitAware(() => fetchJson({
+    url:
+      'https://www.googleapis.com/calendar/v3/calendars/' +
+      encodeURIComponent(calendarId) +
+      '/events/' +
+      encodeURIComponent(eventId),
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json'
+    }
+  }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+  const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+
+  ctx.googleCalendarEvent = body || {};
+  ctx.googleCalendarEventId = eventId;
+  ctx.googleCalendarCalendarId = calendarId;
+
+  logInfo('google_calendar_get_event_success', { calendarId: calendarId, eventId: eventId });
+
+  return ctx;
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds action.google-calendar:list_events 1`] = `
+function step_action_google_calendar_list_events(ctx) {
+  ctx = ctx || {};
+
+  const config = {};
+  const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+
+  function resolveCalendarId() {
+    const template = config.calendarId || config.calendar_id || '';
+    const resolved = template ? interpolate(String(template), ctx).trim() : '';
+    if (resolved) {
+      return resolved;
+    }
+    try {
+      const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+      if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+        return fallback.trim();
+      }
+    } catch (error) {
+      // Optional secret – ignore when missing.
+    }
+    return 'primary';
+  }
+
+  function resolveBoolean(value, fallback) {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) {
+      return fallback;
+    }
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+
+  const calendarId = resolveCalendarId();
+  const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+  const maxResultsRaw = config.maxResults ?? config.max_results;
+  let remaining = Number(maxResultsRaw);
+  if (!remaining || remaining <= 0) {
+    remaining = 250;
+  }
+  if (remaining > 2500) {
+    remaining = 2500;
+  }
+
+  const timeMinTemplate = config.timeMin || config.time_min || '';
+  const timeMin = timeMinTemplate ? interpolate(String(timeMinTemplate), ctx).trim() : '';
+
+  const timeMaxTemplate = config.timeMax || config.time_max || '';
+  const timeMax = timeMaxTemplate ? interpolate(String(timeMaxTemplate), ctx).trim() : '';
+
+  const orderByTemplate = config.orderBy || config.order_by || '';
+  const orderBy = orderByTemplate ? interpolate(String(orderByTemplate), ctx).trim() : '';
+
+  const qTemplate = config.q || '';
+  const queryTerm = qTemplate ? interpolate(String(qTemplate), ctx).trim() : '';
+
+  const singleEventsRaw = config.singleEvents ?? config.single_events;
+  const singleEvents = resolveBoolean(singleEventsRaw, false);
+
+  const collected = [];
+  let pageToken = '';
+  let iterations = 0;
+
+  while (remaining > 0 && iterations < 10) {
+    const pageSize = remaining > 250 ? 250 : remaining;
+
+    const queryParts = [
+      'maxResults=' + pageSize,
+      'singleEvents=' + (singleEvents ? 'true' : 'false'),
+      'showDeleted=false'
+    ];
+
+    if (orderBy) {
+      const allowed = ['starttime', 'updated'];
+      const normalizedOrder = orderBy.toLowerCase();
+      if (allowed.indexOf(normalizedOrder) !== -1) {
+        queryParts.push('orderBy=' + encodeURIComponent(normalizedOrder));
+      }
+    }
+
+    if (timeMin) {
+      queryParts.push('timeMin=' + encodeURIComponent(timeMin));
+    }
+
+    if (timeMax) {
+      queryParts.push('timeMax=' + encodeURIComponent(timeMax));
+    }
+
+    if (queryTerm) {
+      queryParts.push('q=' + encodeURIComponent(queryTerm));
+    }
+
+    if (pageToken) {
+      queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+    }
+
+    const url =
+      'https://www.googleapis.com/calendar/v3/calendars/' +
+      encodeURIComponent(calendarId) +
+      '/events?' +
+      queryParts.join('&');
+
+    const response = rateLimitAware(() => fetchJson({
+      url: url,
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Accept': 'application/json'
+      }
+    }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+    const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+    const items = body && Array.isArray(body.items) ? body.items : [];
+    for (let i = 0; i < items.length; i++) {
+      collected.push(items[i]);
+    }
+
+    remaining -= items.length;
+    if (remaining <= 0) {
+      pageToken = body && body.nextPageToken ? String(body.nextPageToken) : '';
+      break;
+    }
+
+    pageToken = body && body.nextPageToken ? String(body.nextPageToken) : '';
+    if (!pageToken) {
+      break;
+    }
+
+    iterations++;
+  }
+
+  ctx.googleCalendarEvents = collected;
+  ctx.googleCalendarEventCount = collected.length;
+  ctx.googleCalendarCalendarId = calendarId;
+  ctx.googleCalendarNextPageToken = pageToken || null;
+
+  logInfo('google_calendar_list_events_success', {
+    calendarId: calendarId,
+    eventCount: collected.length,
+    nextPageToken: pageToken || null
+  });
+
+  return ctx;
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds action.google-calendar:delete_event 1`] = `
+function step_action_google_calendar_delete_event(ctx) {
+  ctx = ctx || {};
+
+  const config = {};
+  const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+
+  function resolveCalendarId() {
+    const template = config.calendarId || config.calendar_id || '';
+    const resolved = template ? interpolate(String(template), ctx).trim() : '';
+    if (resolved) {
+      return resolved;
+    }
+    try {
+      const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+      if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+        return fallback.trim();
+      }
+    } catch (error) {
+      // Optional secret – ignore when missing.
+    }
+    return 'primary';
+  }
+
+  const calendarId = resolveCalendarId();
+  const eventIdTemplate = config.eventId || config.event_id || '';
+  const eventId = eventIdTemplate ? interpolate(String(eventIdTemplate), ctx).trim() : '';
+  if (!eventId) {
+    throw new Error('Google Calendar delete_event requires an eventId.');
+  }
+
+  const sendUpdatesTemplate = config.sendUpdates || config.send_updates || '';
+  let sendUpdates = sendUpdatesTemplate ? interpolate(String(sendUpdatesTemplate), ctx).trim().toLowerCase() : 'none';
+  if (['all', 'externalonly', 'none'].indexOf(sendUpdates) === -1) {
+    sendUpdates = 'none';
+  }
+
+  const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+  const url =
+    'https://www.googleapis.com/calendar/v3/calendars/' +
+    encodeURIComponent(calendarId) +
+    '/events/' +
+    encodeURIComponent(eventId) +
+    '?sendUpdates=' +
+    encodeURIComponent(sendUpdates);
+
+  const response = rateLimitAware(() => fetchJson({
+    url: url,
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Accept': 'application/json'
+    }
+  }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+  const status = response && typeof response.status === 'number' ? response.status : null;
+
+  ctx.googleCalendarDeletedEventId = eventId;
+  ctx.googleCalendarCalendarId = calendarId;
+  ctx.googleCalendarDeleteStatus = status;
+
+  logInfo('google_calendar_delete_event_success', {
+    calendarId: calendarId,
+    eventId: eventId,
+    sendUpdates: sendUpdates,
+    status: status
+  });
+
+  return ctx;
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds trigger.google-calendar:event_created 1`] = `
+function step_trigger_google_calendar_event_created() {
+  const config = {};
+  return buildPollingWrapper('trigger.google-calendar:event_created', function (runtime) {
+    const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+
+    const priorCursor = cursorState.googleCalendarEventCreated && typeof cursorState.googleCalendarEventCreated === 'object'
+      ? cursorState.googleCalendarEventCreated
+      : cursorState.eventCreated && typeof cursorState.eventCreated === 'object'
+        ? cursorState.eventCreated
+        : null;
+
+    let lastTimestamp = priorCursor && typeof priorCursor.timestamp === 'string' ? priorCursor.timestamp : null;
+    const lastIdsArray = priorCursor && Array.isArray(priorCursor.ids) ? priorCursor.ids : [];
+    const lastIds = [];
+    for (let i = 0; i < lastIdsArray.length; i++) {
+      if (typeof lastIdsArray[i] === 'string' && lastIdsArray[i]) {
+        lastIds.push(lastIdsArray[i]);
+      }
+    }
+
+    function resolveCalendarId() {
+      const template = config.calendarId || config.calendar_id || '';
+      const resolved = template ? interpolate(String(template), state.lastPayload || {}) : '';
+      const trimmed = resolved && typeof resolved === 'string' ? resolved.trim() : '';
+      if (trimmed) {
+        return trimmed;
+      }
+      try {
+        const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+        if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+          return fallback.trim();
+        }
+      } catch (error) {
+        // Optional secret – ignore when missing.
+      }
+      return 'primary';
+    }
+
+    const calendarId = resolveCalendarId();
+    const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+    const lookbackIso = lastTimestamp || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const collected = [];
+    let pageToken = '';
+    let iterations = 0;
+
+    while (iterations < 5) {
+      const queryParts = [
+        'singleEvents=true',
+        'showDeleted=false',
+        'orderBy=updated',
+        'maxResults=250',
+        'updatedMin=' + encodeURIComponent(lookbackIso)
+      ];
+      if (pageToken) {
+        queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const url =
+        'https://www.googleapis.com/calendar/v3/calendars/' +
+        encodeURIComponent(calendarId) +
+        '/events?' +
+        queryParts.join('&');
+
+      const response = rateLimitAware(() => fetchJson({
+        url: url,
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Accept': 'application/json'
+        }
+      }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+      const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+      const items = body && Array.isArray(body.items) ? body.items : [];
+
+      for (let i = 0; i < items.length; i++) {
+        const event = items[i];
+        if (!event || typeof event !== 'object') {
+          continue;
+        }
+        if (event.status && String(event.status).toLowerCase() === 'cancelled') {
+          continue;
+        }
+        const id = event.id ? String(event.id).trim() : '';
+        if (!id) {
+          continue;
+        }
+        const createdRaw = event.created ? String(event.created) : '';
+        if (!createdRaw) {
+          continue;
+        }
+        const createdDate = new Date(createdRaw);
+        const createdIso = isNaN(createdDate.getTime()) ? createdRaw : createdDate.toISOString();
+        collected.push({ event: event, created: createdIso });
+      }
+
+      pageToken = body && body.nextPageToken ? String(body.nextPageToken) : '';
+      if (!pageToken) {
+        break;
+      }
+      iterations++;
+    }
+
+    if (collected.length === 0) {
+      const cursorValue = lastTimestamp || lookbackIso;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_created', cursor: cursorValue });
+      logInfo('google_calendar_event_created_poll', { dispatched: 0, cursor: cursorValue });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursorValue };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.created < b.created) { return -1; }
+      if (a.created > b.created) { return 1; }
+      const aId = a.event && a.event.id ? String(a.event.id) : '';
+      const bId = b.event && b.event.id ? String(b.event.id) : '';
+      if (aId < bId) { return -1; }
+      if (aId > bId) { return 1; }
+      return 0;
+    });
+
+    const idsAtNewest = new Set(lastIds);
+    let newestTimestamp = lastTimestamp;
+    const fresh = [];
+
+    for (let i = 0; i < collected.length; i++) {
+      const entry = collected[i];
+      const event = entry.event;
+      const created = entry.created;
+      const id = event && event.id ? String(event.id) : '';
+      if (!id || !created) {
+        continue;
+      }
+      if (lastTimestamp && created < lastTimestamp) {
+        continue;
+      }
+      if (lastTimestamp && created === lastTimestamp && idsAtNewest.has(id)) {
+        continue;
+      }
+      fresh.push(entry);
+      if (!newestTimestamp || created > newestTimestamp) {
+        newestTimestamp = created;
+        idsAtNewest.clear();
+      }
+      if (created === newestTimestamp) {
+        idsAtNewest.add(id);
+      }
+    }
+
+    if (fresh.length === 0) {
+      const cursorValue = lastTimestamp || lookbackIso;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_created', cursor: cursorValue });
+      logInfo('google_calendar_event_created_poll', { dispatched: 0, cursor: cursorValue });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursorValue };
+    }
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(fresh, function (entry) {
+      const event = entry.event || {};
+      const payload = {
+        id: event.id || null,
+        summary: event.summary || '',
+        description: event.description || '',
+        location: event.location || '',
+        start: event.start || null,
+        end: event.end || null,
+        attendees: Array.isArray(event.attendees) ? event.attendees : [],
+        creator: event.creator || null,
+        organizer: event.organizer || null,
+        created: entry.created,
+        calendarId: calendarId
+      };
+      lastPayloadDispatched = payload;
+      return payload;
+    });
+
+    const cursorPayload = {
+      timestamp: newestTimestamp,
+      ids: Array.from(idsAtNewest)
+    };
+
+    cursorState.googleCalendarEventCreated = cursorPayload;
+    cursorState.eventCreated = cursorPayload;
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      resource: 'google_calendar_event_created',
+      cursor: newestTimestamp
+    });
+    logInfo('google_calendar_event_created_poll', { dispatched: batch.succeeded, cursor: newestTimestamp });
+
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: newestTimestamp
+    };
+  });
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds trigger.google-calendar:event_updated 1`] = `
+function step_trigger_google_calendar_event_updated() {
+  const config = {};
+  return buildPollingWrapper('trigger.google-calendar:event_updated', function (runtime) {
+    const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+
+    const priorCursor = cursorState.googleCalendarEventUpdated && typeof cursorState.googleCalendarEventUpdated === 'object'
+      ? cursorState.googleCalendarEventUpdated
+      : cursorState.eventUpdated && typeof cursorState.eventUpdated === 'object'
+        ? cursorState.eventUpdated
+        : null;
+
+    let lastTimestamp = priorCursor && typeof priorCursor.timestamp === 'string' ? priorCursor.timestamp : null;
+    const lastIdsArray = priorCursor && Array.isArray(priorCursor.ids) ? priorCursor.ids : [];
+    const lastIds = [];
+    for (let i = 0; i < lastIdsArray.length; i++) {
+      if (typeof lastIdsArray[i] === 'string' && lastIdsArray[i]) {
+        lastIds.push(lastIdsArray[i]);
+      }
+    }
+
+    function resolveCalendarId() {
+      const template = config.calendarId || config.calendar_id || '';
+      const resolved = template ? interpolate(String(template), state.lastPayload || {}) : '';
+      const trimmed = resolved && typeof resolved === 'string' ? resolved.trim() : '';
+      if (trimmed) {
+        return trimmed;
+      }
+      try {
+        const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+        if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+          return fallback.trim();
+        }
+      } catch (error) {
+        // Optional secret – ignore when missing.
+      }
+      return 'primary';
+    }
+
+    const calendarId = resolveCalendarId();
+    const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+    const lookbackIso = lastTimestamp || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const collected = [];
+    let pageToken = '';
+    let iterations = 0;
+
+    while (iterations < 5) {
+      const queryParts = [
+        'singleEvents=true',
+        'showDeleted=true',
+        'orderBy=updated',
+        'maxResults=250',
+        'updatedMin=' + encodeURIComponent(lookbackIso)
+      ];
+      if (pageToken) {
+        queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const url =
+        'https://www.googleapis.com/calendar/v3/calendars/' +
+        encodeURIComponent(calendarId) +
+        '/events?' +
+        queryParts.join('&');
+
+      const response = rateLimitAware(() => fetchJson({
+        url: url,
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Accept': 'application/json'
+        }
+      }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+      const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+      const items = body && Array.isArray(body.items) ? body.items : [];
+
+      for (let i = 0; i < items.length; i++) {
+        const event = items[i];
+        if (!event || typeof event !== 'object') {
+          continue;
+        }
+        const id = event.id ? String(event.id).trim() : '';
+        if (!id) {
+          continue;
+        }
+        const updatedRaw = event.updated ? String(event.updated) : '';
+        if (!updatedRaw) {
+          continue;
+        }
+        const updatedDate = new Date(updatedRaw);
+        const updatedIso = isNaN(updatedDate.getTime()) ? updatedRaw : updatedDate.toISOString();
+        collected.push({ event: event, updated: updatedIso });
+      }
+
+      pageToken = body && body.nextPageToken ? String(body.nextPageToken) : '';
+      if (!pageToken) {
+        break;
+      }
+      iterations++;
+    }
+
+    if (collected.length === 0) {
+      const cursorValue = lastTimestamp || lookbackIso;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_updated', cursor: cursorValue });
+      logInfo('google_calendar_event_updated_poll', { dispatched: 0, cursor: cursorValue });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursorValue };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.updated < b.updated) { return -1; }
+      if (a.updated > b.updated) { return 1; }
+      const aId = a.event && a.event.id ? String(a.event.id) : '';
+      const bId = b.event && b.event.id ? String(b.event.id) : '';
+      if (aId < bId) { return -1; }
+      if (aId > bId) { return 1; }
+      return 0;
+    });
+
+    const idsAtNewest = new Set(lastIds);
+    let newestTimestamp = lastTimestamp;
+    const fresh = [];
+
+    for (let i = 0; i < collected.length; i++) {
+      const entry = collected[i];
+      const event = entry.event;
+      const updated = entry.updated;
+      const id = event && event.id ? String(event.id) : '';
+      if (!id || !updated) {
+        continue;
+      }
+      if (lastTimestamp && updated < lastTimestamp) {
+        continue;
+      }
+      if (lastTimestamp && updated === lastTimestamp && idsAtNewest.has(id)) {
+        continue;
+      }
+      fresh.push(entry);
+      if (!newestTimestamp || updated > newestTimestamp) {
+        newestTimestamp = updated;
+        idsAtNewest.clear();
+      }
+      if (updated === newestTimestamp) {
+        idsAtNewest.add(id);
+      }
+    }
+
+    if (fresh.length === 0) {
+      const cursorValue = lastTimestamp || lookbackIso;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_updated', cursor: cursorValue });
+      logInfo('google_calendar_event_updated_poll', { dispatched: 0, cursor: cursorValue });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: cursorValue };
+    }
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(fresh, function (entry) {
+      const event = entry.event || {};
+      const payload = {
+        id: event.id || null,
+        summary: event.summary || '',
+        updated: entry.updated,
+        sequence: event.sequence !== undefined ? event.sequence : null,
+        status: event.status || null,
+        calendarId: calendarId
+      };
+      lastPayloadDispatched = payload;
+      return payload;
+    });
+
+    const cursorPayload = {
+      timestamp: newestTimestamp,
+      ids: Array.from(idsAtNewest)
+    };
+
+    cursorState.googleCalendarEventUpdated = cursorPayload;
+    cursorState.eventUpdated = cursorPayload;
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      resource: 'google_calendar_event_updated',
+      cursor: newestTimestamp
+    });
+    logInfo('google_calendar_event_updated_poll', { dispatched: batch.succeeded, cursor: newestTimestamp });
+
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: newestTimestamp
+    };
+  });
+}
+`;
+
+exports[`Apps Script Google Calendar REAL_OPS builds trigger.google-calendar:event_starting_soon 1`] = `
+function step_trigger_google_calendar_event_starting_soon() {
+  const config = {};
+  return buildPollingWrapper('trigger.google-calendar:event_starting_soon', function (runtime) {
+    const scopes = ["https://www.googleapis.com/auth/calendar","https://www.googleapis.com/auth/calendar.events"];
+    const state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+    const cursorState = state.cursor && typeof state.cursor === 'object' ? state.cursor : {};
+
+    const dispatchState = cursorState.googleCalendarEventStartingSoon && typeof cursorState.googleCalendarEventStartingSoon === 'object'
+      ? cursorState.googleCalendarEventStartingSoon
+      : { dispatched: {} };
+
+    const dispatchedMap = dispatchState && typeof dispatchState.dispatched === 'object' ? dispatchState.dispatched : {};
+
+    function resolveCalendarId() {
+      const template = config.calendarId || config.calendar_id || '';
+      const resolved = template ? interpolate(String(template), state.lastPayload || {}) : '';
+      const trimmed = resolved && typeof resolved === 'string' ? resolved.trim() : '';
+      if (trimmed) {
+        return trimmed;
+      }
+      try {
+        const fallback = getSecret('GOOGLE_CALENDAR_DEFAULT_CALENDAR_ID', { connectorKey: 'google-calendar' });
+        if (fallback && typeof fallback === 'string' && fallback.trim().length > 0) {
+          return fallback.trim();
+        }
+      } catch (error) {
+        // Optional secret – ignore when missing.
+      }
+      return 'primary';
+    }
+
+    function normalizeStart(start) {
+      if (!start || typeof start !== 'object') {
+        return null;
+      }
+      if (start.dateTime) {
+        const dt = String(start.dateTime);
+        const parsed = new Date(dt);
+        return isNaN(parsed.getTime()) ? dt : parsed.toISOString();
+      }
+      if (start.date) {
+        return String(start.date);
+      }
+      return null;
+    }
+
+    const calendarId = resolveCalendarId();
+    const accessToken = requireOAuthToken('google-calendar', { scopes: scopes });
+
+    const minutesBeforeRaw = config.minutesBefore ?? config.minutes_before;
+    let minutesBefore = Number(minutesBeforeRaw);
+    if (!minutesBefore || minutesBefore <= 0) {
+      minutesBefore = 15;
+    }
+    if (minutesBefore > 1440) {
+      minutesBefore = 1440;
+    }
+
+    const now = new Date();
+    const windowStart = now.toISOString();
+    const windowEnd = new Date(now.getTime() + minutesBefore * 60 * 1000).toISOString();
+
+    const collected = [];
+    let pageToken = '';
+    let iterations = 0;
+
+    while (iterations < 3) {
+      const queryParts = [
+        'maxResults=250',
+        'singleEvents=true',
+        'showDeleted=false',
+        'orderBy=startTime',
+        'timeMin=' + encodeURIComponent(windowStart),
+        'timeMax=' + encodeURIComponent(windowEnd)
+      ];
+      if (pageToken) {
+        queryParts.push('pageToken=' + encodeURIComponent(pageToken));
+      }
+
+      const url =
+        'https://www.googleapis.com/calendar/v3/calendars/' +
+        encodeURIComponent(calendarId) +
+        '/events?' +
+        queryParts.join('&');
+
+      const response = rateLimitAware(() => fetchJson({
+        url: url,
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Accept': 'application/json'
+        }
+      }), { attempts: 4, initialDelayMs: 750, jitter: 0.25 });
+
+      const body = response && Object.prototype.hasOwnProperty.call(response, 'body') ? response.body : response;
+      const items = body && Array.isArray(body.items) ? body.items : [];
+
+      for (let i = 0; i < items.length; i++) {
+        const event = items[i];
+        if (!event || typeof event !== 'object') {
+          continue;
+        }
+        const id = event.id ? String(event.id).trim() : '';
+        if (!id) {
+          continue;
+        }
+        const startKey = normalizeStart(event.start);
+        if (!startKey) {
+          continue;
+        }
+        collected.push({ event: event, startKey: startKey });
+      }
+
+      pageToken = body && body.nextPageToken ? String(body.nextPageToken) : '';
+      if (!pageToken) {
+        break;
+      }
+      iterations++;
+    }
+
+    if (collected.length === 0) {
+      cursorState.googleCalendarEventStartingSoon = { dispatched: dispatchedMap };
+      state.cursor = cursorState;
+      runtime.state = state;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_starting_soon', cursor: windowEnd });
+      logInfo('google_calendar_event_starting_soon_poll', { dispatched: 0, cursor: windowEnd });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: windowEnd };
+    }
+
+    collected.sort(function (a, b) {
+      if (a.startKey < b.startKey) { return -1; }
+      if (a.startKey > b.startKey) { return 1; }
+      const aId = a.event && a.event.id ? String(a.event.id) : '';
+      const bId = b.event && b.event.id ? String(b.event.id) : '';
+      if (aId < bId) { return -1; }
+      if (aId > bId) { return 1; }
+      return 0;
+    });
+
+    const fresh = [];
+    const newEntries = {};
+    const pruneCutoff = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    for (let i = 0; i < collected.length; i++) {
+      const entry = collected[i];
+      const event = entry.event;
+      const startKey = entry.startKey;
+      const id = event && event.id ? String(event.id) : '';
+      if (!id || !startKey) {
+        continue;
+      }
+      const compositeKey = id + '|' + startKey;
+      if (Object.prototype.hasOwnProperty.call(dispatchedMap, compositeKey)) {
+        continue;
+      }
+      fresh.push(entry);
+      newEntries[compositeKey] = startKey;
+    }
+
+    const updatedMap = {};
+    for (const key in dispatchedMap) {
+      if (!Object.prototype.hasOwnProperty.call(dispatchedMap, key)) {
+        continue;
+      }
+      const recorded = dispatchedMap[key];
+      if (typeof recorded === 'string') {
+        const parsed = new Date(recorded);
+        if (!isNaN(parsed.getTime()) && parsed < pruneCutoff) {
+          continue;
+        }
+      }
+      updatedMap[key] = recorded;
+    }
+
+    for (const key in newEntries) {
+      if (Object.prototype.hasOwnProperty.call(newEntries, key)) {
+        updatedMap[key] = newEntries[key];
+      }
+    }
+
+    if (fresh.length === 0) {
+      cursorState.googleCalendarEventStartingSoon = { dispatched: updatedMap };
+      state.cursor = cursorState;
+      runtime.state = state;
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, resource: 'google_calendar_event_starting_soon', cursor: windowEnd });
+      logInfo('google_calendar_event_starting_soon_poll', { dispatched: 0, cursor: windowEnd });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, cursor: windowEnd };
+    }
+
+    let lastPayloadDispatched = state.lastPayload || null;
+    const batch = runtime.dispatchBatch(fresh, function (entry) {
+      const event = entry.event || {};
+      const payload = {
+        id: event.id || null,
+        summary: event.summary || '',
+        start: event.start || null,
+        location: event.location || '',
+        attendees: Array.isArray(event.attendees) ? event.attendees : [],
+        calendarId: calendarId,
+        minutesBefore: minutesBefore,
+        startKey: entry.startKey
+      };
+      lastPayloadDispatched = payload;
+      return payload;
+    });
+
+    cursorState.googleCalendarEventStartingSoon = { dispatched: updatedMap };
+    state.cursor = cursorState;
+    state.lastPayload = lastPayloadDispatched || state.lastPayload || null;
+    runtime.state = state;
+
+    runtime.summary({
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      resource: 'google_calendar_event_starting_soon',
+      cursor: windowEnd
+    });
+    logInfo('google_calendar_event_starting_soon_poll', { dispatched: batch.succeeded, cursor: windowEnd });
+
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      cursor: windowEnd
+    };
+  });
+}
+`;
+
