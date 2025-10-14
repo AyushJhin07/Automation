@@ -174,3 +174,53 @@ function step_createDriveFolder(ctx) {
   return ctx;
 }
 `;
+
+exports[`Apps Script Google Drive integration matches Tier-0 create folder dry-run snapshot 1`] = `
+Object {
+  "context": Object {
+    "deployment": "Tier Zero",
+    "driveFolderId": "fld-123",
+    "driveParentId": "parent-456",
+    "googleDriveFolder": Object {
+      "createdTime": "2024-01-01T00:00:00Z",
+      "id": "fld-123",
+      "mimeType": "application/vnd.google-apps.folder",
+      "modifiedTime": "2024-01-01T00:00:00Z",
+      "name": "Tier Zero Artifacts",
+      "owners": Array [
+        Object {
+          "displayName": "Automation Bot",
+          "emailAddress": "automation@example.com",
+        },
+      ],
+      "parents": Array [
+        "parent-456",
+      ],
+      "webContentLink": "https://drive.google.com/uc?id=fld-123&export=download",
+      "webViewLink": "https://drive.google.com/drive/folders/fld-123",
+    },
+    "googleDriveFolderId": "fld-123",
+    "googleDriveParentId": "parent-456",
+    "lastCreatedFolderId": "fld-123",
+  },
+  "httpCalls": Array [
+    Object {
+      "headers": Object {
+        "accept": "application/json",
+        "authorization": "Bearer ya29.test-drive-token",
+      },
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/files/parent-456?fields=id,name,mimeType,trashed&supportsAllDrives=true",
+    },
+    Object {
+      "headers": Object {
+        "accept": "application/json",
+        "authorization": "Bearer ya29.test-drive-token",
+        "content-type": "application/json",
+      },
+      "method": "POST",
+      "url": "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType,parents,webViewLink,webContentLink,createdTime,modifiedTime,owners",
+    },
+  ],
+}
+`;
