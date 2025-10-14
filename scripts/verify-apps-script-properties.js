@@ -233,6 +233,45 @@ function applyManifestMetadata(connectors, manifests) {
   }
 }
 
+function applyPropertyShadows(connectors) {
+  for (const [targetId, sourceId] of CONNECTOR_PROPERTY_SHADOWS) {
+    const source = connectors.get(sourceId);
+    if (!source) continue;
+    const target = ensureConnectorSummary(connectors, targetId);
+    const targetIndex = target._propertyIndex;
+    for (const prop of source.properties) {
+      let shadow = targetIndex.get(prop.name);
+      if (!shadow) {
+        shadow = {
+          name: prop.name,
+          optional: prop.optional,
+          defaultValue: prop.defaultValue,
+          operations: [],
+          contexts: [...prop.contexts]
+        };
+        target.properties.push(shadow);
+        targetIndex.set(prop.name, shadow);
+      } else {
+        shadow.optional = shadow.optional || prop.optional;
+        if (!shadow.defaultValue && prop.defaultValue) {
+          shadow.defaultValue = prop.defaultValue;
+        }
+        for (const ctx of prop.contexts) {
+          if (!shadow.contexts.includes(ctx)) {
+            shadow.contexts.push(ctx);
+          }
+        }
+      }
+      for (const op of target.operations) {
+        if (!shadow.operations.includes(op)) {
+          shadow.operations.push(op);
+        }
+      }
+    }
+    target.properties.sort((a, b) => a.name.localeCompare(b.name));
+  }
+}
+
 function detectEnvironmentProperties(summary) {
   const envPattern = /(?:ENVIRONMENT|SANDBOX|SERVER_URL|BASE_URL|REGION|INSTANCE_URL|DOMAIN)$/;
   summary.environmentProperties = summary.properties
@@ -269,7 +308,13 @@ const CONNECTOR_PREFIX_OVERRIDES = new Map([
   ['microsoft-powerpoint', ['MICROSOFT_POWERPOINT']],
   ['microsoft-word', ['MICROSOFT_WORD']],
   ['microsoft-outlook', ['OUTLOOK']],
-  ['google-admin', ['GOOGLE_ADMIN']]
+  ['google-admin', ['GOOGLE_ADMIN']],
+  ['sheets', ['GOOGLE_SHEETS']],
+  ['google-sheets-enhanced', ['GOOGLE_SHEETS']]
+]);
+
+const CONNECTOR_PROPERTY_SHADOWS = new Map([
+  ['google-sheets-enhanced', 'sheets']
 ]);
 
 function hasValidPrefix(connectorId, propertyName) {
@@ -385,6 +430,7 @@ function main() {
 
   const connectors = mergeOperations([...compileOps, ...generatedOps]);
   applyManifestMetadata(connectors, manifests);
+  applyPropertyShadows(connectors);
   for (const summary of connectors.values()) {
     detectEnvironmentProperties(summary);
   }

@@ -1,0 +1,491 @@
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:append_row 1`] = `
+function step_action_google_sheets_enhanced_append_row(ctx) {
+  ctx = ctx || {};
+  var config = {"spreadsheetId":"sheet-123","sheet":"Automation Log","values":["{{stage}}","{{result}}"]};
+  var resolved = googleSheetsEnhancedResolveValue(config || {}, ctx) || {};
+
+  var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, ctx);
+  if (!spreadsheetId) {
+    throw new Error('google-sheets-enhanced append_row requires a spreadsheetId');
+  }
+
+  var sheetName = googleSheetsEnhancedResolveSheetName(resolved, ctx) || '';
+  var rangeTemplate = typeof resolved.range === 'string' ? resolved.range : '';
+  var range = googleSheetsEnhancedNormalizeRange(rangeTemplate, sheetName || resolved.sheet || resolved.sheetName || '');
+  if (!range) {
+    range = sheetName || resolved.sheet || resolved.sheetName || '';
+  }
+  if (!range) {
+    range = 'Sheet1';
+  }
+
+  var values = googleSheetsEnhancedCoerceRowValues(resolved.values, ctx);
+  if (!values || values.length === 0) {
+    values = googleSheetsEnhancedCoerceRowValues(null, ctx);
+  }
+  if (!values || values.length === 0) {
+    throw new Error('google-sheets-enhanced append_row requires at least one value');
+  }
+
+  var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  var response = googleSheetsEnhancedAppendRow(spreadsheetId, range, values, {
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    includeValuesInResponse: true
+  }, accessToken);
+
+  var updates = response && response.updates ? response.updates : {};
+  var updatedRange = updates.updatedRange || null;
+  var updatedRows = updates.updatedRows || 0;
+  var updatedColumns = updates.updatedColumns || 0;
+  var returnedValues = (updates.updatedData && updates.updatedData.values && updates.updatedData.values[0]) || values;
+  var sheetTitle = sheetName || (range.indexOf('!') >= 0 ? range.split('!')[0] : range);
+  var rowNumber = null;
+  if (updatedRange) {
+    var parts = String(updatedRange).split('!');
+    var tail = parts.length === 2 ? parts[1] : parts[0];
+    var rowMatch = tail.match(/(\d+)(?::(\d+))?$/);
+    if (rowMatch) {
+      rowNumber = Number(rowMatch[2] || rowMatch[1] || 0);
+    }
+  }
+
+  var summary = {
+    success: true,
+    spreadsheetId: spreadsheetId,
+    sheetName: sheetTitle,
+    range: range,
+    updatedRange: updatedRange,
+    updatedRows: updatedRows,
+    updatedColumns: updatedColumns,
+    values: returnedValues,
+    rowNumber: rowNumber
+  };
+
+  ctx.googleSheetsEnhancedLastAppend = summary;
+  ctx.googleSheetsLastAppend = summary;
+  ctx.rowValues = returnedValues;
+  ctx.googleSheetsRowValues = returnedValues;
+  if (rowNumber !== null) {
+    ctx.rowNumber = rowNumber;
+    ctx.row = rowNumber;
+    ctx.googleSheetsRowNumber = rowNumber;
+  }
+
+  logInfo('google_sheets_enhanced_append_row_success', {
+    spreadsheetId: spreadsheetId,
+    sheetName: sheetTitle,
+    updatedRange: updatedRange,
+    updatedRows: updatedRows
+  });
+  return ctx;
+}`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:get_values 1`] = `
+function step_action_google_sheets_enhanced_get_values(ctx) {
+  ctx = ctx || {};
+  var config = {"spreadsheetId":"sheet-123","range":"Automation Log!A1:B5"};
+  var resolved = googleSheetsEnhancedResolveValue(config || {}, ctx) || {};
+
+  var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, ctx);
+  if (!spreadsheetId) {
+    throw new Error('google-sheets-enhanced get_values requires a spreadsheetId');
+  }
+
+  var sheetName = googleSheetsEnhancedResolveSheetName(resolved, ctx);
+  var rangeTemplate = typeof resolved.range === 'string' ? resolved.range : '';
+  var range = googleSheetsEnhancedNormalizeRange(rangeTemplate, sheetName);
+  if (!range) {
+    throw new Error('google-sheets-enhanced get_values requires a range');
+  }
+
+  var valueRenderOption = String((resolved.valueRenderOption || 'FORMATTED_VALUE')).toUpperCase();
+  var dateTimeRenderOption = String((resolved.dateTimeRenderOption || 'FORMATTED_STRING')).toUpperCase();
+
+  var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+  var response = googleSheetsEnhancedValuesRequest(spreadsheetId, range, {
+    method: 'GET',
+    accessToken: accessToken,
+    query: {
+      majorDimension: 'ROWS',
+      valueRenderOption: valueRenderOption,
+      dateTimeRenderOption: dateTimeRenderOption
+    }
+  });
+  var body = response && response.body ? response.body : response;
+  var values = Array.isArray(body && body.values) ? body.values : [];
+
+  var result = {
+    spreadsheetId: spreadsheetId,
+    range: body && body.range ? body.range : range,
+    majorDimension: body && body.majorDimension ? body.majorDimension : 'ROWS',
+    values: values,
+    valueRenderOption: valueRenderOption,
+    dateTimeRenderOption: dateTimeRenderOption
+  };
+
+  ctx.googleSheetsEnhancedLastRead = result;
+  ctx.googleSheetsLastRead = result;
+  ctx.rowValues = values && values.length > 0 ? values[0] : [];
+  ctx.googleSheetsRowValues = ctx.rowValues;
+
+  logInfo('google_sheets_enhanced_get_values_success', {
+    spreadsheetId: spreadsheetId,
+    range: result.range,
+    rows: values.length
+  });
+  return ctx;
+}`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:update_range 1`] = `
+function step_action_google_sheets_enhanced_update_range(ctx) {
+  ctx = ctx || {};
+  var config = {"spreadsheetId":"sheet-123","range":"Automation Log!A2:B3","values":[["{{stage}}","{{result}}"],["Next","Pending"]]};
+  var resolved = googleSheetsEnhancedResolveValue(config || {}, ctx) || {};
+
+  var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, ctx);
+  if (!spreadsheetId) {
+    throw new Error('google-sheets-enhanced update_range requires a spreadsheetId');
+  }
+
+  var sheetName = googleSheetsEnhancedResolveSheetName(resolved, ctx);
+  var range = googleSheetsEnhancedNormalizeRange(resolved.range || '', sheetName);
+  if (!range) {
+    throw new Error('google-sheets-enhanced update_range requires a range');
+  }
+
+  var values = googleSheetsEnhancedCoerce2DValues(resolved.values, ctx);
+  if (!values || values.length === 0) {
+    throw new Error('google-sheets-enhanced update_range requires a non-empty values array');
+  }
+
+  var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  var payload = googleSheetsEnhancedUpdateValues(spreadsheetId, range, values, {
+    valueInputOption: 'USER_ENTERED'
+  }, accessToken);
+
+  var summary = {
+    success: true,
+    spreadsheetId: spreadsheetId,
+    updatedRange: payload && payload.updatedRange ? payload.updatedRange : range,
+    updatedRows: payload && payload.updatedRows ? payload.updatedRows : values.length,
+    updatedColumns: payload && payload.updatedColumns ? payload.updatedColumns : (values[0] ? values[0].length : 0),
+    values: values
+  };
+
+  ctx.googleSheetsEnhancedLastUpdate = summary;
+  logInfo('google_sheets_enhanced_update_range_success', {
+    spreadsheetId: spreadsheetId,
+    range: summary.updatedRange,
+    rows: summary.updatedRows
+  });
+  return ctx;
+}`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds action.google-sheets-enhanced:find_replace 1`] = `
+function step_action_google_sheets_enhanced_find_replace(ctx) {
+  ctx = ctx || {};
+  var config = {"spreadsheetId":"sheet-123","find":"Old","replacement":"New","sheetId":42};
+  var resolved = googleSheetsEnhancedResolveValue(config || {}, ctx) || {};
+
+  var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, ctx);
+  if (!spreadsheetId) {
+    throw new Error('google-sheets-enhanced find_replace requires a spreadsheetId');
+  }
+
+  var findText = resolved.find || resolved.findText;
+  if (!findText) {
+    throw new Error('google-sheets-enhanced find_replace requires find text');
+  }
+  var replacement = resolved.replacement || resolved.replaceText || '';
+  var sheetId = resolved.sheetId;
+  if ((sheetId === undefined || sheetId === null) && resolved.sheetName) {
+    var metadata = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']));
+    if (metadata && Array.isArray(metadata.sheets)) {
+      for (var i = 0; i < metadata.sheets.length; i++) {
+        var entry = metadata.sheets[i];
+        if (entry && entry.properties && entry.properties.title && entry.properties.title.toLowerCase() === String(resolved.sheetName).toLowerCase()) {
+          sheetId = entry.properties.sheetId;
+          break;
+        }
+      }
+    }
+  }
+
+  var request = {
+    find: String(findText),
+    replacement: String(replacement),
+    allSheets: resolved.allSheets === false ? false : true,
+    matchCase: resolved.matchCase === true,
+    matchEntireCell: resolved.matchEntireCell === true
+  };
+  if (sheetId !== undefined && sheetId !== null) {
+    request.sheetId = sheetId;
+  }
+
+  var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets']);
+  var payload = googleSheetsEnhancedBatchUpdate(spreadsheetId, [{ findReplace: request }], accessToken);
+  var replies = payload && payload.replies ? payload.replies : [];
+  var result = replies && replies[0] && replies[0].findReplace ? replies[0].findReplace : {};
+
+  var summary = {
+    success: true,
+    spreadsheetId: spreadsheetId,
+    occurrencesChanged: result.occurrencesChanged || 0,
+    values: []
+  };
+
+  ctx.googleSheetsEnhancedLastMutation = summary;
+  logInfo('google_sheets_enhanced_find_replace_success', {
+    spreadsheetId: spreadsheetId,
+    occurrencesChanged: summary.occurrencesChanged
+  });
+  return ctx;
+}`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds trigger.google-sheets-enhanced:row_added 1`] = `
+function trigger_google_sheets_enhanced_row_added() {
+  return buildPollingWrapper('trigger.google-sheets-enhanced:row_added', function (runtime) {
+    var config = {};
+    var resolved = googleSheetsEnhancedResolveValue(config || {}, runtime.state || {});
+    var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, runtime.state || {});
+    if (!spreadsheetId) {
+      throw new Error('google-sheets-enhanced row_added trigger requires a spreadsheetId');
+    }
+
+    var sheetName = googleSheetsEnhancedResolveSheetName(resolved, runtime.state || {});
+    var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    var metadata = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, accessToken);
+    var sheetProps = null;
+    if (metadata && Array.isArray(metadata.sheets)) {
+      for (var i = 0; i < metadata.sheets.length; i++) {
+        var entry = metadata.sheets[i];
+        if (!entry || !entry.properties) continue;
+        if (sheetName) {
+          if (entry.properties.title && entry.properties.title.toLowerCase() === sheetName.toLowerCase()) {
+            sheetProps = entry.properties;
+            break;
+          }
+        } else {
+          sheetProps = entry.properties;
+          break;
+        }
+      }
+    }
+    if (!sheetProps) {
+      throw new Error('Unable to resolve sheet for row_added trigger');
+    }
+
+    var range = sheetProps.title;
+    var response = googleSheetsEnhancedValuesRequest(spreadsheetId, range, {
+      method: 'GET',
+      accessToken: accessToken,
+      query: {
+        majorDimension: 'ROWS',
+        valueRenderOption: 'FORMATTED_VALUE'
+      }
+    });
+    var body = response && response.body ? response.body : response;
+    var rows = Array.isArray(body && body.values) ? body.values : [];
+
+    var lastRowIndex = runtime.state && typeof runtime.state.lastRowIndex === 'number' ? runtime.state.lastRowIndex : null;
+    if (lastRowIndex === null) {
+      runtime.state.lastRowIndex = rows.length;
+      runtime.summary({ skipped: true, reason: 'initial_sync', rows: rows.length });
+      return { skipped: true, reason: 'initial_sync', rows: rows.length };
+    }
+
+    if (rows.length <= lastRowIndex) {
+      runtime.summary({ rowsAttempted: 0, rowsDispatched: 0, rowsFailed: 0, spreadsheetId: spreadsheetId, sheetId: sheetProps.sheetId });
+      return { rowsAttempted: 0, rowsDispatched: 0, rowsFailed: 0 };
+    }
+
+    var newRows = rows.slice(lastRowIndex);
+    var startRowNumber = lastRowIndex + 1;
+    var events = [];
+    for (var i = 0; i < newRows.length; i++) {
+      var rowNumber = startRowNumber + i;
+      var values = Array.isArray(newRows[i]) ? newRows[i] : [];
+      var valuesByColumn = {};
+      for (var c = 0; c < values.length; c++) {
+        var columnLetter = googleSheetsEnhancedIndexToColumn(c);
+        valuesByColumn[columnLetter] = values[c];
+      }
+      var rangeA1 = sheetProps.title + '!' + rowNumber + ':' + rowNumber;
+      var timestamp = new Date().toISOString();
+      events.push({
+        spreadsheetId: spreadsheetId,
+        spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/edit#gid=' + sheetProps.sheetId,
+        sheetId: sheetProps.sheetId,
+        sheetTitle: sheetProps.title,
+        rowId: sheetProps.sheetId + '!' + rowNumber,
+        rowIndex: rowNumber,
+        range: rangeA1,
+        values: values,
+        valuesByColumn: valuesByColumn,
+        addedAt: timestamp,
+        _meta: { raw: { spreadsheetId: spreadsheetId, sheetId: sheetProps.sheetId, range: rangeA1, values: values } }
+      });
+    }
+
+    if (events.length === 0) {
+      runtime.summary({ rowsAttempted: 0, rowsDispatched: 0, rowsFailed: 0, spreadsheetId: spreadsheetId, sheetId: sheetProps.sheetId });
+      runtime.state.lastRowIndex = rows.length;
+      return { rowsAttempted: 0, rowsDispatched: 0, rowsFailed: 0 };
+    }
+
+    var batch = runtime.dispatchBatch(events, function (entry) {
+      return entry;
+    });
+
+    runtime.state.lastRowIndex = rows.length;
+    runtime.summary({
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed,
+      spreadsheetId: spreadsheetId,
+      sheetId: sheetProps.sheetId,
+      sheetTitle: sheetProps.title
+    });
+    return {
+      rowsAttempted: batch.attempted,
+      rowsDispatched: batch.succeeded,
+      rowsFailed: batch.failed,
+      lastRowIndex: rows.length
+    };
+  });
+}`;
+
+exports[`Apps Script Google Sheets Enhanced REAL_OPS builds trigger.google-sheets-enhanced:cell_updated 1`] = `
+function trigger_google_sheets_enhanced_cell_updated() {
+  return buildPollingWrapper('trigger.google-sheets-enhanced:cell_updated', function (runtime) {
+    var config = {"range":"Summary!A1:C10"};
+    var resolved = googleSheetsEnhancedResolveValue(config || {}, runtime.state || {});
+    var spreadsheetId = googleSheetsEnhancedResolveSpreadsheetId(resolved, runtime.state || {});
+    if (!spreadsheetId) {
+      throw new Error('google-sheets-enhanced cell_updated trigger requires a spreadsheetId');
+    }
+
+    var rangeTemplate = typeof resolved.range === 'string' ? resolved.range : '';
+    var sheetName = googleSheetsEnhancedResolveSheetName(resolved, runtime.state || {});
+    var range = googleSheetsEnhancedNormalizeRange(rangeTemplate, sheetName);
+
+    var accessToken = googleSheetsEnhancedGetAccessToken(['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    var metadata = googleSheetsEnhancedFetchSpreadsheet(spreadsheetId, accessToken);
+    var sheetProps = null;
+    if (metadata && Array.isArray(metadata.sheets)) {
+      for (var i = 0; i < metadata.sheets.length; i++) {
+        var entry = metadata.sheets[i];
+        if (!entry || !entry.properties) continue;
+        if (range && range.indexOf(entry.properties.title + '!') === 0) {
+          sheetProps = entry.properties;
+          break;
+        }
+        if (!range && sheetName) {
+          if (entry.properties.title && entry.properties.title.toLowerCase() === sheetName.toLowerCase()) {
+            sheetProps = entry.properties;
+            break;
+          }
+        } else if (!range && !sheetName && !sheetProps) {
+          sheetProps = entry.properties;
+        }
+      }
+    }
+    if (!sheetProps) {
+      throw new Error('Unable to resolve sheet for cell_updated trigger');
+    }
+
+    if (!range) {
+      range = sheetProps.title;
+    }
+
+    var response = googleSheetsEnhancedValuesRequest(spreadsheetId, range, {
+      method: 'GET',
+      accessToken: accessToken,
+      query: {
+        majorDimension: 'ROWS',
+        valueRenderOption: 'FORMATTED_VALUE'
+      }
+    });
+    var body = response && response.body ? response.body : response;
+    var values = Array.isArray(body && body.values) ? body.values : [];
+    var rangeInfo = googleSheetsEnhancedParseRange(range);
+    if (!rangeInfo.sheetName) {
+      rangeInfo.sheetName = sheetProps.title;
+    }
+    var flattened = googleSheetsEnhancedFlattenValues(rangeInfo, values);
+
+    if (!runtime.state || typeof runtime.state !== 'object') {
+      runtime.state = {};
+    }
+    if (!runtime.state.cells || typeof runtime.state.cells !== 'object') {
+      runtime.state.cells = {};
+    }
+
+    if (!runtime.state.initialized) {
+      runtime.state.cells = {};
+      for (var i = 0; i < flattened.length; i++) {
+        var entry = flattened[i];
+        runtime.state.cells[sheetProps.sheetId + '!' + entry.cell] = googleSheetsEnhancedSerializeValue(entry.value);
+      }
+      runtime.state.initialized = true;
+      runtime.state.lastSnapshotAt = new Date().toISOString();
+      runtime.summary({ skipped: true, reason: 'initial_sync', cells: flattened.length });
+      return { skipped: true, reason: 'initial_sync', cells: flattened.length };
+    }
+
+    var changes = [];
+    var currentMap = {};
+    for (var i = 0; i < flattened.length; i++) {
+      var entry = flattened[i];
+      var key = sheetProps.sheetId + '!' + entry.cell;
+      var serialized = googleSheetsEnhancedSerializeValue(entry.value);
+      currentMap[key] = serialized;
+      var previous = runtime.state.cells[key];
+      if (previous === undefined) {
+        previous = '';
+      }
+      if (serialized !== previous) {
+        var timestamp = new Date().toISOString();
+        changes.push({
+          spreadsheetId: spreadsheetId,
+          sheetId: sheetProps.sheetId,
+          sheetTitle: sheetProps.title,
+          range: sheetProps.title + '!' + entry.cell,
+          changeId: sheetProps.sheetId + '!' + entry.cell + '@' + timestamp,
+          oldValue: previous === '' ? null : previous,
+          newValue: entry.value === undefined ? null : entry.value,
+          updatedBy: null,
+          updatedAt: timestamp,
+          _meta: { raw: { spreadsheetId: spreadsheetId, sheetId: sheetProps.sheetId, range: sheetProps.title + '!' + entry.cell, oldValue: previous === '' ? null : previous, newValue: entry.value } }
+        });
+      }
+    }
+
+    runtime.state.cells = currentMap;
+    runtime.state.lastSnapshotAt = new Date().toISOString();
+
+    if (changes.length === 0) {
+      runtime.summary({ eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0, spreadsheetId: spreadsheetId, sheetId: sheetProps.sheetId });
+      return { eventsAttempted: 0, eventsDispatched: 0, eventsFailed: 0 };
+    }
+
+    var batch = runtime.dispatchBatch(changes, function (entry) {
+      return entry;
+    });
+
+    runtime.summary({
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed,
+      spreadsheetId: spreadsheetId,
+      sheetId: sheetProps.sheetId,
+      sheetTitle: sheetProps.title
+    });
+    return {
+      eventsAttempted: batch.attempted,
+      eventsDispatched: batch.succeeded,
+      eventsFailed: batch.failed
+    };
+  });
+}`;

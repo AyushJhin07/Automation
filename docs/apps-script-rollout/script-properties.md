@@ -22,19 +22,15 @@ The table below is regenerated automatically. Required properties appear in the 
 | adobe-acrobat | `ADOBE_PDF_CLIENT_ID`<br>`ADOBE_PDF_CLIENT_SECRET` | — | — |
 | adobe-creative | `ADOBE_CREATIVE_ACCESS_TOKEN` | — | — |
 | adobe-sign | `ADOBE_SIGN_ACCESS_TOKEN` | — | — |
-| ADP Workforce Now | `ADP_ACCESS_TOKEN`<br>`ADP_CLIENT_ID`<br>`ADP_CLIENT_SECRET`<br>`ADP_COMPANY_CODES` | — | `ADP_COMPANY_CODES` accepts comma-separated codes when workflows span multiple company entities. |
-| Adyen | `ADYEN_API_KEY`<br>`ADYEN_MERCHANT_ACCOUNT` | — | — |
-| Airtable | `AIRTABLE_API_KEY`<br>`AIRTABLE_BASE_ID` | — | — |
+| Airtable | `AIRTABLE_API_KEY` | — | — |
 | amazon | `AMAZON_ACCESS_KEY`<br>`AMAZON_SECRET_KEY` | — | — |
 | amplitude | `AMPLITUDE_API_KEY` | — | — |
 | animoto | `ANIMOTO_API_KEY` | — | — |
-| asana | `ASANA_ACCESS_TOKEN` | — | — |
 | aws-s3 | `AWS_ACCESS_KEY_ID`<br>`AWS_S3_BUCKET`<br>`AWS_SECRET_ACCESS_KEY` | — | — |
 | BambooHR | `BAMBOOHR_API_KEY`<br>`BAMBOOHR_SUBDOMAIN` | — | `BAMBOOHR_SUBDOMAIN` |
 | Basecamp | `BASECAMP_ACCESS_TOKEN` | — | — |
 | BigCommerce | `BIGCOMMERCE_ACCESS_TOKEN`<br>`BIGCOMMERCE_STORE_HASH` | — | — |
 | Bitbucket | `BITBUCKET_APP_PASSWORD`<br>`BITBUCKET_USERNAME` | — | — |
-| Box | `BOX_ACCESS_TOKEN` | — | — |
 | buffer | `BUFFER_ACCESS_TOKEN` | — | — |
 | Calendly | `CALENDLY_ACCESS_TOKEN` | — | — |
 | canva | `CANVA_API_KEY` | — | — |
@@ -45,8 +41,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | Datadog | `DATADOG_API_KEY` | — | — |
 | discord | `DISCORD_WEBHOOK_URL` | — | — |
 | Docker Hub | `DOCKER_HUB_ACCESS_TOKEN`<br>`DOCKER_HUB_USERNAME` | — | — |
-| DocuSign | `DOCUSIGN_ACCESS_TOKEN`<br>`DOCUSIGN_ACCOUNT_ID` | — | — |
-| Dropbox | `DROPBOX_ACCESS_TOKEN` | — | — |
+| DocuSign | `DOCUSIGN_ACCOUNT_ID` | — | — |
 | drupal | `DRUPAL_PASSWORD`<br>`DRUPAL_SITE_URL`<br>`DRUPAL_USERNAME` | — | — |
 | ebay | `EBAY_ACCESS_TOKEN` | — | — |
 | etsy | `ETSY_ACCESS_TOKEN` | — | — |
@@ -58,25 +53,22 @@ The table below is regenerated automatically. Required properties appear in the 
 | freshbooks | `FRESHBOOKS_ACCESS_TOKEN` | — | — |
 | Freshdesk | `FRESHDESK_API_KEY`<br>`FRESHDESK_DOMAIN` | — | `FRESHDESK_DOMAIN` |
 | ghost | `GHOST_ADMIN_API_KEY`<br>`GHOST_API_URL` | — | — |
-| GitHub | `GITHUB_ACCESS_TOKEN` *(repo scope)* | — | — |
 | GitLab | `GITLAB_ACCESS_TOKEN` | — | — |
-| Gmail | `GMAIL_ACCESS_TOKEN` | `GMAIL_REFRESH_TOKEN` | — |
-| Google Contacts | `GOOGLE_CONTACTS_ACCESS_TOKEN` | `GOOGLE_CONTACTS_OAUTH_SUBJECT` | — |
+| Gmail | `GMAIL_ACCESS_TOKEN` | — | — |
+| Google Drive | `GOOGLE_DRIVE_SERVICE_ACCOUNT` | — | — |
+| Google Sheets Enhanced | `GOOGLE_SHEETS_DELEGATED_EMAIL`<br>`GOOGLE_SHEETS_SERVICE_ACCOUNT` | — | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
 | google-cloud-storage | `GCS_BUCKET`<br>`GCS_SERVICE_ACCOUNT_KEY` | — | — |
-| Google Docs | `GOOGLE_DOCS_ACCESS_TOKEN` *(Docs + Drive metadata scopes)* | — | — |
-| Google Drive | `GOOGLE_DRIVE_ACCESS_TOKEN` | `GOOGLE_DRIVE_OAUTH_SUBJECT`<br>`GOOGLE_DRIVE_SERVICE_ACCOUNT` | — |
 | Greenhouse | `GREENHOUSE_API_KEY` | — | — |
 | HelloSign | `HELLOSIGN_API_KEY` | — | — |
 | hootsuite | `HOOTSUITE_ACCESS_TOKEN` | — | — |
-| HubSpot | `HUBSPOT_API_KEY` | — | — |
 | ifttt | `IFTTT_WEBHOOK_KEY` | — | — |
 | instagram | `INSTAGRAM_ACCESS_TOKEN` | — | — |
 | Intercom | `INTERCOM_ACCESS_TOKEN` | — | — |
 | invision | `INVISION_ACCESS_TOKEN` | — | — |
 | Jenkins | `JENKINS_BASE_URL`<br>`JENKINS_TOKEN`<br>`JENKINS_USERNAME` | — | `JENKINS_BASE_URL` |
-| Jira | `JIRA_API_TOKEN`<br>`JIRA_BASE_URL`<br>`JIRA_EMAIL` | — | `JIRA_BASE_URL` |
+| Jira | `JIRA_BASE_URL`<br>`JIRA_EMAIL` | — | `JIRA_BASE_URL` |
 | Klaviyo | `KLAVIYO_API_KEY` | — | — |
 | Kubernetes | `KUBERNETES_API_SERVER`<br>`KUBERNETES_BEARER_TOKEN` | — | — |
 | later | `LATER_ACCESS_TOKEN` | — | — |
@@ -99,7 +91,6 @@ The table below is regenerated automatically. Required properties appear in the 
 | mongodb | `MONGODB_CONNECTION_STRING` | — | — |
 | mysql | `MYSQL_CONNECTION_STRING` | — | — |
 | new-relic | `NEWRELIC_ACCOUNT_ID`<br>`NEWRELIC_API_KEY` | — | — |
-| Notion | `NOTION_ACCESS_TOKEN`<br>`NOTION_DATABASE_ID`<br>`NOTION_PAGE_ID` | — | — |
 | OneDrive | `ONEDRIVE_ACCESS_TOKEN` | — | — |
 | oracle | `ORACLE_CONNECTION_STRING` | — | — |
 | pandadoc | `PANDADOC_API_KEY` | — | — |
@@ -114,43 +105,35 @@ The table below is regenerated automatically. Required properties appear in the 
 | redis | `REDIS_CONNECTION_STRING` | — | — |
 | RingCentral | `RINGCENTRAL_ACCESS_TOKEN` | — | — |
 | sage | `SAGE_API_KEY` | — | — |
-| Salesforce | `SALESFORCE_ACCESS_TOKEN`<br>`SALESFORCE_INSTANCE_URL` | — | `SALESFORCE_INSTANCE_URL` |
-
-Salesforce workflows must populate both properties before deployment. Access tokens expire within hours, so schedule a rotation that updates `SALESFORCE_ACCESS_TOKEN` and confirm the `SALESFORCE_INSTANCE_URL` matches the target tenant. The Apps Script runtime aborts the handler early when either property is missing.
-
 | salesforce-commerce | `SFCC_ACCESS_TOKEN` | — | — |
 | screencast-o-matic | `SCREENCAST_O_MATIC_API_KEY` | — | — |
 | SendGrid | `SENDGRID_API_KEY` | — | — |
 | ServiceNow | `SERVICENOW_INSTANCE`<br>`SERVICENOW_PASSWORD`<br>`SERVICENOW_USERNAME` | — | — |
-| Shopify | `SHOPIFY_ACCESS_TOKEN`<br>`SHOPIFY_SHOP_DOMAIN` | — | `SHOPIFY_SHOP_DOMAIN` |
+| sheets | `GOOGLE_SHEETS_DELEGATED_EMAIL`<br>`GOOGLE_SHEETS_SERVICE_ACCOUNT` | — | — |
+| Shopify | `SHOPIFY_SHOP_DOMAIN` | — | `SHOPIFY_SHOP_DOMAIN` |
 | signrequest | `SIGNREQUEST_TOKEN` | — | — |
 | sketch | `SKETCH_API_KEY` | — | — |
 | skype | `SKYPE_ACCESS_TOKEN` | — | — |
-| Slack | `SLACK_BOT_TOKEN` (required), optional `SLACK_WEBHOOK_URL` | Bot OAuth token with `chat:write`, `channels:manage`, `channels:read`, `reactions:write`, `files:write`, `users:read`, and history scopes. Webhook URL can be supplied for legacy fallbacks. | `apps_script__slack__bot_token`, `apps_script__slack__webhook_url` |
 | slideshare | `SLIDESHARE_API_KEY`<br>`SLIDESHARE_SHARED_SECRET` | — | — |
 | sprout-social | `SPROUT_SOCIAL_ACCESS_TOKEN` | — | — |
-| Square | `SQUARE_ACCESS_TOKEN` | — | — |
-| Stripe | `STRIPE_SECRET_KEY` | `STRIPE_ACCOUNT_OVERRIDE` | — |
+| Stripe | `STRIPE_ACCOUNT_OVERRIDE` | — | — |
 | substack | `SUBSTACK_API_KEY` | — | — |
 | SurveyMonkey | `SURVEYMONKEY_ACCESS_TOKEN` | — | — |
-| Teamwork | `TEAMWORK_API_TOKEN`<br>`TEAMWORK_SITE_URL` | — | `TEAMWORK_SITE_URL` |
 | telegram | `TELEGRAM_BOT_TOKEN`<br>`TELEGRAM_CHAT_ID` | — | — |
 | tiktok | `TIKTOK_ACCESS_TOKEN` | — | — |
 | Toggl Track | `TOGGL_API_TOKEN` | — | — |
-| Trello | `TRELLO_API_KEY`<br>`TRELLO_TOKEN` | — | — |
-| Twilio | `TWILIO_ACCOUNT_SID`<br>`TWILIO_AUTH_TOKEN`<br>`TWILIO_FROM_NUMBER` | — | — |
+| Trello | `TRELLO_API_KEY` | — | — |
+| Twilio | `TWILIO_ACCOUNT_SID`<br>`TWILIO_FROM_NUMBER` | — | — |
 | twitter | `TWITTER_BEARER_TOKEN` | — | — |
-| Typeform | `TYPEFORM_ACCESS_TOKEN` | `TYPEFORM_LAST_FORM_ID` | — |
 | vimeo | `VIMEO_ACCESS_TOKEN` | — | — |
 | vonage | `VONAGE_API_KEY`<br>`VONAGE_API_SECRET` | — | — |
 | wave | `WAVE_ACCESS_TOKEN` | — | — |
-| Webflow | `WEBFLOW_API_TOKEN`<br>`WEBFLOW_DEFAULT_SITE_ID` | — | `WEBFLOW_DEFAULT_SITE_ID` |
+| Webflow | `WEBFLOW_API_TOKEN` | — | — |
 | whatsapp | `WHATSAPP_ACCESS_TOKEN`<br>`WHATSAPP_PHONE_NUMBER_ID` | — | — |
 | wistia | `WISTIA_API_KEY` | — | — |
 | WooCommerce | `WOOCOMMERCE_CONSUMER_KEY`<br>`WOOCOMMERCE_CONSUMER_SECRET`<br>`WOOCOMMERCE_STORE_URL` | — | — |
 | wordpress | `WORDPRESS_PASSWORD`<br>`WORDPRESS_SITE_URL`<br>`WORDPRESS_USERNAME` | — | — |
 | Workday | `WORKDAY_PASSWORD`<br>`WORKDAY_USERNAME` | — | — |
-| Workfront | `WORKFRONT_API_KEY`<br>`WORKFRONT_DOMAIN` | — | `WORKFRONT_DOMAIN` |
 | Xero | `XERO_ACCESS_TOKEN` | — | — |
 | youtube | `YOUTUBE_ACCESS_TOKEN` | — | — |
 | zapier | `ZAPIER_WEBHOOK_URL` | — | — |
@@ -158,7 +141,6 @@ Salesforce workflows must populate both properties before deployment. Access tok
 | Zoho Books | `ZOHO_BOOKS_AUTH_TOKEN` | — | — |
 | Zoho CRM | `ZOHO_CRM_ACCESS_TOKEN` | — | — |
 | zoom | `ZOOM_API_KEY`<br>`ZOOM_API_SECRET` | — | — |
-| Zoom Enhanced | `ZOOM_ENHANCED_ACCESS_TOKEN` | `ZOOM_ENHANCED_CLIENT_ID`<br>`ZOOM_ENHANCED_CLIENT_SECRET`<br>`ZOOM_ENHANCED_ACCOUNT_ID`<br>`ZOOM_ENHANCED_JWT_TOKEN`<br>`ZOOM_ENHANCED_USER_ID`<br>`ZOOM_ENHANCED_DEFAULT_MEETING_ID`<br>`ZOOM_ENHANCED_DEFAULT_WEBINAR_ID` | — |
 
 <!-- END GENERATED APPS SCRIPT PROPERTIES -->
 
@@ -180,6 +162,12 @@ Salesforce workflows must populate both properties before deployment. Access tok
 - Apps Script Gmail handlers require `GMAIL_ACCESS_TOKEN` scopes `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/gmail.readonly` to cover send, search, and polling flows. Provision tokens with both scopes so the same credential supports triggers and actions.
 - Populate `GMAIL_REFRESH_TOKEN` alongside the access token. A rotation job should exchange the refresh token at least daily; the Apps Script runtime expects fresh access tokens because Gmail REST calls fail once the one-hour access token expires.
 - Store both secrets in Script Properties (production and staging) before deploying new handlers. Missing tokens cause structured `gmail_missing_access_token` errors during runtime, surfacing misconfigurations quickly.
+
+### Google Sheets Enhanced authentication
+
+- Handlers first request delegated OAuth tokens via `requireOAuthToken('google-sheets', { scopes })`. Append and update operations request the full `https://www.googleapis.com/auth/spreadsheets` scope; read-only actions and triggers downgrade to `https://www.googleapis.com/auth/spreadsheets.readonly` when possible.
+- When OAuth is unavailable, populate `GOOGLE_SHEETS_SERVICE_ACCOUNT` with the raw service-account JSON and (optionally) `GOOGLE_SHEETS_DELEGATED_EMAIL` for domain-wide delegation. The runtime exchanges the JWT and surfaces descriptive errors when the payload is malformed.
+- The classic Sheets connector (`sheets`) and Google Sheets Enhanced share the same Script Properties, so existing deployments can reuse credentials without additional provisioning.
 
 ### Google Contacts People API access
 

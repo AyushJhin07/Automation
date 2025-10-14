@@ -119,69 +119,8 @@
         "trigger.adobesign:agreement_action_completed",
         "trigger.adobesign:agreement_workflow_completed"
       ],
-      "properties": [
-        {
-          "name": "TEAMWORK_API_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.teamwork:create_milestone",
-            "action.teamwork:create_project",
-            "action.teamwork:create_task",
-            "action.teamwork:create_time_entry",
-            "action.teamwork:get_project",
-            "action.teamwork:get_task",
-            "action.teamwork:get_time_entry",
-            "action.teamwork:list_milestones",
-            "action.teamwork:list_projects",
-            "action.teamwork:list_tasks",
-            "action.teamwork:list_time_entries",
-            "action.teamwork:test_connection",
-            "action.teamwork:update_project",
-            "action.teamwork:update_task"
-          ],
-          "triggers": [
-            "trigger.teamwork:project_created",
-            "trigger.teamwork:task_completed",
-            "trigger.teamwork:task_created",
-            "trigger.teamwork:time_entry_created"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "TEAMWORK_SITE_URL",
-          "optional": false,
-          "operations": [
-            "action.teamwork:create_milestone",
-            "action.teamwork:create_project",
-            "action.teamwork:create_task",
-            "action.teamwork:create_time_entry",
-            "action.teamwork:get_project",
-            "action.teamwork:get_task",
-            "action.teamwork:get_time_entry",
-            "action.teamwork:list_milestones",
-            "action.teamwork:list_projects",
-            "action.teamwork:list_tasks",
-            "action.teamwork:list_time_entries",
-            "action.teamwork:test_connection",
-            "action.teamwork:update_project",
-            "action.teamwork:update_task"
-          ],
-          "triggers": [
-            "trigger.teamwork:project_created",
-            "trigger.teamwork:task_completed",
-            "trigger.teamwork:task_created",
-            "trigger.teamwork:time_entry_created"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
-      "environmentProperties": [
-        "TEAMWORK_SITE_URL"
-      ]
+      "properties": [],
+      "environmentProperties": []
     },
     {
       "id": "adp",
@@ -195,64 +134,22 @@
       "triggers": [
         "trigger.adp:worker_hired"
       ],
-      "properties": [
-        {
-          "name": "ADP_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.adp:create_worker",
-            "action.adp:get_worker",
-            "action.adp:test_connection",
-            "action.adp:update_worker"
-          ],
-          "triggers": [],
-          "contexts": [
-            "requireOAuthToken"
-          ]
-        },
-        {
-          "name": "ADP_CLIENT_ID",
-          "optional": false,
-          "operations": [
-            "action.adp:create_worker",
-            "action.adp:get_worker",
-            "action.adp:test_connection",
-            "action.adp:update_worker"
-          ],
-          "triggers": [],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ADP_CLIENT_SECRET",
-          "optional": false,
-          "operations": [
-            "action.adp:create_worker",
-            "action.adp:get_worker",
-            "action.adp:test_connection",
-            "action.adp:update_worker"
-          ],
-          "triggers": [],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ADP_COMPANY_CODES",
-          "optional": false,
-          "operations": [
-            "action.adp:create_worker",
-            "action.adp:get_worker",
-            "action.adp:test_connection",
-            "action.adp:update_worker"
-          ],
-          "triggers": [],
-          "contexts": [
-            "getSecret"
-          ]
-        }
+      "properties": [],
+      "environmentProperties": []
+    },
+    {
+      "id": "adyen",
+      "name": "Adyen",
+      "operations": [
+        "action.adyen:capture_payment",
+        "action.adyen:create_payment",
+        "action.adyen:refund_payment",
+        "action.adyen:test_connection"
       ],
+      "triggers": [
+        "trigger.adyen:payment_success"
+      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -275,17 +172,8 @@
           "name": "AIRTABLE_API_KEY",
           "optional": false,
           "operations": [
-            "action.airtable:create_record"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "AIRTABLE_BASE_ID",
-          "optional": false,
-          "operations": [
-            "action.airtable:create_record"
+            "action.airtable:create_record",
+            "action.airtable:list_records"
           ],
           "contexts": [
             "getSecret"
@@ -311,76 +199,7 @@
         "trigger.airtable-enhanced:record_created",
         "trigger.airtable-enhanced:record_updated"
       ],
-      "properties": [
-        {
-          "name": "GOOGLE_ADMIN_ACCESS_TOKEN",
-          "optional": true,
-          "operations": [
-            "action.google-admin:add_group_member",
-            "action.google-admin:create_group",
-            "action.google-admin:create_user",
-            "action.google-admin:test_connection"
-          ],
-          "triggers": [
-            "trigger.google-admin:user_created",
-            "trigger.google-admin:user_suspended"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_ADMIN_SERVICE_ACCOUNT",
-          "optional": true,
-          "operations": [
-            "action.google-admin:add_group_member",
-            "action.google-admin:create_group",
-            "action.google-admin:create_user",
-            "action.google-admin:test_connection"
-          ],
-          "triggers": [
-            "trigger.google-admin:user_created",
-            "trigger.google-admin:user_suspended"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_ADMIN_DELEGATED_EMAIL",
-          "optional": true,
-          "operations": [
-            "action.google-admin:add_group_member",
-            "action.google-admin:create_group",
-            "action.google-admin:create_user",
-            "action.google-admin:test_connection"
-          ],
-          "triggers": [
-            "trigger.google-admin:user_created",
-            "trigger.google-admin:user_suspended"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_ADMIN_CUSTOMER_ID",
-          "optional": true,
-          "operations": [
-            "action.google-admin:add_group_member",
-            "action.google-admin:create_group",
-            "action.google-admin:create_user",
-            "action.google-admin:test_connection"
-          ],
-          "triggers": [
-            "trigger.google-admin:user_created",
-            "trigger.google-admin:user_suspended"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -490,27 +309,6 @@
         "trigger.argocd:app_synced"
       ],
       "properties": [],
-      "environmentProperties": []
-    },
-    {
-      "id": "asana",
-      "name": "asana",
-      "operations": [
-        "action.asana:create_task"
-      ],
-      "triggers": [],
-      "properties": [
-        {
-          "name": "ASANA_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.asana:create_task"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
       "environmentProperties": []
     },
     {
@@ -814,18 +612,7 @@
         "trigger.box:file_deleted",
         "trigger.box:file_uploaded"
       ],
-      "properties": [
-        {
-          "name": "BOX_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.box:upload_file"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -1286,16 +1073,6 @@
       ],
       "properties": [
         {
-          "name": "DOCUSIGN_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.docusign:send_envelope"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
           "name": "DOCUSIGN_ACCOUNT_ID",
           "optional": false,
           "operations": [
@@ -1328,18 +1105,7 @@
         "trigger.dropbox:file_deleted",
         "trigger.dropbox:file_uploaded"
       ],
-      "properties": [
-        {
-          "name": "DROPBOX_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.dropbox:upload_file"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -1796,18 +1562,7 @@
         "trigger.github:pull_request_opened",
         "trigger.github:push"
       ],
-      "properties": [
-        {
-          "name": "GITHUB_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.github:create_issue"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -1869,7 +1624,8 @@
         "action.gmail:search_emails",
         "action.gmail:send_email",
         "action.gmail:send_reply",
-        "action.gmail:test_connection"
+        "action.gmail:test_connection",
+        "trigger.gmail:email_received"
       ],
       "triggers": [
         "trigger.gmail:email_received_from",
@@ -1881,24 +1637,12 @@
           "name": "GMAIL_ACCESS_TOKEN",
           "optional": false,
           "operations": [
-            "action.gmail:send_email",
             "action.gmail:search_emails",
+            "action.gmail:send_email",
             "trigger.gmail:email_received"
           ],
           "contexts": [
             "getSecret"
-          ]
-        },
-        {
-          "name": "GMAIL_REFRESH_TOKEN",
-          "optional": true,
-          "operations": [
-            "action.gmail:send_email",
-            "action.gmail:search_emails",
-            "trigger.gmail:email_received"
-          ],
-          "contexts": [
-            "scriptProperties"
           ]
         }
       ],
@@ -2098,48 +1842,7 @@
         "trigger.google-contacts:contact_created",
         "trigger.google-contacts:contact_updated"
       ],
-      "properties": [
-        {
-          "name": "GOOGLE_CONTACTS_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.google-contacts:create_contact",
-            "action.google-contacts:create_contact_group",
-            "action.google-contacts:delete_contact",
-            "action.google-contacts:get_contact",
-            "action.google-contacts:list_contact_groups",
-            "action.google-contacts:list_contacts",
-            "action.google-contacts:search_contacts",
-            "action.google-contacts:test_connection",
-            "action.google-contacts:update_contact",
-            "trigger.google-contacts:contact_created",
-            "trigger.google-contacts:contact_updated"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_CONTACTS_OAUTH_SUBJECT",
-          "optional": true,
-          "operations": [
-            "action.google-contacts:create_contact",
-            "action.google-contacts:create_contact_group",
-            "action.google-contacts:delete_contact",
-            "action.google-contacts:get_contact",
-            "action.google-contacts:list_contact_groups",
-            "action.google-contacts:list_contacts",
-            "action.google-contacts:search_contacts",
-            "action.google-contacts:test_connection",
-            "action.google-contacts:update_contact",
-            "trigger.google-contacts:contact_created",
-            "trigger.google-contacts:contact_updated"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -2161,27 +1864,7 @@
         "trigger.google-docs:document_created",
         "trigger.google-docs:document_updated"
       ],
-      "properties": [
-        {
-          "name": "GOOGLE_DOCS_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.google-docs:batch_update",
-            "action.google-docs:create_document",
-            "action.google-docs:delete_content_range",
-            "action.google-docs:get_document",
-            "action.google-docs:insert_image",
-            "action.google-docs:insert_table",
-            "action.google-docs:insert_text",
-            "action.google-docs:replace_text",
-            "action.google-docs:test_connection",
-            "action.google-docs:update_text_style"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -2211,81 +1894,10 @@
       ],
       "properties": [
         {
-          "name": "GOOGLE_DRIVE_ACCESS_TOKEN",
+          "name": "GOOGLE_DRIVE_SERVICE_ACCOUNT",
           "optional": false,
           "operations": [
-            "action.google-drive:copy_file",
-            "action.google-drive:create_file",
-            "action.google-drive:create_folder",
-            "action.google-drive:delete_file",
-            "action.google-drive:delete_permission",
-            "action.google-drive:download_file",
-            "action.google-drive:get_file",
-            "action.google-drive:get_file_permissions",
-            "action.google-drive:list_files",
-            "action.google-drive:move_file",
-            "action.google-drive:share_file",
-            "action.google-drive:test_connection",
-            "action.google-drive:update_file_metadata",
-            "action.google-drive:update_permission",
-            "action.google-drive:upload_file",
-            "trigger.google-drive:file_created",
-            "trigger.google-drive:file_shared",
-            "trigger.google-drive:file_updated"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_DRIVE_OAUTH_SUBJECT",
-          "optional": true,
-          "operations": [
-            "action.google-drive:copy_file",
-            "action.google-drive:create_file",
-            "action.google-drive:create_folder",
-            "action.google-drive:delete_file",
-            "action.google-drive:delete_permission",
-            "action.google-drive:download_file",
-            "action.google-drive:get_file",
-            "action.google-drive:get_file_permissions",
-            "action.google-drive:list_files",
-            "action.google-drive:move_file",
-            "action.google-drive:share_file",
-            "action.google-drive:test_connection",
-            "action.google-drive:update_file_metadata",
-            "action.google-drive:update_permission",
-            "action.google-drive:upload_file",
-            "trigger.google-drive:file_created",
-            "trigger.google-drive:file_shared",
-            "trigger.google-drive:file_updated"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "GOOGLE_DRIVE_SERVICE_ACCOUNT",
-          "optional": true,
-          "operations": [
-            "action.google-drive:copy_file",
-            "action.google-drive:create_file",
-            "action.google-drive:create_folder",
-            "action.google-drive:delete_file",
-            "action.google-drive:delete_permission",
-            "action.google-drive:download_file",
-            "action.google-drive:get_file",
-            "action.google-drive:get_file_permissions",
-            "action.google-drive:list_files",
-            "action.google-drive:move_file",
-            "action.google-drive:share_file",
-            "action.google-drive:test_connection",
-            "action.google-drive:update_file_metadata",
-            "action.google-drive:update_permission",
-            "action.google-drive:upload_file",
-            "trigger.google-drive:file_created",
-            "trigger.google-drive:file_shared",
-            "trigger.google-drive:file_updated"
+            "action.google-drive:create_folder"
           ],
           "contexts": [
             "getSecret"
@@ -2360,7 +1972,50 @@
         "trigger.google-sheets-enhanced:cell_updated",
         "trigger.google-sheets-enhanced:row_added"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GOOGLE_SHEETS_DELEGATED_EMAIL",
+          "optional": false,
+          "operations": [
+            "action.google-sheets-enhanced:append_row",
+            "action.google-sheets-enhanced:clear_range",
+            "action.google-sheets-enhanced:create_sheet",
+            "action.google-sheets-enhanced:delete_sheet",
+            "action.google-sheets-enhanced:duplicate_sheet",
+            "action.google-sheets-enhanced:find_replace",
+            "action.google-sheets-enhanced:format_cells",
+            "action.google-sheets-enhanced:get_values",
+            "action.google-sheets-enhanced:sort_range",
+            "action.google-sheets-enhanced:test_connection",
+            "action.google-sheets-enhanced:update_cell",
+            "action.google-sheets-enhanced:update_range"
+          ],
+          "contexts": [
+            "propertyAccess"
+          ]
+        },
+        {
+          "name": "GOOGLE_SHEETS_SERVICE_ACCOUNT",
+          "optional": false,
+          "operations": [
+            "action.google-sheets-enhanced:append_row",
+            "action.google-sheets-enhanced:clear_range",
+            "action.google-sheets-enhanced:create_sheet",
+            "action.google-sheets-enhanced:delete_sheet",
+            "action.google-sheets-enhanced:duplicate_sheet",
+            "action.google-sheets-enhanced:find_replace",
+            "action.google-sheets-enhanced:format_cells",
+            "action.google-sheets-enhanced:get_values",
+            "action.google-sheets-enhanced:sort_range",
+            "action.google-sheets-enhanced:test_connection",
+            "action.google-sheets-enhanced:update_cell",
+            "action.google-sheets-enhanced:update_range"
+          ],
+          "contexts": [
+            "propertyAccess"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {
@@ -2581,18 +2236,7 @@
         "trigger.hubspot:deal_created",
         "trigger.hubspot:deal_stage_changed"
       ],
-      "properties": [
-        {
-          "name": "HUBSPOT_API_KEY",
-          "optional": false,
-          "operations": [
-            "action.hubspot:create_contact"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -2836,16 +2480,6 @@
         "trigger.jira:issue_updated"
       ],
       "properties": [
-        {
-          "name": "JIRA_API_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.jira:create_issue"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
         {
           "name": "JIRA_BASE_URL",
           "optional": false,
@@ -3861,18 +3495,7 @@
         "trigger.notion:page_created",
         "trigger.notion:page_updated"
       ],
-      "properties": [
-        {
-          "name": "NOTION_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.notion:create_page"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -4573,7 +4196,6 @@
       "id": "salesforce",
       "name": "Salesforce",
       "operations": [
-        "action.salesforce:create_lead",
         "action.salesforce:create_record",
         "action.salesforce:get_record",
         "action.salesforce:query_records",
@@ -4583,31 +4205,8 @@
       "triggers": [
         "trigger.salesforce:record_created"
       ],
-      "properties": [
-        {
-          "name": "SALESFORCE_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.salesforce:create_lead"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "SALESFORCE_INSTANCE_URL",
-          "optional": false,
-          "operations": [
-            "action.salesforce:create_lead"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
-      "environmentProperties": [
-        "SALESFORCE_INSTANCE_URL"
-      ]
+      "properties": [],
+      "environmentProperties": []
     },
     {
       "id": "salesforce-commerce",
@@ -4838,6 +4437,43 @@
       "environmentProperties": []
     },
     {
+      "id": "sheets",
+      "name": "sheets",
+      "operations": [
+        "action.sheets:append_row",
+        "action.sheets:getRow",
+        "trigger.sheets:onEdit"
+      ],
+      "triggers": [],
+      "properties": [
+        {
+          "name": "GOOGLE_SHEETS_DELEGATED_EMAIL",
+          "optional": false,
+          "operations": [
+            "action.sheets:append_row",
+            "action.sheets:getRow",
+            "trigger.sheets:onEdit"
+          ],
+          "contexts": [
+            "propertyAccess"
+          ]
+        },
+        {
+          "name": "GOOGLE_SHEETS_SERVICE_ACCOUNT",
+          "optional": false,
+          "operations": [
+            "action.sheets:append_row",
+            "action.sheets:getRow",
+            "trigger.sheets:onEdit"
+          ],
+          "contexts": [
+            "propertyAccess"
+          ]
+        }
+      ],
+      "environmentProperties": []
+    },
+    {
       "id": "shopify",
       "name": "Shopify",
       "operations": [
@@ -4863,16 +4499,6 @@
         "trigger.shopify:product_created"
       ],
       "properties": [
-        {
-          "name": "SHOPIFY_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.shopify:create_order"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
         {
           "name": "SHOPIFY_SHOP_DOMAIN",
           "optional": false,
@@ -5018,18 +4644,7 @@
         "trigger.slack:reaction_added",
         "trigger.slack:user_joined_channel"
       ],
-      "properties": [
-        {
-          "name": "SLACK_WEBHOOK_URL",
-          "optional": false,
-          "operations": [
-            "action.slack:send_message"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -5199,18 +4814,7 @@
         "trigger.square:order_created",
         "trigger.square:payment_created"
       ],
-      "properties": [
-        {
-          "name": "SQUARE_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.square:create_payment"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -5235,23 +4839,13 @@
       ],
       "properties": [
         {
-          "name": "STRIPE_SECRET_KEY",
+          "name": "STRIPE_ACCOUNT_OVERRIDE",
           "optional": false,
           "operations": [
             "action.stripe:create_payment"
           ],
           "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "STRIPE_ACCOUNT_OVERRIDE",
-          "optional": true,
-          "operations": [
-            "action.stripe:create_payment"
-          ],
-          "contexts": [
-            "scriptProperties"
+            "propertyAccess"
           ]
         }
       ],
@@ -5579,16 +5173,6 @@
           "contexts": [
             "getSecret"
           ]
-        },
-        {
-          "name": "TRELLO_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.trello:create_card"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
         }
       ],
       "environmentProperties": []
@@ -5649,16 +5233,6 @@
           ]
         },
         {
-          "name": "TWILIO_AUTH_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.twilio:send_sms"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
           "name": "TWILIO_FROM_NUMBER",
           "optional": false,
           "operations": [
@@ -5702,28 +5276,7 @@
         "trigger.typeform:form_created",
         "trigger.typeform:form_response"
       ],
-      "properties": [
-        {
-          "name": "TYPEFORM_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.typeform:create_form"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "TYPEFORM_LAST_FORM_ID",
-          "optional": true,
-          "operations": [
-            "action.typeform:create_form"
-          ],
-          "contexts": [
-            "scriptProperties"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     },
     {
@@ -5878,7 +5431,21 @@
           "name": "WEBFLOW_API_TOKEN",
           "optional": false,
           "operations": [
-            "action.webflow:create_item"
+            "action.webflow:create_collection_item",
+            "action.webflow:create_item",
+            "action.webflow:create_webhook",
+            "action.webflow:delete_collection_item",
+            "action.webflow:delete_webhook",
+            "action.webflow:get_collection",
+            "action.webflow:get_collection_item",
+            "action.webflow:get_site",
+            "action.webflow:list_collection_items",
+            "action.webflow:list_collections",
+            "action.webflow:list_sites",
+            "action.webflow:list_webhooks",
+            "action.webflow:publish_site",
+            "action.webflow:test_connection",
+            "action.webflow:update_collection_item"
           ],
           "contexts": [
             "getSecret"
@@ -6372,176 +5939,7 @@
         "trigger.zoom-enhanced:meeting_started",
         "trigger.zoom-enhanced:recording_completed"
       ],
-      "properties": [
-        {
-          "name": "ZOOM_ENHANCED_ACCESS_TOKEN",
-          "optional": false,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_CLIENT_ID",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_CLIENT_SECRET",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_ACCOUNT_ID",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_JWT_TOKEN",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_USER_ID",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_DEFAULT_MEETING_ID",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        },
-        {
-          "name": "ZOOM_ENHANCED_DEFAULT_WEBINAR_ID",
-          "optional": true,
-          "operations": [
-            "action.zoom-enhanced:create_meeting",
-            "action.zoom-enhanced:create_webinar",
-            "action.zoom-enhanced:delete_meeting",
-            "action.zoom-enhanced:get_meeting",
-            "action.zoom-enhanced:get_recording",
-            "action.zoom-enhanced:list_meetings",
-            "action.zoom-enhanced:list_recordings",
-            "action.zoom-enhanced:test_connection",
-            "action.zoom-enhanced:update_meeting",
-            "trigger.zoom-enhanced:meeting_ended",
-            "trigger.zoom-enhanced:meeting_started",
-            "trigger.zoom-enhanced:recording_completed"
-          ],
-          "contexts": [
-            "getSecret"
-          ]
-        }
-      ],
+      "properties": [],
       "environmentProperties": []
     }
   ]
