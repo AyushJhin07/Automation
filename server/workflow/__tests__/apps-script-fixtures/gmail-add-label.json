@@ -1,0 +1,75 @@
+{
+  "id": "gmail-add-label",
+  "description": "Runs action.gmail:add_label to apply labels to messages.",
+  "graph": {
+    "id": "fixture-gmail-add-label",
+    "name": "Gmail add label",
+    "nodes": [
+      {
+        "id": "gmail-add-label",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Apply Gmail label",
+        "op": "action.gmail:add_label",
+        "params": {
+          "operation": "add_label",
+          "messageIds": ["msg-9"],
+          "labelIds": ["Label_123"]
+        },
+        "data": {
+          "operation": "add_label",
+          "config": {
+            "messageIds": ["msg-9"],
+            "labelIds": ["Label_123"]
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-add-label",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "ids": ["msg-9"],
+          "addLabelIds": ["Label_123"]
+        }
+      },
+      "response": {
+        "status": 204,
+        "body": {}
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailModifiedIds": ["msg-9"],
+      "gmailAppliedLabelIds": ["Label_123"]
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_add_label_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify",
+        "method": "POST"
+      }
+    ]
+  }
+}

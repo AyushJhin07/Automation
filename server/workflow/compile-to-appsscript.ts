@@ -168,6 +168,14 @@ function pascalCaseFromId(value: string): string {
     .join('');
 }
 
+function indentBlock(code: string, spaces = 2): string {
+  const indent = ' '.repeat(spaces);
+  return code
+    .split('\n')
+    .map(line => (line.length ? indent + line : ''))
+    .join('\n');
+}
+
 function appsScriptHttpHelpers(): string {
   return `
 var __HTTP_RETRY_DEFAULTS = {
@@ -997,6 +1005,347 @@ function buildPollingWrapper(triggerKey, executor) {
     });
     throw error;
   }
+}
+
+type GmailPollingTriggerOptions = {
+  handlerName: string;
+  triggerKey: string;
+  queryBlock: string;
+  messageFilterBlock?: string;
+  metadataProperties?: string;
+  logKey: string;
+};
+
+function buildGmailPollingTrigger(options: GmailPollingTriggerOptions): string {
+  const { handlerName, triggerKey, queryBlock, messageFilterBlock, metadataProperties, logKey } = options;
+  const friendlyOperation = triggerKey.replace('trigger.gmail:', 'gmail.');
+  const querySection = queryBlock && queryBlock.trim().length
+    ? `${indentBlock(queryBlock.trim(), 4)}\n\n`
+    : '';
+  const filterSection = messageFilterBlock && messageFilterBlock.trim().length
+    ? `\n${indentBlock(messageFilterBlock.trim(), 8)}\n`
+    : '';
+  const metadataLines = metadataProperties
+    ? metadataProperties
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+    : [];
+  const formatMetadata = (spaces: number) =>
+    metadataLines.length ? metadataLines.map(line => ' '.repeat(spaces) + line).join('\n') + '\n' : '';
+  const metadataSummary = formatMetadata(6);
+  const metadataLog = formatMetadata(6);
+  const metadataReturn = formatMetadata(6);
+
+  return `
+function ${handlerName}() {
+  return buildPollingWrapper('${triggerKey}', function (runtime) {
+    const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+    if (!accessToken) {
+      logError('gmail_missing_access_token', { operation: '${triggerKey}' });
+      throw new Error('Missing Gmail access token for ${friendlyOperation} trigger');
+    }
+
+    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
+${querySection}    const headers = { Authorization: 'Bearer ' + accessToken };
+    const baseUrl = 'https://gmail.googleapis.com/gmail/v1/users/me';
+    const cursor = (runtime.state && typeof runtime.state.cursor === 'object') ? runtime.state.cursor : {};
+    const lastInternalDate = cursor && cursor.internalDate ? Number(cursor.internalDate) : null;
+    const afterSeconds = lastInternalDate ? Math.floor(lastInternalDate / 1000) : null;
+    const effectiveQuery = afterSeconds ? ((query ? query + ' ' : '') + 'after:' + afterSeconds) : query;
+    const messages = [];
+    let pageToken = null;
+    let pageCount = 0;
+
+    function decodeBase64Url(data) {
+      if (!data) {
+        return '';
+      }
+      try {
+        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = Utilities.base64Decode(normalized);
+        return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+      } catch (error) {
+        logWarn('gmail_message_body_decode_failed', {
+          message: error && error.message ? error.message : String(error)
+        });
+        return '';
+      }
+    }
+
+    function extractHeader(all, name) {
+      if (!Array.isArray(all)) {
+        return '';
+      }
+      const target = name.toLowerCase();
+      for (let i = 0; i < all.length; i++) {
+        const header = all[i];
+        if (!header || typeof header.name !== 'string') {
+          continue;
+        }
+        if (header.name.toLowerCase() === target) {
+          return header.value || '';
+        }
+      }
+      return '';
+    }
+
+    function parseAddressList(value) {
+      if (!value) {
+        return [];
+      }
+      return value.split(',').map(part => part.trim()).filter(Boolean);
+    }
+
+    function collectAttachments(parts, bucket) {
+      if (!Array.isArray(parts)) {
+        return;
+      }
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (!part) {
+          continue;
+        }
+        if (part.filename && part.body && part.body.attachmentId) {
+          bucket.push({
+            attachmentId: part.body.attachmentId,
+            filename: part.filename,
+            mimeType: part.mimeType || 'application/octet-stream',
+            size: part.body.size || 0
+          });
+        }
+        if (Array.isArray(part.parts) && part.parts.length) {
+          collectAttachments(part.parts, bucket);
+        }
+      }
+    }
+
+    function extractBodies(payload) {
+      const result = {};
+      if (!payload) {
+        return result;
+      }
+
+      const queue = [payload];
+      while (queue.length > 0) {
+        const node = queue.shift();
+        if (!node) {
+          continue;
+        }
+        if (node.mimeType === 'text/plain' && node.body && node.body.data) {
+          result.plain = decodeBase64Url(node.body.data);
+        } else if (node.mimeType === 'text/html' && node.body && node.body.data) {
+          result.html = decodeBase64Url(node.body.data);
+        }
+        if (Array.isArray(node.parts)) {
+          for (let p = 0; p < node.parts.length; p++) {
+            queue.push(node.parts[p]);
+          }
+        }
+      }
+
+      if (!result.plain && payload.body && payload.body.data) {
+        result.plain = decodeBase64Url(payload.body.data);
+      }
+
+      return result;
+    }
+
+    try {
+      do {
+        const params = ['maxResults=25'];
+        if (effectiveQuery) {
+          params.push('q=' + encodeURIComponent(effectiveQuery));
+        }
+        if (Array.isArray(labelIds) && labelIds.length) {
+          for (let i = 0; i < labelIds.length; i++) {
+            params.push('labelIds=' + encodeURIComponent(labelIds[i]));
+          }
+        }
+        if (pageToken) {
+          params.push('pageToken=' + encodeURIComponent(pageToken));
+        }
+
+        const listResponse = rateLimitAware(
+          () => fetchJson({
+            url: baseUrl + '/messages?' + params.join('&'),
+            method: 'GET',
+            headers: headers
+          }),
+          { attempts: 5, backoffMs: 500 }
+        );
+
+        const listBody = listResponse.body || {};
+        const candidates = Array.isArray(listBody.messages) ? listBody.messages : [];
+        for (let i = 0; i < candidates.length; i++) {
+          const messageId = candidates[i] && candidates[i].id;
+          if (!messageId) {
+            continue;
+          }
+
+          const messageResponse = rateLimitAware(
+            () => fetchJson({
+              url: baseUrl + '/messages/' + encodeURIComponent(messageId) + '?format=full',
+              method: 'GET',
+              headers: headers
+            }),
+            { attempts: 5, backoffMs: 500 }
+          );
+
+          const detail = messageResponse.body || {};
+          const payload = detail.payload || {};
+          const headersList = payload.headers || [];
+          const bodies = extractBodies(payload);
+          const attachments = [];
+          collectAttachments(payload.parts, attachments);
+
+          const internalDate = detail.internalDate ? Number(detail.internalDate) : null;
+          if (lastInternalDate && internalDate && internalDate <= lastInternalDate) {
+            continue;
+          }
+
+          const from = extractHeader(headersList, 'From');
+          const to = parseAddressList(extractHeader(headersList, 'To'));
+          const cc = parseAddressList(extractHeader(headersList, 'Cc'));
+          const bcc = parseAddressList(extractHeader(headersList, 'Bcc'));
+          const replyTo = parseAddressList(extractHeader(headersList, 'Reply-To'));
+          const deliveredTo = extractHeader(headersList, 'Delivered-To');
+          const subject = extractHeader(headersList, 'Subject') || null;
+          const historyId = detail.historyId ? String(detail.historyId) : null;
+
+          const fromName = from && from.indexOf('<') !== -1 ? from.split('<')[0].trim() : null;
+${filterSection}          messages.push({
+            internalDate: internalDate || Date.now(),
+            historyId: historyId,
+            payload: {
+              id: detail.id || messageId,
+              threadId: detail.threadId || null,
+              historyId: historyId,
+              labelIds: Array.isArray(detail.labelIds) ? detail.labelIds : [],
+              subject: subject,
+              snippet: detail.snippet || '',
+              sizeEstimate: detail.sizeEstimate || null,
+              from: from,
+              fromName: fromName,
+              to: to,
+              cc: cc,
+              bcc: bcc,
+              replyTo: replyTo,
+              deliveredTo: deliveredTo || null,
+              receivedAt: internalDate ? new Date(internalDate).toISOString() : new Date().toISOString(),
+              bodyPlain: bodies.plain || null,
+              bodyHtml: bodies.html || null,
+              attachments: attachments,
+              threadSnippet: detail.snippet || null,
+              raw: detail
+            }
+          });
+        }
+
+        if (messages.length >= 50) {
+          pageToken = null;
+        } else {
+          pageToken = listBody.nextPageToken || null;
+        }
+
+        pageCount += 1;
+      } while (pageToken && pageCount < 5 && messages.length < 50);
+
+      if (messages.length === 0) {
+        runtime.summary({
+          messagesAttempted: 0,
+          messagesDispatched: 0,
+          messagesFailed: 0,
+${metadataSummary}      query: effectiveQuery,
+          labelIds: labelIds,
+          lastInternalDate: lastInternalDate || null
+        });
+        return {
+          messagesAttempted: 0,
+          messagesDispatched: 0,
+          messagesFailed: 0,
+${metadataReturn}      query: effectiveQuery,
+          labelIds: labelIds,
+          lastInternalDate: lastInternalDate || null
+        };
+      }
+
+      messages.sort(function (a, b) {
+        return Number(a.internalDate) - Number(b.internalDate);
+      });
+
+      let lastPayloadDispatched = null;
+      const batch = runtime.dispatchBatch(messages, function (entry) {
+        const payload = {
+          id: entry.payload.id,
+          threadId: entry.payload.threadId,
+          historyId: entry.payload.historyId,
+          labelIds: entry.payload.labelIds,
+          subject: entry.payload.subject,
+          snippet: entry.payload.snippet,
+          from: entry.payload.from,
+          fromName: entry.payload.fromName,
+          to: entry.payload.to,
+          cc: entry.payload.cc,
+          bcc: entry.payload.bcc,
+          replyTo: entry.payload.replyTo,
+          deliveredTo: entry.payload.deliveredTo,
+          receivedAt: entry.payload.receivedAt,
+          sizeEstimate: entry.payload.sizeEstimate,
+          bodyPlain: entry.payload.bodyPlain,
+          bodyHtml: entry.payload.bodyHtml,
+          attachments: entry.payload.attachments,
+          threadSnippet: entry.payload.threadSnippet,
+          snippet: entry.payload.snippet,
+          _meta: { raw: entry.payload.raw || null }
+        };
+        lastPayloadDispatched = payload;
+        return payload;
+      });
+
+      runtime.state = runtime.state && typeof runtime.state === 'object' ? runtime.state : {};
+      runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
+      runtime.state.cursor.internalDate = messages[messages.length - 1].internalDate;
+      runtime.state.lastPayload = lastPayloadDispatched || runtime.state.lastPayload || null;
+
+      runtime.summary({
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+${metadataSummary}      query: effectiveQuery,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      });
+
+      logInfo('${logKey}_success', {
+        dispatched: batch.succeeded,
+${metadataLog}      query: effectiveQuery,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      });
+
+      return {
+        messagesAttempted: batch.attempted,
+        messagesDispatched: batch.succeeded,
+        messagesFailed: batch.failed,
+${metadataReturn}      query: effectiveQuery,
+        labelIds: labelIds,
+        lastInternalDate: runtime.state.cursor.internalDate
+      };
+    } catch (error) {
+      const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+      const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+      const status = error && typeof error.status === 'number' ? error.status : null;
+      const message = providerMessage || (error && error.message ? error.message : String(error));
+      logError('${logKey}_failed', {
+        status: status,
+        providerCode: providerCode,
+        message: message
+      });
+      throw error;
+    }
+  });
+}`;
 }
 
 function __slackResolveString(template, ctx, options) {
@@ -4134,95 +4483,54 @@ async function ${functionName}(inputData, params) {
 }
 
 function generateGmailFunction(functionName: string, node: WorkflowNode): string {
-  const operation = node.params?.operation || node.op?.split('.').pop() || 'email_received';
-  
-  return `
-function ${esc(functionName)}(inputData, params) {
-  console.log('📧 Executing Gmail: ' + (params.operation || '${operation}'));
-  
-  try {
-    const operation = params.operation || '${operation}';
-    
-    if (operation === 'email_received' || operation === 'trigger') {
-      const query = params.query || 'is:unread';
-      const maxResults = params.maxResults || 10;
-      
-      const threads = GmailApp.search(query, 0, maxResults);
-      const emails = [];
-      
-      threads.forEach(thread => {
-        const messages = thread.getMessages();
-        messages.forEach(message => {
-          emails.push({
-            id: message.getId(),
-            subject: message.getSubject(),
-            from: message.getFrom(),
-            date: message.getDate(),
-            body: message.getPlainBody(),
-            threadId: thread.getId(),
-            thread: thread
-          });
-        });
-      });
-      
-      console.log('📧 Found ' + emails.length + ' emails matching query: ' + query);
-      return { ...inputData, emails: emails, emailsFound: emails.length };
-    }
-    
-    if (operation === 'send_reply' || operation === 'reply') {
-      const responseTemplate = params.responseTemplate || 'Thank you for your email. We will get back to you soon.';
-      const emails = inputData.emails || [];
-      let repliesSent = 0;
-      
-      emails.forEach(email => {
-        if (email.thread) {
-          // Personalize response with sender name
-          const senderName = email.from.split('<')[0].trim() || 'Valued Customer';
-          let personalizedResponse = responseTemplate;
-          personalizedResponse = personalizedResponse.replace(/{{name}}/g, senderName);
-          personalizedResponse = personalizedResponse.replace(/{{subject}}/g, email.subject);
-          
-          // Send reply
-          email.thread.reply(personalizedResponse);
-          repliesSent++;
-          
-          // Mark as processed
-          if (params.markAsReplied) {
-            const label = GmailApp.getUserLabelByName('Auto-Replied');
-            if (label) {
-              email.thread.addLabel(label);
-            } else {
-              email.thread.addLabel(GmailApp.createLabel('Auto-Replied'));
-            }
-          }
-        }
-      });
-      
-      console.log('📧 Sent ' + repliesSent + ' auto-replies');
-      return { ...inputData, repliesSent: repliesSent, responseTemplate: responseTemplate };
-    }
-    
-    if (operation === 'send_email') {
-      const to = params.to || inputData.to;
-      const subject = params.subject || inputData.subject || 'Automated Email';
-      const body = params.body || inputData.body || 'Automated message';
-      
-      if (!to) {
-        console.warn('⚠️ Missing recipient email');
-        return { ...inputData, gmailError: 'Missing recipient' };
-      }
-      
-      GmailApp.sendEmail(to, subject, body);
-      console.log('📧 Email sent to: ' + to);
-      return { ...inputData, emailSent: true, recipient: to };
-    }
-    
-    console.log('✅ Gmail operation completed:', operation);
-    return { ...inputData, gmailResult: 'success', operation };
-  } catch (error) {
-    console.error('❌ Gmail error:', error);
-    return { ...inputData, gmailError: error.toString() };
+  const rawOperationKey = typeof node.op === 'string' ? node.op : '';
+  const nodeType = typeof node.type === 'string' ? node.type : '';
+  const isTrigger = rawOperationKey.startsWith('trigger.gmail')
+    || nodeType.startsWith('trigger.gmail')
+    || nodeType.startsWith('trigger:')
+    || nodeType.startsWith('trigger.');
+
+  const operationFromNode =
+    (typeof node.data?.operation === 'string' && node.data.operation)
+      || (typeof (node.params as any)?.operation === 'string' && (node.params as any).operation)
+      || (rawOperationKey.includes(':') ? rawOperationKey.split(':')[1]
+        : rawOperationKey.includes('.') ? rawOperationKey.split('.').pop() || ''
+        : '');
+
+  const defaultOperation = isTrigger ? 'new_email_received' : 'test_connection';
+  const operationName = operationFromNode || defaultOperation;
+
+  const prefix = isTrigger ? 'trigger.gmail' : 'action.gmail';
+  let resolvedKey = rawOperationKey;
+
+  if (!resolvedKey) {
+    resolvedKey = `${prefix}:${operationName}`;
+  } else if (!resolvedKey.startsWith('action.gmail') && !resolvedKey.startsWith('trigger.gmail')) {
+    const suffix = resolvedKey.includes(':')
+      ? resolvedKey.split(':').pop() || operationName
+      : resolvedKey.includes('.') ? resolvedKey.split('.').pop() || operationName
+      : operationName;
+    resolvedKey = `${prefix}:${suffix}`;
   }
+
+  const config = node.data?.config ?? node.params ?? {};
+  const builder = REAL_OPS[resolvedKey];
+
+  if (typeof builder === 'function') {
+    const generated = builder(config);
+    if (typeof generated === 'string' && generated.trim().length > 0) {
+      return generated.replace(/function\s+[^(]+\(/, match => `function ${functionName}(`);
+    }
+  }
+
+  const safeKey = esc(resolvedKey || `${prefix}:${operationName}`);
+  const safeOperation = esc(operationName);
+
+  return `
+function ${functionName}(ctx) {
+  ctx = ctx || {};
+  logWarn('gmail_operation_missing', { operation: '${safeKey}' });
+  throw new Error('Gmail operation "${safeOperation}" is not implemented in Apps Script runtime.');
 }`;
 }
 
@@ -16886,21 +17194,13 @@ function ${functionName}(inputData, params) {
 const opKey = (n: any) => `${n.type}:${n.data?.operation}`;
 
 const OPS: Record<string, (c: any) => string> = {
-  'trigger.gmail:email_received': (c) => REAL_OPS['trigger.gmail:email_received']
-    ? REAL_OPS['trigger.gmail:email_received'](c)
+  'trigger.gmail:new_email_received': (c) => REAL_OPS['trigger.gmail:new_email_received']
+    ? REAL_OPS['trigger.gmail:new_email_received'](c)
     : '',
 
-  'action.gmail:send_reply': (c) => `
-function step_sendReply(ctx) {
-  if (ctx.thread) {
-    const template = '${c.responseTemplate || 'Thank you for your email.'}';
-    const senderName = ctx.from.split('<')[0].trim() || 'Valued Customer';
-    const personalizedResponse = template.replace(/{{name}}/g, senderName);
-    ctx.thread.reply(personalizedResponse);
-    ${c.markAsReplied ? 'ctx.thread.addLabel(GmailApp.getUserLabelByName("Auto-Replied") || GmailApp.createLabel("Auto-Replied"));' : ''}
-  }
-  return ctx;
-}`,
+  'action.gmail:send_reply': (c) => REAL_OPS['action.gmail:send_reply']
+    ? REAL_OPS['action.gmail:send_reply'](c)
+    : '',,
 
   'action.sheets:append_row': (c) => `
 function step_logData(ctx) {
@@ -19053,293 +19353,102 @@ const REAL_OPS: Record<string, (c: any) => string> = {
   'action.adyen:capture_payment': (c) => buildAdyenAction('capture_payment', c),
   'action.adyen:refund_payment': (c) => buildAdyenAction('refund_payment', c),
   'trigger.adyen:payment_success': (c) => buildAdyenTrigger(c),
-  'trigger.gmail:email_received': (c) => `
-function onNewEmail() {
-  return buildPollingWrapper('trigger.gmail:email_received', function (runtime) {
-    const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
-    if (!accessToken) {
-      logError('gmail_missing_access_token', { operation: 'trigger.gmail:email_received' });
-      throw new Error('Missing Gmail access token for gmail.email_received trigger');
+  'trigger.gmail:new_email_received': (c) =>
+    buildGmailPollingTrigger({
+      handlerName: 'onGmailNewEmailReceived',
+      triggerKey: 'trigger.gmail:new_email_received',
+      logKey: 'gmail_new_email_received',
+      queryBlock: `
+const queryTemplate = '${esc(c.query || 'is:unread')}';
+const query = queryTemplate ? interpolate(queryTemplate, interpolationContext).trim() : '';
+const labelIdsConfig = ${JSON.stringify(c.labelIds || [])};
+const labelIds = [];
+if (Array.isArray(labelIdsConfig)) {
+  for (let i = 0; i < labelIdsConfig.length; i++) {
+    const value = typeof labelIdsConfig[i] === 'string' ? interpolate(labelIdsConfig[i], interpolationContext).trim() : '';
+    if (value) {
+      labelIds.push(value);
     }
-
-    const interpolationContext = runtime.state && runtime.state.lastPayload ? runtime.state.lastPayload : {};
-    const query = interpolate('${esc(c.query || 'is:unread')}', interpolationContext).trim();
-    const labelIdsConfig = ${JSON.stringify(c.labelIds || [])};
-    const labelIds = [];
-    if (Array.isArray(labelIdsConfig)) {
-      for (let i = 0; i < labelIdsConfig.length; i++) {
-        const value = typeof labelIdsConfig[i] === 'string' ? interpolate(labelIdsConfig[i], interpolationContext).trim() : '';
-        if (value) {
-          labelIds.push(value);
-        }
-      }
+  }
+}
+`,
+      metadataProperties: 'labelCount: labelIds.length,'
+    }),
+  'trigger.gmail:email_received_from': (c) =>
+    buildGmailPollingTrigger({
+      handlerName: 'onGmailEmailReceivedFrom',
+      triggerKey: 'trigger.gmail:email_received_from',
+      logKey: 'gmail_email_received_from',
+      queryBlock: `
+const fromTemplate = '${esc(c.fromEmail || '')}';
+const subjectTemplate = '${esc(c.subject || '')}';
+const fromFilter = fromTemplate ? interpolate(fromTemplate, interpolationContext).trim() : '';
+if (!fromFilter) {
+  throw new Error('trigger.gmail:email_received_from requires a fromEmail value before deployment.');
+}
+const subjectFilter = subjectTemplate ? interpolate(subjectTemplate, interpolationContext).trim() : '';
+const labelIds = [];
+const parts = ['from:' + fromFilter];
+if (subjectFilter) {
+  parts.push('subject:"' + subjectFilter.replace(/"/g, '\"') + '"');
+}
+const query = parts.join(' ');
+`,
+      metadataProperties: 'fromEmail: fromFilter,\nsubjectFilter: subjectFilter || null,'
+    }),
+  'trigger.gmail:email_with_attachment': (c) =>
+    buildGmailPollingTrigger({
+      handlerName: 'onGmailEmailWithAttachment',
+      triggerKey: 'trigger.gmail:email_with_attachment',
+      logKey: 'gmail_email_with_attachment',
+      queryBlock: `
+const fileTypesConfig = ${JSON.stringify(c.fileTypes || [])};
+const fromTemplate = '${esc(c.fromEmail || '')}';
+const fromFilter = fromTemplate ? interpolate(fromTemplate, interpolationContext).trim() : '';
+const fileTypes = [];
+if (Array.isArray(fileTypesConfig)) {
+  for (let i = 0; i < fileTypesConfig.length; i++) {
+    const value = typeof fileTypesConfig[i] === 'string' ? interpolate(fileTypesConfig[i], interpolationContext).trim() : '';
+    if (value) {
+      fileTypes.push(value.toLowerCase());
     }
-
-    const headers = { Authorization: 'Bearer ' + accessToken };
-    const baseUrl = 'https://gmail.googleapis.com/gmail/v1/users/me';
-    const cursor = (runtime.state && typeof runtime.state.cursor === 'object') ? runtime.state.cursor : {};
-    const lastInternalDate = cursor && cursor.internalDate ? Number(cursor.internalDate) : null;
-    const afterSeconds = lastInternalDate ? Math.floor(lastInternalDate / 1000) : null;
-    const effectiveQuery = afterSeconds ? ((query ? query + ' ' : '') + 'after:' + afterSeconds) : query;
-    const messages = [];
-    let pageToken = null;
-    let pageCount = 0;
-
-    function decodeBase64Url(data) {
-      if (!data) {
-        return '';
+  }
+}
+const queryParts = ['has:attachment'];
+if (fromFilter) {
+  queryParts.push('from:' + fromFilter);
+}
+const query = queryParts.join(' ');
+const labelIds = [];
+`,
+      metadataProperties: 'fromEmail: fromFilter || null,\nfileTypes: fileTypes,',
+      messageFilterBlock: `
+if (!attachments.length) {
+  continue;
+}
+if (fileTypes.length) {
+  let matchedType = false;
+  for (let ft = 0; ft < attachments.length && !matchedType; ft++) {
+    const attachment = attachments[ft] || {};
+    const filename = (attachment.filename || '').toLowerCase();
+    const mimeType = (attachment.mimeType || '').toLowerCase();
+    for (let j = 0; j < fileTypes.length; j++) {
+      const type = fileTypes[j];
+      if (!type) {
+        continue;
       }
-      try {
-        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
-        const bytes = Utilities.base64Decode(normalized);
-        return Utilities.newBlob(bytes).getDataAsString('UTF-8');
-      } catch (error) {
-        logWarn('gmail_message_body_decode_failed', {
-          message: error && error.message ? error.message : String(error)
-        });
-        return '';
-      }
-    }
-
-    function extractHeader(all, name) {
-      if (!Array.isArray(all)) {
-        return '';
-      }
-      const target = name.toLowerCase();
-      for (let i = 0; i < all.length; i++) {
-        const header = all[i];
-        if (!header || typeof header.name !== 'string') {
-          continue;
-        }
-        if (header.name.toLowerCase() === target) {
-          return header.value || '';
-        }
-      }
-      return '';
-    }
-
-    function parseAddressList(value) {
-      if (!value) {
-        return [];
-      }
-      return value.split(',').map(part => part.trim()).filter(Boolean);
-    }
-
-    function collectAttachments(parts, bucket) {
-      if (!Array.isArray(parts)) {
-        return;
-      }
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (!part) {
-          continue;
-        }
-        if (part.filename && part.body && part.body.attachmentId) {
-          bucket.push({
-            attachmentId: part.body.attachmentId,
-            filename: part.filename,
-            mimeType: part.mimeType || 'application/octet-stream',
-            size: part.body.size || 0
-          });
-        }
-        if (Array.isArray(part.parts) && part.parts.length) {
-          collectAttachments(part.parts, bucket);
-        }
+      if ((filename && filename.endsWith('.' + type)) || (mimeType && mimeType.indexOf(type) !== -1)) {
+        matchedType = true;
+        break;
       }
     }
-
-    function extractBodies(payload) {
-      const result = {};
-      if (!payload) {
-        return result;
-      }
-
-      const queue = [payload];
-      while (queue.length > 0) {
-        const node = queue.shift();
-        if (!node) {
-          continue;
-        }
-        if (node.mimeType === 'text/plain' && node.body && node.body.data) {
-          result.plain = decodeBase64Url(node.body.data);
-        } else if (node.mimeType === 'text/html' && node.body && node.body.data) {
-          result.html = decodeBase64Url(node.body.data);
-        }
-        if (Array.isArray(node.parts)) {
-          for (let p = 0; p < node.parts.length; p++) {
-            queue.push(node.parts[p]);
-          }
-        }
-      }
-
-      if (!result.plain && payload.body && payload.body.data) {
-        result.plain = decodeBase64Url(payload.body.data);
-      }
-
-      return result;
-    }
-
-    try {
-      do {
-        const params = ['maxResults=25'];
-        if (effectiveQuery) {
-          params.push('q=' + encodeURIComponent(effectiveQuery));
-        }
-        if (Array.isArray(labelIds) && labelIds.length) {
-        for (let i = 0; i < labelIds.length; i++) {
-          params.push('labelIds=' + encodeURIComponent(labelIds[i]));
-        }
-      }
-      if (pageToken) {
-        params.push('pageToken=' + encodeURIComponent(pageToken));
-      }
-
-      const listResponse = rateLimitAware(
-        () => fetchJson({
-          url: baseUrl + '/messages?' + params.join('&'),
-          method: 'GET',
-          headers: headers
-        }),
-        { attempts: 5, backoffMs: 500 }
-      );
-
-      const listBody = listResponse.body || {};
-      const candidates = Array.isArray(listBody.messages) ? listBody.messages : [];
-      for (let i = 0; i < candidates.length; i++) {
-        const messageId = candidates[i] && candidates[i].id;
-        if (!messageId) {
-          continue;
-        }
-
-        const messageResponse = rateLimitAware(
-          () => fetchJson({
-            url: baseUrl + '/messages/' + encodeURIComponent(messageId) + '?format=full',
-            method: 'GET',
-            headers: headers
-          }),
-          { attempts: 5, backoffMs: 500 }
-        );
-
-        const detail = messageResponse.body || {};
-        const payload = detail.payload || {};
-        const headersList = payload.headers || [];
-        const bodies = extractBodies(payload);
-        const attachments = [];
-        collectAttachments(payload.parts, attachments);
-
-        const internalDate = detail.internalDate ? Number(detail.internalDate) : null;
-        if (lastInternalDate && internalDate && internalDate <= lastInternalDate) {
-          continue;
-        }
-
-        const from = extractHeader(headersList, 'From');
-        const to = parseAddressList(extractHeader(headersList, 'To'));
-        const cc = parseAddressList(extractHeader(headersList, 'Cc'));
-        const bcc = parseAddressList(extractHeader(headersList, 'Bcc'));
-        const replyTo = parseAddressList(extractHeader(headersList, 'Reply-To'));
-        const deliveredTo = extractHeader(headersList, 'Delivered-To');
-        const subject = extractHeader(headersList, 'Subject') || null;
-        const historyId = detail.historyId ? String(detail.historyId) : null;
-
-        const fromName = from && from.indexOf('<') !== -1 ? from.split('<')[0].trim() : null;
-
-        messages.push({
-          internalDate: internalDate || Date.now(),
-          historyId: historyId,
-          payload: {
-            id: detail.id || messageId,
-            threadId: detail.threadId || null,
-            historyId: historyId,
-            labelIds: Array.isArray(detail.labelIds) ? detail.labelIds : [],
-            subject: subject,
-            snippet: detail.snippet || '',
-            from: from,
-            fromName: fromName,
-            to: to,
-            cc: cc,
-            bcc: bcc,
-            replyTo: replyTo,
-            deliveredTo: deliveredTo || null,
-            receivedAt: internalDate ? new Date(internalDate).toISOString() : new Date().toISOString(),
-            sizeEstimate: detail.sizeEstimate || null,
-            bodyPlain: bodies.plain || '',
-            bodyHtml: bodies.html || '',
-            attachments: attachments,
-            _meta: { raw: detail }
-          }
-        });
-      }
-
-      pageToken = listBody.nextPageToken || null;
-      pageCount += 1;
-    } while (pageToken && messages.length < 50 && pageCount < 5);
-
-      if (messages.length === 0) {
-        runtime.summary({
-          messagesAttempted: 0,
-          messagesDispatched: 0,
-          messagesFailed: 0,
-          query: effectiveQuery,
-          labelIds: labelIds
-        });
-        return { messagesAttempted: 0, messagesDispatched: 0, messagesFailed: 0, query: effectiveQuery, labelIds: labelIds };
-      }
-
-      messages.sort(function (a, b) {
-        return (a.internalDate || 0) - (b.internalDate || 0);
-      });
-
-      const batch = runtime.dispatchBatch(messages, function (entry) {
-        return entry.payload;
-      });
-
-      const last = messages[messages.length - 1];
-      runtime.state.cursor = runtime.state.cursor && typeof runtime.state.cursor === 'object' ? runtime.state.cursor : {};
-      runtime.state.cursor.internalDate = String(last.internalDate || Date.now());
-      if (last.historyId) {
-        runtime.state.cursor.historyId = last.historyId;
-      }
-      runtime.state.cursor.lastMessageId = last.payload.id;
-      runtime.state.lastPayload = last.payload;
-
-      runtime.summary({
-        messagesAttempted: batch.attempted,
-        messagesDispatched: batch.succeeded,
-        messagesFailed: batch.failed,
-        query: effectiveQuery,
-        labelIds: labelIds,
-        lastInternalDate: runtime.state.cursor.internalDate
-      });
-
-      logInfo('gmail_email_received_success', {
-        query: effectiveQuery,
-        dispatched: batch.succeeded,
-        labelIds: labelIds,
-        lastInternalDate: runtime.state.cursor.internalDate
-      });
-
-      return {
-        messagesAttempted: batch.attempted,
-        messagesDispatched: batch.succeeded,
-        messagesFailed: batch.failed,
-        query: effectiveQuery,
-        labelIds: labelIds,
-        lastInternalDate: runtime.state.cursor.internalDate
-      };
-    } catch (error) {
-      const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
-      const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
-      const status = error && typeof error.status === 'number' ? error.status : null;
-      const message = providerMessage || (error && error.message ? error.message : String(error));
-      logError('gmail_email_received_failed', {
-        status: status,
-        providerCode: providerCode,
-        message: message
-      });
-      throw error;
-    }
-  });
-}`,
+  }
+  if (!matchedType) {
+    continue;
+  }
+}
+`
+    }),
   'trigger.sheets:onEdit': (c) => `
 function onEdit(e) {
   return buildPollingWrapper('trigger.sheets:onEdit', function (runtime) {
@@ -19818,6 +19927,236 @@ function step_getRow(ctx) {
   }
 }`,
 
+  'action.gmail:test_connection': (c) => `
+function step_action_gmail_test_connection(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:test_connection' });
+    throw new Error('Missing Gmail access token for gmail.test_connection operation');
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/profile',
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      { attempts: 3, backoffMs: 500 }
+    );
+
+    const profile = response.body || {};
+    ctx.gmailProfile = profile;
+    ctx.gmailEmailAddress = profile.emailAddress || null;
+    ctx.gmailMessagesTotal = typeof profile.messagesTotal === 'number' ? profile.messagesTotal : null;
+    ctx.gmailThreadsTotal = typeof profile.threadsTotal === 'number' ? profile.threadsTotal : null;
+    ctx.gmailHistoryId = profile.historyId ? String(profile.historyId) : null;
+    ctx.gmailTestConnectionSuccess = true;
+
+    logInfo('gmail_test_connection_success', {
+      emailAddress: ctx.gmailEmailAddress,
+      messagesTotal: ctx.gmailMessagesTotal,
+      threadsTotal: ctx.gmailThreadsTotal
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_test_connection_failed', {
+      operation: 'action.gmail:test_connection',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail test_connection failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}`,
+  'action.gmail:get_email': (c) => `
+function step_action_gmail_get_email(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:get_email' });
+    throw new Error('Missing Gmail access token for gmail.get_email operation');
+  }
+
+  const messageId = interpolate('${esc(c.messageId || '')}', ctx).trim();
+  if (!messageId) {
+    logError('gmail_get_email_missing_param', { field: 'messageId' });
+    throw new Error('Missing required Gmail get_email param: messageId');
+  }
+
+  const formatTemplate = '${esc(c.format || 'full')}';
+  let format = formatTemplate ? interpolate(formatTemplate, ctx).trim().toLowerCase() : 'full';
+  if (!format || ['minimal', 'full', 'raw', 'metadata'].indexOf(format) === -1) {
+    format = 'full';
+  }
+
+  function decodeBase64Url(data) {
+    if (!data) {
+      return '';
+    }
+    try {
+      const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+      const bytes = Utilities.base64Decode(normalized);
+      return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+    } catch (error) {
+      logWarn('gmail_message_body_decode_failed', {
+        message: error && error.message ? error.message : String(error)
+      });
+      return '';
+    }
+  }
+
+  function extractHeader(all, name) {
+    if (!Array.isArray(all)) {
+      return '';
+    }
+    const target = name.toLowerCase();
+    for (let i = 0; i < all.length; i++) {
+      const header = all[i];
+      if (!header || typeof header.name !== 'string') {
+        continue;
+      }
+      if (header.name.toLowerCase() === target) {
+        return header.value || '';
+      }
+    }
+    return '';
+  }
+
+  function parseAddressList(value) {
+    if (!value) {
+      return [];
+    }
+    return value.split(',').map(part => part.trim()).filter(Boolean);
+  }
+
+  function collectAttachments(parts, bucket) {
+    if (!Array.isArray(parts)) {
+      return;
+    }
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (!part) {
+        continue;
+      }
+      if (part.filename && part.body && part.body.attachmentId) {
+        bucket.push({
+          attachmentId: part.body.attachmentId,
+          filename: part.filename,
+          mimeType: part.mimeType || 'application/octet-stream',
+          size: part.body.size || 0
+        });
+      }
+      if (Array.isArray(part.parts) && part.parts.length) {
+        collectAttachments(part.parts, bucket);
+      }
+    }
+  }
+
+  function extractBodies(payload) {
+    const result = {};
+    if (!payload) {
+      return result;
+    }
+
+    const queue = [payload];
+    while (queue.length > 0) {
+      const node = queue.shift();
+      if (!node) {
+        continue;
+      }
+      if (node.mimeType === 'text/plain' && node.body && node.body.data) {
+        result.plain = decodeBase64Url(node.body.data);
+      } else if (node.mimeType === 'text/html' && node.body && node.body.data) {
+        result.html = decodeBase64Url(node.body.data);
+      }
+      if (Array.isArray(node.parts)) {
+        for (let p = 0; p < node.parts.length; p++) {
+          queue.push(node.parts[p]);
+        }
+      }
+    }
+
+    if (!result.plain && payload.body && payload.body.data) {
+      result.plain = decodeBase64Url(payload.body.data);
+    }
+
+    return result;
+  }
+
+  try {
+    const response = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + encodeURIComponent(messageId) + '?format=' + format,
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      { attempts: 5, backoffMs: 500 }
+    );
+
+    const message = response.body || {};
+    const payload = message.payload || {};
+    const headersList = payload.headers || [];
+    const bodies = extractBodies(payload);
+    const attachments = [];
+    collectAttachments(payload.parts, attachments);
+
+    const from = extractHeader(headersList, 'From');
+    const subject = extractHeader(headersList, 'Subject') || null;
+    const toList = parseAddressList(extractHeader(headersList, 'To'));
+    const ccList = parseAddressList(extractHeader(headersList, 'Cc'));
+    const bccList = parseAddressList(extractHeader(headersList, 'Bcc'));
+    const replyToList = parseAddressList(extractHeader(headersList, 'Reply-To'));
+    const deliveredTo = extractHeader(headersList, 'Delivered-To') || null;
+
+    ctx.gmailMessage = message;
+    ctx.gmailMessageId = message.id || messageId;
+    ctx.gmailThreadId = message.threadId || null;
+    ctx.gmailLabelIds = Array.isArray(message.labelIds) ? message.labelIds : [];
+    ctx.gmailSnippet = message.snippet || '';
+    ctx.gmailInternalDate = message.internalDate ? String(message.internalDate) : null;
+    ctx.gmailPayload = payload;
+    ctx.gmailHeaders = headersList;
+    ctx.gmailBodyPlain = bodies.plain || null;
+    ctx.gmailBodyHtml = bodies.html || null;
+    ctx.gmailAttachments = attachments;
+
+    ctx.gmailFrom = from;
+    ctx.gmailSubject = subject;
+    ctx.gmailTo = toList;
+    ctx.gmailCc = ccList;
+    ctx.gmailBcc = bccList;
+    ctx.gmailReplyTo = replyToList;
+    ctx.gmailDeliveredTo = deliveredTo;
+
+    logInfo('gmail_get_email_success', {
+      messageId: ctx.gmailMessageId || null,
+      threadId: ctx.gmailThreadId || null,
+      format: format,
+      attachments: attachments.length
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_get_email_failed', {
+      operation: 'action.gmail:get_email',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail get_email failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}`,
   'action.gmail:send_email': (c) => `
 function step_action_gmail_send_email(ctx) {
   ctx = ctx || {};
@@ -20051,6 +20390,323 @@ function step_action_gmail_search_emails(ctx) {
       message: message
     });
     throw new Error('Gmail search_emails failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}`,
+  'action.gmail:mark_as_read': (c) => `
+function step_action_gmail_mark_as_read(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:mark_as_read' });
+    throw new Error('Missing Gmail access token for gmail.mark_as_read operation');
+  }
+
+  const idsConfig = ${JSON.stringify(c.messageIds || [])};
+  const messageIds = [];
+  if (Array.isArray(idsConfig)) {
+    for (let i = 0; i < idsConfig.length; i++) {
+      const value = typeof idsConfig[i] === 'string' ? interpolate(idsConfig[i], ctx).trim() : '';
+      if (value) {
+        messageIds.push(value);
+      }
+    }
+  }
+
+  if (!messageIds.length) {
+    logError('gmail_mark_as_read_missing_param', { field: 'messageIds' });
+    throw new Error('Missing required Gmail mark_as_read param: messageIds');
+  }
+
+  try {
+    rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify({ ids: messageIds, removeLabelIds: ['UNREAD'] })
+      }),
+      { attempts: 4, backoffMs: 500 }
+    );
+
+    ctx.gmailModifiedIds = messageIds;
+    logInfo('gmail_mark_as_read_success', { count: messageIds.length });
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_mark_as_read_failed', {
+      operation: 'action.gmail:mark_as_read',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail mark_as_read failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}`,
+  'action.gmail:add_label': (c) => `
+function step_action_gmail_add_label(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:add_label' });
+    throw new Error('Missing Gmail access token for gmail.add_label operation');
+  }
+
+  const idsConfig = ${JSON.stringify(c.messageIds || [])};
+  const labelConfig = ${JSON.stringify(c.labelIds || [])};
+  const messageIds = [];
+  if (Array.isArray(idsConfig)) {
+    for (let i = 0; i < idsConfig.length; i++) {
+      const value = typeof idsConfig[i] === 'string' ? interpolate(idsConfig[i], ctx).trim() : '';
+      if (value) {
+        messageIds.push(value);
+      }
+    }
+  }
+
+  const labelIds = [];
+  if (Array.isArray(labelConfig)) {
+    for (let j = 0; j < labelConfig.length; j++) {
+      const value = typeof labelConfig[j] === 'string' ? interpolate(labelConfig[j], ctx).trim() : '';
+      if (value) {
+        labelIds.push(value);
+      }
+    }
+  }
+
+  if (!messageIds.length) {
+    logError('gmail_add_label_missing_param', { field: 'messageIds' });
+    throw new Error('Missing required Gmail add_label param: messageIds');
+  }
+
+  if (!labelIds.length) {
+    logError('gmail_add_label_missing_param', { field: 'labelIds' });
+    throw new Error('Missing required Gmail add_label param: labelIds');
+  }
+
+  try {
+    rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify({ ids: messageIds, addLabelIds: labelIds })
+      }),
+      { attempts: 4, backoffMs: 500 }
+    );
+
+    ctx.gmailModifiedIds = messageIds;
+    ctx.gmailAppliedLabelIds = labelIds;
+    logInfo('gmail_add_label_success', {
+      messageCount: messageIds.length,
+      labelCount: labelIds.length
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_add_label_failed', {
+      operation: 'action.gmail:add_label',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail add_label failed: ' + (providerCode ? providerCode + ' ' : '') + message);
+  }
+}`,
+  'action.gmail:send_reply': (c) => `
+function step_action_gmail_send_reply(ctx) {
+  ctx = ctx || {};
+  const accessToken = getSecret('GMAIL_ACCESS_TOKEN', { connectorKey: 'gmail' });
+  if (!accessToken) {
+    logError('gmail_missing_access_token', { operation: 'action.gmail:send_reply' });
+    throw new Error('Missing Gmail access token for gmail.send_reply operation');
+  }
+
+  const messageId = interpolate('${esc(c.messageId || '')}', ctx).trim();
+  if (!messageId) {
+    logError('gmail_send_reply_missing_param', { field: 'messageId' });
+    throw new Error('Missing required Gmail send_reply param: messageId');
+  }
+
+  const bodyTemplate = '${esc(c.body || '')}';
+  const replyBody = interpolate(bodyTemplate, ctx);
+  if (!replyBody) {
+    logError('gmail_send_reply_missing_param', { field: 'body' });
+    throw new Error('Missing required Gmail send_reply param: body');
+  }
+
+  let replyAll = ${c.replyAll === true ? 'true' : 'false'};
+  const replyAllTemplate = '${esc(c.replyAll !== undefined ? String(c.replyAll) : '')}';
+  if (replyAllTemplate) {
+    const normalized = replyAllTemplate.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      replyAll = true;
+    } else if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      replyAll = false;
+    }
+  }
+
+  function parseAddressList(value) {
+    if (!value) {
+      return [];
+    }
+    return value.split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
+  }
+
+  function extractHeader(all, name) {
+    if (!Array.isArray(all)) {
+      return '';
+    }
+    const target = name.toLowerCase();
+    for (let i = 0; i < all.length; i++) {
+      const header = all[i];
+      if (!header || typeof header.name !== 'string') {
+        continue;
+      }
+      if (header.name.toLowerCase() === target) {
+        return header.value || '';
+      }
+    }
+    return '';
+  }
+
+  try {
+    const messageResponse = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + encodeURIComponent(messageId) + '?format=full',
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      { attempts: 5, backoffMs: 500 }
+    );
+
+    const message = messageResponse.body || {};
+    const payload = message.payload || {};
+    const headersList = payload.headers || [];
+
+    const fromHeader = extractHeader(headersList, 'From');
+    const replyToHeader = extractHeader(headersList, 'Reply-To');
+    const toHeader = parseAddressList(extractHeader(headersList, 'To'));
+    const ccHeader = parseAddressList(extractHeader(headersList, 'Cc'));
+
+    const baseReplyTo = parseAddressList(replyToHeader);
+    const baseRecipients = baseReplyTo.length ? baseReplyTo : parseAddressList(fromHeader);
+    const toRecipients = [];
+    const ccRecipients = [];
+    const seen = {};
+
+    function pushUnique(target, value) {
+      const key = value ? value.toLowerCase() : '';
+      if (!key || Object.prototype.hasOwnProperty.call(seen, key)) {
+        return;
+      }
+      seen[key] = true;
+      target.push(value);
+    }
+
+    for (let i = 0; i < baseRecipients.length; i++) {
+      pushUnique(toRecipients, baseRecipients[i]);
+    }
+
+    if (replyAll) {
+      for (let i = 0; i < toHeader.length; i++) {
+        pushUnique(toRecipients, toHeader[i]);
+      }
+      for (let i = 0; i < ccHeader.length; i++) {
+        pushUnique(ccRecipients, ccHeader[i]);
+      }
+    }
+
+    if (!toRecipients.length) {
+      logError('gmail_send_reply_unresolved_recipient', { messageId: messageId });
+      throw new Error('Unable to resolve reply recipients for Gmail send_reply operation');
+    }
+
+    const messageIdHeader = extractHeader(headersList, 'Message-ID') || ('<' + messageId + '>');
+    const referencesHeader = extractHeader(headersList, 'References');
+    const references = referencesHeader ? referencesHeader + ' ' + messageIdHeader : messageIdHeader;
+
+    const originalSubject = extractHeader(headersList, 'Subject') || '';
+    let subject = originalSubject;
+    if (!subject) {
+      subject = 'Re:';
+    } else if (!/^\s*re:/i.test(subject)) {
+      subject = 'Re: ' + subject;
+    }
+
+    const headerLines = ['To: ' + toRecipients.join(', ')];
+    if (ccRecipients.length) {
+      headerLines.push('Cc: ' + ccRecipients.join(', '));
+    }
+    headerLines.push('Subject: ' + subject);
+    headerLines.push('In-Reply-To: ' + messageIdHeader);
+    headerLines.push('References: ' + references);
+    headerLines.push('MIME-Version: 1.0');
+    headerLines.push('Content-Type: text/plain; charset="UTF-8"');
+    headerLines.push('Content-Transfer-Encoding: 7bit');
+
+    const messageBody = headerLines.join('\r\n') + '\r\n\r\n' + replyBody;
+    const raw = Utilities.base64EncodeWebSafe(Utilities.newBlob(messageBody).getBytes()).replace(/=+$/, '');
+
+    const requestBody = { raw: raw };
+    if (message.threadId) {
+      requestBody.threadId = message.threadId;
+    }
+
+    const sendResponse = rateLimitAware(
+      () => fetchJson({
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(requestBody)
+      }),
+      { attempts: 5, backoffMs: 500 }
+    );
+
+    const responseBody = sendResponse.body || {};
+    ctx.gmailMessageId = responseBody.id || ctx.gmailMessageId || null;
+    ctx.gmailThreadId = responseBody.threadId || message.threadId || null;
+    ctx.gmailLabelIds = Array.isArray(responseBody.labelIds) ? responseBody.labelIds : [];
+    ctx.gmailSendReplyResponse = responseBody;
+    ctx.gmailReplyRecipients = toRecipients;
+    ctx.gmailReplyCc = ccRecipients;
+
+    logInfo('gmail_send_reply_success', {
+      messageId: ctx.gmailMessageId || null,
+      threadId: ctx.gmailThreadId || null,
+      replyAll: replyAll,
+      toCount: toRecipients.length,
+      ccCount: ccRecipients.length
+    });
+
+    return ctx;
+  } catch (error) {
+    const providerCode = error && error.body && error.body.error ? (error.body.error.status || error.body.error.code || null) : null;
+    const providerMessage = error && error.body && error.body.error ? error.body.error.message : null;
+    const status = error && typeof error.status === 'number' ? error.status : null;
+    const message = providerMessage || (error && error.message ? error.message : String(error));
+    logError('gmail_send_reply_failed', {
+      operation: 'action.gmail:send_reply',
+      status: status,
+      providerCode: providerCode,
+      message: message
+    });
+    throw new Error('Gmail send_reply failed: ' + (providerCode ? providerCode + ' ' : '') + message);
   }
 }`,
 

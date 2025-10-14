@@ -1,0 +1,111 @@
+{
+  "id": "gmail-get-email",
+  "description": "Runs action.gmail:get_email to hydrate a Gmail message payload.",
+  "graph": {
+    "id": "fixture-gmail-get-email",
+    "name": "Gmail get email",
+    "nodes": [
+      {
+        "id": "gmail-get",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Get Gmail message",
+        "op": "action.gmail:get_email",
+        "params": {
+          "operation": "get_email",
+          "messageId": "msg-42",
+          "format": "full"
+        },
+        "data": {
+          "operation": "get_email",
+          "config": {
+            "messageId": "msg-42",
+            "format": "full"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-get-message",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/msg-42?format=full",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "msg-42",
+          "threadId": "thread-42",
+          "labelIds": ["INBOX", "STARRED"],
+          "snippet": "Snippet preview",
+          "internalDate": "1700000000000",
+          "payload": {
+            "headers": [
+              { "name": "From", "value": "Sender <sender@example.com>" },
+              { "name": "To", "value": "user@example.com" },
+              { "name": "Subject", "value": "Important update" },
+              { "name": "Message-ID", "value": "<msg-42@example.com>" }
+            ],
+            "body": {
+              "data": "SGVsbG8gd29ybGQ=",
+              "size": 11
+            },
+            "parts": [
+              {
+                "filename": "report.pdf",
+                "mimeType": "application/pdf",
+                "body": {
+                  "attachmentId": "attach-1",
+                  "size": 2048
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailMessageId": "msg-42",
+      "gmailThreadId": "thread-42",
+      "gmailLabelIds": ["INBOX", "STARRED"],
+      "gmailSnippet": "Snippet preview",
+      "gmailAttachments": [
+        {
+          "attachmentId": "attach-1",
+          "filename": "report.pdf",
+          "mimeType": "application/pdf",
+          "size": 2048
+        }
+      ],
+      "gmailFrom": "Sender <sender@example.com>",
+      "gmailSubject": "Important update",
+      "gmailBodyPlain": "Hello world"
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_get_email_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/msg-42?format=full",
+        "method": "GET"
+      }
+    ]
+  }
+}

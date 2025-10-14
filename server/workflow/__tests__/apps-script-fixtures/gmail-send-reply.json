@@ -1,0 +1,141 @@
+{
+  "id": "gmail-send-reply",
+  "description": "Runs action.gmail:send_reply to respond to an existing message thread.",
+  "graph": {
+    "id": "fixture-gmail-send-reply",
+    "name": "Gmail send reply",
+    "nodes": [
+      {
+        "id": "gmail-reply",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Reply to Gmail message",
+        "op": "action.gmail:send_reply",
+        "params": {
+          "operation": "send_reply",
+          "messageId": "msg-55",
+          "body": "Thanks for the update!",
+          "replyAll": false
+        },
+        "data": {
+          "operation": "send_reply",
+          "config": {
+            "messageId": "msg-55",
+            "body": "Thanks for the update!",
+            "replyAll": false
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-get-message",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/msg-55?format=full",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "msg-55",
+          "threadId": "thread-55",
+          "labelIds": [
+            "INBOX"
+          ],
+          "payload": {
+            "headers": [
+              {
+                "name": "From",
+                "value": "Sender <sender@example.com>"
+              },
+              {
+                "name": "To",
+                "value": "user@example.com"
+              },
+              {
+                "name": "Subject",
+                "value": "Weekly report"
+              },
+              {
+                "name": "Message-ID",
+                "value": "<msg-55@example.com>"
+              },
+              {
+                "name": "References",
+                "value": "<msg-10@example.com>"
+              }
+            ],
+            "body": {
+              "data": "SGVsbG8=",
+              "size": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "gmail-send",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "method": "POST",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token",
+          "content-type": "application/json"
+        },
+        "payload": {
+          "threadId": "thread-55"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "msg-200",
+          "threadId": "thread-55",
+          "labelIds": [
+            "SENT"
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailMessageId": "msg-200",
+      "gmailThreadId": "thread-55",
+      "gmailLabelIds": [
+        "SENT"
+      ],
+      "gmailReplyRecipients": [
+        "sender@example.com"
+      ],
+      "gmailReplyCc": []
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_send_reply_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/msg-55?format=full",
+        "method": "GET"
+      },
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "method": "POST"
+      }
+    ]
+  }
+}

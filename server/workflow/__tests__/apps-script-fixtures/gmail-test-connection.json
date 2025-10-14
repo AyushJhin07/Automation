@@ -1,0 +1,79 @@
+{
+  "id": "gmail-test-connection",
+  "description": "Exercises action.gmail:test_connection to fetch the Gmail profile.",
+  "graph": {
+    "id": "fixture-gmail-test-connection",
+    "name": "Gmail test connection",
+    "nodes": [
+      {
+        "id": "gmail-test",
+        "type": "action.gmail",
+        "app": "gmail",
+        "name": "Test Gmail connection",
+        "op": "action.gmail:test_connection",
+        "params": {
+          "operation": "test_connection"
+        },
+        "data": {
+          "operation": "test_connection",
+          "config": {}
+        }
+      }
+    ],
+    "edges": []
+  },
+  "entry": {
+    "context": {}
+  },
+  "secrets": {
+    "GMAIL_ACCESS_TOKEN": "ya29.test-access-token"
+  },
+  "http": [
+    {
+      "name": "gmail-profile",
+      "request": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+        "method": "GET",
+        "headers": {
+          "authorization": "Bearer ya29.test-access-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "emailAddress": "user@example.com",
+          "messagesTotal": 321,
+          "threadsTotal": 100,
+          "historyId": "123456789"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "context": {
+      "gmailProfile": {
+        "emailAddress": "user@example.com",
+        "messagesTotal": 321,
+        "threadsTotal": 100,
+        "historyId": "123456789"
+      },
+      "gmailEmailAddress": "user@example.com",
+      "gmailMessagesTotal": 321,
+      "gmailThreadsTotal": 100,
+      "gmailHistoryId": "123456789",
+      "gmailTestConnectionSuccess": true
+    },
+    "logs": [
+      {
+        "level": "log",
+        "includes": "gmail_test_connection_success"
+      }
+    ],
+    "httpCalls": [
+      {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+        "method": "GET"
+      }
+    ]
+  }
+}
