@@ -1923,7 +1923,29 @@
         "trigger.gmail-enhanced:email_starred",
         "trigger.gmail-enhanced:new_email"
       ],
-      "properties": [],
+      "properties": [
+        {
+          "name": "GMAIL_ENHANCED_ACCESS_TOKEN",
+          "optional": false,
+          "operations": [
+            "action.gmail-enhanced:create_draft",
+            "action.gmail-enhanced:create_label",
+            "action.gmail-enhanced:delete_message",
+            "action.gmail-enhanced:get_message",
+            "action.gmail-enhanced:list_labels",
+            "action.gmail-enhanced:list_messages",
+            "action.gmail-enhanced:modify_message",
+            "action.gmail-enhanced:search_messages",
+            "action.gmail-enhanced:send_email",
+            "action.gmail-enhanced:test_connection",
+            "trigger.gmail-enhanced:email_starred",
+            "trigger.gmail-enhanced:new_email"
+          ],
+          "contexts": [
+            "getSecret"
+          ]
+        }
+      ],
       "environmentProperties": []
     },
     {

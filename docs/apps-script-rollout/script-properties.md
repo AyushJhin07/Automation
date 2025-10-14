@@ -61,6 +61,7 @@ The table below is regenerated automatically. Required properties appear in the 
 | GitHub | `GITHUB_ACCESS_TOKEN` *(repo scope)* | — | — |
 | GitLab | `GITLAB_ACCESS_TOKEN` | — | — |
 | Gmail | `GMAIL_ACCESS_TOKEN` | `GMAIL_REFRESH_TOKEN` | — |
+| Gmail Enhanced | `GMAIL_ENHANCED_ACCESS_TOKEN` | — | — |
 | Google Contacts | `GOOGLE_CONTACTS_ACCESS_TOKEN` | `GOOGLE_CONTACTS_OAUTH_SUBJECT` | — |
 | google-ads | `GOOGLE_ADS_CUSTOMER_ID`<br>`GOOGLE_ADS_DEVELOPER_TOKEN` | — | — |
 | google-analytics | `GA_VIEW_ID` | — | — |
@@ -182,6 +183,12 @@ Salesforce workflows must populate both properties before deployment. Access tok
 - Populate `GMAIL_REFRESH_TOKEN` alongside the access token. A rotation job should exchange the refresh token at least daily; the Apps Script runtime expects fresh access tokens because Gmail REST calls fail once the one-hour access token expires.
 - Store both secrets in Script Properties (production and staging) before deploying new handlers. Missing tokens cause structured `gmail_missing_access_token` errors during runtime, surfacing misconfigurations quickly.
 - Polling triggers persist their `runtime.state` cursor back to Script Properties; confirm Script Properties writes succeed in staging before the Tier‑0 rollout so trigger runs continue from the last `internalDate` checkpoint.
+
+### Gmail Enhanced token management
+
+- Enhanced Gmail handlers call `requireOAuthToken('gmail-enhanced', { scopes: [...] })` at runtime. Provision `GMAIL_ENHANCED_ACCESS_TOKEN` with scopes `https://www.googleapis.com/auth/gmail.modify`, `https://www.googleapis.com/auth/gmail.labels`, `openid`, `email`, and `profile` so the same credential can send messages, manage labels, and hydrate profile data.
+- Populate the enhanced token in Script Properties for every environment (staging, production) before enabling handlers. Missing secrets surface as `gmail_enhanced_missing_access_token` log events and cause immediate failures.
+- The generated polling triggers persist their cursor back into Script Properties using the enhanced connector key. Verify writes succeed during staging smoke tests so subsequent runs resume from the last Gmail `internalDate` checkpoint.
 
 ### Google Contacts People API access
 
